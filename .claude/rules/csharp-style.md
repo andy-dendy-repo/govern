@@ -41,6 +41,7 @@ Use modern features wherever they make the code clearer:
 - Use `IApplicationDbContextFactory` with `await using var db = await dbContextFactory.CreateDbContextAsync(ct);`.
 - Queries are `AsNoTracking()` and project with `Select` into records. Use `ExecuteUpdateAsync` / `ExecuteDeleteAsync` for bulk changes.
 - No lazy loading, no filtering in memory after `ToListAsync`, no generic repositories.
+- Details: `persistence.md` and `mapping.md`.
 
 ## Size limits (enforced)
 

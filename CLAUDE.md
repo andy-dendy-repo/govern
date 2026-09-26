@@ -36,10 +36,13 @@ dotnet test --project tests/Govern.ArchitectureTests            # one project wh
 dotnet test Govern.slnx --coverage --coverage-output-format cobertura   # coverage → ./TestResults
 dotnet format Govern.slnx --verify-no-changes --exclude src/Govern.Core
 dotnet ef migrations add <Name> --project src/Govern.Infrastructure --startup-project src/Govern.Api --output-dir Persistence/Migrations
-dotnet tool restore                                             # local tools (cwm-roslyn-navigator)
+dotnet tool restore                                             # local tools (cwm-roslyn-navigator, dotnet-ef)
+dotnet run --project src/Govern.Api                             # needs user-secrets: see docs/operations/local-development.md
+dotnet publish src/Govern.Api -c Release -t:PublishContainer    # container image govern-api:local
+az bicep build --file infra/main.bicep                          # compile infra
 ```
 
-Integration tests need Docker running.
+Integration tests need Docker running (Testcontainers starts `postgres:17-alpine`).
 
 ## Branching
 
@@ -65,6 +68,9 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 - **Use case files:** `Application/[Feature]/Contracts/XxxContract.cs` holds `XxxRequest`, `XxxResponse`, `XxxValidator`, `XxxHandler` and `file` types only.
 - **Endpoints:** one endpoint per file in `Api/Features/[Feature]/XxxEndpoint.cs`.
 - **Repositories** exist only for cached queries.
+- **Mediator:** `Govern.Utils.Mediator`. Requests are `IRequest<TRequest, TResponse>`, handlers return `Result<TResponse>`, and the pipelines are error handling → logging → validation.
+- **Errors:** expected failures are returned as `Error` (`[Feature]/Models/XxxErrors.cs`); only bugs throw.
+- **Mapping:** no mapping libraries. Use EF `Select` projections; reused projections are static `Projection`/`From` members on the target type.
 - **Packages:** never pick versions from memory. Use `dotnet add package`, which writes to central `Directory.Packages.props`.
 
 ## MCP servers
@@ -84,9 +90,9 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 | Kind | Items |
 |---|---|
 | Rules, always loaded | `project-map`, `planning` |
-| Rules, path-scoped | `architecture` (src), `csharp-style` (*.cs), `xml-docs`, `logging` (src/*.cs), `security` (src, infra, .github, appsettings), `unit-tests`, `integration-tests`, `architecture-tests`, `docs` |
-| Skills | `/develop-feature` (the dev flow), `/verify` (quality gate) |
-| Agents (read-only, project memory) | `code-reviewer` (after every feature), `security-auditor` (before every stage → main release PR, and after auth, endpoint, config, infra or CI changes) |
+| Rules, path-scoped | `architecture` (src), `csharp-style` (*.cs), `xml-docs`, `logging`, `mapping`, `error-handling` (src/*.cs), `persistence` (Domain, Application, Infrastructure), `api-endpoints` (Api), `auth` (Api, Users, Identity), `security` (src, infra, .github, appsettings), `unit-tests`, `integration-tests`, `architecture-tests`, `docs` |
+| Skills | `/develop-feature` (the dev flow), `/verify` (quality gate), `/add-use-case`, `/add-entity`, `/add-migration`, `/add-infra-concern` (recipes from the real Users slice), `/outdated-packages` (manual only) |
+| Agents (read-only, project memory) | `code-reviewer` (after every feature), `security-auditor` (before every stage → main release PR, and after auth, endpoint, config, infra or CI changes), `ef-core-specialist` (entities, configurations, migrations, slow queries) |
 | Hooks (`.claude/hooks/`) | bash guard (destructive git, protected branches, `rm -rf`), protected generated/secret files, whitespace format on edit, restore on csproj/props edit, test gate on Stop, branch info on SessionStart |
 
-Roadmap for the template solution (one `User` entity): `docs/plans/template-solution-roadmap.md`.
+Current state and remaining roadmap (Blazor client next): `docs/plans/template-solution-roadmap.md`.
