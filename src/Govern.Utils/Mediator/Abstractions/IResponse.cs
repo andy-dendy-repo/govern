@@ -5,5 +5,4 @@ namespace Govern.Utils.Mediator.Abstractions;
 /// </summary>
 public interface IResponse
 {
-
 }
