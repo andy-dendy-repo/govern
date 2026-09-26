@@ -1,6 +1,30 @@
-@Govern.Api_HostAddress = http://localhost:5153
+# Local manual testing. Secrets come from user-secrets (see docs/operations/local-development.md).
+@api = http://localhost:5153
+@email = someone@example.com
+@password = Pa$$w0rd-123
 
-GET {{Govern.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Sign up
+POST {{api}}/api/users/sign-up
+Content-Type: application/json
 
-###
+{ "email": "{{email}}", "password": "{{password}}" }
+
+### Sign in
+# @name signIn
+POST {{api}}/api/users/sign-in
+Content-Type: application/json
+
+{ "email": "{{email}}", "password": "{{password}}" }
+
+### Who am I
+GET {{api}}/api/users/me
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
+
+### Refresh
+POST {{api}}/api/users/refresh
+Content-Type: application/json
+
+{ "refreshToken": "{{signIn.response.body.$.refreshToken}}" }
+
+### Health
+GET {{api}}/health

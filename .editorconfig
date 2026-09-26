@@ -134,3 +134,7 @@ dotnet_diagnostic.CA1716.severity = none
 
 # CA1711: our convention names domain event handlers *EventHandler (INotificationHandler<T>, not delegates).
 dotnet_code_quality.CA1711.allowed_suffixes = EventHandler
+
+# EF Core migrations are generated: analyzers and dotnet format skip them.
+[src/**/Persistence/Migrations/*.cs]
+generated_code = true
