@@ -41,7 +41,7 @@ Exceptions outside the mediator are handled as follows:
 
 ## Rules
 
-- Don't `try/catch` in handlers just to log. The pipeline logs unexpected exceptions once. Catch only to translate a *specific, expected* exception into an `Error`.
+- Don't `try/catch` in handlers just to log. The pipeline logs unexpected exceptions once. Catch only to translate a *specific, expected* exception into an `Error`: `DbUpdateConcurrencyException`, or `DbUpdateException` filtered with `IDbExceptionClassificationService.IsUniqueViolation`.
 - Never return `null` for "not found"; return a NotFound error.
 - Never expose `exception.Message` to clients.
 - Endpoints never inspect `Error.Type` themselves; they call `result.ToHttpResult(...)`.

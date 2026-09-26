@@ -47,6 +47,18 @@ public class SignUpEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture
     }
 
     [Fact]
+    public async Task Post_SameEmailConcurrently_CreatesOneAccountAndReturns409ForOthers()
+    {
+        var email = UsersApi.NewEmail();
+
+        var responses = await Task.WhenAll(
+            Enumerable.Range(0, 5).Select(_ => UsersApi.SignUpAsync(Client, email, UsersApi.Password, Ct)));
+
+        responses.Count(r => r.StatusCode == HttpStatusCode.Created).ShouldBe(1);
+        responses.Where(r => r.StatusCode != HttpStatusCode.Created).ShouldAllBe(r => r.StatusCode == HttpStatusCode.Conflict);
+    }
+
+    [Fact]
     public async Task Post_InvalidEmailAndShortPassword_Returns400WithFieldErrors()
     {
         var response = await UsersApi.SignUpAsync(Client, "not-an-email", "short", Ct);

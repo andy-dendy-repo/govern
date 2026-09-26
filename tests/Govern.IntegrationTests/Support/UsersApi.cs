@@ -22,7 +22,7 @@ public static class UsersApi
     public static Task<HttpResponseMessage> RefreshAsync(HttpClient client, string refreshToken, CancellationToken ct) =>
         client.PostAsJsonAsync("/api/users/refresh", new { refreshToken }, ct);
 
-    public static Task<HttpResponseMessage> GetMeAsync(HttpClient client, string? accessToken, CancellationToken ct)
+    public static async Task<HttpResponseMessage> GetMeAsync(HttpClient client, string? accessToken, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/users/me");
         if (accessToken is not null)
@@ -30,7 +30,7 @@ public static class UsersApi
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         }
 
-        return client.SendAsync(request, ct);
+        return await client.SendAsync(request, ct);
     }
 
     /// <summary>Signs up a new user and signs in, returning the email and the issued tokens.</summary>

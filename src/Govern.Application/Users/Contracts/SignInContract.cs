@@ -59,8 +59,6 @@ internal sealed class SignInHandler(
     IPasswordHashingService passwordHashing,
     UserTokenIssuingService tokenIssuing) : IRequestHandler<SignInRequest, SignInResponse>
 {
-    private static string? _unknownUserHash;
-
     /// <inheritdoc />
     public async ValueTask<Result<SignInResponse>> HandleAsync(SignInRequest request, CancellationToken cancellationToken)
     {
@@ -70,8 +68,7 @@ internal sealed class SignInHandler(
 
         if (user is null)
         {
-            _unknownUserHash ??= passwordHashing.Hash(Guid.NewGuid().ToString());
-            _ = passwordHashing.Verify(_unknownUserHash, request.Password); // equalise timing with the known-user path
+            passwordHashing.SimulateVerify(request.Password);
             return UserErrors.InvalidCredentials;
         }
 

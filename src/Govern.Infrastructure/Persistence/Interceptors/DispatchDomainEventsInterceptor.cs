@@ -2,6 +2,7 @@ using Govern.Domain.EntityBase;
 using Govern.Utils.Mediator.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Govern.Infrastructure.Persistence.Interceptors;
 
@@ -10,7 +11,14 @@ namespace Govern.Infrastructure.Persistence.Interceptors;
 /// <c>SaveChangesAsync</c>, then clears them. Synchronous saves with pending events are rejected, because
 /// dispatching asynchronous handlers synchronously would block (sync-over-async).
 /// </summary>
-internal sealed class DispatchDomainEventsInterceptor(IMediatorService mediator) : SaveChangesInterceptor
+/// <remarks>
+/// The data is already committed when events are dispatched, so a failing handler must not fail the request:
+/// each event is published independently, failures are logged, and the request's cancellation is not applied.
+/// Delivery is best-effort; use an outbox (<c>Infrastructure/Background</c>) when an event must never be lost.
+/// </remarks>
+internal sealed partial class DispatchDomainEventsInterceptor(
+    IMediatorService mediator,
+    ILogger<DispatchDomainEventsInterceptor> logger) : SaveChangesInterceptor
 {
     /// <inheritdoc />
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
@@ -31,13 +39,13 @@ internal sealed class DispatchDomainEventsInterceptor(IMediatorService mediator)
     {
         if (eventData.Context is not null)
         {
-            await DispatchAsync(eventData.Context, cancellationToken);
+            await DispatchAsync(eventData.Context);
         }
 
         return await base.SavedChangesAsync(eventData, result, cancellationToken);
     }
 
-    private async Task DispatchAsync(DbContext context, CancellationToken cancellationToken)
+    private async Task DispatchAsync(DbContext context)
     {
         var entities = CollectEntities(context).ToList();
         var events = entities.SelectMany(static entity => entity.DomainEvents).ToList();
@@ -45,7 +53,14 @@ internal sealed class DispatchDomainEventsInterceptor(IMediatorService mediator)
 
         foreach (var domainEvent in events)
         {
-            await mediator.PublishAsync(domainEvent, cancellationToken);
+            try
+            {
+                await mediator.PublishAsync(domainEvent, CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                Log.DispatchFailed(logger, domainEvent.GetType().Name, exception);
+            }
         }
     }
 
@@ -53,4 +68,10 @@ internal sealed class DispatchDomainEventsInterceptor(IMediatorService mediator)
         context.ChangeTracker.Entries<BaseEntity>()
             .Select(static entry => entry.Entity)
             .Where(static entity => entity.DomainEvents.Count > 0);
+
+    private static partial class Log
+    {
+        [LoggerMessage(EventId = 2001, Level = LogLevel.Error, Message = "Handling domain event {EventName} failed after the data was saved")]
+        public static partial void DispatchFailed(ILogger logger, string eventName, Exception exception);
+    }
 }

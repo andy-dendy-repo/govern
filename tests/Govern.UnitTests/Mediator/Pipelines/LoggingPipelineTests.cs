@@ -25,15 +25,28 @@ public class LoggingPipelineTests
     }
 
     [Fact]
-    public async Task HandleAsync_Failure_LogsErrorTypeAndCodeWithoutPayload()
+    public async Task HandleAsync_ExpectedFailure_LogsTypeAndCodeAtDebugWithoutPayload()
     {
         var pipeline = new LoggingPipeline<PingRequest, PingResponse>(_logger, _time);
 
         await pipeline.HandleAsync(new PingRequest("secret payload"), () => Next(Error.Conflict("ping.duplicate", "Duplicate.")), TestContext.Current.CancellationToken);
 
-        var message = _logger.LatestRecord.Message;
-        message.ShouldBe("PingRequest failed in 25.0 ms with Conflict ping.duplicate");
-        message.ShouldNotContain("secret payload");
+        var record = _logger.LatestRecord;
+        record.Level.ShouldBe(LogLevel.Debug);
+        record.Message.ShouldBe("PingRequest failed in 25.0 ms with Conflict ping.duplicate");
+        record.Message.ShouldNotContain("secret payload");
+    }
+
+    [Theory]
+    [InlineData(ErrorType.Unauthorized)]
+    [InlineData(ErrorType.Forbidden)]
+    public async Task HandleAsync_AuthFailure_LogsWarning(ErrorType type)
+    {
+        var pipeline = new LoggingPipeline<PingRequest, PingResponse>(_logger, _time);
+
+        await pipeline.HandleAsync(new PingRequest("hi"), () => Next(new Error("ping.denied", "Denied.", type)), TestContext.Current.CancellationToken);
+
+        _logger.LatestRecord.Level.ShouldBe(LogLevel.Warning);
     }
 
     private ValueTask<Result<PingResponse>> Next(Result<PingResponse> result)

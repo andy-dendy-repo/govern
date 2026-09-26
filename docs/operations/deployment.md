@@ -13,8 +13,8 @@ updated: 2026-09-27
 
 | Resource | SKU | Notes |
 |---|---|---|
-| App Service plan (Linux) + Web App for Containers | B1 | Runs `ghcr.io/<owner>/govern-api:<sha>`; system-assigned identity; `/health` health check; HTTPS only, TLS 1.2+ |
-| PostgreSQL Flexible Server v17 + database `govern` | Burstable B1ms, 32 GB | TLS required; firewall allows Azure services only |
+| App Service plan (Linux) + Web App for Containers | B1 | Runs `ghcr.io/<owner>/govern-api:<sha>`; system-assigned identity; `/health` health check; HTTPS only, TLS 1.2+; basic-auth (SCM/FTP) publishing disabled |
+| PostgreSQL Flexible Server v17 + database `govern` | Burstable B1ms, 32 GB | TLS required and verified by the Api (`Ssl Mode=VerifyFull`); firewall allows Azure services only |
 | Key Vault (RBAC) | Standard | Secrets `ConnectionStrings--Govern`, `Jwt--SigningKey`; the Web App identity has "Key Vault Secrets User" |
 | Static Web App | Free | Blazor WASM client |
 
@@ -38,6 +38,7 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
 3. **GitHub environment `production`:**
    - Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `POSTGRES_ADMIN_PASSWORD`, `JWT_SIGNING_KEY` (`openssl rand -base64 48`).
    - Variable: `AZURE_RESOURCE_GROUP`.
+   - **Deployment branches:** `main` only. The workflow also refuses to publish or deploy from other refs, but this stops `workflow_dispatch` on any other branch from getting the OIDC identity and secrets.
    - Add required reviewers if releases need approval.
 4. **GHCR image access** (choose one):
    - Make the `govern-api` package public.
@@ -50,3 +51,6 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
 - **Database role:** the Api connects with the Postgres **administrator** login. Create a least-privilege role (owner of the `govern` schema only), store its connection string in Key Vault instead, or switch to Entra ID authentication with the Web App's managed identity.
 - **Network:** Postgres and Key Vault use public endpoints with firewall or RBAC. Private endpoints need a VNet and a higher App Service tier.
 - **Key Vault references:** they resolve after the role assignment propagates. On the very first deployment, restart the Web App if secrets show as unresolved.
+- **Key Vault purge protection** is off (soft delete is 7 days). Enabling it is irreversible; decide before production data exists.
+- **Monitoring:** there is no Log Analytics or Application Insights yet. Add diagnostic settings and alerts on refresh-token reuse (EventId 1001), 401/429 spikes and 5xx responses.
+- **AllowedHosts** is `*`. Set it to the Api host names once custom domains are bound.

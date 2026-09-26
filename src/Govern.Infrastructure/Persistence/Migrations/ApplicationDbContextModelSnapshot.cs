@@ -41,6 +41,7 @@ namespace Govern.Infrastructure.Persistence.Migrations
                         .HasColumnName("replaced_by_token_id");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("revoked_at");
 

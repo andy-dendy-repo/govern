@@ -66,7 +66,7 @@ module keyVault 'modules/keyVault.bicep' = {
   params: {
     location: location
     vaultName: take('${appName}-${environmentName}-${suffix}', 24)
-    connectionString: 'Host=${postgres.outputs.fullyQualifiedDomainName};Database=${databaseName};Username=${postgresAdministratorLogin};Password=${postgresAdministratorPassword};Ssl Mode=Require'
+    connectionString: 'Host=${postgres.outputs.fullyQualifiedDomainName};Database=${databaseName};Username=${postgresAdministratorLogin};Password=${postgresAdministratorPassword};Ssl Mode=VerifyFull'
     jwtSigningKey: jwtSigningKey
     tags: tags
   }

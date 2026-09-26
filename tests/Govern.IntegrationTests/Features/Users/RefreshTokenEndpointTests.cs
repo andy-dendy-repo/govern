@@ -50,6 +50,18 @@ public class RefreshTokenEndpointTests(GovernApiFixture fixture) : ApiTestBase(f
     }
 
     [Fact]
+    public async Task Post_SameTokenConcurrently_OnlyOneRotationSucceeds()
+    {
+        var (_, tokens) = await UsersApi.CreateSignedInUserAsync(Client, Ct);
+
+        var responses = await Task.WhenAll(
+            Enumerable.Range(0, 5).Select(_ => UsersApi.RefreshAsync(Client, tokens.RefreshToken, Ct)));
+
+        responses.Count(r => r.StatusCode == HttpStatusCode.OK).ShouldBe(1);
+        responses.Where(r => r.StatusCode != HttpStatusCode.OK).ShouldAllBe(r => r.StatusCode == HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task Post_ExpiredToken_Returns401()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);

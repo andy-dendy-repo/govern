@@ -64,6 +64,7 @@ public static class DependencyInjection
                 ServiceLifetime.Scoped);
 
             services.AddScoped<IApplicationDbContextFactory, ApplicationDbContextFactory>();
+            services.AddSingleton<IDbExceptionClassificationService, PostgresExceptionClassificationService>();
             services.AddHostedService<DatabaseMigrationService>();
             services.AddHealthChecks().AddDbContextCheck<ApplicationDbContext>("postgres", tags: ["ready"]);
         }
