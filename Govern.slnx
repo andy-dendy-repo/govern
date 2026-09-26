@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="src/Govern.Api/Govern.Api.csproj" />
+  <Project Path="src/Govern.Application.Common/Govern.Application.Common.csproj" />
+  <Project Path="src/Govern.Application/Govern.Application.csproj" />
+  <Project Path="src/Govern.Client/Govern.Client.csproj" />
+  <Project Path="src/Govern.Core/Govern.Core.csproj" />
+  <Project Path="src/Govern.Domain/Govern.Domain.csproj" />
+  <Project Path="src/Govern.Infrastructure/Govern.Infrastructure.csproj" />
+  <Project Path="src/Govern.Utils/Govern.Utils.csproj" />
+</Solution>
