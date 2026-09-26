@@ -35,11 +35,18 @@ paths:
 - **Naming:** snake_case tables, columns and constraints come from `UseSnakeCaseNamingConvention()`. Don't hard-code table names.
 - **Columns and indexes:** every string gets a max length; unique business keys get unique indexes (email, token hash); foreign keys get indexes.
 - **Collections:** backing fields with `UsePropertyAccessMode(PropertyAccessMode.Field)`. Aggregates change children only through methods on the root.
+- **Races:**
+  - For check-then-act on a row (e.g. single-use tokens), mark the state column `IsConcurrencyToken()` and translate `DbUpdateConcurrencyException` into an `Error` (example: `RefreshTokenConfiguration` + `RefreshTokenHandler`).
+  - For uniqueness, keep the `AnyAsync` pre-check (friendly error) **and** catch `DbUpdateException` when `IDbExceptionClassificationService.IsUniqueViolation(...)` (example: `SignUpHandler`).
+  - Cover both with a concurrent integration test (`Task.WhenAll`).
 
 ## Interceptors (automatic)
 
 - `AuditableEntityInterceptor` sets `CreatedAt` / `UpdatedAt` from `TimeProvider`. Never set them by hand.
 - `DispatchDomainEventsInterceptor` publishes domain events after a successful `SaveChangesAsync`. A synchronous `SaveChanges` with pending events throws.
+  - Delivery is **best-effort**: the data is already saved, so a failing handler is logged (EventId 2001) and does not fail the request. Handlers also run without the request's cancellation token.
+  - Inside an explicit `BeginTransactionAsync`, events fire on each save, **before** the transaction commits. Don't send irreversible side effects (emails) from events raised inside explicit transactions.
+  - When an event must never be lost, use an outbox in `Infrastructure/Background/` (not built yet).
 
 ## Migrations
 

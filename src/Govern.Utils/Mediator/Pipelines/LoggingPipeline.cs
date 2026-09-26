@@ -6,7 +6,8 @@ namespace Govern.Utils.Mediator.Pipelines;
 
 /// <summary>
 /// Logs one structured entry per request: its name, duration and outcome (success or error type and code).
-/// Request and response payloads are never logged.
+/// Successes are Information; expected failures are Debug, except authentication/authorization failures (Warning,
+/// useful to spot brute force). Request and response payloads are never logged.
 /// </summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
 /// <typeparam name="TResponse">The response type.</typeparam>
@@ -35,10 +36,27 @@ public sealed partial class LoggingPipeline<TRequest, TResponse>(
         }
         else
         {
-            Log.Failed(logger, typeof(TRequest).Name, elapsed, result.Error.Type, result.Error.Code);
+            LogFailure(typeof(TRequest).Name, elapsed, result.Error);
         }
 
         return result;
+    }
+
+    private void LogFailure(string requestName, double elapsed, Error error)
+    {
+        switch (error.Type)
+        {
+            case ErrorType.Unauthorized or ErrorType.Forbidden:
+                Log.AccessDenied(logger, requestName, elapsed, error.Type, error.Code);
+                break;
+            case ErrorType.Unexpected:
+                // Already logged as Error (with the exception) by ErrorHandlingPipeline.
+                Log.Unexpected(logger, requestName, elapsed, error.Code);
+                break;
+            default:
+                Log.ExpectedFailure(logger, requestName, elapsed, error.Type, error.Code);
+                break;
+        }
     }
 
     private static partial class Log
@@ -46,7 +64,13 @@ public sealed partial class LoggingPipeline<TRequest, TResponse>(
         [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "{RequestName} succeeded in {ElapsedMilliseconds:0.0} ms")]
         public static partial void Succeeded(ILogger logger, string requestName, double elapsedMilliseconds);
 
-        [LoggerMessage(EventId = 11, Level = LogLevel.Information, Message = "{RequestName} failed in {ElapsedMilliseconds:0.0} ms with {ErrorType} {ErrorCode}")]
-        public static partial void Failed(ILogger logger, string requestName, double elapsedMilliseconds, ErrorType errorType, string errorCode);
+        [LoggerMessage(EventId = 11, Level = LogLevel.Debug, Message = "{RequestName} failed in {ElapsedMilliseconds:0.0} ms with {ErrorType} {ErrorCode}")]
+        public static partial void ExpectedFailure(ILogger logger, string requestName, double elapsedMilliseconds, ErrorType errorType, string errorCode);
+
+        [LoggerMessage(EventId = 12, Level = LogLevel.Warning, Message = "{RequestName} failed in {ElapsedMilliseconds:0.0} ms with {ErrorType} {ErrorCode}")]
+        public static partial void AccessDenied(ILogger logger, string requestName, double elapsedMilliseconds, ErrorType errorType, string errorCode);
+
+        [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "{RequestName} failed in {ElapsedMilliseconds:0.0} ms with an unexpected error {ErrorCode}")]
+        public static partial void Unexpected(ILogger logger, string requestName, double elapsedMilliseconds, string errorCode);
     }
 }

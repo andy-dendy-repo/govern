@@ -6,7 +6,7 @@ namespace Govern.Api.Models;
 public static class RateLimitingPolicies
 {
     /// <summary>
-    /// Fixed window per client IP for anonymous credential endpoints (sign-up, sign-in).
+    /// Fixed window per client IP shared by the anonymous credential endpoints (sign-up, sign-in, refresh).
     /// </summary>
     public const string Auth = "auth";
 }

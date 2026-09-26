@@ -15,4 +15,11 @@ public interface IPasswordHashingService
     /// <param name="password">The password to check.</param>
     /// <returns><see langword="true"/> when the password matches.</returns>
     bool Verify(string passwordHash, string password);
+
+    /// <summary>
+    /// Spends the same time as <see cref="Verify"/> without a real hash, so a sign-in for an unknown account
+    /// cannot be told apart from a wrong password by response time.
+    /// </summary>
+    /// <param name="password">The password that was presented.</param>
+    void SimulateVerify(string password);
 }

@@ -13,7 +13,7 @@ public static class ProblemDetailsAssertions
     public static async Task ShouldBeProblemAsync(this HttpResponseMessage response, HttpStatusCode status, string? code, CancellationToken ct)
     {
         response.StatusCode.ShouldBe(status);
-        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        response.Content.Headers.ContentType.ShouldNotBeNull().MediaType.ShouldBe("application/problem+json");
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(ct);
         problem.ShouldNotBeNull();
@@ -21,7 +21,8 @@ public static class ProblemDetailsAssertions
 
         if (code is not null)
         {
-            problem.Extensions["code"]?.ToString().ShouldBe(code);
+            problem.Extensions.ShouldContainKey("code");
+            problem.Extensions["code"].ShouldNotBeNull().ToString().ShouldBe(code);
         }
     }
 

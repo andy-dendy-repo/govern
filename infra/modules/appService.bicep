@@ -89,6 +89,23 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
   }
 }
 
+// Basic-auth publishing credentials (publish profiles) would allow deployments that bypass OIDC.
+resource scmBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2024-04-01' = {
+  parent: webApp
+  name: 'scm'
+  properties: {
+    allow: false
+  }
+}
+
+resource ftpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2024-04-01' = {
+  parent: webApp
+  name: 'ftp'
+  properties: {
+    allow: false
+  }
+}
+
 @description('Web App name.')
 output name string = webApp.name
 

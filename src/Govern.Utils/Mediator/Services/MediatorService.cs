@@ -11,7 +11,7 @@ namespace Govern.Utils.Mediator.Services;
 /// <inheritdoc />
 /// <remarks>
 /// Registered as scoped. With <see cref="MediatorOptions.UseParentScope"/> it resolves handlers from the caller's scope,
-/// otherwise from a new child scope per call.
+/// otherwise from a new, separate DI scope per call.
 /// </remarks>
 public sealed class MediatorService(IServiceProvider serviceProvider, IOptions<MediatorOptions> options) : IMediatorService
 {

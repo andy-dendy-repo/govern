@@ -1,5 +1,8 @@
+using System.Buffers.Text;
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using Govern.Application.Users.Contracts;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
@@ -32,7 +35,8 @@ public class SignInEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture
         await using (db)
         {
             var stored = await db.RefreshTokens.AsNoTracking().SingleAsync(Ct);
-            stored.TokenHash.ShouldNotBe(tokens.RefreshToken);
+            var expectedHash = Base64Url.EncodeToString(SHA256.HashData(Encoding.UTF8.GetBytes(tokens.RefreshToken)));
+            stored.TokenHash.ShouldBe(expectedHash);
             stored.RevokedAt.ShouldBeNull();
         }
     }

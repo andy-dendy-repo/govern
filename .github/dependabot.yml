@@ -1,0 +1,23 @@
+# Keeps pinned GitHub Actions (commit SHAs) and NuGet packages current. PRs target stage.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: stage
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: nuget
+    directory: /
+    target-branch: stage
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      microsoft:
+        patterns: ["Microsoft.*", "System.*"]
+      tests:
+        patterns: ["xunit*", "Shouldly", "Testcontainers*", "Respawn", "TngTech.*"]

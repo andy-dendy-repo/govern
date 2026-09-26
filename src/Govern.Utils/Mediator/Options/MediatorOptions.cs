@@ -12,7 +12,7 @@ public sealed class MediatorOptions
     /// <summary>
     /// Gets or sets a value indicating whether handlers are resolved from the caller's (parent) DI scope.
     /// <see langword="true"/> (default) shares scoped services such as the current user with the caller;
-    /// <see langword="false"/> resolves every request in a new child scope.
+    /// <see langword="false"/> resolves every request in a new, separate DI scope (created from the root provider).
     /// </summary>
     public bool UseParentScope { get; set; } = true;
 

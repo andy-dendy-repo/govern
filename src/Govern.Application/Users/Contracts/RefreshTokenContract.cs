@@ -2,6 +2,7 @@ using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Users.Models;
 using Govern.Application.Users.Services;
+using Govern.Domain.Entities;
 using Govern.Utils.Mediator.Abstractions;
 using Govern.Utils.Results;
 using Microsoft.EntityFrameworkCore;
@@ -74,9 +75,7 @@ internal sealed partial class RefreshTokenHandler(
 
         if (presented.RevokedAt is not null)
         {
-            user.RevokeAllRefreshTokens(now);
-            await db.SaveChangesAsync(cancellationToken);
-            Log.RefreshTokenReused(logger, user.Id);
+            await RevokeAllAfterReuseAsync(db, user, now);
             return UserErrors.InvalidRefreshToken;
         }
 
@@ -86,9 +85,34 @@ internal sealed partial class RefreshTokenHandler(
         }
 
         var tokens = tokenIssuing.Rotate(user, presented);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A concurrent request rotated or revoked the same token first; only one rotation may win.
+            return UserErrors.InvalidRefreshToken;
+        }
 
         return RefreshTokenResponse.From(tokens);
+    }
+
+    // A revoked token was presented again: treat it as theft and revoke every active token of the user.
+    // Security-critical, so it completes even if the caller disconnects (no request cancellation).
+    private async Task RevokeAllAfterReuseAsync(IApplicationDbContext db, User user, DateTimeOffset now)
+    {
+        user.RevokeAllRefreshTokens(now);
+        try
+        {
+            await db.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another request revoked some of the tokens concurrently; they are revoked either way.
+        }
+
+        Log.RefreshTokenReused(logger, user.Id);
     }
 
     private static partial class Log

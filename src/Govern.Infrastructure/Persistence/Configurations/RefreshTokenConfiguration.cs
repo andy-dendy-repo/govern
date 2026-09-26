@@ -18,5 +18,9 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         builder.HasIndex(token => token.TokenHash).IsUnique();
 
         builder.HasIndex(token => token.UserId);
+
+        // Rotation and revocation update only rows that are still unrevoked (WHERE revoked_at IS NULL), so two
+        // concurrent refreshes with the same token cannot both succeed; the loser gets DbUpdateConcurrencyException.
+        builder.Property(token => token.RevokedAt).IsConcurrencyToken();
     }
 }

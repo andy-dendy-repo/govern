@@ -41,10 +41,12 @@ public sealed class SignUpValidator : AbstractValidator<SignUpRequest>
 }
 
 /// <summary>
-/// Handles <see cref="SignUpRequest"/>: rejects duplicates with <see cref="UserErrors.EmailTaken"/>.
+/// Handles <see cref="SignUpRequest"/>: rejects duplicates (including concurrent ones) with <see cref="UserErrors.EmailTaken"/>.
 /// </summary>
-internal sealed class SignUpHandler(IApplicationDbContextFactory dbContextFactory, IPasswordHashingService passwordHashing)
-    : IRequestHandler<SignUpRequest, SignUpResponse>
+internal sealed class SignUpHandler(
+    IApplicationDbContextFactory dbContextFactory,
+    IPasswordHashingService passwordHashing,
+    IDbExceptionClassificationService dbExceptions) : IRequestHandler<SignUpRequest, SignUpResponse>
 {
     /// <inheritdoc />
     public async ValueTask<Result<SignUpResponse>> HandleAsync(SignUpRequest request, CancellationToken cancellationToken)
@@ -59,7 +61,15 @@ internal sealed class SignUpHandler(IApplicationDbContextFactory dbContextFactor
 
         var user = User.SignUp(email, passwordHashing.Hash(request.Password));
         db.Users.Add(user);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (dbExceptions.IsUniqueViolation(exception))
+        {
+            // A concurrent sign-up with the same email won the race for the unique index.
+            return UserErrors.EmailTaken;
+        }
 
         return new SignUpResponse(user.Id);
     }
