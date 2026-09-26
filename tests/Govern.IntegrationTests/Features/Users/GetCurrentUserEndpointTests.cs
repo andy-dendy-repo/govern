@@ -23,11 +23,11 @@ public class GetCurrentUserEndpointTests(GovernApiFixture fixture) : ApiTestBase
     }
 
     [Fact]
-    public async Task Get_WithoutToken_Returns401()
+    public async Task Get_WithoutToken_Returns401ProblemDetails()
     {
         var response = await UsersApi.GetMeAsync(Client, accessToken: null, Ct);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        await response.ShouldBeProblemAsync(HttpStatusCode.Unauthorized, code: null, Ct);
     }
 
     [Fact]
