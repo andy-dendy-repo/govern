@@ -7,4 +7,6 @@ param staticWebAppLocation = 'westeurope'
 param containerImage = readEnvironmentVariable('CONTAINER_IMAGE')
 param postgresAdministratorPassword = readEnvironmentVariable('POSTGRES_ADMIN_PASSWORD')
 param jwtSigningKey = readEnvironmentVariable('JWT_SIGNING_KEY')
+param registryUsername = readEnvironmentVariable('REGISTRY_USERNAME', '')
+param registryPassword = readEnvironmentVariable('REGISTRY_PASSWORD', '')
 param extraCorsOrigins = []

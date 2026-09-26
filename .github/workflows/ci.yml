@@ -1,0 +1,63 @@
+# Build, format check, all tests (Testcontainers Postgres), vulnerable package scan and Bicep compile.
+# Runs on PRs to stage and main, and is reused by the release workflow.
+name: CI
+
+on:
+  pull_request:
+    branches: [stage, main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Govern.slnx
+
+      - name: Build (warnings are errors)
+        run: dotnet build Govern.slnx --configuration Release --no-restore
+
+      - name: Format check
+        run: dotnet format Govern.slnx --verify-no-changes --no-restore --exclude src/Govern.Core
+
+      - name: Test (architecture, unit, integration)
+        run: dotnet test Govern.slnx --configuration Release --no-build --coverage --coverage-output-format cobertura
+
+      - name: Vulnerable packages
+        run: |
+          dotnet list Govern.slnx package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then
+            echo "::error::Vulnerable NuGet packages found"
+            exit 1
+          fi
+
+      - name: Compile Bicep
+        run: az bicep build --file infra/main.bicep --stdout > /dev/null
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: TestResults/**/*.cobertura.xml
+          if-no-files-found: ignore
+          retention-days: 14
