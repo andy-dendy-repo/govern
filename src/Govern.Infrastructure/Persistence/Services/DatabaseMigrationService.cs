@@ -28,14 +28,10 @@ internal sealed partial class DatabaseMigrationService(
         var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
-        if (pending.Count == 0)
-        {
-            return;
-        }
-
+        // MigrateAsync checks for the history table itself, so a fresh database doesn't log a failed query.
         await dbContext.Database.MigrateAsync(cancellationToken);
-        Log.MigrationsApplied(logger, pending.Count, pending[^1]);
+        var latestMigration = dbContext.Database.GetMigrations().LastOrDefault() ?? "none";
+        Log.SchemaUpToDate(logger, latestMigration);
     }
 
     /// <inheritdoc />
@@ -43,7 +39,7 @@ internal sealed partial class DatabaseMigrationService(
 
     private static partial class Log
     {
-        [LoggerMessage(EventId = 2000, Level = LogLevel.Information, Message = "Applied {Count} database migration(s); latest is {Migration}")]
-        public static partial void MigrationsApplied(ILogger logger, int count, string migration);
+        [LoggerMessage(EventId = 2000, Level = LogLevel.Information, Message = "Database schema is up to date at migration {Migration}")]
+        public static partial void SchemaUpToDate(ILogger logger, string migration);
     }
 }
