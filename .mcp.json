@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "type": "stdio",
+      "command": "/Users/andriihome/.local/bin/uvx",
+      "args": ["--with", "mcp<2", "postgres-mcp", "--access-mode=unrestricted"],
+      "env": {
+        "DATABASE_URI": "postgresql://andriihome@localhost:5432/postgres"
+      }
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
+    },
+    "microsoft-docs": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp"
+    },
+    "roslyn-refactor": {
+      "type": "stdio",
+      "command": "/Users/andriihome/.dotnet/tools/roslyn-mcp",
+      "args": [],
+      "env": {
+        "DOTNET_ROLL_FORWARD": "Major"
+      }
+    }
+  }
+}
