@@ -3,7 +3,12 @@
     "postgres": {
       "type": "stdio",
       "command": "/Users/andriihome/.local/bin/uvx",
-      "args": ["--with", "mcp<2", "postgres-mcp", "--access-mode=unrestricted"],
+      "args": [
+        "--with",
+        "mcp<2",
+        "postgres-mcp",
+        "--access-mode=unrestricted"
+      ],
       "env": {
         "DATABASE_URI": "postgresql://andriihome@localhost:5432/postgres"
       }
@@ -23,6 +28,18 @@
       "env": {
         "DOTNET_ROLL_FORWARD": "Major"
       }
+    },
+    "cwm-roslyn-navigator": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "tool",
+        "run",
+        "cwm-roslyn-navigator",
+        "--",
+        "--solution",
+        "Govern.slnx"
+      ]
     }
   }
 }

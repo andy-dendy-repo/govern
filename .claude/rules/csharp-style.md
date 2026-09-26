@@ -1,0 +1,55 @@
+---
+paths:
+  - "**/*.cs"
+  - "**/*.razor"
+---
+
+# C# / .NET style (C# 14, .NET 10)
+
+The build uses `TreatWarningsAsErrors`, `AnalysisLevel=latest-Recommended` and `EnforceCodeStyleInBuild`. Analyzer warnings fail the build, so fix the cause rather than suppressing it. If a suppression is really needed, use `[SuppressMessage]` with a `Justification`, never a bare `#pragma`.
+
+## Language
+
+Use modern features wherever they make the code clearer:
+- File-scoped namespaces; usings outside the namespace; one top-level type per file (except `Contract` files, see `architecture.md`).
+- Primary constructors for DI (`sealed class FooService(IBar bar, ILogger<FooService> logger)`); don't copy parameters into fields unless you need mutation.
+- `record` / `sealed record` for DTOs, requests, responses and value objects. Use `required` + `init` when positional records get long.
+- Collection expressions (`[]`, `[.. a, b]`) instead of `new List<T>()` or `Array.Empty<T>()`.
+- The `field` keyword for property logic instead of hand-written backing fields.
+- C# 14 `extension` blocks for extension members in `Extensions/` static classes.
+- Pattern matching (`is null`, `is not null`, property and list patterns, switch expressions) instead of chains of `if`/`==`.
+- `sealed` by default; `internal` unless the type is used across assemblies (handlers and endpoints can be `internal`).
+- `var` when the type is apparent; target-typed `new()` otherwise.
+- Guid v7 (`Guid.CreateVersion7()`) for new identifiers.
+
+## Async and time
+
+- Every I/O method is `async` and takes a `CancellationToken` (last parameter) that is passed all the way down. Name async methods `…Async`, except interface methods named by a framework.
+- Prefer `ValueTask` for hot paths that are often synchronous, such as mediator handlers.
+- Never use `async void`, `.Result`, `.Wait()` or `GetAwaiter().GetResult()`.
+- Use `TimeProvider` (injected) and `DateTimeOffset.UtcNow` via `timeProvider.GetUtcNow()`. Never use `DateTime.Now` or `DateTime.UtcNow`.
+- Use `IHttpClientFactory` or typed clients. Never `new HttpClient()` in server code.
+
+## Errors
+
+- Return results for expected failures (validation, not found, conflict); throw only for exceptional or programming errors.
+- Don't `catch (Exception)` except at the boundaries: middleware, background workers, hosted services.
+- Guard clauses: `ArgumentNullException.ThrowIfNull`, `ArgumentException.ThrowIfNullOrWhiteSpace`, `ArgumentOutOfRangeException.ThrowIf…`.
+
+## EF Core
+
+- Use `IApplicationDbContextFactory` with `await using var db = await dbContextFactory.CreateDbContextAsync(ct);`.
+- Queries are `AsNoTracking()` and project with `Select` into records. Use `ExecuteUpdateAsync` / `ExecuteDeleteAsync` for bulk changes.
+- No lazy loading, no filtering in memory after `ToListAsync`, no generic repositories.
+
+## Formatting (`.editorconfig`)
+
+- Allman braces; always use braces.
+- `_camelCase` private fields; PascalCase for types and members; `I` prefix for interfaces.
+- Expression bodies for single-line members, properties and accessors.
+- A PostToolUse hook formats whitespace on every edit. `/verify` runs the full `dotnet format --verify-no-changes`.
+
+## Packages
+
+- Never pick package versions from memory. Use `dotnet add package <Name>`, which writes the version to `Directory.Packages.props` (central package management), or check nuget.org, context7 or microsoft-docs.
+- `csproj` files contain `PackageReference` **without** a version.

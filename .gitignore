@@ -480,3 +480,9 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Claude Code hook state (test gate marker)
+.claude/.state/
+
+# Per-developer Claude Code settings
+.claude/settings.local.json

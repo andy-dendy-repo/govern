@@ -1,3 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <ItemGroup>
+    <ProjectReference Include="..\Govern.Utils\Govern.Utils.csproj" />
+  </ItemGroup>
 </Project>
