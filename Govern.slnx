@@ -7,4 +7,6 @@
   <Project Path="src/Govern.Domain/Govern.Domain.csproj" />
   <Project Path="src/Govern.Infrastructure/Govern.Infrastructure.csproj" />
   <Project Path="src/Govern.Utils/Govern.Utils.csproj" />
+  <Project Path="tests/Govern.IntegrationTests/Govern.IntegrationTests.csproj" />
+  <Project Path="tests/Govern.UnitTests/Govern.UnitTests.csproj" />
 </Solution>

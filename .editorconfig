@@ -17,6 +17,10 @@ indent_size = 2
 [*.md]
 trim_trailing_whitespace = false
 
+[tests/**/*.cs]
+# CA1707: underscores are idiomatic for xUnit test method names (Method_Scenario_Expected)
+dotnet_diagnostic.CA1707.severity = none
+
 [*.cs]
 # New line preferences
 csharp_new_line_before_open_brace = all
