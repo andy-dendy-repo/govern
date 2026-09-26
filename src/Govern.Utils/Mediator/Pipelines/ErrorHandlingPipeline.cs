@@ -31,9 +31,7 @@ public sealed partial class ErrorHandlingPipeline<TRequest, TResponse>(ILogger<E
         {
             throw;
         }
-#pragma warning disable CA1031 // Boundary: every unexpected failure must become a safe error result.
         catch (Exception exception)
-#pragma warning restore CA1031
         {
             Log.UnhandledException(logger, typeof(TRequest).Name, exception);
             return Error.Unexpected();
