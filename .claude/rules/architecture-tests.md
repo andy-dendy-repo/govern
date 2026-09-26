@@ -15,9 +15,9 @@ They enforce the rules in `.claude/rules/architecture.md` and `project-map.md`. 
 | `Conventions/Templates.cs` | UF / AGFT / 3DFT folder specs per project (single source of truth) | data (`FolderSpec`) |
 | `ProjectReferenceTests` | csproj `ProjectReference`s match `Layers`; every `src/` project is registered | XML scan of `.csproj` |
 | `FolderStructureTests` | Allowed folders/root files; `Contracts/*Contract.cs` contain only prefixed Request/Response/Validator/Handler (+ `file` types); one endpoint per `Features` file | filesystem + source scan (`Support/TypeDeclarations`) |
-| `LayerDependencyTests` | Type-level dependencies between layers; Domain free of EF Core / ASP.NET Core; Application free of ASP.NET Core; `Api.Features` free of Infrastructure / Domain | ArchUnitNET |
+| `LayerDependencyTests` | Type-level dependencies between layers; Domain free of EF Core / ASP.NET Core; Application free of ASP.NET Core; `Api.Features` free of Infrastructure / Domain; no mapping libraries | ArchUnitNET |
 | `CodeMetricsTests` | Size limits from `Conventions/CodeLimits.cs`: file lines, member body lines, method and constructor parameters (generated code and Core excluded) | Roslyn syntax parse of `src/**/*.cs` |
-| `NamingConventionTests` | No `Helper` suffix; suffix per folder; contract types; sealed `IRequestHandler` handlers; static `*Endpoint` classes with `Map(IEndpointRouteBuilder)`; `I` prefix; Abstractions abstract; Extensions static; Enums only enums | ArchUnitNET |
+| `NamingConventionTests` | No `Helper` suffix; suffix per folder; contract types; sealed `IRequestHandler` handlers; static `*Endpoint` classes with `Map(IEndpointRouteBuilder)`; entities derive from `BaseEntity`, events from `BaseEvent`; sealed `INotificationHandler` event handlers; `I` prefix; Abstractions abstract; Extensions static; Enums only enums | ArchUnitNET |
 
 `Support/GovernArchitecture` loads the Govern assemblies once (all layered projects except Client and Core). `Support/SourceTree` finds the repo root (`Govern.slnx`) and skips `bin/`, `obj/`, `Properties/`, `wwwroot/` and dot-folders.
 

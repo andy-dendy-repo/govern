@@ -58,23 +58,38 @@ Also:
 namespace Govern.Application.Orders.Contracts;
 
 /// <summary>Creates an order for the current user.</summary>
-public sealed record CreateOrderRequest(string Title) : IRequest;
+/// <param name="Title">Order title.</param>
+public sealed record CreateOrderRequest(string Title) : IRequest<CreateOrderRequest, CreateOrderResponse>;
 
 /// <summary>Identifier of the created order.</summary>
+/// <param name="Id">Order id.</param>
 public sealed record CreateOrderResponse(Guid Id) : IResponse;
 
 /// <summary>Validates <see cref="CreateOrderRequest"/>.</summary>
-public sealed class CreateOrderValidator : AbstractValidator<CreateOrderRequest> { /* … */ }
+public sealed class CreateOrderValidator : AbstractValidator<CreateOrderRequest> { /* RuleFor(...) */ }
 
 /// <summary>Handles <see cref="CreateOrderRequest"/>.</summary>
-public sealed class CreateOrderHandler(IApplicationDbContextFactory dbContextFactory)
-    : IRequestHandler<CreateOrderRequest, CreateOrderResponse> { /* … */ }
+internal sealed class CreateOrderHandler(IApplicationDbContextFactory dbContextFactory)
+    : IRequestHandler<CreateOrderRequest, CreateOrderResponse>
+{
+    /// <inheritdoc />
+    public async ValueTask<Result<CreateOrderResponse>> HandleAsync(CreateOrderRequest request, CancellationToken cancellationToken)
+    {
+        // return OrderErrors.Duplicate;            // expected failure → Error (implicit conversion)
+        // return new CreateOrderResponse(order.Id); // success → value (implicit conversion)
+    }
+}
 
-file sealed record OrderRow(Guid Id, string Title); // e.g. an EF Core projection
+file sealed record OrderRow(Guid Id, string Title); // e.g. a private EF Core projection
 ```
 
+Real examples: `src/Govern.Application/Users/Contracts/*.cs`.
+
 - Allowed non-`file` names are exactly `XxxRequest`, `XxxResponse`, `XxxValidator` and `XxxHandler`, where `Xxx` is the file prefix.
-- Handlers are `sealed` and implement `IRequestHandler<,>` (`Govern.Utils.Mediator`).
+- Requests are self-referencing (`IRequest<TRequest, TResponse>`), so the mediator resolves the handler without reflection.
+- Handlers are `internal sealed`, implement `IRequestHandler<,>` (`Govern.Utils.Mediator`) and return `Result<TResponse>` (see `error-handling.md`).
+- Validators are picked up by the mediator's `ValidationPipeline`; handlers never re-validate input.
+- Feature errors live in `[Feature]/Models/XxxErrors.cs` as `static readonly Error` fields.
 
 ## Endpoints
 
@@ -83,24 +98,34 @@ file sealed record OrderRow(Guid Id, string Title); // e.g. an EF Core projectio
 ```csharp
 namespace Govern.Api.Features.Users;
 
-/// <summary>Registers a new user account.</summary>
-public static class RegisterUserEndpoint
+/// <summary><c>POST /api/users/sign-up</c>: creates an account (anonymous, rate limited).</summary>
+public static class SignUpEndpoint
 {
-    /// <summary>Maps <c>POST /api/users</c>.</summary>
-    /// <param name="app">The route builder of the users group.</param>
+    /// <summary>Maps the endpoint.</summary>
+    /// <param name="app">The route builder.</param>
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapPost("/api/users", HandleAsync).AllowAnonymous().WithName(nameof(RegisterUserEndpoint));
+        app.MapPost("/api/users/sign-up", HandleAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(RateLimitingPolicies.Auth)
+            .WithName(nameof(SignUpEndpoint))
+            .WithTags("Users")
+            .Produces<SignUpResponse>(StatusCodes.Status201Created)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
-    /// <summary>Creates the user.</summary>
-    /// <response code="201">User created.</response>
-    /// <response code="400">Validation failed.</response>
-    /// <response code="409">Email already registered.</response>
-    private static async Task<IResult> HandleAsync(RegisterUserRequest request, IMediatorService mediator, CancellationToken ct) { /* … */ }
+    /// <summary>Creates a user account.</summary>
+    /// <response code="201">Account created.</response>
+    private static async Task<IResult> HandleAsync(SignUpRequest request, IMediatorService mediator, CancellationToken cancellationToken)
+    {
+        var result = await mediator.SendAsync(request, cancellationToken);
+        return result.ToHttpResult(response => TypedResults.Created("/api/users/me", response));
+    }
 }
 ```
 
 - The handler is a named method, not a lambda, so its XML docs reach OpenAPI.
 - Every endpoint declares its access explicitly (`RequireAuthorization(policy)` or `AllowAnonymous()`), per `security.md`.
+- More endpoint conventions (routes, status codes, OpenAPI metadata): `api-endpoints.md`.
 
 ## Repositories
 
@@ -110,11 +135,11 @@ Add a repository only when a service needs caching. Then **all** queries for tha
 
 It holds only what is shared across features:
 - the abstractions Infrastructure implements (`IApplicationDbContext`, `IApplicationDbContextFactory`, `IApplicationDbContextTransaction`, current user, token issuing, …)
-- common models (Result/Error, paging)
+- common models (`AccessToken`, `EmailMessage`, paging); `Result`/`Error` live in `Govern.Utils.Results`
 - options
 
 Feature-specific code belongs in `Application/[Feature]`.
 
 ## DependencyInjection.cs
 
-Each layer exposes one `AddXxx(this IServiceCollection, IConfiguration)` extension in its root `DependencyInjection.cs`. `Api/Program.cs` composes them. Register handlers and validators by assembly scanning, never one by one.
+Each layer exposes one `AddXxx` extension (C# 14 `extension(IServiceCollection services)` block) in its root `DependencyInjection.cs`: `AddApplication()`, `AddInfrastructure(configuration)`, `AddApi(configuration)`. `Api/Program.cs` composes them. Handlers and validators are registered by assembly scanning (`AddMediator`, `AddValidatorsFromAssembly`), never one by one.
