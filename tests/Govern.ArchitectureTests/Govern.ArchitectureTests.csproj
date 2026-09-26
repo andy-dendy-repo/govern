@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" />
+        <PackageReference Include="Shouldly" />
+        <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+        <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+        <Using Include="Shouldly" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Govern.Api\Govern.Api.csproj" />
+        <ProjectReference Include="..\..\src\Govern.Application\Govern.Application.csproj" />
+        <ProjectReference Include="..\..\src\Govern.Application.Common\Govern.Application.Common.csproj" />
+        <ProjectReference Include="..\..\src\Govern.Domain\Govern.Domain.csproj" />
+        <ProjectReference Include="..\..\src\Govern.Infrastructure\Govern.Infrastructure.csproj" />
+        <ProjectReference Include="..\..\src\Govern.Utils\Govern.Utils.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,4 +1,9 @@
 <Solution>
+  <Folder Name="/Tests/">
+    <Project Path="tests/Govern.ArchitectureTests/Govern.ArchitectureTests.csproj" />
+    <Project Path="tests/Govern.IntegrationTests/Govern.IntegrationTests.csproj" />
+    <Project Path="tests/Govern.UnitTests/Govern.UnitTests.csproj" />
+  </Folder>
   <Project Path="src/Govern.Api/Govern.Api.csproj" />
   <Project Path="src/Govern.Application.Common/Govern.Application.Common.csproj" />
   <Project Path="src/Govern.Application/Govern.Application.csproj" />
@@ -7,6 +12,4 @@
   <Project Path="src/Govern.Domain/Govern.Domain.csproj" />
   <Project Path="src/Govern.Infrastructure/Govern.Infrastructure.csproj" />
   <Project Path="src/Govern.Utils/Govern.Utils.csproj" />
-  <Project Path="tests/Govern.IntegrationTests/Govern.IntegrationTests.csproj" />
-  <Project Path="tests/Govern.UnitTests/Govern.UnitTests.csproj" />
 </Solution>

@@ -10,8 +10,8 @@ public class WeatherForecastTests(WebApplicationFactory<Program> factory) : ICla
     {
         var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/weatherforecast");
+        var response = await client.GetAsync("/weatherforecast", TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 }

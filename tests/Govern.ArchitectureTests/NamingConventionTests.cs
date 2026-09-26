@@ -1,0 +1,143 @@
+using ArchUnitNET.Fluent.Syntax.Elements.Types;
+using ArchUnitNET.xUnitV3;
+using Govern.ArchitectureTests.Support;
+using Govern.Utils.Mediator.Abstractions;
+using static ArchUnitNET.Fluent.ArchRuleDefinition;
+
+namespace Govern.ArchitectureTests;
+
+public class NamingConventionTests
+{
+    public static TheoryData<string, string> SuffixByFolder => new()
+    {
+        { "Options", "Options" },
+        { "Exceptions", "Exception" },
+        { "Extensions", "Extensions" },
+        { "Attributes", "Attribute" },
+        { "Services", "Service" },
+        { "EventHandlers", "EventHandler" },
+        { "Repositories", "Repository" },
+        { "Middlewares", "Middleware" },
+        { "Filters", "Filter" },
+        { "HealthChecks", "HealthCheck" },
+        { "Configurations", "Configuration" },
+        { "Interceptors", "Interceptor" },
+        { "Events", "Event" },
+    };
+
+    [Fact]
+    public void Types_DoNotUseHelperSuffix()
+    {
+        ProductionTypes()
+            .Should().NotHaveNameMatching(@"Helpers?(?:`\d+)?$")
+            .Because("'Helper' says nothing; use a role suffix such as Resolver, Mapper, Calculator, Builder, Formatter, Parser or Provider")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Theory]
+    [MemberData(nameof(SuffixByFolder))]
+    public void TypesInFolder_HaveFolderSuffix(string folder, string suffix)
+    {
+        ProductionTypes().And().ResideInNamespaceMatching(InFolder(folder))
+            .Should().HaveNameMatching($@"{suffix}(?:`\d+)?$")
+            .Because($"types in {folder}/ must end with '{suffix}'")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void ApiFeatureTypes_AreEndpoints()
+    {
+        ProductionTypes().And().ResideInNamespaceMatching(@"^Govern\.Api\.Features(?:\..*)?$")
+            .Should().HaveNameEndingWith("Endpoint")
+            .Because("Api/Features holds one endpoint per file")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void ApiFeatureEndpoints_AreStaticClassesWithMapMethod()
+    {
+        // A static class compiles to 'abstract sealed'. Endpoints are discovered by EndpointExtensions (Api/Extensions)
+        // and must expose 'public static void Map(IEndpointRouteBuilder app)'.
+        Classes().That().ResideInNamespaceMatching(@"^Govern\.Api\.Features(?:\..*)?$")
+            .And().AreNotNested().And().DoNotHaveNameContaining("<")
+            .Should().BeAbstract().AndShould().BeSealed()
+            .AndShould().HaveMethodMemberWithName("Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder)")
+            .Because("endpoints are static XxxEndpoint classes with Map(IEndpointRouteBuilder), discovered by convention")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void ContractTypes_AreRequestResponseValidatorOrHandler()
+    {
+        ProductionTypes().And().ResideInNamespaceMatching(@"^Govern\.Application\.\w+\.Contracts$")
+            .Should().HaveNameMatching("(?:Request|Response|Validator|Handler)$")
+            .Because("a XxxContract.cs file contains only XxxRequest, XxxResponse, XxxValidator, XxxHandler and 'file' types")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void ContractHandlers_AreSealedRequestHandlers()
+    {
+        Classes().That().ResideInNamespaceMatching(@"^Govern\.Application\.\w+\.Contracts$")
+            .And().HaveNameEndingWith("Handler")
+            .Should().BeSealed()
+            .AndShould().ImplementInterface(typeof(IRequestHandler<,>))
+            .Because("handlers are sealed IRequestHandler implementations dispatched by the mediator")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void Interfaces_StartWithI()
+    {
+        Interfaces().That().ResideInNamespaceMatching(GovernArchitecture.GovernNamespace)
+            .Should().HaveNameStartingWith("I")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void AbstractionsFolder_ContainsOnlyAbstractTypes()
+    {
+        Classes().That().ResideInNamespaceMatching(InFolder("Abstractions"))
+            .And().AreNotNested().And().DoNotHaveNameContaining("<")
+            .Should().BeAbstract()
+            .Because("Abstractions/ holds interfaces and abstract base classes only")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void ExtensionsFolder_ContainsOnlyStaticClasses()
+    {
+        // A static class compiles to 'abstract sealed'.
+        Classes().That().ResideInNamespaceMatching(InFolder("Extensions"))
+            .And().AreNotNested().And().DoNotHaveNameContaining("<")
+            .Should().BeAbstract().AndShould().BeSealed()
+            .Because("extension methods live in static *Extensions classes")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void EnumsFolder_ContainsOnlyEnums()
+    {
+        ProductionTypes().And().ResideInNamespaceMatching(InFolder("Enums"))
+            .Should().BeEnums()
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    // Top-level, hand-written Govern types (excludes nested types such as LoggerMessage 'Log' classes and compiler-generated/file types).
+    private static GivenTypesConjunction ProductionTypes() =>
+        Types().That().ResideInNamespaceMatching(GovernArchitecture.GovernNamespace)
+            .And().AreNotNested()
+            .And().DoNotHaveNameContaining("<");
+
+    private static string InFolder(string folder) => $@"^Govern(?:\.\w+)*\.{folder}(?:\.\w+)*$";
+}

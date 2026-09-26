@@ -1,4 +1,4 @@
-﻿namespace Govern.UnitTests;
+namespace Govern.UnitTests;
 
 public class UnitTest1
 {
