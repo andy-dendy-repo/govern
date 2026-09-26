@@ -5,6 +5,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Govern.IntegrationTests"/>
+    </ItemGroup>
+
+    <ItemGroup>
       <Folder Include="Features\" />
     </ItemGroup>
 
