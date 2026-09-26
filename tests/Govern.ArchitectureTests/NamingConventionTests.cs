@@ -1,6 +1,7 @@
 using ArchUnitNET.Fluent.Syntax.Elements.Types;
 using ArchUnitNET.xUnitV3;
 using Govern.ArchitectureTests.Support;
+using Govern.Domain.EntityBase;
 using Govern.Utils.Mediator.Abstractions;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
@@ -88,6 +89,38 @@ public class NamingConventionTests
             .Should().BeSealed()
             .AndShould().ImplementInterface(typeof(IRequestHandler<,>))
             .Because("handlers are sealed IRequestHandler implementations dispatched by the mediator")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void DomainEntities_DeriveFromBaseEntity()
+    {
+        ProductionTypes().And().ResideInNamespaceMatching(@"^Govern\.Domain\.Entities(?:\..*)?$")
+            .Should().BeAssignableTo(typeof(BaseEntity))
+            .Because("entities get a Guid v7 id and domain events from BaseEntity")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void DomainEvents_DeriveFromBaseEvent()
+    {
+        ProductionTypes().And().ResideInNamespaceMatching(@"^Govern\.Domain\.Events(?:\..*)?$")
+            .Should().BeAssignableTo(typeof(BaseEvent))
+            .Because("domain events are dispatched through the mediator as BaseEvent notifications")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void EventHandlers_AreSealedNotificationHandlers()
+    {
+        Classes().That().ResideInNamespaceMatching(InFolder("EventHandlers"))
+            .And().AreNotNested().And().DoNotHaveNameContaining("<")
+            .Should().BeSealed()
+            .AndShould().ImplementInterface(typeof(INotificationHandler<>))
+            .Because("event handlers are discovered by the mediator as INotificationHandler<TEvent>")
             .WithoutRequiringPositiveResults()
             .Check(GovernArchitecture.Instance);
     }
