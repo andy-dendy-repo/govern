@@ -14,6 +14,7 @@ builder.Services
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseStatusCodePages(); // empty 4xx/5xx responses (e.g. 401 from authentication) get a ProblemDetails body
 
 if (!app.Environment.IsDevelopment())
 {
