@@ -7,6 +7,31 @@ updated: 2026-09-27
 
 # Plan: grow the empty template into a working solution with one `User` entity
 
+## Status (2026-09-27)
+
+| Step | State |
+|---|---|
+| 1 Utils mediator + Result | Done (`feature/template-api`) |
+| 2 Result/Error mapping to ProblemDetails | Done |
+| 3 Domain (`User`, `RefreshToken`, events) | Done, with minimal properties: email and password only |
+| 4 Application.Common abstractions | Done |
+| 5 Infrastructure (Postgres, JWT, hashing, mock email) | Done |
+| 6 Users use cases | Done: sign-up, sign-in, refresh with rotation, current user |
+| 7 Api | Done |
+| 8 Integration test infrastructure | Done |
+| 9 Blazor client | **Deferred.** The Api came first. The client will store tokens in localStorage ([ADR 0002](../decisions/0002-auth-tokens.md)) |
+| 10 Container | Done (chiseled Noble image) |
+| 11 Bicep | Done; not yet deployed (see [deployment](../operations/deployment.md)) |
+| 12 GitHub workflows | Done; not yet run (no remote yet) |
+| 13 Claude rules and agents | Done: mapping, error-handling, persistence, api-endpoints, auth rules, `ef-core-specialist`. Still deferred: `blazor-client.md` (with step 9) and `caching.md` (first cache) |
+| 14 Pattern skills | Done: add-use-case, add-entity, add-migration, add-infra-concern, outdated-packages |
+
+Extra work added along the way:
+- code size limits (architecture tests + CA1502)
+- the mapping rule, with an architecture test banning mapping libraries
+
+The rest of this document is the original plan, kept for reference.
+
 ## Context
 The Claude setup (rules, skills, agent, hooks) and the architecture tests are in place, but every layer is still empty. This roadmap builds a minimal end-to-end vertical slice, a user who can register, log in and read their profile, touching every layer, the client, the infrastructure and CI/CD. Later features can then copy real patterns. Run each step separately through `/develop-feature`. Each step is a working, tested increment on its own feature branch, with its PR to `stage`.
 
