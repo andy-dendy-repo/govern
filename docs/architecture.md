@@ -38,10 +38,13 @@ Additional constraints:
 ## Request flow
 
 1. An endpoint in `Api/Features/[Feature]/XxxEndpoint.cs` binds the HTTP request to an `XxxRequest`. Each endpoint is a static class with `Map(IEndpointRouteBuilder)`, discovered at startup by `Api/Extensions/EndpointExtensions.cs` (no endpoint interface).
-2. The endpoint dispatches the request through the mediator (`Govern.Utils.Mediator`).
-3. The pipeline validates the request with `XxxValidator`, then `XxxHandler` executes the use case using the `IApplicationDbContextFactory` abstraction.
-4. The handler returns `XxxResponse` (or an error result), which the endpoint maps to an HTTP response or ProblemDetails.
-5. Domain events raised by entities are dispatched after `SaveChanges` by an EF Core interceptor to `EventHandlers`.
+2. The endpoint dispatches the request through the mediator (`Govern.Utils.Mediator`, see [ADR 0001](decisions/0001-mediator.md)).
+3. The mediator runs the pipelines in order: `ErrorHandlingPipeline` (unexpected exceptions become a safe 500 error), `LoggingPipeline` (one log entry per request), then `ValidationPipeline` (runs `XxxValidator`, returns 400 field errors).
+4. `XxxHandler` executes the use case through `IApplicationDbContextFactory`, one context per operation, and returns `Result<XxxResponse>`: the response, or an `Error` for expected failures.
+5. The endpoint maps the result with `ToHttpResult()`: success becomes 200 or 201, an error becomes RFC 9457 ProblemDetails with a stable `code`.
+6. On `SaveChangesAsync`, EF Core interceptors stamp `CreatedAt`/`UpdatedAt` and, after the save, publish the entities' domain events to `EventHandlers` (for example, the welcome email after sign-up).
+
+Authentication is JWT bearer with a deny-by-default fallback policy (see [ADR 0002](decisions/0002-auth-tokens.md) and [users feature](features/users.md)).
 
 ## Folder templates
 
