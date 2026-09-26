@@ -4,4 +4,7 @@
     <ProjectReference Include="..\Govern.Domain\Govern.Domain.csproj" />
     <ProjectReference Include="..\Govern.Utils\Govern.Utils.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
 </Project>
