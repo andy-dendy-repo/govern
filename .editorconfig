@@ -125,3 +125,6 @@ dotnet_naming_symbols.types_and_members.applicable_kinds = class,struct,enum,pro
 dotnet_naming_symbols.types_and_members.applicable_accessibilities = *
 
 dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+# Code metrics: cyclomatic complexity (threshold in CodeMetricsConfig.txt). Size limits are enforced by tests/Govern.ArchitectureTests/CodeMetricsTests.
+dotnet_diagnostic.CA1502.severity = warning
