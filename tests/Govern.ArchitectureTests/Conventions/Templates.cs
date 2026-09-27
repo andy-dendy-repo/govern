@@ -1,7 +1,8 @@
 namespace Govern.ArchitectureTests.Conventions;
 
 /// <summary>
-/// Single source of truth for the folder templates described in <c>.claude/rules/architecture.md</c>.
+/// Single source of truth for the folder templates described in <c>.claude/rules/architecture.md</c>
+/// (and, for the client, <c>.claude/rules/blazor-client.md</c>).
 /// Folders are created on demand: specs whitelist what may exist, nothing is required.
 /// </summary>
 public static class Templates
@@ -33,6 +34,7 @@ public static class Templates
         ["Govern.Infrastructure"] = Infrastructure(),
         ["Govern.Domain"] = Domain(),
         ["Govern.Api"] = Api(),
+        ["Govern.Client"] = Client(),
     };
 
     // 3DFT: AGFT + feature folders, each feature folder is AGFT + Contracts.
@@ -127,6 +129,58 @@ public static class Templates
             AllowedFilesDescription = string.Join(", ", rootFiles),
         };
     }
+
+    // CFT: UF + Layout, Components, Auth, Features/[Feature]/ (UF + Pages, Components, Clients).
+    private static FolderSpec Client()
+    {
+        string[] rootFiles = ["App.razor", "DependencyInjection.cs", "GlobalUsings.cs", "Program.cs", "_Imports.razor"];
+        var components = new FolderSpec
+        {
+            AnyOtherFolder = new FolderSpec { IsAllowedFile = IsComponentFile, AllowedFilesDescription = ComponentFiles },
+            AnyOtherFolderDescription = "component group folder",
+            IsAllowedFile = IsComponentFile,
+            AllowedFilesDescription = ComponentFiles,
+        };
+
+        return new FolderSpec
+        {
+            Folders = new Dictionary<string, FolderSpec>(FreeFormFolders(UtilityFolders))
+            {
+                ["Layout"] = new FolderSpec { IsAllowedFile = IsComponentFile, AllowedFilesDescription = ComponentFiles },
+                ["Components"] = components,
+                ["Auth"] = FolderSpec.FreeForm,
+                ["Features"] = new FolderSpec
+                {
+                    AnyOtherFolder = new FolderSpec
+                    {
+                        Folders = new Dictionary<string, FolderSpec>(FreeFormFolders(UtilityFolders))
+                        {
+                            ["Pages"] = new FolderSpec
+                            {
+                                IsAllowedFile = static file => file.EndsWith("Page.razor", StringComparison.Ordinal)
+                                    || file.EndsWith("Page.razor.cs", StringComparison.Ordinal),
+                                AllowedFilesDescription = "*Page.razor, *Page.razor.cs (routable components)",
+                            },
+                            ["Components"] = components,
+                            ["Clients"] = new FolderSpec
+                            {
+                                IsAllowedFile = static file => file.EndsWith("Client.cs", StringComparison.Ordinal),
+                                AllowedFilesDescription = "*Client.cs (typed Api clients)",
+                            },
+                        },
+                    },
+                    AnyOtherFolderDescription = "feature folder",
+                },
+            },
+            IsAllowedFile = OneOf(rootFiles),
+            AllowedFilesDescription = string.Join(", ", rootFiles),
+        };
+    }
+
+    private const string ComponentFiles = "*.razor, *.razor.cs (components and their code-behind)";
+
+    private static bool IsComponentFile(string file) =>
+        file.EndsWith(".razor", StringComparison.Ordinal) || file.EndsWith(".razor.cs", StringComparison.Ordinal);
 
     private static FolderSpec Contracts() => new()
     {

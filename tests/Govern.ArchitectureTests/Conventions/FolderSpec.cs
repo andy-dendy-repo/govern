@@ -1,7 +1,7 @@
 namespace Govern.ArchitectureTests.Conventions;
 
 /// <summary>
-/// Describes which sub-folders and which <c>.cs</c> files may exist inside a folder.
+/// Describes which sub-folders and which source files (<c>.cs</c>, <c>.razor</c>) may exist inside a folder.
 /// </summary>
 public sealed class FolderSpec
 {
@@ -32,12 +32,12 @@ public sealed class FolderSpec
     public string AnyOtherFolderDescription { get; init; } = "folder";
 
     /// <summary>
-    /// Decides whether a <c>.cs</c> file with the given name may live directly in this folder.
+    /// Decides whether a source file (<c>.cs</c>, <c>.razor</c>) with the given name may live directly in this folder.
     /// </summary>
     public Func<string, bool> IsAllowedFile { get; init; } = static _ => false;
 
     /// <summary>
     /// Human-readable description of <see cref="IsAllowedFile"/>, used in violation messages.
     /// </summary>
-    public string AllowedFilesDescription { get; init; } = "no .cs files";
+    public string AllowedFilesDescription { get; init; } = "no source files";
 }

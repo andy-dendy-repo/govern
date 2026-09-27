@@ -35,3 +35,9 @@ Sign-in limiter audit (2026-09-27, feature/sign-in-limiter, follow-up #3): no Cr
 - Verified empirically (Caching.Memory 10.0.12): NeverRemove survives overflow compaction; expired entries (any priority) are purged only by the ExpirationScanFrequency scan (default 1 min), so a full store recovers about 1 min after entries expire.
 - Only SignInHandler verifies passwords; any new credential-checking path must use ISignInThrottlingService + the `auth` IP policy.
 - Fact: App Service IPv6 inbound is off in Bicep; forwarded-header trust via ASPNETCORE_FORWARDEDHEADERS_ENABLED (ForwardLimit 1, rightmost XFF) is correct.
+
+Blazor client foundation audit (2026-09-27, uncommitted feature/blazor-client-foundation): no Critical/High.
+- Accepted (by the implementer, verified in headless Chrome): CSP `style-src-attr 'unsafe-inline'` because Radzen sets inline style attributes; `style-src` itself is `'self'` (no inline `<style>` elements). Narrowed from `style-src 'unsafe-inline'` after the 2026-09-27 audit.
+- Facts: CSP lives in src/Govern.Client/wwwroot/staticwebapp.config.json; placeholders __API_ORIGIN__/__IMPORTMAP_HASH__ filled by .github/scripts/configure-client.sh at release (CI dry-runs it). Published index.html has exactly one inline script (the import map, which carries SRI for framework modules). SWA is Free tier, staging disabled.
+- Open at that audit: ClientSecurityTests can be bypassed by script-src-elem/-attr or routes[].headers overrides (Medium); HttpClient arch rule skips root namespace Govern.Client; raw-HTML test is text-only (misses AddMarkupContent, RadzenHtmlEditor/Markdown, "window.eval"); "only TokenStore touches localStorage" not enforced yet; SWA pre-configured /.auth providers not blocked.
+- Plan 7 must: attach bearer only when request origin == Api:BaseUrl origin; single-flight refresh; clear storage on failed refresh.

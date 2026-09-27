@@ -5,7 +5,7 @@ paths:
 
 # Unit tests
 
-**Scope:** unit tests cover **`Govern.Utils` and `Govern.Domain` only**, since both are framework-agnostic and pure (value objects, entity methods and invariants). `Govern.UnitTests` may reference only these two projects (`ProjectReferenceTests.UnitTests_ReferenceOnlyPureProjects`). Everything else (handlers, persistence, endpoints, auth) is covered by integration tests against a real Postgres. Don't write unit tests with mocked `DbContext`s or handlers.
+**Scope:** unit tests cover **`Govern.Utils` and `Govern.Domain` only**, since both are framework-agnostic and pure (value objects, entity methods and invariants). `Govern.UnitTests` may reference only these two projects (`ProjectReferenceTests.UnitTests_ReferenceOnlyPureProjects`). Everything else on the server (handlers, persistence, endpoints, auth) is covered by integration tests against a real Postgres, and Blazor components and client services by bUnit tests in `Govern.ClientTests` (`client-tests.md`). Don't write unit tests with mocked `DbContext`s or handlers.
 
 ## Stack
 
