@@ -65,7 +65,8 @@ dotnet test Govern.slnx --coverage --coverage-output-format cobertura
 dotnet publish src/Govern.Api -c Release -t:PublishContainer    # → govern-api:local
 docker run --rm -p 8080:8080 \
   -e "ConnectionStrings__Govern=Host=host.docker.internal;Database=govern;Username=postgres;Password=postgres" \
-  -e "Jwt__SigningKey=<at least 32 chars>" govern-api:local
+  -e "Jwt__SigningKey=<at least 32 chars>" \
+  -e "HostFiltering__AllowedHosts__0=localhost" govern-api:local
 ```
 
-The image is Ubuntu Noble chiseled: non-root, no shell, port 8080.
+The image is Ubuntu Noble chiseled: non-root, no shell, port 8080. It runs as Production, so `HostFiltering:AllowedHosts` is required (startup fails otherwise); requests to any other host get 400, except `/health/live`.

@@ -1,7 +1,7 @@
 ---
 title: Deployment to Azure
-tags: [deployment, azure, bicep, github-actions, oidc, ghcr, app-service, static-web-apps, postgres, key-vault]
-code: [infra/main.bicep, infra/modules, infra/main.bicepparam, .github/workflows/release.yml, .github/workflows/ci.yml, .github/scripts/configure-client.sh]
+tags: [deployment, azure, bicep, github-actions, oidc, ghcr, app-service, static-web-apps, postgres, key-vault, health-checks, host-filtering, purge-protection]
+code: [infra/main.bicep, infra/modules, infra/main.bicepparam, .github/workflows/release.yml, .github/workflows/ci.yml, .github/scripts/configure-client.sh, src/Govern.Api/Middlewares/HostAllowListMiddleware.cs, src/Govern.Api/Models/HealthCheckRoutes.cs]
 updated: 2026-09-27
 ---
 
@@ -13,9 +13,9 @@ updated: 2026-09-27
 
 | Resource | SKU | Notes |
 |---|---|---|
-| App Service plan (Linux) + Web App for Containers | B1 | Runs `ghcr.io/<owner>/govern-api:<sha>`; system-assigned identity; `/health` health check; HTTPS only, TLS 1.2+; basic-auth (SCM/FTP) publishing disabled |
+| App Service plan (Linux) + Web App for Containers | B1 | Runs `ghcr.io/<owner>/govern-api:<sha>`; system-assigned identity; Health check on `/health/live`; `HostFiltering:AllowedHosts` = the default host plus the `API_ORIGIN` host; HTTPS only, TLS 1.2+; basic-auth (SCM/FTP) publishing disabled |
 | PostgreSQL Flexible Server v17 + database `govern` | Burstable B1ms, 32 GB | TLS required and verified by the Api (`Ssl Mode=VerifyFull`); firewall allows Azure services only |
-| Key Vault (RBAC) | Standard | Secrets `ConnectionStrings--Govern`, `Jwt--SigningKey`; the Web App identity has "Key Vault Secrets User" |
+| Key Vault (RBAC) | Standard | Secrets `ConnectionStrings--Govern`, `Jwt--SigningKey`; the Web App identity has "Key Vault Secrets User"; soft delete 7 days with **purge protection** (irreversible: secrets can't be purged early, and a deleted vault's name stays reserved for 7 days) |
 | Static Web App | Free | Blazor WASM client |
 
 ## Release flow
@@ -30,7 +30,7 @@ A merged PR from `stage` into `main` triggers `.github/workflows/release.yml`:
    - fails if a placeholder is left
    
    See [client](../features/client.md#configuring-the-client-at-release).
-5. The workflow waits until `https://<api>/health` returns Healthy.
+5. The workflow waits until `https://<api>/health/ready` returns Healthy (the database is reachable).
 
 Migrations run when the new container starts (`DatabaseMigrationService`).
 
@@ -43,7 +43,7 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
 3. **GitHub environment `production`:**
    - Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `POSTGRES_ADMIN_PASSWORD`, `JWT_SIGNING_KEY` (`openssl rand -base64 48`).
    - Variable: `AZURE_RESOURCE_GROUP`.
-   - Optional variable: `API_ORIGIN` (e.g. `https://api.example.com`) once the Api has a custom domain. Without it, the client uses `https://<apiHostname>` from the Bicep outputs.
+   - Optional variable: `API_ORIGIN` (lower-case `https://host`, e.g. `https://api.example.com`, no port or trailing slash; the release validates it before deploying) once the Api has a custom domain. Without it, the client uses `https://<apiHostname>` from the Bicep outputs. Its host is also added to the Api's `HostFiltering:AllowedHosts`, so set it in the same release that starts using the custom domain; until then, requests to that domain get 400.
    - **Deployment branches:** `main` only. The workflow also refuses to publish or deploy from other refs, but this stops `workflow_dispatch` on any other branch from getting the OIDC identity and secrets.
    - Add required reviewers if releases need approval.
 4. **GHCR image access** (choose one):
@@ -58,11 +58,18 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
 - `curl -I https://<static-web-app-host>/.auth/login/github` returns 404, because the built-in Static Web Apps auth is disabled.
 - Opening the site with DevTools shows no CSP violations in the console.
 
+## Health checks and host filtering
+
+| Route | Checks | Used by | Limits |
+|---|---|---|---|
+| `/health/live` | none (the process answers) | App Service Health check (`healthCheckPath`), every minute, on the default host | not rate limited; exempt from host filtering as a safeguard in case a platform probe uses another `Host` |
+| `/health/ready` | checks tagged `ready` (PostgreSQL) | the release workflow, diagnostics | `health` rate-limiting policy per client IP (`RateLimiting:Health*`); host filtering applies |
+
+`HostAllowListMiddleware` answers 400 to any other `Host` header. The App Service front end already routes only hosts bound to the site, so this is defence in depth; it also rejects custom domains that are bound but not listed. Startup fails outside Development if the list is empty. The allowed hosts are the default `<web-app>.azurewebsites.net` host and the `API_ORIGIN` host (Bicep `apiCustomHostnames`). The built-in `AllowedHosts` setting stays `*` because it can't exempt the liveness probe.
+
 ## Known gaps (follow-ups)
 
 - **Database role:** the Api connects with the Postgres **administrator** login. Create a least-privilege role (owner of the `govern` schema only), store its connection string in Key Vault instead, or switch to Entra ID authentication with the Web App's managed identity.
 - **Network:** Postgres and Key Vault use public endpoints with firewall or RBAC. Private endpoints need a VNet and a higher App Service tier.
 - **Key Vault references:** they resolve after the role assignment propagates. On the very first deployment, restart the Web App if secrets show as unresolved.
-- **Key Vault purge protection** is off (soft delete is 7 days). Enabling it is irreversible; decide before production data exists.
 - **Monitoring:** there is no Log Analytics or Application Insights yet. Add diagnostic settings and alerts on refresh-token reuse (EventId 1001), 401/429 spikes and 5xx responses.
-- **AllowedHosts** is `*`. Set it to the Api host names once custom domains are bound.

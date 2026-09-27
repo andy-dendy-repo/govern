@@ -9,8 +9,8 @@ set -euo pipefail
 wwwroot="${1:?published wwwroot folder required}"
 api_origin="${2:?api origin required}"
 
-if [[ ! "$api_origin" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then
-  echo "::error::API origin must be https://host[:port] without a path, got '$api_origin'"
+if [[ ! "$api_origin" =~ ^https://[a-z0-9-]+(\.[a-z0-9-]+)+$ ]]; then
+  echo "::error::API origin must be lower-case https://host without port or path, got '$api_origin'"
   exit 1
 fi
 

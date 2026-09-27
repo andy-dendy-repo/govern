@@ -30,7 +30,9 @@ public static class DependencyInjection
         /// <summary>
         /// Adds all Api services.
         /// </summary>
-        /// <param name="configuration">Application configuration (<c>Cors</c>, <c>RateLimiting</c>, <c>Jwt</c>).</param>
+        /// <param name="configuration">
+        /// Application configuration (<c>Cors</c>, <c>RateLimiting</c>, <c>HostFiltering</c>, <c>Jwt</c>).
+        /// </param>
         /// <returns>The service collection, for chaining.</returns>
         public IServiceCollection AddApi(IConfiguration configuration)
         {
@@ -43,7 +45,8 @@ public static class DependencyInjection
             services.AddTransient<ExceptionHandlingMiddleware>();
 
             services.AddJwtAuthentication();
-            services.AddAuthRateLimiting(configuration);
+            services.AddIpRateLimiting(configuration);
+            services.AddHostAllowList(configuration);
             services.AddAllowListCors(configuration);
 
             return services;
@@ -72,20 +75,27 @@ public static class DependencyInjection
                 .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
         }
 
-        private void AddAuthRateLimiting(IConfiguration configuration)
+        private void AddIpRateLimiting(IConfiguration configuration)
         {
             services.AddOptions<RateLimitingOptions>().Bind(configuration.GetSection(RateLimitingOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
-            services.AddRateLimiter(limiter =>
+            services.AddRateLimiter(static limiter =>
             {
                 limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                limiter.AddPolicy(RateLimitingPolicies.Auth, context =>
-                {
-                    var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
-                    return RateLimitPartition.GetFixedWindowLimiter(
-                        IpPartitionKey.From(context.Connection.RemoteIpAddress),
-                        _ => new FixedWindowRateLimiterOptions { PermitLimit = settings.AuthPermitLimit, Window = settings.AuthWindow });
-                });
+                limiter.AddPolicy(RateLimitingPolicies.Auth, static context => PerClientIp(
+                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.AuthPermitLimit, Window = settings.AuthWindow }));
+                limiter.AddPolicy(RateLimitingPolicies.Health, static context => PerClientIp(
+                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.HealthPermitLimit, Window = settings.HealthWindow }));
             });
+        }
+
+        private void AddHostAllowList(IConfiguration configuration)
+        {
+            services.AddOptions<HostAllowListOptions>()
+                .Bind(configuration.GetSection(HostAllowListOptions.SectionName))
+                .Validate(static options => options.HasValidEntries(), "HostFiltering:AllowedHosts entries must be host names or '*.' wildcards over two or more labels, without '*', scheme, port or path.")
+                .Validate<IHostEnvironment>(static (options, environment) => environment.IsDevelopment() || options.AllowedHosts.Count > 0, "HostFiltering:AllowedHosts is required outside Development (Bicep sets it).")
+                .ValidateOnStart();
+            services.AddTransient<HostAllowListMiddleware>();
         }
 
         private void AddAllowListCors(IConfiguration configuration)
@@ -98,5 +108,12 @@ public static class DependencyInjection
 
             services.AddCors(cors => cors.AddDefaultPolicy(policy => policy.WithOrigins([.. origins]).AllowAnyHeader().AllowAnyMethod()));
         }
+    }
+
+    // Fixed window per client IP (IPv6 per /64); options are read per request so tests can override them.
+    private static RateLimitPartition<string> PerClientIp(HttpContext context, Func<RateLimitingOptions, FixedWindowRateLimiterOptions> limits)
+    {
+        var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
+        return RateLimitPartition.GetFixedWindowLimiter(IpPartitionKey.From(context.Connection.RemoteIpAddress), _ => limits(settings));
     }
 }

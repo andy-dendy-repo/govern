@@ -1,4 +1,5 @@
 using Govern.Application.Common.Abstractions;
+using Govern.Application.Common.Models;
 using Govern.Application.Common.Options;
 using Govern.Infrastructure.Caching.Services;
 using Govern.Infrastructure.Emailing.Services;
@@ -71,7 +72,7 @@ public static class DependencyInjection
             services.AddScoped<IApplicationDbContextFactory, ApplicationDbContextFactory>();
             services.AddSingleton<IDbExceptionClassificationService, PostgresExceptionClassificationService>();
             services.AddHostedService<DatabaseMigrationService>();
-            services.AddHealthChecks().AddDbContextCheck<ApplicationDbContext>("postgres", tags: ["ready"]);
+            services.AddHealthChecks().AddDbContextCheck<ApplicationDbContext>("postgres", tags: [HealthCheckTags.Ready]);
         }
     }
 }
