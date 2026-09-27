@@ -28,4 +28,5 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [operations/branching.md](operations/branching.md): branches, PR flow, release and protection.
 
 ## Plans
-- [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built and what remains (Blazor client).
+- [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step, with status.
+- [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (sign-out, least-privilege DB access, per-account limiter, email verification, monitoring, cleanup, outbox, Blazor client).
