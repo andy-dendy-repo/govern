@@ -28,20 +28,20 @@ internal static class MoveUnitRule
 
         if (unit.MovementLeft <= 0)
         {
-            return GameErrors.NoMovementLeft;
+            return RuleViolations.NoMovementLeft;
         }
 
         // Only a visible blocker is reported as occupied; a hidden one must look like any other unreachable tile.
         if (state.UnitAt(command.Target) is { } blocker && blocker.Id != unit.Id
             && VisibilityCalculator.VisibleTiles(state, actor).Contains(command.Target))
         {
-            return GameErrors.TileOccupied;
+            return RuleViolations.TileOccupied;
         }
 
         var reachability = ReachabilityCalculator.Compute(state, unit);
         if (!reachability.CanReach(command.Target))
         {
-            return GameErrors.Unreachable;
+            return RuleViolations.Unreachable;
         }
 
         var moved = unit with

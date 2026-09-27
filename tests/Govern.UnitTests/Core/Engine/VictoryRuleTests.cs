@@ -76,7 +76,7 @@ public class VictoryRuleTests
         var state = new GameStateBuilder().WithCapitals().Build();
         var finished = GameEngine.Execute(state, P2, new ResignCommand()).ShouldSucceed().State;
 
-        GameEngine.Execute(finished, P1, new EndTurnCommand()).ShouldFailWith(GameErrors.GameFinished);
-        GameEngine.Execute(finished, P2, new ResignCommand()).ShouldFailWith(GameErrors.GameFinished);
+        GameEngine.Execute(finished, P1, new EndTurnCommand()).ShouldFailWith(RuleViolations.GameFinished);
+        GameEngine.Execute(finished, P2, new ResignCommand()).ShouldFailWith(RuleViolations.GameFinished);
     }
 }

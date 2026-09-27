@@ -23,12 +23,12 @@ internal static class SetProductionRule
         var city = state.FindCity(command.CityId);
         if (city is null || city.Owner != actor)
         {
-            return GameErrors.CityNotFound;
+            return RuleViolations.CityNotFound;
         }
 
         if (!Enum.IsDefined(command.UnitType))
         {
-            return GameErrors.UnknownUnitType;
+            return RuleViolations.UnknownUnitType;
         }
 
         var changed = city with { Producing = command.UnitType };

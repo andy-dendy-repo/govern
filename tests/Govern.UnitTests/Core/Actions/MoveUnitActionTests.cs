@@ -35,7 +35,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(builder.Build(), P2, new MoveUnitCommand(soldier, At(7, 2)));
 
-        result.ShouldFailWith(GameErrors.NotYourTurn);
+        result.ShouldFailWith(RuleViolations.NotYourTurn);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(enemy, At(7, 2)));
 
-        result.ShouldFailWith(GameErrors.UnitNotFound);
+        result.ShouldFailWith(RuleViolations.UnitNotFound);
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(soldier, At(8, 6)));
 
-        result.ShouldFailWith(GameErrors.Unreachable);
+        result.ShouldFailWith(RuleViolations.Unreachable);
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(soldier, At(2, 2)));
 
-        result.ShouldFailWith(GameErrors.Unreachable);
+        result.ShouldFailWith(RuleViolations.Unreachable);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class MoveUnitActionTests
 
         first.FindUnit(soldier)!.MovementLeft.ShouldBe(1);
         second.FindUnit(soldier)!.MovementLeft.ShouldBe(0);
-        GameEngine.Execute(second, P1, new MoveUnitCommand(soldier, At(5, 2))).ShouldFailWith(GameErrors.NoMovementLeft);
+        GameEngine.Execute(second, P1, new MoveUnitCommand(soldier, At(5, 2))).ShouldFailWith(RuleViolations.NoMovementLeft);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(state, P1, new MoveUnitCommand(new UnitId(999), At(3, 3)));
 
-        result.ShouldFailWith(GameErrors.UnitNotFound);
+        result.ShouldFailWith(RuleViolations.UnitNotFound);
     }
 
     [Theory]
@@ -107,7 +107,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(soldier, At(column, row)));
 
-        result.ShouldFailWith(GameErrors.Unreachable);
+        result.ShouldFailWith(RuleViolations.Unreachable);
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2)));
 
-        result.ShouldFailWith(GameErrors.TileOccupied);
+        result.ShouldFailWith(RuleViolations.TileOccupied);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(soldier, At(4, 2)));
 
-        result.ShouldFailWith(GameErrors.Unreachable);
+        result.ShouldFailWith(RuleViolations.Unreachable);
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2)));
 
-        result.ShouldFailWith(GameErrors.Unreachable);
+        result.ShouldFailWith(RuleViolations.Unreachable);
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2)));
 
-        result.ShouldFailWith(GameErrors.NoMovementLeft);
+        result.ShouldFailWith(RuleViolations.NoMovementLeft);
     }
 
     [Fact]
@@ -178,6 +178,6 @@ public class MoveUnitActionTests
 
         var result = GameEngine.Execute(state, P1, new MoveUnitCommand(soldier, At(3, 2)));
 
-        result.ShouldFailWith(GameErrors.GameFinished);
+        result.ShouldFailWith(RuleViolations.GameFinished);
     }
 }

@@ -3,33 +3,33 @@ using System.Diagnostics.CodeAnalysis;
 namespace Govern.Core.Engine;
 
 /// <summary>
-/// Either the <see cref="GameUpdate"/> of an accepted command or the <see cref="GameError"/> that rejected it.
+/// Either the <see cref="GameUpdate"/> of an accepted command or the <see cref="RuleViolation"/> that rejected it.
 /// A rejected command never changes the state.
 /// </summary>
 public sealed class CommandResult
 {
     private CommandResult(GameUpdate update) => Update = update;
 
-    private CommandResult(GameError error) => Error = error;
+    private CommandResult(RuleViolation violation) => Violation = violation;
 
     /// <summary><see langword="true"/> when the command was accepted and <see cref="Update"/> is set.</summary>
     [MemberNotNullWhen(true, nameof(Update))]
-    [MemberNotNullWhen(false, nameof(Error))]
-    public bool IsSuccess => Error is null;
+    [MemberNotNullWhen(false, nameof(Violation))]
+    public bool IsSuccess => Violation is null;
 
     /// <summary>The new state and events, or <see langword="null"/> when the command was rejected.</summary>
     public GameUpdate? Update { get; }
 
     /// <summary>Why the command was rejected, or <see langword="null"/> when it was accepted.</summary>
-    public GameError? Error { get; }
+    public RuleViolation? Violation { get; }
 
     /// <summary>Wraps an accepted command's update.</summary>
     /// <param name="update">The update.</param>
     public static implicit operator CommandResult(GameUpdate update) => FromUpdate(update);
 
     /// <summary>Wraps a rule violation.</summary>
-    /// <param name="error">The error.</param>
-    public static implicit operator CommandResult(GameError error) => FromError(error);
+    /// <param name="violation">The rule violation.</param>
+    public static implicit operator CommandResult(RuleViolation violation) => FromViolation(violation);
 
     /// <summary>Named alternative to the implicit conversion from <see cref="GameUpdate"/>.</summary>
     /// <param name="update">The update.</param>
@@ -40,12 +40,12 @@ public sealed class CommandResult
         return new CommandResult(update);
     }
 
-    /// <summary>Named alternative to the implicit conversion from <see cref="GameError"/>.</summary>
-    /// <param name="error">The error.</param>
+    /// <summary>Named alternative to the implicit conversion from <see cref="RuleViolation"/>.</summary>
+    /// <param name="violation">The rule violation.</param>
     /// <returns>A rejected result.</returns>
-    public static CommandResult FromError(GameError error)
+    public static CommandResult FromViolation(RuleViolation violation)
     {
-        ArgumentNullException.ThrowIfNull(error);
-        return new CommandResult(error);
+        ArgumentNullException.ThrowIfNull(violation);
+        return new CommandResult(violation);
     }
 }

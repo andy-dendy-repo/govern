@@ -38,25 +38,25 @@ internal static class FoundCityRule
         return new GameUpdate(founded with { Cities = founded.Cities.Add(city) }, [new CityFoundedEvent(city, settler.Id)]);
     }
 
-    private static GameError? Check(GameState state, Unit settler)
+    private static RuleViolation? Check(GameState state, Unit settler)
     {
         if (!settler.Definition.CanFoundCity)
         {
-            return GameErrors.CannotFoundCity;
+            return RuleViolations.CannotFoundCity;
         }
 
         if (settler.MovementLeft <= 0)
         {
-            return GameErrors.NoMovementLeft;
+            return RuleViolations.NoMovementLeft;
         }
 
         if (state.CityAt(settler.Position) is not null)
         {
-            return GameErrors.CityTileTaken;
+            return RuleViolations.CityTileTaken;
         }
 
         return state.Cities.Any(city => city.Position.DistanceTo(settler.Position) < City.MinimumSpacing)
-            ? GameErrors.CityTooClose
+            ? RuleViolations.CityTooClose
             : null;
     }
 }
