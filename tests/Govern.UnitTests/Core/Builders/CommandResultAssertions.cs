@@ -1,0 +1,19 @@
+using Govern.Core.Engine;
+using Govern.Core.Errors;
+
+namespace Govern.UnitTests.Core.Builders;
+
+internal static class CommandResultAssertions
+{
+    public static GameUpdate ShouldSucceed(this CommandResult result)
+    {
+        result.IsSuccess.ShouldBeTrue($"expected success but got {result.Error?.Code}");
+        return result.Update!;
+    }
+
+    public static void ShouldFailWith(this CommandResult result, GameError expected)
+    {
+        result.IsSuccess.ShouldBeFalse();
+        result.Error.ShouldBe(expected);
+    }
+}

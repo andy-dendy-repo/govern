@@ -23,6 +23,7 @@
         <ProjectReference Include="..\..\src\Govern.Application\Govern.Application.csproj" />
         <ProjectReference Include="..\..\src\Govern.Application.Common\Govern.Application.Common.csproj" />
         <ProjectReference Include="..\..\src\Govern.Client\Govern.Client.csproj" />
+        <ProjectReference Include="..\..\src\Govern.Core\Govern.Core.csproj" />
         <ProjectReference Include="..\..\src\Govern.Domain\Govern.Domain.csproj" />
         <ProjectReference Include="..\..\src\Govern.Infrastructure\Govern.Infrastructure.csproj" />
         <ProjectReference Include="..\..\src\Govern.Utils\Govern.Utils.csproj" />

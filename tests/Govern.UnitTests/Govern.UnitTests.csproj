@@ -20,6 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\src\Govern.Core\Govern.Core.csproj" />
       <ProjectReference Include="..\..\src\Govern.Domain\Govern.Domain.csproj" />
       <ProjectReference Include="..\..\src\Govern.Utils\Govern.Utils.csproj" />
     </ItemGroup>

@@ -13,7 +13,7 @@ Run the phases in order. **Build and test failures stop the run**: fix them, the
 ## Phases
 
 1. **Build:** `dotnet build Govern.slnx`. It must end with `Build succeeded` and 0 errors (all warnings are errors). CS1591 means an XML doc is missing (see `xml-docs.md`).
-2. **Format:** `dotnet format Govern.slnx --verify-no-changes --exclude src/Govern.Core`. On failure, run the same command without `--verify-no-changes` and review the diff. Core is ignored.
+2. **Format:** `dotnet format Govern.slnx --verify-no-changes`. On failure, run the same command without `--verify-no-changes` and review the diff.
 3. **Architecture tests:** `dotnet test --project tests/Govern.ArchitectureTests`. Failures name the offending folder, file or type. Fix the code, or update rule and test together if the convention is deliberately changing (ask the user first).
 4. **Unit tests:** `dotnet test --project tests/Govern.UnitTests`.
 5. **Client tests:** `dotnet test --project tests/Govern.ClientTests` (bUnit).
