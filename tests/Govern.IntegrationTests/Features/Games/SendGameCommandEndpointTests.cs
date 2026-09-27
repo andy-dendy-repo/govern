@@ -25,7 +25,7 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await GamesApi.ReadGameAsync(response, Ct);
         var opponent = body.Players.Single(p => !p.IsYou);
-        body.View.ShouldNotBeNull().Version.ShouldBe(before.View.Version + 1);
+        body.View.ShouldNotBeNull().Version.ShouldNotBe(before.View.Version);
         body.View.CurrentPlayer.ShouldBe(new PlayerId(opponent.PlayerId));
 
         var (scope, db) = await Fixture.OpenDbAsync();
@@ -35,7 +35,8 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
             var stored = await db.Games.AsNoTracking().SingleAsync(g => g.Id == game.Id, Ct);
             stored.CurrentPlayerId.ShouldBe(opponent.PlayerId);
             stored.Revision.ShouldBe(3);
-            stored.State.ShouldNotBeNull().Version.ShouldBe(body.View.Version);
+            var you = new PlayerId(body.Players.Single(p => p.IsYou).PlayerId);
+            GameEngine.ViewFor(stored.State.ShouldNotBeNull(), you).Version.ShouldBe(body.View.Version);
         }
 
         (await GamesApi.GetGameAsync(Client, joiner, game.Id, Ct)).View!.CurrentPlayer.ShouldBe(new PlayerId(opponent.PlayerId));
@@ -75,7 +76,8 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
         body.View.ShouldNotBeNull().Status.ShouldBe(GameStatus.Finished);
         body.View.Winner.ShouldBe(new PlayerId(body.Players.Single(p => !p.IsYou).PlayerId));
 
-        var after = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, body.View.Version, new EndTurnCommand(), Ct);
+        var creatorVersion = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Version;
+        var after = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, creatorVersion, new EndTurnCommand(), Ct);
         await after.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.finished", Ct);
     }
 
@@ -204,13 +206,25 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     }
 
     [Fact]
-    public async Task Post_OldVersion_Returns409StaleVersion()
+    public async Task Post_VersionFromBeforeTheOpponentsTurnEnded_Returns409StaleVersion()
     {
         var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);
-        var version = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Version;
-        (await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, version, new EndTurnCommand(), Ct)).EnsureSuccessStatusCode();
+        var joinerVersion = (await GamesApi.GetGameAsync(Client, joiner, game.Id, Ct)).View!.Version;
+        var creatorVersion = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Version;
+        (await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, creatorVersion, new EndTurnCommand(), Ct)).EnsureSuccessStatusCode();
 
-        var response = await GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, version, new EndTurnCommand(), Ct);
+        var response = await GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, joinerVersion, new EndTurnCommand(), Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.stale_version", Ct);
+    }
+
+    [Fact]
+    public async Task Post_AnotherPlayersVersion_Returns409StaleVersion()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var joinerVersion = (await GamesApi.GetGameAsync(Client, joiner, game.Id, Ct)).View!.Version;
+
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, joinerVersion, new EndTurnCommand(), Ct);
 
         await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.stale_version", Ct);
     }
@@ -231,6 +245,7 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     {
         var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
         var version = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Version;
+        var commandsBefore = (await StoredStateAsync(game.Id)).Version;
 
         var responses = await GameRowLock.RaceAsync(Fixture.ConnectionString, game.Id, 3, () => Task.WhenAll(
             Enumerable.Range(0, 3).Select(_ => GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, version, new EndTurnCommand(), Ct))), Ct);
@@ -241,7 +256,7 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
             await rejected.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.stale_version", Ct);
         }
 
-        (await StoredStateAsync(game.Id)).Version.ShouldBe(version + 1);
+        (await StoredStateAsync(game.Id)).Version.ShouldBe(commandsBefore + 1);
     }
 
     [Fact]

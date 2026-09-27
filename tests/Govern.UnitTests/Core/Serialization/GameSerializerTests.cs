@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Govern.Core.Actions;
 using Govern.Core.Cities;
 using Govern.Core.Engine;
@@ -93,6 +94,28 @@ public class GameSerializerTests
     public void Deserialize_MissingDiscriminatorOrRequiredValue_ThrowsJsonException(string json)
     {
         Should.Throw<JsonException>(() => GameSerializer.Deserialize<GameCommand>(json));
+    }
+
+    [Fact]
+    public void DeserializeState_SchemaVersionOneWithNextId_IsUpgradedAndKeepsIds()
+    {
+        var state = new GameStateBuilder().WithCapitals().Build();
+        var node = JsonNode.Parse(GameSerializer.Serialize(state))!.AsObject();
+        node["schemaVersion"] = 1;
+        node["nextId"] = 3;
+
+        var upgraded = GameSerializer.DeserializeState(node.ToJsonString());
+
+        upgraded.SchemaVersion.ShouldBe(GameState.CurrentSchemaVersion);
+        GameSerializer.Serialize(upgraded).ShouldBe(GameSerializer.Serialize(state));
+    }
+
+    [Fact]
+    public void DeserializeState_SchemaVersionZero_Throws()
+    {
+        var json = GameSerializer.Serialize(new GameStateBuilder().WithCapitals().Build() with { SchemaVersion = 0 });
+
+        Should.Throw<NotSupportedException>(() => GameSerializer.DeserializeState(json));
     }
 
     [Fact]

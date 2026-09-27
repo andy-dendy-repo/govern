@@ -10,6 +10,9 @@ namespace Govern.Core.Serialization;
 /// </summary>
 public static class GameSerializer
 {
+    // The last schema with the shared nextId counter; the oldest one still read.
+    private const int NextIdSchemaVersion = 1;
+
     /// <summary>Read-only serializer options; pass them to any serializer that reads or writes game types.</summary>
     public static JsonSerializerOptions Options { get; } = CreateOptions();
 
@@ -39,12 +42,15 @@ public static class GameSerializer
         }
     }
 
-    /// <summary>Deserializes a stored game after checking its schema version, before any binding happens.</summary>
+    /// <summary>
+    /// Deserializes a stored game after checking its schema version, before any binding happens. Older versions are upgraded:
+    /// version 1 carried a <c>nextId</c> counter, which is dropped (its ids stay; new ids are drawn from the generator).
+    /// </summary>
     /// <param name="json">The JSON text of a <see cref="GameState"/>.</param>
-    /// <returns>The state.</returns>
+    /// <returns>The state, at <see cref="GameState.CurrentSchemaVersion"/>.</returns>
     /// <exception cref="JsonException">The JSON is invalid or not an object.</exception>
     /// <exception cref="NotSupportedException">
-    /// The snapshot has no <c>schemaVersion</c> or one other than <see cref="GameState.CurrentSchemaVersion"/> (migrate it first).
+    /// The snapshot has no <c>schemaVersion</c>, or one that is neither current nor a known older version.
     /// </exception>
     public static GameState DeserializeState(string json)
     {
@@ -56,12 +62,14 @@ public static class GameSerializer
 
         var hasVersion = document.RootElement.TryGetProperty("schemaVersion", out var version)
             && version.ValueKind == JsonValueKind.Number;
-        if (!hasVersion || version.GetInt32() != GameState.CurrentSchemaVersion)
+        if (!hasVersion || !version.TryGetInt32(out var schemaVersion) || schemaVersion is < NextIdSchemaVersion or > GameState.CurrentSchemaVersion)
         {
-            throw new NotSupportedException($"Only game schema version {GameState.CurrentSchemaVersion} is supported.");
+            throw new NotSupportedException($"Only game schema versions {NextIdSchemaVersion} to {GameState.CurrentSchemaVersion} are supported.");
         }
 
-        return document.RootElement.Deserialize<GameState>(Options) ?? throw new JsonException("The JSON document is null.");
+        // Version 1 differs only by the extra nextId member, which binding skips.
+        var state = document.RootElement.Deserialize<GameState>(Options) ?? throw new JsonException("The JSON document is null.");
+        return state with { SchemaVersion = GameState.CurrentSchemaVersion };
     }
 
     private static JsonSerializerOptions CreateOptions()

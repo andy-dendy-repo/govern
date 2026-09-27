@@ -3,6 +3,7 @@ using Govern.Core.Engine;
 using Govern.Core.State;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
+using Govern.Domain.Events;
 
 namespace Govern.UnitTests.Domain.Entities;
 
@@ -225,6 +226,38 @@ public class GameTests
         var game = StartedGame();
 
         Should.Throw<InvalidOperationException>(() => game.Execute(Guid.CreateVersion7(), new EndTurnCommand()));
+    }
+
+    [Fact]
+    public void Create_RaisesNoChangeEvent()
+    {
+        var game = Game.Create(Creator, Now);
+
+        game.DomainEvents.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Join_Start_Execute_EachRaiseAChangeEvent()
+    {
+        var game = Game.Create(Creator, Now);
+
+        game.Join(Joiner, Now);
+        game.Start(Creator);
+        game.Execute(Creator, new EndTurnCommand());
+
+        game.DomainEvents.ShouldBe([new GameChangedEvent(game.Id), new GameChangedEvent(game.Id), new GameChangedEvent(game.Id)]);
+    }
+
+    [Fact]
+    public void Join_Again_Or_RejectedCommand_RaiseNoChangeEvent()
+    {
+        var game = StartedGame();
+        game.ClearDomainEvents();
+
+        game.Join(Joiner, Now);
+        game.Execute(Joiner, new EndTurnCommand());
+
+        game.DomainEvents.ShouldBeEmpty();
     }
 
     private static Game StartedGame()

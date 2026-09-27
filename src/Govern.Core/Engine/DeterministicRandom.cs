@@ -25,7 +25,11 @@ public sealed class DeterministicRandom(ulong state)
         return (int)((long)minInclusive + (long)(NextUInt64() % range));
     }
 
-    private ulong NextUInt64()
+    /// <summary>
+    /// Returns the next raw 64-bit output. The generator is invertible, so raw outputs must never reach a client: hash them
+    /// first (as unit and city ids do).
+    /// </summary>
+    internal ulong NextUInt64()
     {
         State += 0x9E3779B97F4A7C15UL;
         var z = State;
