@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Govern.Core.Engine;
 using Govern.Core.Serialization;
 using Govern.Core.State;
 using Govern.Core.Units;
@@ -24,7 +25,47 @@ public class GameFactoryTests
         state.Cities.ShouldBeEmpty();
         state.Map.Width.ShouldBe(GameSetup.DefaultWidth);
         state.Map.Height.ShouldBe(GameSetup.DefaultHeight);
-        state.NextId.ShouldBe(5);
+    }
+
+    [Fact]
+    public void Create_SameSeed_DrawsTheSameIds()
+    {
+        var first = GameFactory.Create(new GameSetup([P1, P2], Seed: 11));
+        var second = GameFactory.Create(new GameSetup([P1, P2], Seed: 11));
+
+        second.Units.Select(static unit => unit.Id).ShouldBe(first.Units.Select(static unit => unit.Id));
+    }
+
+    [Theory]
+    [InlineData(1UL)]
+    [InlineData(987_654_321UL)]
+    public void Create_Ids_AreNotRawGeneratorDraws(ulong seed)
+    {
+        // Draw order per player: spawn column, spawn row, settler id, soldier id. Raw SplitMix64 draws are invertible, so an
+        // id equal to one would let a player rebuild the generator state (and the opponent's hidden spawn).
+        var random = new DeterministicRandom(seed);
+        random.Next(0, 2);
+        random.Next(0, 2);
+        var rawSettlerDraw = random.Next(1, int.MaxValue);
+        var rawSoldierDraw = random.Next(1, int.MaxValue);
+
+        var ids = GameFactory.Create(new GameSetup([P1, P2], seed)).Units.Where(unit => unit.Owner == P1).Select(unit => unit.Id.Value).ToList();
+
+        ids.ShouldNotContain(rawSettlerDraw);
+        ids.ShouldNotContain(rawSoldierDraw);
+    }
+
+    [Theory]
+    [InlineData(1UL)]
+    [InlineData(2UL)]
+    [InlineData(987_654_321UL)]
+    public void Create_AnySeed_DrawsDistinctPositiveIdsThatDoNotCountUnits(ulong seed)
+    {
+        var ids = GameFactory.Create(new GameSetup([P1, P2], seed)).Units.Select(static unit => unit.Id.Value).ToList();
+
+        ids.ShouldBeUnique();
+        ids.ShouldAllBe(id => id > 0);
+        ids.Order().SequenceEqual(Enumerable.Range(1, ids.Count)).ShouldBeFalse();
     }
 
     [Theory]

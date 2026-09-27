@@ -1,8 +1,8 @@
 ---
 title: Game Core engine
-tags: [game, core, engine, hex, rules, fog-of-war, commands, events, serialization, determinism]
+tags: [game, core, engine, hex, rules, fog-of-war, view-version, ids, commands, events, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Game Core engine
@@ -23,7 +23,7 @@ After each accepted command, `Execute`:
 1. runs the command's rule;
 2. runs `VictoryRule` (eliminations, removal of departed players' units, win check);
 3. updates every active player's explored tiles;
-4. increments `GameState.Version` by one.
+4. increments `GameState.Version` by one (an internal command count; clients never see it, see [View version](#view-version)).
 
 ## Hex map and coordinates (HexCoord)
 
@@ -96,7 +96,18 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - **Rejections leak nothing:** a hidden unit on a move target gives `move.unreachable`, not `move.occupied`. Another player's unit or city id gives `*.not_found`. City names count only the founder's cities.
 - **Invariants that keep rejections leak-free:** unit sight ≥ movement / cheapest step, and settler sight ≥ `City.MinimumSpacing - 1`. `UnitCatalogTests` enforces both, so changing a stat that breaks them fails the build until the rules filter by visibility.
 - `PlayerId` values are chosen by the host. Govern uses the per-game seat id (`GamePlayer.Id`), never a user id, so the view reveals no account ids ([games](games.md)).
-- Hosts must send clients `PlayerView`, never `GameState`. Raw `GameEvent`s describe the full state and must be filtered by visibility before being sent to a player.
+- Hosts must send clients `PlayerView`, never `GameState`.
+- Nothing in a view counts the opponent's activity: `PlayerView.Version` is a fingerprint of the view itself, unit and city ids are hashed random draws (see below), and `Units`/`Cities` are ordered by id rather than creation. Raw `GameEvent`s describe the full state and must be filtered by visibility before being sent to a player.
+
+## View version
+
+`PlayerView.Version` is an opaque fingerprint of one player's view: the first 8 bytes of the SHA-256 of the view's `GameSerializer` JSON (with `version` 0), masked to a non-negative `long`.
+
+- **Equal views have equal versions**, and anything hidden from the viewer can't change the value. A command count would tell the opponent how often the other player acted; the fingerprint doesn't.
+- **Compare it for equality only.** It is neither ordered nor sequential. Clients echo it as `expectedVersion`, and the host rejects a command when the caller's current view has a different version ([games](games.md#sending-commands)).
+- Each player has their own version for the same state, since their views differ.
+- `GameState.Version` still counts accepted commands; it stays inside the state.
+- The fingerprint depends on the exact `GameSerializer` bytes, so a serializer change (e.g. a .NET upgrade that escapes differently) changes every version once: each open client gets one `game.stale_version` and reloads.
 
 ## Determinism and randomness
 
@@ -104,7 +115,8 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - Randomness (spawn rows today, combat later) comes from `DeterministicRandom` (SplitMix64). Its state is stored in `GameState.RngState`, so replaying a command log rebuilds the exact game on any .NET version.
 - Pathfinding breaks cost ties by row, then column, so event paths never depend on the `PriorityQueue` implementation.
 - The host must generate `GameSetup.Seed` with a cryptographically secure RNG and never send it to clients, because spawn positions follow from it.
-- Ids for units and cities come from the `GameState.NextId` counter.
+- **Ids:** unit and city ids come from the same generator (`GameState.AllocateId`), including the four starting units. Each id is 31 bits of the **SHA-256 of a 64-bit draw**, redrawn when 0 or already used by a unit or city. Sequential ids would reveal how many units and cities the opponent created, and raw draws would be worse: SplitMix64 is invertible, so two raw ids let a player rebuild `RngState` in seconds and with it the opponent's spawn and every future id. Hashed ids reveal nothing and still replay identically.
+- **Never send raw `DeterministicRandom` output to a client.** Hash anything a player can see (ids), or keep it to a few bits of a small range (spawn tiles). Guessing the state from hashed ids takes about 2⁶⁴ work, the same as guessing the 64-bit seed.
 
 ## JSON format and schema version (GameSerializer)
 
@@ -112,7 +124,8 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - Commands and events are polymorphic, with a `type` discriminator that may appear anywhere in the object.
 - The discriminator names are part of the storage and wire format. Never rename them.
 - **Required values:** every constructor value is required (`RespectRequiredConstructorParameters`). Bad client input, including a missing `type`, always surfaces as `JsonException` (a 400 in the Api), never a 500.
-- **Schema version:** `GameState.SchemaVersion` (currently 1) is read by `GameSerializer.DeserializeState` **before** binding; a missing or different version throws `NotSupportedException`. Bump it and migrate stored games on breaking changes.
+- **Schema version:** `GameState.SchemaVersion` (currently 2) is read by `GameSerializer.DeserializeState` **before** binding. Older known versions are upgraded on read, and a missing or unknown version throws `NotSupportedException`. Bump it and add the upgrade on breaking changes.
+  - **Version 1 → 2:** version 1 had a `nextId` counter. The upgrade drops it and keeps the existing ids; new ids come from the generator.
 
 ## Tests
 

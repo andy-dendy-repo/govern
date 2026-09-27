@@ -24,4 +24,10 @@ public static class RateLimitingPolicies
     /// Fixed window per signed-in user for game commands.
     /// </summary>
     public const string GameCommands = "game-commands";
+
+    /// <summary>
+    /// Per signed-in user: a cap on concurrently open game streams plus a fixed window on opening them. The concurrency
+    /// permit is held for as long as the stream stays open.
+    /// </summary>
+    public const string GameStreams = "game-streams";
 }

@@ -4,6 +4,7 @@ using Govern.Core.Engine;
 using Govern.Core.State;
 using Govern.Domain.EntityBase;
 using Govern.Domain.Enums;
+using Govern.Domain.Events;
 using Govern.Domain.ValueObjects;
 
 namespace Govern.Domain.Entities;
@@ -11,7 +12,7 @@ namespace Govern.Domain.Entities;
 /// <summary>
 /// A two-player game: a lobby joined through an invite code, then a running game whose whole <see cref="GameState"/> is
 /// stored as one snapshot. The aggregate root for <see cref="GamePlayer"/>. Every change increments <see cref="Revision"/>,
-/// which the persistence layer uses as an optimistic concurrency token.
+/// which the persistence layer uses as an optimistic concurrency token, and raises a <see cref="GameChangedEvent"/>.
 /// </summary>
 /// <remarks>
 /// The methods throw on calls the rules forbid (joining a full game, starting as a non-creator): handlers check those
@@ -119,6 +120,7 @@ public sealed class Game : BaseAuditableEntity
         var player = GamePlayer.Create(Id, userId, _players.Count, now);
         _players.Add(player);
         Revision++;
+        AddDomainEvent(new GameChangedEvent(Id));
         return player;
     }
 
@@ -141,6 +143,7 @@ public sealed class Game : BaseAuditableEntity
         Phase = GamePhase.InProgress;
         CurrentPlayerId = State.CurrentPlayer.Value;
         Revision++;
+        AddDomainEvent(new GameChangedEvent(Id));
     }
 
     /// <summary>
@@ -168,6 +171,7 @@ public sealed class Game : BaseAuditableEntity
             Phase = finished ? GamePhase.Finished : GamePhase.InProgress;
             CurrentPlayerId = finished ? null : State.CurrentPlayer.Value;
             Revision++;
+            AddDomainEvent(new GameChangedEvent(Id));
         }
 
         return result;
