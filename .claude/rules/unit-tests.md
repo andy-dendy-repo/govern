@@ -20,7 +20,7 @@ paths:
 - The folder and namespace mirror the source:
   - Utils at the project root: `src/Govern.Utils/Mediator/Services/MediatorService.cs` → `tests/Govern.UnitTests/Mediator/Services/MediatorServiceTests.cs`.
   - Domain under `Domain/`: `src/Govern.Domain/ValueObjects/Email.cs` → `tests/Govern.UnitTests/Domain/ValueObjects/EmailTests.cs`.
-  - Core under `Core/`: `src/Govern.Core/Hexes/HexCoord.cs` → `tests/Govern.UnitTests/Core/Hexes/HexCoordTests.cs`. Rules are `internal`, so `Core/Rules/XxxRuleTests` test them through `GameEngine.Execute`, with scenarios from `Core/Builders/GameStateBuilder`.
+  - Core under `Core/`: `src/Govern.Core/Map/HexCoord.cs` → `tests/Govern.UnitTests/Core/Map/HexCoordTests.cs`. Rules are `internal`, so `Core/Actions/XxxActionTests` (and `Core/Engine/VictoryRuleTests`) test them through `GameEngine.Execute`, with scenarios from `Core/Builders/GameStateBuilder`.
 - Name the class `<TypeUnderTest>Tests` and each test `Method_Scenario_ExpectedResult`. Underscores are allowed in tests (CA1707 is off for `tests/**`). For example: `SendAsync_HandlerRegistered_ReturnsHandlerResponse`.
 - Arrange / Act / Assert blocks separated by blank lines. Use one behaviour per test; several asserts about that behaviour are fine.
 - Use `[Theory]` + `[InlineData]` / `TheoryData<…>` for input variations instead of copy-pasted facts.

@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using Govern.Core.Cities;
-using Govern.Core.Players;
 using Govern.Core.State;
 using Govern.Core.Units;
 

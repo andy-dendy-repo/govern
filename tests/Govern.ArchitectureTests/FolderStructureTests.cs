@@ -38,6 +38,26 @@ public partial class FolderStructureTests
     }
 
     [Fact]
+    public void ActionFiles_DeclareExactlyThePrefixedCommandAndRule()
+    {
+        var violations = new List<string>();
+
+        foreach (var file in ActionFiles())
+        {
+            var prefix = Path.GetFileNameWithoutExtension(file)[..^"Action".Length];
+            string[] expected = [$"{prefix}Command", $"{prefix}Rule"];
+            var declared = TypeDeclarations.NonFileScopedTopLevelTypes(File.ReadAllText(file));
+
+            if (!declared.Order(StringComparer.Ordinal).SequenceEqual(expected.Order(StringComparer.Ordinal)))
+            {
+                violations.Add($"{SourceTree.Relative(file)}: expected exactly [{string.Join(", ", expected)}] (plus 'file' types), found [{string.Join(", ", declared)}]");
+            }
+        }
+
+        violations.ShouldBeEmpty("A game action file holds its command and the rule that applies it; see .claude/rules/game-core.md");
+    }
+
+    [Fact]
     public void EndpointFiles_DeclareExactlyOneEndpointNamedAfterTheFile()
     {
         var violations = new List<string>();
@@ -95,6 +115,12 @@ public partial class FolderStructureTests
     private static IEnumerable<string> ContractFiles() =>
         SourceTree.CSharpFiles(Path.Combine(SourceTree.SourceRoot, "Govern.Application"))
             .Where(static file => Path.GetFileName(Path.GetDirectoryName(file)) == "Contracts");
+
+    private static IEnumerable<string> ActionFiles()
+    {
+        var actions = Path.Combine(SourceTree.SourceRoot, "Govern.Core", "Actions");
+        return Directory.Exists(actions) ? SourceTree.CSharpFiles(actions) : [];
+    }
 
     private static IEnumerable<string> EndpointFiles()
     {

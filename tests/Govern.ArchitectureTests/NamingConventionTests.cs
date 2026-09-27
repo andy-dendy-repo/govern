@@ -25,8 +25,6 @@ public class NamingConventionTests
         { "Configurations", "Configuration" },
         { "Interceptors", "Interceptor" },
         { "Events", "Event" },
-        { "Commands", "Command" },
-        { "Rules", "Rule" },
     };
 
     [Fact]

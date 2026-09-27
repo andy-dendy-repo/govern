@@ -1,8 +1,7 @@
 using System.Collections.Immutable;
 using Govern.Core.Cities;
-using Govern.Core.Hexes;
-using Govern.Core.Maps;
-using Govern.Core.Players;
+using Govern.Core.Engine;
+using Govern.Core.Map;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
 

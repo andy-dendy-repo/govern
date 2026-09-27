@@ -1,5 +1,5 @@
-using Govern.Core.Hexes;
-using Govern.Core.Players;
+using Govern.Core.Map;
+using Govern.Core.State;
 using Govern.Core.Units;
 
 namespace Govern.Core.Cities;

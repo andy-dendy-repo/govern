@@ -49,7 +49,7 @@ Extra constraints:
 | Migration runner / data seeding | `Infrastructure/Persistence/Services` |
 | An external integration (email, Telegram, cache…) | `Infrastructure/[Concern]/` (UF inside) |
 | A background job / outbox processor | `Infrastructure/Background/` |
-| A game rule, unit/terrain stat, command or game event | `Core/Rules/XxxRule.cs`, `Core/Units/UnitCatalog.cs` / `Core/Maps/TerrainCatalog.cs`, `Core/Commands/XxxCommand.cs`, `Core/Events/XxxEvent.cs` (see `game-core.md`) |
+| A game action (command + the rule that applies it), unit/terrain stat or game event | `Core/Actions/XxxAction.cs` (`XxxCommand` + `XxxRule`), `Core/Units/UnitCatalog.cs` / `Core/Map/TerrainCatalog.cs`, `Core/Events/XxxEvent.cs` (see `game-core.md`) |
 | An HTTP endpoint | `Api/Features/[Feature]/[UseCase]Endpoint.cs` (one per file) |
 | Request/response pipeline logic | `Api/Middlewares` (global) or `Api/Filters` (endpoint filters) |
 | A health check | `Api/HealthChecks/XxxHealthCheck.cs` |

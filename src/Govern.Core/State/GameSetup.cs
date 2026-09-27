@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
-using Govern.Core.Maps;
-using Govern.Core.Players;
+using Govern.Core.Map;
 
 namespace Govern.Core.State;
 

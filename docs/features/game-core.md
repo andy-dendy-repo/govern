@@ -132,4 +132,4 @@ Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DoesNotUseNondeterministicOrIoApis`: no `Random`, clock, `System.IO`/`Net`/`Threading.Tasks`
 - `LayerDependencyTests.Core_DoesNotCreateIdentifiersOrUseHashCodes`: no `Guid.NewGuid`/`CreateVersion7`/`GetHashCode(`
 - `ProjectReferenceTests.Core_HasNoPackageReferences`
-- the `Commands`/`Rules` folder suffix rules
+- `FolderStructureTests`: the Core folder whitelist, and each `Actions/XxxAction.cs` holding exactly `XxxCommand` + `XxxRule`

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
-using Govern.Core.Hexes;
-using Govern.Core.Players;
+using Govern.Core.Map;
+using Govern.Core.State;
 
 namespace Govern.Core.Units;
 

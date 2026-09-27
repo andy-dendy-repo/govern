@@ -1,5 +1,4 @@
-using Govern.Core.Hexes;
-using Govern.Core.Maps;
+using Govern.Core.Map;
 
 namespace Govern.Core.Visibility;
 
