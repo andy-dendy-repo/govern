@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Govern.Application.Games.Contracts;
+using Govern.Application.Games.Models;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -146,6 +147,32 @@ public class JoinGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixtu
 
         responses.ShouldAllBe(r => r.StatusCode == HttpStatusCode.OK);
         (await SeatsAsync(game.Id)).ShouldBe([(0, creator.UserId), (1, joiner.UserId)]);
+    }
+
+    [Fact]
+    public async Task Post_NewPlayerAtUnfinishedGameLimit_Returns409()
+    {
+        var other = await GamesApi.NewPlayerAsync(Client, Ct);
+        var caller = await GamesApi.NewPlayerAsync(Client, Ct);
+        await GamesApi.SeedJoinedLobbiesAsync(Fixture, other.UserId, caller.UserId, GameErrors.MaxUnfinishedGamesPerUser, Ct);
+        var host = await GamesApi.NewPlayerAsync(Client, Ct);
+        var lobby = await GamesApi.CreateGameAsync(Client, host, Ct);
+
+        var response = await GamesApi.JoinAsync(Client, caller.AccessToken, lobby.InviteCode, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.too_many_unfinished_games", Ct);
+    }
+
+    [Fact]
+    public async Task Post_SeatedPlayerAtUnfinishedGameLimit_Returns200()
+    {
+        var (game, _, joiner) = await GamesApi.CreateFullLobbyAsync(Client, Ct);
+        var other = await GamesApi.NewPlayerAsync(Client, Ct);
+        await GamesApi.SeedJoinedLobbiesAsync(Fixture, other.UserId, joiner.UserId, GameErrors.MaxUnfinishedGamesPerUser, Ct);
+
+        var response = await GamesApi.JoinAsync(Client, joiner.AccessToken, game.InviteCode, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     private async Task<List<(int Seat, Guid UserId)>> SeatsAsync(Guid gameId)

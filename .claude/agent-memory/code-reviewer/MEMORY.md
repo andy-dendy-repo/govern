@@ -5,4 +5,4 @@
 - [In-process state checks](project_in_process_state.md) — limiter TOCTOU across PBKDF2, MemoryCache SizeLimit evicts LRU (not fail-open), Reset race
 - [Client checks](project_client_checks.md) — Blazor client: verified WASM env/boot facts, configure-client.sh, arch-rule exemptions, Plan 7 traps
 - [App Service hosting checks](project_app_service_hosting.md) — Health check pings default domain, release deploys before API_ORIGIN is validated
-- [Game core checks](project_game_core_checks.md) — Core fog oracles, sight>=reach, STJ discriminators; Plan 2 lobby: PlayerId=seat id, 400 metadata, jsonb key order
+- [Game core checks](project_game_core_checks.md) — Core fog oracles, STJ discriminators; Plan 2 lobby checks; Plan 3a: cap way-out, policy coverage, body-cap branches

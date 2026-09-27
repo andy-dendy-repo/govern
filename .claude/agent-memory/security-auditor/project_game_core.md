@@ -23,3 +23,5 @@ Fog invariants that currently hold (re-check when unit/terrain/city stats change
 
 **Why:** these are latent until game-delivery step 3 (command endpoint + SSE) ships.
 **How to apply:** at the audit of step 3, re-verify each open item and treat the move.occupied oracle as High if still present; check event filtering and the command body size limit.
+
+Re-verified 2026-09-27 at the Plan 3a command-endpoint audit (feature/game-commands): all rejections reachable over HTTP respect fog (move.occupied only for visible targets; unit/city not_found for enemy ids; attack adjacency and city.too_close within sight; Movement 2 <= Sight 2, plains cost 1). No command input found that throws (Map.Contains checked before DistanceTo; no checked arithmetic). Events are not returned yet.

@@ -23,7 +23,8 @@ public sealed record CreateGameResponse(Guid Id, string InviteCode) : IResponse;
 
 /// <summary>
 /// Handles <see cref="CreateGameRequest"/>; a user may hold at most <see cref="GameErrors.MaxOpenLobbiesPerUser"/> unstarted
-/// lobbies. The check is not locked, so simultaneous creates can overshoot it: a soft cap, accepted for now.
+/// lobbies and play in at most <see cref="GameErrors.MaxUnfinishedGamesPerUser"/> unfinished games. The checks are not
+/// locked, so simultaneous creates can overshoot them: soft caps, bounded by the per-user rate limit.
 /// </summary>
 internal sealed class CreateGameHandler(
     IApplicationDbContextFactory dbContextFactory,
@@ -43,6 +44,13 @@ internal sealed class CreateGameHandler(
         if (openLobbies >= GameErrors.MaxOpenLobbiesPerUser)
         {
             return GameErrors.TooManyOpenLobbies;
+        }
+
+        var unfinished = await db.Games.CountAsync(
+            game => game.Phase != GamePhase.Finished && game.Players.Any(player => player.UserId == userId), cancellationToken);
+        if (unfinished >= GameErrors.MaxUnfinishedGamesPerUser)
+        {
+            return GameErrors.TooManyUnfinishedGames;
         }
 
         var game = Game.Create(userId, timeProvider.GetUtcNow());

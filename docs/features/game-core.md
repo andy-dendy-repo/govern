@@ -69,7 +69,7 @@ After each accepted command, `Execute`:
 
 ## Rule violation error codes (RuleViolations)
 
-Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleViolations`), never thrown. Codes are stable:
+Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleViolations`), never thrown. The Api returns them as 409 with the same code and message ([games](games.md#sending-commands)). Codes are stable:
 
 | Code | When |
 |---|---|

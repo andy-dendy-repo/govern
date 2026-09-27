@@ -37,11 +37,12 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
 
         builder.Property(game => game.Phase).HasConversion<string>().HasMaxLength(PhaseMaxLength);
 
-        // Join and Start update only the revision they read (WHERE revision = @old), so concurrent changes to the same
-        // game cannot both win; the loser gets DbUpdateConcurrencyException.
+        // Join, Start and commands update only the revision they read (WHERE revision = @old), so concurrent changes to the
+        // same game cannot both win; the loser gets DbUpdateConcurrencyException.
         builder.Property(game => game.Revision).IsConcurrencyToken();
 
-        // Never queried inside: anything a query needs (phase, players) has its own column.
+        // Never queried inside: anything a query needs (phase, players, current player) has its own column. The current
+        // player column is a denormalised copy of the snapshot's, without a foreign key (the seat rows are inserted later).
         builder.Property(game => game.State)
             .HasColumnType("jsonb")
             .HasConversion(state => GameSerializer.Serialize(state), json => GameSerializer.DeserializeState(json), ReferenceComparer)

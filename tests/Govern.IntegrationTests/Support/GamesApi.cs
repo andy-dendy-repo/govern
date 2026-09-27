@@ -1,9 +1,14 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
+using Govern.Api.Models;
 using Govern.Application.Games.Contracts;
 using Govern.Application.Users.Contracts;
+using Govern.Core.Engine;
 using Govern.Core.Serialization;
+using Govern.Domain.Entities;
+using Govern.IntegrationTests.Fixtures;
 
 namespace Govern.IntegrationTests.Support;
 
@@ -29,6 +34,26 @@ public static class GamesApi
 
     public static Task<HttpResponseMessage> ListAsync(HttpClient client, string? accessToken, string query, CancellationToken ct) =>
         SendAsync(client, HttpMethod.Get, $"/api/games{query}", accessToken, content: null, ct);
+
+    public static Task<HttpResponseMessage> SendCommandAsync(
+        HttpClient client, string? accessToken, Guid gameId, long expectedVersion, GameCommand command, CancellationToken ct) =>
+        SendCommandJsonAsync(client, accessToken, gameId, GameSerializer.Serialize(new GameCommandBody(expectedVersion, command)), ct);
+
+    public static Task<HttpResponseMessage> SendCommandJsonAsync(
+        HttpClient client, string? accessToken, Guid gameId, string json, CancellationToken ct, string mediaType = "application/json") =>
+        SendAsync(client, HttpMethod.Post, $"/api/games/{gameId}/commands", accessToken, new StringContent(json, Encoding.UTF8, mediaType), ct);
+
+    public static Task<HttpResponseMessage> SendCommandContentAsync(
+        HttpClient client, string? accessToken, Guid gameId, HttpContent content, CancellationToken ct) =>
+        SendAsync(client, HttpMethod.Post, $"/api/games/{gameId}/commands", accessToken, content, ct);
+
+    /// <summary>Reads the game as <paramref name="player"/>.</summary>
+    public static async Task<GetGameResponse> GetGameAsync(HttpClient client, Player player, Guid gameId, CancellationToken ct)
+    {
+        var response = await GetAsync(client, player.AccessToken, gameId, ct);
+        response.EnsureSuccessStatusCode();
+        return await ReadGameAsync(response, ct);
+    }
 
     /// <summary>Signs up and signs in a new user, returning the access token and the user id.</summary>
     public static async Task<Player> NewPlayerAsync(HttpClient client, CancellationToken ct)
@@ -64,6 +89,27 @@ public static class GamesApi
         var lobby = await CreateFullLobbyAsync(client, ct);
         (await StartAsync(client, lobby.Creator.AccessToken, lobby.Game.Id, ct)).EnsureSuccessStatusCode();
         return lobby;
+    }
+
+    /// <summary>
+    /// Stores <paramref name="count"/> lobbies created by <paramref name="creatorId"/> and joined by <paramref name="userId"/>
+    /// directly in the database: unfinished games for the user, without going through the per-creator lobby cap.
+    /// </summary>
+    public static async Task SeedJoinedLobbiesAsync(GovernApiFixture fixture, Guid creatorId, Guid userId, int count, CancellationToken ct)
+    {
+        var (scope, db) = await fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var game = Game.Create(creatorId, DateTimeOffset.UtcNow);
+                game.Join(userId, DateTimeOffset.UtcNow);
+                db.Games.Add(game);
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     public static async Task<GetGameResponse> ReadGameAsync(HttpResponseMessage response, CancellationToken ct) =>

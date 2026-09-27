@@ -1,3 +1,5 @@
+using Govern.Core.Actions;
+using Govern.Core.Engine;
 using Govern.Core.State;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
@@ -153,6 +155,76 @@ public class GameTests
 
         game.Start(Creator);
         game.Revision.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Start_SetsCurrentPlayerToSeatZero()
+    {
+        var game = StartedGame();
+
+        game.CurrentPlayerId.ShouldBe(game.FindPlayer(Creator)!.Id);
+        game.State!.CurrentPlayer.Value.ShouldBe(game.CurrentPlayerId!.Value);
+    }
+
+    [Fact]
+    public void Execute_AcceptedCommand_ReplacesStateMovesTurnAndIncrementsRevision()
+    {
+        var game = StartedGame();
+        var before = game.State!;
+
+        var result = game.Execute(Creator, new EndTurnCommand());
+
+        result.IsSuccess.ShouldBeTrue();
+        game.State.ShouldBeSameAs(result.Update!.State);
+        game.State!.Version.ShouldBe(before.Version + 1);
+        game.CurrentPlayerId.ShouldBe(game.FindPlayer(Joiner)!.Id);
+        game.Phase.ShouldBe(GamePhase.InProgress);
+        game.Revision.ShouldBe(3);
+    }
+
+    [Fact]
+    public void Execute_RejectedCommand_ChangesNothing()
+    {
+        var game = StartedGame();
+        var before = game.State;
+
+        var result = game.Execute(Joiner, new EndTurnCommand());
+
+        result.Violation.ShouldBe(RuleViolations.NotYourTurn);
+        game.State.ShouldBeSameAs(before);
+        game.CurrentPlayerId.ShouldBe(game.FindPlayer(Creator)!.Id);
+        game.Revision.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Execute_Resign_FinishesTheGameWithoutCurrentPlayer()
+    {
+        var game = StartedGame();
+
+        var result = game.Execute(Joiner, new ResignCommand());
+
+        result.IsSuccess.ShouldBeTrue();
+        game.Phase.ShouldBe(GamePhase.Finished);
+        game.CurrentPlayerId.ShouldBeNull();
+        game.State!.Status.ShouldBe(GameStatus.Finished);
+        game.State.Winner.ShouldBe(game.FindPlayer(Creator)!.PlayerId);
+    }
+
+    [Fact]
+    public void Execute_InLobby_Throws()
+    {
+        var game = Game.Create(Creator, Now);
+        game.Join(Joiner, Now);
+
+        Should.Throw<InvalidOperationException>(() => game.Execute(Creator, new EndTurnCommand()));
+    }
+
+    [Fact]
+    public void Execute_Outsider_Throws()
+    {
+        var game = StartedGame();
+
+        Should.Throw<InvalidOperationException>(() => game.Execute(Guid.CreateVersion7(), new EndTurnCommand()));
     }
 
     private static Game StartedGame()
