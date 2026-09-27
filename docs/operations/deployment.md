@@ -1,7 +1,7 @@
 ---
 title: Deployment to Azure
 tags: [deployment, azure, bicep, github-actions, oidc, ghcr, app-service, static-web-apps, postgres, key-vault]
-code: [infra/main.bicep, infra/modules, infra/main.bicepparam, .github/workflows/release.yml, .github/workflows/ci.yml]
+code: [infra/main.bicep, infra/modules, infra/main.bicepparam, .github/workflows/release.yml, .github/workflows/ci.yml, .github/scripts/configure-client.sh]
 updated: 2026-09-27
 ---
 
@@ -24,7 +24,12 @@ A merged PR from `stage` into `main` triggers `.github/workflows/release.yml`:
 1. CI runs: build, format, all tests, vulnerable packages, Bicep compile.
 2. The Api image is built with `dotnet publish -t:PublishContainer` and pushed to GHCR, tagged with the commit SHA and `latest`.
 3. The workflow logs in to Azure through OIDC and runs `az deployment group create` with `infra/main.bicepparam`. This updates the infrastructure and points the Web App at the new image.
-4. The client is published and uploaded to the Static Web App.
+4. The client is published, configured by `.github/scripts/configure-client.sh`, and uploaded to the Static Web App. The script:
+   - writes the Api origin into the CSP `connect-src` and `appsettings.Production.json`
+   - writes the import map hash into the CSP `script-src`
+   - fails if a placeholder is left
+   
+   See [client](../features/client.md#configuring-the-client-at-release).
 5. The workflow waits until `https://<api>/health` returns Healthy.
 
 Migrations run when the new container starts (`DatabaseMigrationService`).
@@ -38,6 +43,7 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
 3. **GitHub environment `production`:**
    - Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `POSTGRES_ADMIN_PASSWORD`, `JWT_SIGNING_KEY` (`openssl rand -base64 48`).
    - Variable: `AZURE_RESOURCE_GROUP`.
+   - Optional variable: `API_ORIGIN` (e.g. `https://api.example.com`) once the Api has a custom domain. Without it, the client uses `https://<apiHostname>` from the Bicep outputs.
    - **Deployment branches:** `main` only. The workflow also refuses to publish or deploy from other refs, but this stops `workflow_dispatch` on any other branch from getting the OIDC identity and secrets.
    - Add required reviewers if releases need approval.
 4. **GHCR image access** (choose one):
@@ -45,6 +51,12 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
    - Or create a fine-grained token with `read:packages` and add `REGISTRY_USERNAME` and `REGISTRY_PASSWORD` to the environment. The Web App uses them to pull.
 5. **Branch protection** on `main` and `stage`: PR required, CI required (see [branching](branching.md)).
 6. **DNS and custom domains:** see [dns](dns.md). Add the client's custom domain to `extraCorsOrigins` in `infra/main.bicepparam`.
+
+## Checking the client headers after a release
+
+- `curl -I https://<static-web-app-host>` shows `Content-Security-Policy` with the real Api origin and a `'sha256-…'` import map hash, plus `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy`, `Strict-Transport-Security` and `Cross-Origin-Opener-Policy`.
+- `curl -I https://<static-web-app-host>/.auth/login/github` returns 404, because the built-in Static Web Apps auth is disabled.
+- Opening the site with DevTools shows no CSP violations in the console.
 
 ## Known gaps (follow-ups)
 

@@ -1,5 +1,5 @@
 # Release: runs on every push to main (a merged stage -> main PR).
-# CI -> Api image to GHCR -> Bicep deployment (sets the new image) -> client to Static Web Apps -> health check.
+# CI -> Api image to GHCR -> Bicep deployment (sets the new image) -> configure + deploy client to Static Web Apps -> health check.
 # Setup (OIDC federated credential, environment secrets, GHCR visibility): docs/operations/deployment.md.
 name: Release
 
@@ -101,6 +101,14 @@ jobs:
 
       - name: Publish client
         run: dotnet publish src/Govern.Client --configuration Release --output client-publish
+
+      # Api origin into the CSP connect-src and Api:BaseUrl, import map hash into the CSP script-src.
+      # vars.API_ORIGIN overrides the default host once the Api has a custom domain.
+      - name: Configure client
+        env:
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+          API_HOST: ${{ steps.infra.outputs.api_host }}
+        run: .github/scripts/configure-client.sh client-publish/wwwroot "${API_ORIGIN:-https://${API_HOST}}"
 
       - name: Get Static Web App deployment token
         id: swa

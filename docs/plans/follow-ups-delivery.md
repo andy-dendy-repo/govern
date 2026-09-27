@@ -25,7 +25,7 @@ Delivery plans for the items in [follow-ups](follow-ups.md). Each increment gets
 3. #8 + #9 health check split, host filtering and Key Vault purge protection; `/health/ready` is then used by the deploy checks of the next plans.
 4. #2 least-privilege database access through Entra.
 5. #5 monitoring and alerts.
-6. #10a Blazor client foundation and CSP gate, in [blazor-client-delivery](blazor-client-delivery.md).
+6. ~~#10a Blazor client foundation and CSP gate~~ (done, see [client](../features/client.md)).
 7. #10b Blazor client authentication and pages, in [blazor-client-delivery](blazor-client-delivery.md).
 
 Plans 2 and 3 of [session-and-email-verification](session-and-email-verification.md) are separate. They fit best before #10b, so the client gets the confirm-email page from the start.

@@ -23,6 +23,7 @@ Every rule here is enforced by `tests/Govern.ArchitectureTests`. The folder spec
 | Domain | UF | `Entities/`, `Events/`, `ValueObjects/`, `EntityBase/` (`BaseEntity.cs`, `BaseAuditableEntity.cs`, `BaseEvent.cs`). Root: `GlobalUsings.cs` |
 | Api | UF | `Middlewares/`, `Filters/` (endpoint filters), `HealthChecks/`, `Features/[Feature]/XxxEndpoint.cs`. Root: `DependencyInjection.cs`, `GlobalUsings.cs`, `Program.cs` |
 | Utils | free-form | naming rules still apply |
+| Client | CFT (UF) | `Layout/`, `Components/`, `Auth/`, `Features/[Feature]/` = UF + `Pages/` (`XxxPage.razor`), `Components/`, `Clients/` (`XxxClient.cs`). Root: `App.razor`, `_Imports.razor`, `DependencyInjection.cs`, `GlobalUsings.cs`, `Program.cs`. Details: `blazor-client.md` |
 
 Content inside UF/AGFT folders may be organised in sub-folders freely. `Contracts/` and `Features/[Feature]/` are flat.
 
@@ -46,6 +47,9 @@ Content inside UF/AGFT folders may be organised in sub-folders freely. `Contract
 | `Middlewares` / `Filters` / `HealthChecks` | end with `Middleware` / `Filter` / `HealthCheck` |
 | `Configurations` / `Interceptors` | end with `Configuration` / `Interceptor` |
 | `Api/Features` | be `static` classes ending with `Endpoint` that expose `Map(IEndpointRouteBuilder)`; exactly one type per file, named after the file |
+| `Client/Features/[Feature]/Pages` | be components named `XxxPage` |
+| `Client/Layout`, `Client/**/Components` | be Razor components |
+| `Client/Features/[Feature]/Clients` | be `sealed` classes ending with `Client` |
 
 Also:
 - Interfaces start with `I`.

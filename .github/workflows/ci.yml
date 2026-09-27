@@ -50,6 +50,12 @@ jobs:
             exit 1
           fi
 
+      # Same client configuration as release.yml, with a dummy origin: catches new inline scripts or lost placeholders on the PR.
+      - name: Client release configuration (dry run)
+        run: |
+          dotnet publish src/Govern.Client --configuration Release --output "$RUNNER_TEMP/client-publish"
+          .github/scripts/configure-client.sh "$RUNNER_TEMP/client-publish/wwwroot" https://api.example.com
+
       - name: Compile Bicep
         run: az bicep build --file infra/main.bicep --stdout > /dev/null
 

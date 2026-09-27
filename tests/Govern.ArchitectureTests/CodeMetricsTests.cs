@@ -23,6 +23,38 @@ public class CodeMetricsTests
     }
 
     [Fact]
+    public void RazorFiles_DoNotExceedMaxLines()
+    {
+        var violations = RazorFiles()
+            .Select(static file => (file, lines: File.ReadAllLines(file).Length))
+            .Where(static file => file.lines > CodeLimits.MaxFileLines)
+            .Select(static file => $"{SourceTree.Relative(file.file)}: {file.lines} lines (max {CodeLimits.MaxFileLines})")
+            .ToList();
+
+        violations.ShouldBeEmpty("Split the component into smaller components");
+    }
+
+    [Fact]
+    public void RazorCodeBlocks_DoNotExceedMaxLines()
+    {
+        var violations = new List<string>();
+
+        foreach (var file in RazorFiles())
+        {
+            var lines = File.ReadAllLines(file);
+            foreach (var (start, length) in RazorCodeBlocks(lines))
+            {
+                if (length > CodeLimits.MaxRazorCodeBlockLines)
+                {
+                    violations.Add($"{SourceTree.Relative(file)}:{start + 1}: code block has {length} lines (max {CodeLimits.MaxRazorCodeBlockLines})");
+                }
+            }
+        }
+
+        violations.ShouldBeEmpty("Move component logic to a .razor.cs code-behind or a service");
+    }
+
+    [Fact]
     public void MemberBodies_DoNotExceedMaxLines()
     {
         var violations = new List<string>();
@@ -130,6 +162,38 @@ public class CodeMetricsTests
 
     private static string Location(SyntaxTree tree, int position) =>
         $"{SourceTree.Relative(tree.FilePath)}:{tree.GetLineSpan(new Microsoft.CodeAnalysis.Text.TextSpan(position, 0)).StartLinePosition.Line + 1}";
+
+    // Brace counting from the '@code' / '@functions' line to its matching '}'; braces inside string literals are rare in these blocks and ignored.
+    private static IEnumerable<(int Start, int Length)> RazorCodeBlocks(string[] lines)
+    {
+        for (var start = 0; start < lines.Length; start++)
+        {
+            var trimmed = lines[start].TrimStart();
+            if (!trimmed.StartsWith("@code", StringComparison.Ordinal) && !trimmed.StartsWith("@functions", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var depth = 0;
+            var opened = false;
+            for (var end = start; end < lines.Length; end++)
+            {
+                depth += lines[end].Count(static c => c == '{') - lines[end].Count(static c => c == '}');
+                opened |= lines[end].Contains('{', StringComparison.Ordinal);
+                if (opened && depth <= 0)
+                {
+                    yield return (start, end - start + 1);
+                    start = end;
+                    break;
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> RazorFiles() =>
+        SourceTree.ProjectFolders()
+            .Where(static folder => !Layers.Ignored.Contains(Path.GetFileName(folder)))
+            .SelectMany(SourceTree.RazorFiles);
 
     private static List<SourceFile> LoadSourceTrees() =>
         SourceTree.ProjectFolders()

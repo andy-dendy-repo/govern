@@ -64,6 +64,28 @@ public class LayerDependencyTests
             .Check(GovernArchitecture.Instance);
     }
 
+    [Fact]
+    public void Client_UsesHttpOnlyInApiClientsAndAuth()
+    {
+        // The root DependencyInjection (and its compiler-generated closures) registers typed clients and handlers.
+        Types().That().ResideInNamespaceMatching(@"^Govern\.Client(?:\.(?!Auth(?:\.|$)|Features\.\w+\.Clients$).*)?$")
+            .And().DoNotHaveFullNameMatching(@"^Govern\.Client\.DependencyInjection(?:[+/].*)?$")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^System\.Net\.Http(?:\..*)?$")
+            .Because("components never call HttpClient; Api calls go through typed Features/[Feature]/Clients (auth plumbing lives in Auth/, registration in DependencyInjection)")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void Client_UsesJavaScriptInteropOnlyInAuthAndServices()
+    {
+        Types().That().ResideInNamespaceMatching(@"^Govern\.Client(?:\.(?!Auth(?:\.|$)|Services(?:\.|$)|Features\.\w+\.Services(?:\.|$)).*)?$")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^Microsoft\.JSInterop(?:\..*)?$")
+            .Because("JS interop reaches the DOM and localStorage; keeping it in Auth/ and Services/ (root or feature) keeps the XSS-relevant surface small")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
     private static string[] ForbiddenProjects(string project) =>
         GovernArchitecture.AssemblyNames
             .Where(other => other != project && !Layers.AllowedReferences[project].Contains(other))

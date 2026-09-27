@@ -10,5 +10,5 @@ metadata:
 - **AP009** (no CancellationToken): fires on xUnit test methods. Tests use `TestContext.Current.CancellationToken` via `Ct`.
 - **AP002/AP008**: fire on `obj/` generated files. Ignore them.
 - **AP005** (catch Exception): fires on `ErrorHandlingPipeline`, which is a sanctioned boundary per error-handling.md.
-- **AP003** (`new HttpClient()` in `Govern.Client/Program.cs`): standard in the Blazor WASM template, not server code.
+- **AP003** (`new HttpClient()`): the Blazor template registration was removed on 2026-09-27 (client foundation). A new hit is now a real finding: the client must use typed clients only.
 - **AP007** (empty catch): fires on `catch (DbUpdateConcurrencyException)` blocks that hold only an explanatory comment (RefreshTokenHandler reuse path, SignOutHandler, SignOutEverywhereHandler retry filter). Deliberate race handling; report only if the comment is missing or the swallow is wrong.

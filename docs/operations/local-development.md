@@ -1,7 +1,7 @@
 ---
 title: Local development
 tags: [local, setup, postgres, docker, user-secrets, run, tests]
-code: [src/Govern.Api, src/Govern.Api/Govern.Api.http, global.json, dotnet-tools.json]
+code: [src/Govern.Api, src/Govern.Api/Govern.Api.http, src/Govern.Client, global.json, dotnet-tools.json]
 updated: 2026-09-27
 ---
 
@@ -39,11 +39,22 @@ dotnet run --project src/Govern.Api
 - `src/Govern.Api/Govern.Api.http` contains ready-made requests: sign-up → sign-in → me → refresh → health.
 - The mocked welcome email appears in the console log.
 
+## Run the client
+
+```bash
+dotnet run --project src/Govern.Client
+```
+
+- The client listens on `https://localhost:7042` and `http://localhost:5114`, and calls the Api at `Api:BaseUrl` (`https://localhost:7294`, `wwwroot/appsettings.json`).
+- The Api's Development settings already allow both client origins in `Cors:AllowedOrigins`.
+- The CSP from `staticwebapp.config.json` is not applied by the dev server; see [client](../features/client.md).
+
 ## Tests
 
 ```bash
 dotnet test Govern.slnx                                  # everything (needs Docker)
 dotnet test --project tests/Govern.IntegrationTests      # Api + Postgres
+dotnet test --project tests/Govern.ClientTests           # Blazor components (bUnit)
 dotnet test --project tests/Govern.ArchitectureTests     # conventions
 dotnet test Govern.slnx --coverage --coverage-output-format cobertura
 ```

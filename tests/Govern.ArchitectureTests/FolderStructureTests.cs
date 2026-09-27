@@ -63,7 +63,7 @@ public partial class FolderStructureTests
             return;
         }
 
-        foreach (var file in Directory.EnumerateFiles(folder, "*.cs"))
+        foreach (var file in SourceTree.SourceFilesIn(folder))
         {
             if (!spec.IsAllowedFile(Path.GetFileName(file)))
             {
