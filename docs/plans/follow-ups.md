@@ -11,12 +11,11 @@ Open work found by the first code review and security audit of the template Api 
 
 Sign-out, refresh token cleanup, the transactional sign-up email and email verification (formerly #1, #4, #6 and #7) are planned in [session-and-email-verification](session-and-email-verification.md). Item numbers are kept so existing references stay valid. #11 (quiet first migration log) was dropped as not needed: the one-off EF Core 20102 error on a brand-new database is accepted.
 
-The remaining items are planned, in delivery order, in [follow-ups-delivery](follow-ups-delivery.md). #12 (stricter email validation) is done: see the email rules in [users](../features/users.md).
+The remaining items are planned, in delivery order, in [follow-ups-delivery](follow-ups-delivery.md). Done: #12 (stricter email validation) and #3 (per-account sign-in limiter); see the email rules and sign-in throttling in [users](../features/users.md).
 
 | # | Priority | Item | Size |
 |---|---|---|---|
 | 2 | High | [Least-privilege database access](#2-least-privilege-database-access) | M |
-| 3 | Medium | [Per-account sign-in limiter](#3-per-account-sign-in-limiter) | S |
 | 5 | Medium | [Monitoring and alerts](#5-monitoring-and-alerts) | M |
 | 8 | Low | [Host filtering and health check split](#8-host-filtering-and-health-check-split) | S |
 | 9 | Decide | [Key Vault purge protection](#9-key-vault-purge-protection) | XS |
@@ -31,18 +30,6 @@ The remaining items are planned, in delivery order, in [follow-ups-delivery](fol
   - The connection string holds no password.
 - **Alternative:** a dedicated `govern_app` login created by a one-time SQL script, with its connection string in Key Vault.
 - **Tests:** the deployment health check; integration tests are unchanged (Testcontainers).
-
-## 3. Per-account sign-in limiter
-
-- **Why:** the `auth` rate limit is per client IP only. A distributed attacker can brute-force one account, and PBKDF2 makes each attempt CPU-heavy on the B1 plan (security audit, Medium).
-- **Approach:**
-  - Count failed sign-ins per normalised email (for example 5 per 15 min), then return 429 for that account.
-  - Store the counters in the database or a cache, and reset them on success.
-  - Partition the IP limiter for IPv6 by /64.
-- **Tests:**
-  - the Nth failure is limited
-  - success resets the counter
-  - other accounts are unaffected
 
 ## 5. Monitoring and alerts
 

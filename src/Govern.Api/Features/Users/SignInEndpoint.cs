@@ -31,7 +31,10 @@ public static class SignInEndpoint
     /// <response code="200">Signed in.</response>
     /// <response code="400">Missing email or password.</response>
     /// <response code="401">Invalid email or password.</response>
-    /// <response code="429">Too many attempts from this client.</response>
+    /// <response code="429">
+    /// Too many requests from this client (IPv6 counted per /64), or too many failed sign-ins for this email
+    /// (<c>user.too_many_sign_in_attempts</c>).
+    /// </response>
     private static async Task<IResult> HandleAsync(SignInRequest request, IMediatorService mediator, CancellationToken cancellationToken)
     {
         var result = await mediator.SendAsync(request, cancellationToken);

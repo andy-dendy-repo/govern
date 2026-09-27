@@ -90,7 +90,7 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 | Kind | Items |
 |---|---|
 | Rules, always loaded | `project-map`, `planning` |
-| Rules, path-scoped | `architecture` (src), `csharp-style` (*.cs), `xml-docs`, `logging`, `mapping`, `error-handling` (src/*.cs), `persistence` (Domain, Application, Infrastructure), `api-endpoints` (Api), `auth` (Api, Users, Identity), `security` (src, infra, .github, appsettings), `unit-tests`, `integration-tests`, `architecture-tests`, `docs` |
+| Rules, path-scoped | `architecture` (src), `csharp-style` (*.cs), `xml-docs`, `logging`, `mapping`, `error-handling` (src/*.cs), `caching` (Infrastructure/Caching, repositories), `persistence` (Domain, Application, Infrastructure), `api-endpoints` (Api), `auth` (Api, Users, Identity), `security` (src, infra, .github, appsettings), `unit-tests`, `integration-tests`, `architecture-tests`, `docs` |
 | Skills | `/develop-feature` (the dev flow), `/verify` (quality gate), `/add-use-case`, `/add-entity`, `/add-migration`, `/add-infra-concern` (recipes from the real Users slice), `/outdated-packages` (manual only) |
 | Agents (read-only, project memory) | `code-reviewer` (after every feature), `security-auditor` (before every stage → main release PR, and after auth, endpoint, config, infra or CI changes), `ef-core-specialist` (entities, configurations, migrations, slow queries) |
 | Hooks (`.claude/hooks/`) | bash guard (destructive git, protected branches, `rm -rf`), protected generated/secret files, whitespace format on edit, restore on csproj/props edit, test gate on Stop, branch info on SessionStart |

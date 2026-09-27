@@ -1,5 +1,6 @@
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Common.Options;
+using Govern.Infrastructure.Caching.Services;
 using Govern.Infrastructure.Emailing.Services;
 using Govern.Infrastructure.Identity.Services;
 using Govern.Infrastructure.Options;
@@ -15,7 +16,7 @@ namespace Govern.Infrastructure;
 
 /// <summary>
 /// Registers Infrastructure implementations: persistence (PostgreSQL), identity (JWT, password hashing),
-/// email (mocked) and the database health check.
+/// email (mocked), in-memory sign-in throttling and the database health check.
 /// </summary>
 public static class DependencyInjection
 {
@@ -25,7 +26,9 @@ public static class DependencyInjection
         /// <summary>
         /// Adds all Infrastructure services.
         /// </summary>
-        /// <param name="configuration">Application configuration (connection string, <c>Jwt</c>, <c>Database</c>).</param>
+        /// <param name="configuration">
+        /// Application configuration (connection string, <c>Jwt</c>, <c>Database</c>, <c>SignInThrottling</c>).
+        /// </param>
         /// <returns>The service collection, for chaining.</returns>
         /// <exception cref="InvalidOperationException">The <c>Govern</c> connection string is missing.</exception>
         public IServiceCollection AddInfrastructure(IConfiguration configuration)
@@ -35,12 +38,14 @@ public static class DependencyInjection
             services.TryAddSingleton(TimeProvider.System);
             services.AddOptions<JwtOptions>().Bind(configuration.GetSection(JwtOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
             services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.SectionName));
+            services.AddOptions<SignInThrottlingOptions>().Bind(configuration.GetSection(SignInThrottlingOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
 
             services.AddPersistence(configuration);
 
             services.AddSingleton<ITokenService, JwtTokenService>();
             services.AddSingleton<IPasswordHashingService, PasswordHashingService>();
             services.AddSingleton<IEmailService, LoggingEmailService>();
+            services.AddSingleton<ISignInThrottlingService, MemorySignInThrottlingService>();
 
             return services;
         }

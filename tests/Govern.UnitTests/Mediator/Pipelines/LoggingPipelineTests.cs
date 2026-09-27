@@ -40,6 +40,7 @@ public class LoggingPipelineTests
     [Theory]
     [InlineData(ErrorType.Unauthorized)]
     [InlineData(ErrorType.Forbidden)]
+    [InlineData(ErrorType.TooManyRequests)]
     public async Task HandleAsync_AuthFailure_LogsWarning(ErrorType type)
     {
         var pipeline = new LoggingPipeline<PingRequest, PingResponse>(_logger, _time);

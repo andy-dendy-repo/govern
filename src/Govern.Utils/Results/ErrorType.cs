@@ -20,6 +20,9 @@ public enum ErrorType
     /// <summary>The caller is authenticated but not allowed to perform the operation (403).</summary>
     Forbidden,
 
+    /// <summary>The caller made too many attempts and must wait before retrying (429).</summary>
+    TooManyRequests,
+
     /// <summary>An unexpected failure; details are logged, never returned (500).</summary>
     Unexpected,
 }

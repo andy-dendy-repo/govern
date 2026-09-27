@@ -1,6 +1,6 @@
 ---
 title: Users feature (sign-up, sign-in, refresh, sign-out, current user)
-tags: [users, auth, jwt, refresh-token, sign-up, sign-in, sign-out, session-cap, email]
+tags: [users, auth, jwt, refresh-token, sign-up, sign-in, sign-out, session-cap, email, rate-limiting, throttling, brute-force]
 code: [src/Govern.Application/Users, src/Govern.Api/Features/Users, src/Govern.Domain/Entities/User.cs, src/Govern.Domain/Entities/RefreshToken.cs, src/Govern.Infrastructure/Identity]
 updated: 2026-09-27
 ---
@@ -14,7 +14,7 @@ The Users feature lets people create an account with email and password, sign in
 | Method | Route | Access | Success | Errors |
 |---|---|---|---|---|
 | POST | `/api/users/sign-up` | Anonymous, rate limited | 201 `{ userId }`, `Location: /api/users/me` | 400 validation, 409 `user.email_taken`, 429 |
-| POST | `/api/users/sign-in` | Anonymous, rate limited | 200 `{ accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt }` | 400, 401 `user.invalid_credentials`, 429 |
+| POST | `/api/users/sign-in` | Anonymous, rate limited | 200 `{ accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt }` | 400, 401 `user.invalid_credentials`, 429 (rate limit or `user.too_many_sign_in_attempts`) |
 | POST | `/api/users/refresh` | Anonymous, rate limited | 200 same shape as sign-in | 400, 401 `user.invalid_refresh_token`, 429 |
 | POST | `/api/users/sign-out` | Bearer token | 204 | 400, 401 |
 | POST | `/api/users/sign-out-everywhere` | Bearer token | 204 | 401 |
@@ -35,6 +35,26 @@ Errors are RFC 9457 ProblemDetails with a stable `code` extension. Validation er
 - A correct email and password return a 15-minute access token (JWT) and a 14-day refresh token.
 - A malformed email, an unknown email and a wrong password all return the same 401 `user.invalid_credentials`, with comparable response time, so sign-in does not reveal whether an account exists (sign-up does; see above).
 - Each sign-in creates a new refresh token, so one user can be signed in on several devices.
+
+## Sign-in throttling (brute-force protection)
+
+Sign-in has two independent limits:
+
+| Limit | Key | Default | Response |
+|---|---|---|---|
+| `auth` rate-limiting policy | Client IP; IPv6 per /64 prefix, because one subscriber usually owns a whole /64 | 10 requests per minute (`RateLimiting:*`) | 429 before the endpoint runs |
+| Per-account throttling | Normalised email | 5 attempts without a successful sign-in per 15 minutes (`SignInThrottling:*`) | 429 `user.too_many_sign_in_attempts` |
+
+- **Per-account throttling:**
+  - Every attempt for a well-formed email is reserved atomically **before** the password is checked, so parallel requests can't slip past the limit while earlier ones are still hashing. Past the limit, sign-in is refused without checking the password, so a distributed attacker gets no more than 5 guesses per window and spends no PBKDF2 CPU.
+  - The window starts at the first attempt; a successful sign-in resets the count.
+  - Unknown emails are counted exactly like registered ones, so the 429 doesn't reveal whether an account exists. Malformed emails are never counted (they can't match an account).
+  - 429 responses are logged at Warning (error code only, never the email).
+- **Storage:** counters live in memory (`MemorySignInThrottlingService`, see `.claude/rules/caching.md`). They are per instance and reset on restart or redeploy, which is acceptable for one Web App instance. At most `SignInThrottling:MaxTrackedAccounts` emails are tracked. Tracked counters are never evicted early; when the store is full, new emails are not tracked (fail open) until expired entries are purged (the cache scans about once a minute), and the IP limit still applies.
+- **Accepted risk: lockout.** Anyone who knows an email can block its sign-in for as long as the attack continues (5 requests per 15 minutes per account; one IP can keep about 30 accounts locked within its own limit). The owner's existing sessions keep working, because refresh is not throttled per account.
+- **Accepted risk: weak existence signal.** Only a real account's owner can reset the count by signing in. An attacker who watches the count could notice such a reset, which reveals that the account exists and is in use. Sign-up already reveals existence (409), so this adds little.
+- **IPv6:** App Service accepts IPv4 only today. If IPv6 inbound is enabled, one attacker can hold many /64 prefixes (a free tunnel gives a /48), so add an aggregate or global failed-sign-in limit first.
+- **Proxy note:** with the Cloudflare proxy on, the client IP arrives in `CF-Connecting-IP`, and the IP limit would count Cloudflare edges instead. See `docs/operations/dns.md`.
 
 ## Session cap and refresh token cleanup
 

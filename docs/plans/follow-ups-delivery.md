@@ -15,13 +15,13 @@ Delivery plans for the items in [follow-ups](follow-ups.md). Each increment gets
 |---|---|
 | #9 Key Vault purge protection | Enabled (irreversible, accepted) |
 | #2 Database access | Microsoft Entra authentication with the Web App's system-assigned managed identity |
-| #3 Per-account limiter store | In-memory counters (single B1 instance) |
+| #3 Per-account limiter store | In-memory counters (single B1 instance); done |
 | #5 Monitoring | One Log Analytics workspace, workspace-based Application Insights, Azure Monitor OpenTelemetry distro exporting Warning+ logs only |
 
 ## Delivery order
 
 1. ~~#12 stricter email validation~~ (done).
-2. #3 per-account sign-in limiter.
+2. ~~#3 per-account sign-in limiter~~ (done).
 3. #8 + #9 health check split, host filtering and Key Vault purge protection; `/health/ready` is then used by the deploy checks of the next plans.
 4. #2 least-privilege database access through Entra.
 5. #5 monitoring and alerts.
@@ -29,83 +29,6 @@ Delivery plans for the items in [follow-ups](follow-ups.md). Each increment gets
 7. #10b Blazor client authentication and pages, in [blazor-client-delivery](blazor-client-delivery.md).
 
 Plans 2 and 3 of [session-and-email-verification](session-and-email-verification.md) are separate. They fit best before #10b, so the client gets the confirm-email page from the start.
-
-## Plan 2: Per-account sign-in limiter (#3)
-
-### Context
-The `auth` rate limit is per IP only. A distributed attacker can brute-force one account, and each attempt costs a PBKDF2 verify on the B1 plan. This plan throttles per normalised email with in-memory counters (the app runs on a single instance) and partitions IPv6 by /64.
-
-### Scope
-- In:
-  - after N failed sign-ins for an email within a window → 429 `user.too_many_sign_in_attempts`
-  - the check happens **before** password verification
-  - success resets the counter
-  - the same behaviour for unknown emails, so there is no enumeration
-  - IPv6 /64 partitioning for the IP limiter
-- Out:
-  - counters shared across instances or restarts (in-memory by decision)
-  - a `Retry-After` header
-  - `CF-Connecting-IP` handling (the Cloudflare proxy is off, `docs/operations/dns.md`)
-
-### Affected areas
-- **Utils:**
-  - `Results/ErrorType.cs` (+`TooManyRequests`)
-  - `Results/Error.cs` (+`Error.TooManyRequests`)
-  - new `Net/IpPartitionKey.cs`
-- **Application.Common:**
-  - `Abstractions/ISignInAttemptLimiter.cs` (new): `IsBlocked(Email)`, `RecordFailure(Email)`, `Reset(Email)`
-  - `Options/SignInThrottlingOptions.cs` (new, section `SignInThrottling`): `MaxFailedAttempts` [1..100] = 5, `Window` [1 min..1 h] = 15 min
-- **Application:**
-  - `Users/Contracts/SignInContract.cs`
-  - `Users/Models/UserErrors.cs` (+`TooManySignInAttempts`)
-- **Infrastructure:** `Caching/` (the first cache concern). The `IMemoryCache`-backed implementation follows the `/add-infra-concern` recipe. It stores `(count, windowStart)` and uses `TimeProvider` so tests are deterministic. `SizeLimit` is set from options (default 100 000 entries), and it fails open when full.
-- **Api:**
-  - `Extensions/ResultExtensions.cs` maps `TooManyRequests` → 429.
-  - `DependencyInjection.cs:84` partitions by `IpPartitionKey.From(RemoteIpAddress)`.
-  - `appsettings.json` gets a `SignInThrottling` section.
-
-### Steps
-1. **Utils:**
-   - `ErrorType.TooManyRequests` and its factory.
-   - `IpPartitionKey.From(IPAddress?)`: IPv4 unchanged; IPv4-mapped IPv6 → IPv4; IPv6 → `/64` prefix string; null → `"unknown"`.
-2. **Application.Common:** the abstraction and options (`ValidateDataAnnotations().ValidateOnStart()`).
-3. **Application:** `SignInHandler`:
-   - After `Email.TryCreate`, if `IsBlocked` → `TooManySignInAttempts`, with no hash work.
-   - When `FindVerifiedUserIdAsync` returns null → `RecordFailure`, then `InvalidCredentials`.
-   - On success → `Reset`.
-   - The handler constructor stays at 5 or fewer dependencies.
-4. **Infrastructure:** `Caching/` implementation plus DI (singleton), and the `Microsoft.Extensions.Caching.Memory` package via `dotnet add package` if it is not already transitive.
-5. **Api:** the 429 mapping and the IP partition key.
-
-### Tests
-- **Unit:** `tests/Govern.UnitTests/Utils/Net/IpPartitionKeyTests.cs` covers IPv4, IPv6 /64 (two addresses in the same /64 → same key), IPv4-mapped and null.
-- **Integration (`SignInEndpointTests`):**
-  - 5 failures, then the correct password → 429.
-  - Another account is unaffected.
-  - 4 failures + success + 4 failures → still 401.
-  - An unknown email is throttled the same way (429).
-  - After `Window` passes (`FakeTimeProvider`) → 401 or 200 again.
-  - The existing `Post_SignInOverRateLimit_Returns429` still passes (unique emails).
-- **Architecture:** none, unless `/add-infra-concern` adds a `Caching` folder whitelist entry in `FolderStructureTests`.
-
-### Docs & rules
-- `docs/features/users.md`: sign-in throttling, 429, the lockout-DoS trade-off.
-- `docs/operations/configuration.md`: `SignInThrottling:*`.
-- `.claude/rules/error-handling.md`: the new `ErrorType`.
-- `.claude/rules/caching.md`: created now (deferred until the first cache, per the roadmap), with the arch test change if the recipe adds one.
-- `.claude/rules/auth.md`: bullet on the per-account limiter.
-- Remove #3 from follow-ups.
-
-### Verification
-- Build and all tests green.
-- Manual check in `Govern.Api.http`: 6 bad sign-ins → 429.
-
-### Risks & open questions
-- Anyone can lock a victim out for `Window` by sending 5 wrong passwords. This is accepted and documented; the IP limiter still bounds the attacker.
-- Counters reset on restart or redeploy (accepted by decision).
-- If the Api scales out to more instances, move the store to Redis.
-
----
 
 ## Plan 3: Health split, host filtering, Key Vault purge protection (#8, #9)
 

@@ -21,7 +21,7 @@ Govern is a public API with JWT bearer auth, a public WASM client, and Postgres 
 - Validate issuer, audience, lifetime and signing key. Keep `ClockSkew` small (≤ 1 min). The signing key is at least 256 bits and comes from configuration or a secret, never a literal.
 - Keep access tokens short-lived. Tokens are sent only in the `Authorization: Bearer` header, never in URLs, query strings or logs.
 - Passwords are hashed with a slow, salted algorithm (`PasswordHasher<T>` PBKDF2 or Argon2). They are never logged, returned or stored reversibly.
-- Login and registration are rate-limited (ASP.NET Core rate limiter). Login failures return one generic error that does not reveal whether the email exists.
+- Login and registration are rate-limited (ASP.NET Core rate limiter, per IP and IPv6 /64), and failed logins are throttled per account (`ISignInThrottlingService`). Login failures return one generic error that does not reveal whether the email exists.
 
 ## Authorization
 

@@ -46,7 +46,7 @@ public sealed partial class LoggingPipeline<TRequest, TResponse>(
     {
         switch (error.Type)
         {
-            case ErrorType.Unauthorized or ErrorType.Forbidden:
+            case ErrorType.Unauthorized or ErrorType.Forbidden or ErrorType.TooManyRequests:
                 Log.AccessDenied(logger, requestName, elapsed, error.Type, error.Code);
                 break;
             case ErrorType.Unexpected:
