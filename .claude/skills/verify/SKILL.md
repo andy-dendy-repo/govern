@@ -16,9 +16,10 @@ Run the phases in order. **Build and test failures stop the run**: fix them, the
 2. **Format:** `dotnet format Govern.slnx --verify-no-changes --exclude src/Govern.Core`. On failure, run the same command without `--verify-no-changes` and review the diff. Core is ignored.
 3. **Architecture tests:** `dotnet test --project tests/Govern.ArchitectureTests`. Failures name the offending folder, file or type. Fix the code, or update rule and test together if the convention is deliberately changing (ask the user first).
 4. **Unit tests:** `dotnet test --project tests/Govern.UnitTests`.
-5. **Integration tests:** `dotnet test --project tests/Govern.IntegrationTests`. Docker must be running for Testcontainers. If it isn't, report "integration tests NOT run — Docker unavailable" and treat the gate as failed.
-6. **Full run:** `dotnet test Govern.slnx` (no filters). This is the run the Stop-hook test gate records, and it must show `Test run summary: Passed!`.
-7. **Static analysis** on changed files (`git diff --name-only stage...HEAD` plus uncommitted changes), using `cwm-roslyn-navigator`:
+5. **Client tests:** `dotnet test --project tests/Govern.ClientTests` (bUnit).
+6. **Integration tests:** `dotnet test --project tests/Govern.IntegrationTests`. Docker must be running for Testcontainers. If it isn't, report "integration tests NOT run — Docker unavailable" and treat the gate as failed.
+7. **Full run:** `dotnet test Govern.slnx` (no filters). This is the run the Stop-hook test gate records, and it must show `Test run summary: Passed!`.
+8. **Static analysis** on changed files (`git diff --name-only stage...HEAD` plus uncommitted changes), using `cwm-roslyn-navigator`:
    - `get_diagnostics` for changed files
    - `detect_antipatterns` (DateTime.Now, logging interpolation, missing CancellationToken, sync-over-async, AsNoTracking, broad catch…)
    - `get_di_registrations` when DI changed (captive dependencies, duplicates)
@@ -36,6 +37,7 @@ Run the phases in order. **Build and test failures stop the run**: fix them, the
 | Format | ✅ |
 | Architecture | ✅ 44/44 |
 | Unit | ✅ n/n |
+| Client | ✅ n/n |
 | Integration | ✅ n/n (or ❌ not run: reason) |
 | Full run | ✅ total/failed/succeeded |
 | Analysis | ✅ / ⚠️ findings… |

@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/Tests/">
     <Project Path="tests/Govern.ArchitectureTests/Govern.ArchitectureTests.csproj" />
+    <Project Path="tests/Govern.ClientTests/Govern.ClientTests.csproj" />
     <Project Path="tests/Govern.IntegrationTests/Govern.IntegrationTests.csproj" />
     <Project Path="tests/Govern.UnitTests/Govern.UnitTests.csproj" />
   </Folder>

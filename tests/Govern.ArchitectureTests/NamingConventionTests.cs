@@ -3,6 +3,7 @@ using ArchUnitNET.xUnitV3;
 using Govern.ArchitectureTests.Support;
 using Govern.Domain.EntityBase;
 using Govern.Utils.Mediator.Abstractions;
+using Microsoft.AspNetCore.Components;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace Govern.ArchitectureTests;
@@ -175,6 +176,39 @@ public class NamingConventionTests
     {
         ProductionTypes().And().ResideInNamespaceMatching(InFolder("Enums"))
             .Should().BeEnums()
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void ClientPages_AreComponentsEndingWithPage()
+    {
+        ProductionTypes().And().ResideInNamespaceMatching(@"^Govern\.Client\.Features\.\w+\.Pages$")
+            .Should().HaveNameEndingWith("Page")
+            .AndShould().BeAssignableTo(typeof(ComponentBase))
+            .Because("Features/[Feature]/Pages holds only routable components named XxxPage")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void ClientLayoutAndComponents_AreComponents()
+    {
+        ProductionTypes().And().ResideInNamespaceMatching(@"^Govern\.Client\.(?:Layout|Components|Features\.\w+\.Components)(?:\..*)?$")
+            .Should().BeAssignableTo(typeof(ComponentBase))
+            .Because("Layout/ and Components/ hold Razor components only; logic goes to Services or a typed client")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void ClientApiClients_AreSealedAndEndWithClient()
+    {
+        Classes().That().ResideInNamespaceMatching(@"^Govern\.Client\.Features\.\w+\.Clients$")
+            .And().AreNotNested().And().DoNotHaveNameContaining("<")
+            .Should().BeSealed()
+            .AndShould().HaveNameEndingWith("Client")
+            .Because("typed Api clients are sealed XxxClient classes, one per feature")
             .WithoutRequiringPositiveResults()
             .Check(GovernArchitecture.Instance);
     }

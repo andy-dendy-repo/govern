@@ -14,6 +14,12 @@ indent_size = 4
 [*.{json,yml,yaml}]
 indent_size = 2
 
+[*.{razor,html,css,js}]
+indent_size = 4
+
+[*.sh]
+indent_size = 2
+
 [*.md]
 trim_trailing_whitespace = false
 
@@ -138,3 +144,8 @@ dotnet_code_quality.CA1711.allowed_suffixes = EventHandler
 # EF Core migrations are generated: analyzers and dotnet format skip them.
 [src/**/Persistence/Migrations/*.cs]
 generated_code = true
+
+# Blazor WebAssembly client (see .claude/rules/blazor-client.md).
+[src/Govern.Client/**.cs]
+# CA2007: never ConfigureAwait(false) in the client; components must resume on the renderer's synchronization context.
+dotnet_diagnostic.CA2007.severity = none

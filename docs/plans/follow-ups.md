@@ -63,5 +63,5 @@ The remaining items are planned, in delivery order, in [follow-ups-delivery](fol
   - tokens in localStorage
   - an `AuthorizationMessageHandler`, with one refresh on 401
   - login, register and profile pages
-- **Gate:** `staticwebapp.config.json` with a strict CSP (`default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://<api>; frame-ancestors 'none'`) and security headers **before** tokens are stored.
-- **Also:** add `.claude/rules/blazor-client.md` and a Client folder spec in `tests/Govern.ArchitectureTests/Conventions/Templates.cs`.
+- **Gate (done):** the strict CSP and security headers on the Static Web App, the client architecture, rules and tests are in place ([client](../features/client.md)).
+- **Remaining:** authentication and pages ([blazor-client-delivery](blazor-client-delivery.md), Plan 7).

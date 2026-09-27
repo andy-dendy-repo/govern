@@ -44,9 +44,26 @@ public static class SourceTree
     /// </summary>
     /// <param name="folder">Absolute folder path.</param>
     /// <returns>Absolute file paths.</returns>
-    public static IEnumerable<string> CSharpFiles(string folder) =>
-        Directory.EnumerateFiles(folder, "*.cs")
-            .Concat(SourceSubFolders(folder).SelectMany(CSharpFiles));
+    public static IEnumerable<string> CSharpFiles(string folder) => FilesBelow(folder, "*.cs");
+
+    /// <summary>
+    /// All Razor component files (<c>.razor</c>) below <paramref name="folder"/> that are part of the source tree.
+    /// </summary>
+    /// <param name="folder">Absolute folder path.</param>
+    /// <returns>Absolute file paths.</returns>
+    public static IEnumerable<string> RazorFiles(string folder) => FilesBelow(folder, "*.razor");
+
+    /// <summary>
+    /// Source files (<c>.cs</c> and <c>.razor</c>) directly in <paramref name="folder"/>, not in its sub-folders.
+    /// </summary>
+    /// <param name="folder">Absolute folder path.</param>
+    /// <returns>Absolute file paths.</returns>
+    public static IEnumerable<string> SourceFilesIn(string folder) =>
+        Directory.EnumerateFiles(folder, "*.cs").Concat(Directory.EnumerateFiles(folder, "*.razor"));
+
+    private static IEnumerable<string> FilesBelow(string folder, string pattern) =>
+        Directory.EnumerateFiles(folder, pattern)
+            .Concat(SourceSubFolders(folder).SelectMany(sub => FilesBelow(sub, pattern)));
 
     /// <summary>
     /// Path of <paramref name="path"/> relative to the repository root, using forward slashes.

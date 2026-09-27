@@ -20,11 +20,12 @@ Govern is an HTTP Web API with a Blazor WASM client.
 - `src/`: production projects. See `.claude/rules/project-map.md` for what goes where and allowed references.
 - `tests/`:
   - `Govern.UnitTests`: Utils and Domain only (pure code).
-  - `Govern.IntegrationTests`: everything else, via HTTP against Postgres in Testcontainers.
+  - `Govern.IntegrationTests`: everything else on the server, via HTTP against Postgres in Testcontainers.
+  - `Govern.ClientTests`: Blazor client components and services (bUnit).
   - `Govern.ArchitectureTests`: enforces the rules.
 - `docs/`: knowledge base (RAG); index in `docs/README.md`.
 - `infra/`: Bicep.
-- `.github/workflows/`: CI and release.
+- `.github/workflows/`: CI and release; `.github/scripts/configure-client.sh` fills the client CSP and Api origin.
 - `Govern.Core` is ignored: excluded from all rules. Leave it alone unless asked.
 
 ## Commands
@@ -38,6 +39,7 @@ dotnet format Govern.slnx --verify-no-changes --exclude src/Govern.Core
 dotnet ef migrations add <Name> --project src/Govern.Infrastructure --startup-project src/Govern.Api --output-dir Persistence/Migrations
 dotnet tool restore                                             # local tools (cwm-roslyn-navigator, dotnet-ef)
 dotnet run --project src/Govern.Api                             # needs user-secrets: see docs/operations/local-development.md
+dotnet run --project src/Govern.Client                          # Radzen client on https://localhost:7042 (Api on :7294)
 dotnet publish src/Govern.Api -c Release -t:PublishContainer    # container image govern-api:local
 az bicep build --file infra/main.bicep                          # compile infra
 ```
@@ -54,6 +56,7 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 2. Tests written or updated:
    - unit tests (Utils and Domain only)
    - integration tests (happy path, 400, 401/403, domain errors)
+   - client tests (bUnit) for client components and services
    - architecture tests (for new conventions)
 3. XML docs on every public member (the build fails otherwise).
 4. `docs/` updated (feature doc + index).
@@ -62,7 +65,7 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 
 ## Core conventions (details in `.claude/rules/`)
 
-- **Folder templates:** UF / AGFT / 3DFT per project. Folders are created on demand and are whitelisted by `FolderStructureTests`.
+- **Folder templates:** UF / AGFT / 3DFT per project, CFT for the client (`blazor-client.md`). Folders are created on demand and are whitelisted by `FolderStructureTests`.
 - **No `Helper` suffix.** Name classes by role: Resolver, Mapper, Calculator, Builder…
 - **Suffix per folder:** `Options`, `Exception`, `Service`, `Repository`, `EventHandler`, `Endpoint`, and so on.
 - **Use case files:** `Application/[Feature]/Contracts/XxxContract.cs` holds `XxxRequest`, `XxxResponse`, `XxxValidator`, `XxxHandler` and `file` types only.
@@ -84,13 +87,14 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 - `roslyn-refactor`: **code changes.** Rename, move type or namespace, change signature, extract method or interface, add missing usings, format. Use it for multi-file refactors instead of manual edits.
 - `microsoft-docs` / `context7`: current .NET, ASP.NET Core, EF Core, Radzen and Testcontainers APIs. Check them before using an API you aren't sure of.
 - `postgres`: inspect the local database (it is unrestricted; don't run destructive SQL without asking).
+- `playwright`: drive a real browser against the running client (`https://localhost:7042`) to check UI changes end to end: navigate, click, fill forms, read the accessibility snapshot, take screenshots.
 
 ## Claude setup
 
 | Kind | Items |
 |---|---|
 | Rules, always loaded | `project-map`, `planning` |
-| Rules, path-scoped | `architecture` (src), `csharp-style` (*.cs), `xml-docs`, `logging`, `mapping`, `error-handling` (src/*.cs), `caching` (Infrastructure/Caching, repositories), `persistence` (Domain, Application, Infrastructure), `api-endpoints` (Api), `auth` (Api, Users, Identity), `security` (src, infra, .github, appsettings), `unit-tests`, `integration-tests`, `architecture-tests`, `docs` |
+| Rules, path-scoped | `architecture` (src), `blazor-client` (Client), `csharp-style` (*.cs, *.razor), `xml-docs`, `logging`, `mapping`, `error-handling` (src/*.cs), `caching` (Infrastructure/Caching, repositories), `persistence` (Domain, Application, Infrastructure), `api-endpoints` (Api), `auth` (Api, Users, Identity), `security` (src, infra, .github, appsettings), `unit-tests`, `integration-tests`, `client-tests`, `architecture-tests`, `docs` |
 | Skills | `/develop-feature` (the dev flow), `/verify` (quality gate), `/add-use-case`, `/add-entity`, `/add-migration`, `/add-infra-concern` (recipes from the real Users slice), `/outdated-packages` (manual only) |
 | Agents (read-only, project memory) | `code-reviewer` (after every feature), `security-auditor` (before every stage → main release PR, and after auth, endpoint, config, infra or CI changes), `ef-core-specialist` (entities, configurations, migrations, slow queries) |
 | Hooks (`.claude/hooks/`) | bash guard (destructive git, protected branches, `rm -rf`), protected generated/secret files, whitespace format on edit, restore on csproj/props edit, test gate on Stop, branch info on SessionStart |
