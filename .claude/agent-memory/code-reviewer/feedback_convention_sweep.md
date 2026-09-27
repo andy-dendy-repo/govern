@@ -11,5 +11,7 @@ When a change edits a convention, grep beyond `.claude/rules` and `docs/`. It ha
 
 - 2026-09-27, health split + HostAllowListMiddleware: `api-endpoints.md` "Pipeline order in Program.cs" and "Middleware ... registered transient; the current one is ExceptionHandlingMiddleware" were left stale (new middleware registered singleton).
 
+- 2026-09-27, Swagger UI: `security.md` and `api-endpoints.md` were updated but `.claude/agents/security-auditor.md` (HTTP surface: "OpenAPI is Development-only") was not.
+
 **Why:** CLAUDE.md DoD item 5 requires rules, skills, agents and docs to change together with the convention. Stale agent prompts and skills make later features (and reviews) enforce the old rule.
 **How to apply:** on any rule change or new test project, grep `.claude/agents`, `.claude/skills` and code snippets inside rule files for the old wording, old signatures and the list of test projects. Also check value-object converters: `Create` in `HasConversion` validates on read, so legacy rows that fail the new rule throw on materialisation.

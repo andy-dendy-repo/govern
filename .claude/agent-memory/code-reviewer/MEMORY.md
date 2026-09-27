@@ -5,3 +5,4 @@
 - [In-process state checks](project_in_process_state.md) — limiter TOCTOU across PBKDF2, MemoryCache SizeLimit evicts LRU (not fail-open), Reset race
 - [Client checks](project_client_checks.md) — Blazor client: verified WASM env/boot facts, configure-client.sh, arch-rule exemptions, Plan 7 traps
 - [App Service hosting checks](project_app_service_hosting.md) — Health check pings default domain, release deploys before API_ORIGIN is validated
+- [OpenAPI checks](project_openapi_checks.md) — transformer order vs RegisterComponents, unresolved security refs silently dropped, Swagger UI placement
