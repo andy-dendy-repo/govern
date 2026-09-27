@@ -10,20 +10,22 @@ namespace Govern.Application.Users.Services;
 /// Issues access + refresh token pairs for sign-in and refresh. The refresh token is recorded on the
 /// <see cref="User"/> aggregate; the caller saves the user.
 /// </summary>
-public sealed class UserTokenIssuingService(ITokenService tokenService, IOptions<JwtOptions> options, TimeProvider timeProvider)
+public sealed class UserTokenIssuingService(ITokenService tokenService, IOptions<JwtOptions> options)
 {
     /// <summary>
-    /// Issues a new token pair (sign-in).
+    /// Issues a new token pair (sign-in). Beyond <see cref="JwtOptions.MaxActiveRefreshTokens"/>, the least recently
+    /// used session is revoked.
     /// </summary>
-    /// <param name="user">The tracked user; a new refresh token is added to it.</param>
+    /// <param name="user">The tracked user with its active refresh tokens loaded; a new refresh token is added to it.</param>
+    /// <param name="now">The current time of the request.</param>
     /// <returns>The token pair to return to the client.</returns>
-    public AuthTokens Issue(User user)
+    public AuthTokens Issue(User user, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(user);
 
         var refreshToken = tokenService.CreateRefreshToken();
-        var expiresAt = timeProvider.GetUtcNow() + options.Value.RefreshTokenLifetime;
-        user.IssueRefreshToken(refreshToken.TokenHash, expiresAt);
+        var expiresAt = now + options.Value.RefreshTokenLifetime;
+        user.IssueRefreshToken(refreshToken.TokenHash, expiresAt, now, options.Value.MaxActiveRefreshTokens);
 
         return new AuthTokens(tokenService.CreateAccessToken(user.Id, user.Email.Value), refreshToken.Token, expiresAt);
     }
@@ -33,13 +35,13 @@ public sealed class UserTokenIssuingService(ITokenService tokenService, IOptions
     /// </summary>
     /// <param name="user">The tracked owner of <paramref name="current"/>.</param>
     /// <param name="current">The active refresh token presented by the client.</param>
+    /// <param name="now">The current time of the request.</param>
     /// <returns>The new token pair to return to the client.</returns>
-    public AuthTokens Rotate(User user, RefreshToken current)
+    public AuthTokens Rotate(User user, RefreshToken current, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(user);
 
         var refreshToken = tokenService.CreateRefreshToken();
-        var now = timeProvider.GetUtcNow();
         var expiresAt = now + options.Value.RefreshTokenLifetime;
         user.RotateRefreshToken(current, refreshToken.TokenHash, expiresAt, now);
 

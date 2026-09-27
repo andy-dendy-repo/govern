@@ -23,7 +23,8 @@ The Api is consumed by a Blazor WebAssembly client hosted on a different origin 
   - Opaque, 64 random bytes, lifetime 14 days.
   - Stored only as SHA-256 hashes.
   - Single-use: every refresh revokes the presented token and issues a new pair.
-- **Reuse detection:** a revoked refresh token presented again revokes all of the user's active refresh tokens and logs a warning.
+- **Reuse detection:** a rotated refresh token presented again, to refresh or to sign out, revokes all of the user's active refresh tokens and logs a warning. Tokens revoked by sign-out or the session cap are only rejected.
+- **Sessions:** a soft cap of `Jwt:MaxActiveRefreshTokens` active refresh tokens per user (default 10); signing in beyond the cap revokes the least recently used one. Users can sign out on one device or everywhere. Expired tokens are deleted on sign-in and refresh, with no background job.
 - **Passwords:** hashed with ASP.NET Core Identity's `PasswordHasher` (PBKDF2), without adopting the rest of ASP.NET Core Identity.
 - **Deny by default:** a fallback authorization policy requires an authenticated user, and every endpoint declares its access explicitly.
 - **Future client:** it will keep both tokens in `localStorage` and refresh once on 401.
@@ -36,5 +37,6 @@ The Api is consumed by a Blazor WebAssembly client hosted on a different origin 
 ## Consequences
 - `localStorage` is readable by injected script. XSS prevention (a strict CSP on the Static Web App, no raw HTML rendering) becomes a security requirement for the client.
 - The short access-token lifetime limits the damage from a leaked token, and rotation plus reuse detection limits the damage from a leaked refresh token.
-- Revoking access immediately (e.g. a disabled account) takes up to 15 minutes unless a token denylist is added.
+- Revoking access immediately (e.g. a disabled account, or sign-out) takes up to 15 minutes unless a token denylist is added: sign-out revokes refresh tokens only.
+- A revoked token that has expired and been deleted can no longer be recognised as reused. Detection covers the whole refresh token lifetime, which is the window in which a stolen token is usable.
 - Symmetric signing means only the Api can issue and validate tokens. Moving to asymmetric keys is needed if other services must validate them.

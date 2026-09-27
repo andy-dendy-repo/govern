@@ -53,12 +53,18 @@ public sealed class SignInValidator : AbstractValidator<SignInRequest>
 /// <summary>
 /// Handles <see cref="SignInRequest"/>. Malformed or unknown emails and wrong passwords return the same
 /// <see cref="UserErrors.InvalidCredentials"/> and take comparable time (a hash is always verified).
+/// A successful sign-in deletes the user's expired refresh tokens and applies the active-session cap. Evicting a session
+/// races with refreshes and sign-outs of that token (concurrency token on <c>revoked_at</c>), so issuing is retried
+/// with fresh state; the password is verified only once.
 /// </summary>
 internal sealed class SignInHandler(
     IApplicationDbContextFactory dbContextFactory,
     IPasswordHashingService passwordHashing,
-    UserTokenIssuingService tokenIssuing) : IRequestHandler<SignInRequest, SignInResponse>
+    UserTokenIssuingService tokenIssuing,
+    TimeProvider timeProvider) : IRequestHandler<SignInRequest, SignInResponse>
 {
+    private const int MaxAttempts = 3;
+
     /// <inheritdoc />
     public async ValueTask<Result<SignInResponse>> HandleAsync(SignInRequest request, CancellationToken cancellationToken)
     {
@@ -68,23 +74,54 @@ internal sealed class SignInHandler(
             return UserErrors.InvalidCredentials;
         }
 
+        if (await FindVerifiedUserIdAsync(email, request.Password, cancellationToken) is not { } userId)
+        {
+            return UserErrors.InvalidCredentials;
+        }
+
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return SignInResponse.From(await IssueAsync(userId, cancellationToken));
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < MaxAttempts)
+            {
+                // The evicted session was refreshed or revoked concurrently; reload and evict the next one.
+            }
+        }
+    }
+
+    // Returns the user id when the password matches; always verifies a hash so timing doesn't reveal accounts.
+    private async Task<Guid?> FindVerifiedUserIdAsync(Email email, string password, CancellationToken cancellationToken)
+    {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var user = await db.Users.FirstOrDefaultAsync(candidate => candidate.Email == email, cancellationToken);
+        var credentials = await db.Users
+            .AsNoTracking()
+            .Where(candidate => candidate.Email == email)
+            .Select(candidate => new { candidate.Id, candidate.PasswordHash })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (user is null)
+        if (credentials is null)
         {
-            passwordHashing.SimulateVerify(request.Password);
-            return UserErrors.InvalidCredentials;
+            passwordHashing.SimulateVerify(password);
+            return null;
         }
 
-        if (!passwordHashing.Verify(user.PasswordHash, request.Password))
-        {
-            return UserErrors.InvalidCredentials;
-        }
+        return passwordHashing.Verify(credentials.PasswordHash, password) ? credentials.Id : null;
+    }
 
-        var tokens = tokenIssuing.Issue(user);
+    private async Task<AuthTokens> IssueAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var user = await db.Users
+            .Include(candidate => candidate.RefreshTokens.Where(token => token.RevokedAt == null && token.ExpiresAt > now))
+            .SingleAsync(candidate => candidate.Id == userId, cancellationToken);
+
+        await RefreshTokenCleanupService.DeleteExpiredAsync(db, userId, now, cancellationToken);
+        var tokens = tokenIssuing.Issue(user, now);
         await db.SaveChangesAsync(cancellationToken);
-
-        return SignInResponse.From(tokens);
+        return tokens;
     }
 }

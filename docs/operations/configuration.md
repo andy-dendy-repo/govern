@@ -19,6 +19,7 @@ Configuration follows the standard ASP.NET Core order: `appsettings.json` → `a
 | `Jwt:Audience` | no | `govern-client` | appsettings | Token audience |
 | `Jwt:AccessTokenLifetime` | no | `00:15:00` | appsettings | 1 min – 1 h |
 | `Jwt:RefreshTokenLifetime` | no | `14.00:00:00` | appsettings | 1 h – 90 days |
+| `Jwt:MaxActiveRefreshTokens` | no | `10` | appsettings | 1 – 100 active sessions per user; beyond it the least recently used session is revoked |
 | `Database:MigrateOnStartup` | no | `true` | appsettings | Apply EF migrations at startup |
 | `Cors:AllowedOrigins` | no | `[]` (Development: local client ports) | appsettings; Bicep adds the Static Web App origin | Exact browser origins; `*` is rejected at startup |
 | `RateLimiting:AuthPermitLimit` | no | `10` | appsettings | Requests per IP and window for sign-up, sign-in and refresh |
