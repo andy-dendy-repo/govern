@@ -37,7 +37,8 @@ public class LayerDependencyTests
     public void Core_DependsOnlyOnBaseClassLibrary()
     {
         Types().That().ResideInNamespaceMatching(Layers.NamespacePattern("Govern.Core"))
-            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^Microsoft(?:\..*)?$")
+            // Code coverage (CI runs `dotnet test --coverage`) injects Microsoft.CodeCoverage tracker types into every assembly.
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^Microsoft(?!\.CodeCoverage(?:\.|$))(?:\..*)?$")
             .Because("the game engine is pure and shared with the browser: base class library only, no frameworks or infrastructure")
             .WithoutRequiringPositiveResults()
             .Check(GovernArchitecture.Instance);
