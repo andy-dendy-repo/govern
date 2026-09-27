@@ -13,6 +13,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [architecture.md](architecture.md): layers, allowed references, request flow, folder templates (UF / AGFT / 3DFT), naming rules and how they are enforced.
 
 ## Features
+- [features/client.md](features/client.md): Blazor WASM client architecture (CFT feature folders), `Api:BaseUrl` configuration, CSP and security headers on the Static Web App, release-time configuration, bUnit and architecture tests.
 - [features/users.md](features/users.md): sign-up, sign-in, refresh token rotation and reuse detection, session cap and cleanup, sign-out, current user; endpoints, errors, data model.
 
 ## Decisions
@@ -31,5 +32,5 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step, with status.
 - [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (least-privilege DB access, monitoring, host filtering, Key Vault purge protection, Blazor client).
 - [plans/follow-ups-delivery.md](plans/follow-ups-delivery.md): delivery plans for the follow-ups backlog, one increment per item, in order.
-- [plans/blazor-client-delivery.md](plans/blazor-client-delivery.md): delivery plans for the Blazor client (foundation and CSP gate, then authentication and pages).
+- [plans/blazor-client-delivery.md](plans/blazor-client-delivery.md): remaining delivery plan for the Blazor client (authentication and pages).
 - [plans/session-and-email-verification.md](plans/session-and-email-verification.md): remaining increments: sign-up email inside the DB transaction, then email verification.

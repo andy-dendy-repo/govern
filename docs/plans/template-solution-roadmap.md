@@ -19,11 +19,11 @@ updated: 2026-09-27
 | 6 Users use cases | Done: sign-up, sign-in, refresh with rotation, current user |
 | 7 Api | Done |
 | 8 Integration test infrastructure | Done |
-| 9 Blazor client | **Deferred.** The Api came first. The client will store tokens in localStorage ([ADR 0002](../decisions/0002-auth-tokens.md)) |
+| 9 Blazor client | **In progress.** Foundation done: CFT architecture, Radzen shell, `Api:BaseUrl`, CSP and security headers on the Static Web App, bUnit tests, arch rules ([client](../features/client.md)). Auth and pages remain ([delivery plan](blazor-client-delivery.md), Plan 7) |
 | 10 Container | Done (chiseled Noble image) |
 | 11 Bicep | Done; not yet deployed (see [deployment](../operations/deployment.md)) |
 | 12 GitHub workflows | Done; not yet run (no remote yet) |
-| 13 Claude rules and agents | Done: mapping, error-handling, persistence, api-endpoints, auth rules, `ef-core-specialist`. Still deferred: `blazor-client.md` (with step 9). `caching.md` was added with the first in-process cache (sign-in throttling) |
+| 13 Claude rules and agents | Done: mapping, error-handling, persistence, api-endpoints, auth rules, `ef-core-specialist`. `blazor-client.md` and `client-tests.md` were added with the client foundation. `caching.md` was added with the first in-process cache (sign-in throttling) |
 | 14 Pattern skills | Done: add-use-case, add-entity, add-migration, add-infra-concern, outdated-packages |
 
 Extra work added along the way:

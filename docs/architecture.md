@@ -1,7 +1,7 @@
 ---
 title: Govern architecture
 tags: [architecture, layers, folders, naming, clean-architecture, architecture-tests]
-code: [src, tests/Govern.ArchitectureTests]
+code: [src, tests/Govern.ArchitectureTests, src/Govern.Client]
 updated: 2026-09-27
 ---
 
@@ -61,6 +61,7 @@ Folders are created on demand. The templates list which folders **may** exist; n
 | Infrastructure | UF | one folder per concern (each UF), `Background/`, `Persistence/` (Configurations, Interceptors, Migrations, `ApplicationDbContext*.cs`) |
 | Domain | UF | Entities, Events, ValueObjects, EntityBase |
 | Api | UF | Middlewares, Filters, HealthChecks, `Features/[Feature]/XxxEndpoint.cs` |
+| Client | CFT (UF) | Layout, Components, Auth, `Features/[Feature]/` with `Pages/XxxPage.razor`, `Components/`, `Clients/XxxClient.cs` (see [client](features/client.md)) |
 
 ## Naming rules
 
@@ -77,9 +78,11 @@ Folders are created on demand. The templates list which folders **may** exist; n
 
 | Test class | Checks |
 |---|---|
-| ProjectReferenceTests | csproj references against the allowed-reference table; every src project is registered; `Govern.UnitTests` references only Domain and Utils |
-| FolderStructureTests | folders and root files against the templates; contract file contents; one endpoint per file |
-| LayerDependencyTests | type-level dependencies between layers (ArchUnitNET) |
-| NamingConventionTests | Helper ban, folder suffixes, contract type names, sealed handlers, interface prefix, sealed immutable value objects |
+| ProjectReferenceTests | csproj references against the allowed-reference table; every src project is registered; `Govern.UnitTests` references only Domain and Utils; `Govern.ClientTests` references only Client |
+| FolderStructureTests | folders and root files (`.cs` and `.razor`) against the templates; contract file contents; one endpoint per file |
+| LayerDependencyTests | type-level dependencies between layers (ArchUnitNET); the client uses `HttpClient` only in typed clients and `Auth`, and JS interop only in `Auth` and `Services` |
+| NamingConventionTests | Helper ban, folder suffixes, contract type names, sealed handlers, interface prefix, sealed immutable value objects; client pages, components and typed clients |
+| CodeMetricsTests | file, member and parameter size limits; `.razor` file and `@code` block limits |
+| ClientSecurityTests | the client's CSP and security headers, self-hosted assets, no raw HTML, no secrets in client config |
 
-The templates and reference table are data in `tests/Govern.ArchitectureTests/Conventions/`. The matching Claude rules are in `.claude/rules/architecture.md` and `.claude/rules/project-map.md`.
+The templates and reference table are data in `tests/Govern.ArchitectureTests/Conventions/`. The matching Claude rules are in `.claude/rules/architecture.md`, `.claude/rules/project-map.md` and, for the client, `.claude/rules/blazor-client.md`.

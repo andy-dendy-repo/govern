@@ -19,7 +19,8 @@ You are the quality gate for Govern, a .NET 10 Clean Architecture Web API + Blaz
   - always: `.claude/rules/project-map.md` and `architecture.md`
   - `.cs` files: `csharp-style.md`, `xml-docs.md`, `logging.md`, `security.md`
   - `infra/`, `.github/`, `appsettings*.json`: `security.md`
-  - tests: `unit-tests.md`, `integration-tests.md`, `architecture-tests.md`
+  - `src/Govern.Client/**` (`.razor`, `.cs`, `wwwroot/`): `blazor-client.md`, `security.md`
+  - tests: `unit-tests.md`, `integration-tests.md`, `client-tests.md`, `architecture-tests.md`
   - `docs/`: `docs.md`
 - Check your project memory for recurring findings from earlier reviews.
 
@@ -47,6 +48,7 @@ You are the quality gate for Govern, a .NET 10 Clean Architecture Web API + Blaz
    - **Tests:**
      - Integration tests cover the happy path, 400, 401/403 and domain errors for each new or changed endpoint.
      - Unit tests exist only for Utils and Domain.
+     - Client components and services changed → bUnit tests in `tests/Govern.ClientTests` cover what the user sees.
      - Arch rules exist for new conventions, and tests are independent.
    - **Docs:** XML docs on public members (meaningful, not restating names), `<response>` codes on endpoints, `docs/features/*.md` and `docs/README.md` updated, and rule files updated if a convention changed.
    - **Style:** modern C# 14 per `csharp-style.md`, `[LoggerMessage]` logging, no dead code or TODOs without an issue.

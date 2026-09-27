@@ -38,6 +38,15 @@ public class ProjectReferenceTests
         forbidden.ShouldBeEmpty($"Govern.UnitTests may only reference: {string.Join(", ", Layers.UnitTestReferences)}; test everything else with integration tests");
     }
 
+    [Fact]
+    public void ClientTests_ReferenceOnlyClient()
+    {
+        var csproj = Path.Combine(SourceTree.RepositoryRoot, "tests", "Govern.ClientTests", "Govern.ClientTests.csproj");
+        var forbidden = ProjectReferences(csproj).Except(["Govern.Client"]).ToList();
+
+        forbidden.ShouldBeEmpty("Govern.ClientTests may only reference Govern.Client; the client never shares code with the server");
+    }
+
     private static List<string> ProjectReferences(string csproj) =>
         XDocument.Load(csproj)
             .Descendants("ProjectReference")

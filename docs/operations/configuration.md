@@ -9,6 +9,8 @@ updated: 2026-09-27
 
 Configuration follows the standard ASP.NET Core order: `appsettings.json` → `appsettings.{Environment}.json` → user-secrets (Development only) → environment variables. In Azure, App Service app settings become environment variables; nested keys use `__` (e.g. `Jwt__SigningKey`).
 
+The client has its own public configuration (`Api:BaseUrl` in `src/Govern.Client/wwwroot/appsettings*.json`), described in [client](../features/client.md#client-configuration-apibaseurl).
+
 ## Settings
 
 | Key | Secret | Default | Where it is set | Purpose |

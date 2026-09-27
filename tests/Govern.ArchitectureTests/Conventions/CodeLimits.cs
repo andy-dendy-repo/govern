@@ -6,7 +6,7 @@ namespace Govern.ArchitectureTests.Conventions;
 public static class CodeLimits
 {
     /// <summary>
-    /// Maximum physical lines per <c>.cs</c> file.
+    /// Maximum physical lines per <c>.cs</c> and <c>.razor</c> file.
     /// </summary>
     public const int MaxFileLines = 300;
 
@@ -25,6 +25,11 @@ public static class CodeLimits
     /// Maximum parameters of a constructor, including class primary constructors (positional records are exempt).
     /// </summary>
     public const int MaxConstructorParameters = 6;
+
+    /// <summary>
+    /// Maximum lines of an <c>@code</c> block in a <c>.razor</c> file; larger logic moves to a <c>.razor.cs</c> code-behind or a service.
+    /// </summary>
+    public const int MaxRazorCodeBlockLines = 40;
 
     /// <summary>
     /// Path fragments and file-name suffixes of generated code that is never measured.

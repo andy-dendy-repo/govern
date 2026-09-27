@@ -1,16 +1,26 @@
-﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
+@inherits LayoutComponentBase
+
+<RadzenComponents/>
+
+<RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+            <RadzenSidebarToggle Click="@ToggleSidebar"/>
+            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.Span" class="rz-m-0">Govern</RadzenText>
+        </RadzenStack>
+    </RadzenHeader>
+    <RadzenSidebar @bind-Expanded="@_sidebarExpanded">
         <NavMenu/>
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+    </RadzenSidebar>
+    <RadzenBody>
+        <main class="rz-p-4">
             @Body
-        </article>
-    </main>
-</div>
+        </main>
+    </RadzenBody>
+</RadzenLayout>
+
+@code {
+    private bool _sidebarExpanded = true;
+
+    private void ToggleSidebar() => _sidebarExpanded = !_sidebarExpanded;
+}

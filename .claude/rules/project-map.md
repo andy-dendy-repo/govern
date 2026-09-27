@@ -7,10 +7,10 @@ Govern is an HTTP Web API with a Blazor WASM client. The server layers follow Cl
 | Path | Purpose |
 |---|---|
 | `src/` | Production projects |
-| `tests/` | `Govern.UnitTests` (Utils and Domain only), `Govern.IntegrationTests` (everything else, Postgres Testcontainers), `Govern.ArchitectureTests` (rules) |
+| `tests/` | `Govern.UnitTests` (Utils and Domain only), `Govern.IntegrationTests` (everything else on the server, Postgres Testcontainers), `Govern.ClientTests` (Blazor client, bUnit), `Govern.ArchitectureTests` (rules) |
 | `docs/` | Knowledge base used for RAG (see `docs.md` rule) |
 | `infra/` | Bicep (Azure) |
-| `.github/workflows/` | CI (PR → stage/main) and release (stage → main) |
+| `.github/workflows/`, `.github/scripts/` | CI (PR → stage/main) and release (stage → main); `configure-client.sh` fills the client's CSP and Api origin at release |
 
 ## Projects and allowed references
 
@@ -22,7 +22,7 @@ Govern is an HTTP Web API with a Blazor WASM client. The server layers follow Cl
 | `Govern.Application` | Use cases: `[Feature]/Contracts/XxxContract.cs` (Request/Response/Validator/Handler) | Application.Common, Domain, Utils |
 | `Govern.Infrastructure` | Implementations: `Persistence/` (EF Core + Npgsql), one folder per concern (Caching, Emailing, Telegram, …), `Background/` | Application, Application.Common, Domain, Utils |
 | `Govern.Api` | Composition root + minimal API endpoints (`Features/[Feature]/XxxEndpoint.cs`), middlewares, filters, health checks | everything server-side |
-| `Govern.Client` | Blazor WASM + Radzen UI, talks to Api over HTTP with a JWT bearer header | no server project |
+| `Govern.Client` | Blazor WASM + Radzen UI, talks to Api over HTTP with a JWT bearer header (see `blazor-client.md`) | no server project |
 | `Govern.Core` | Ignored: excluded from rules; do not add code without asking | — |
 
 Extra constraints:
@@ -52,6 +52,10 @@ Extra constraints:
 | Request/response pipeline logic | `Api/Middlewares` (global) or `Api/Filters` (endpoint filters) |
 | A health check | `Api/HealthChecks/XxxHealthCheck.cs` |
 | Options bound from config | `Options/XxxOptions.cs` in the owning project |
-| A test | see `unit-tests.md`, `integration-tests.md`, `architecture-tests.md` |
+| A client page (routable component) | `Client/Features/[Feature]/Pages/[Name]Page.razor` |
+| A shared / feature-only client component | `Client/Components/` / `Client/Features/[Feature]/Components/` |
+| A typed Api client (the only place `HttpClient` is used) | `Client/Features/[Feature]/Clients/[Feature]Client.cs`, DTOs in `Client/Features/[Feature]/Models` |
+| Client auth plumbing (token store, auth state, bearer handler) | `Client/Auth/` |
+| A test | see `unit-tests.md`, `integration-tests.md`, `client-tests.md`, `architecture-tests.md` |
 
 New `src/` project? Register it in `tests/Govern.ArchitectureTests/Conventions/Layers.cs` and in this file. `SourceProjects_AreAllRegisteredInLayers` fails otherwise.
