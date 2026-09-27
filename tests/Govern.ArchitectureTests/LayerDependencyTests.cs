@@ -34,6 +34,41 @@ public class LayerDependencyTests
     }
 
     [Fact]
+    public void Core_DependsOnlyOnBaseClassLibrary()
+    {
+        Types().That().ResideInNamespaceMatching(Layers.NamespacePattern("Govern.Core"))
+            // Code coverage (CI runs `dotnet test --coverage`) injects Microsoft.CodeCoverage tracker types into every assembly.
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^Microsoft(?!\.CodeCoverage(?:\.|$))(?:\..*)?$")
+            .Because("the game engine is pure and shared with the browser: base class library only, no frameworks or infrastructure")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void Core_DoesNotUseNondeterministicOrIoApis()
+    {
+        Types().That().ResideInNamespaceMatching(Layers.NamespacePattern("Govern.Core"))
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^System\.(?:IO|Net|Threading\.Tasks)(?:\..*)?$")
+            .AndShould().NotDependOnAnyTypesThat().HaveFullNameMatching(@"^System\.(?:Random|DateTime|DateTimeOffset|TimeProvider)$")
+            .Because("the engine must give the same result for the same state and command: randomness comes from DeterministicRandom in the state, and there is no clock, I/O or async")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void Core_DoesNotCreateIdentifiersOrUseHashCodes()
+    {
+        string[] banned = ["Guid.NewGuid", "Guid.CreateVersion7", "GetHashCode("];
+        var violations = SourceTree.CSharpFiles(Path.Combine(SourceTree.SourceRoot, "Govern.Core"))
+            .SelectMany(file => banned
+                .Where(token => File.ReadAllText(file).Contains(token, StringComparison.Ordinal))
+                .Select(token => $"{SourceTree.Relative(file)}: {token}"))
+            .ToList();
+
+        violations.ShouldBeEmpty("Core ids come from GameState.NextId and hash codes can differ between processes; both would break replay determinism");
+    }
+
+    [Fact]
     public void Application_DoesNotDependOnAspNetCore()
     {
         Types().That().ResideInNamespaceMatching(Layers.NamespacePattern("Govern.Application"))

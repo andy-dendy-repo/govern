@@ -1,1 +1,2 @@
 - [Accepted risks and anonymous endpoints](project_accepted_risks.md) — anonymous routes, accepted gaps (sign-in lockout DoS, KV purge protection), 2026-09-27 audits (API, session, limiter, client CSP, health/host filtering)
+- [Game core engine](project_game_core.md) — Govern.Core fog-of-war oracle (Medium) and Low findings from 2026-09-27; invariants to re-check at command-endpoint audit

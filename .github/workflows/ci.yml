@@ -1,10 +1,10 @@
 # Build, format check, all tests (Testcontainers Postgres), vulnerable package scan and Bicep compile.
-# Runs on PRs to stage and main, and is reused by the release workflow.
+# Runs on PRs to stage, main and the gamecore integration branch, and is reused by the release workflow.
 name: CI
 
 on:
   pull_request:
-    branches: [stage, main]
+    branches: [stage, main, gamecore]
   workflow_dispatch:
   workflow_call:
 
@@ -37,7 +37,7 @@ jobs:
         run: dotnet build Govern.slnx --configuration Release --no-restore
 
       - name: Format check
-        run: dotnet format Govern.slnx --verify-no-changes --no-restore --exclude src/Govern.Core
+        run: dotnet format Govern.slnx --verify-no-changes --no-restore
 
       - name: Test (architecture, unit, integration)
         run: dotnet test Govern.slnx --configuration Release --no-build --coverage --coverage-output-format cobertura
