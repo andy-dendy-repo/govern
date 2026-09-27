@@ -19,14 +19,14 @@ Govern is an HTTP Web API with a Blazor WASM client.
 
 - `src/`: production projects. See `.claude/rules/project-map.md` for what goes where and allowed references.
 - `tests/`:
-  - `Govern.UnitTests`: Utils and Domain only (pure code).
+  - `Govern.UnitTests`: Utils, Core and Domain only (pure code).
   - `Govern.IntegrationTests`: everything else on the server, via HTTP against Postgres in Testcontainers.
   - `Govern.ClientTests`: Blazor client components and services (bUnit).
   - `Govern.ArchitectureTests`: enforces the rules.
 - `docs/`: knowledge base (RAG); index in `docs/README.md`.
 - `infra/`: Bicep.
 - `.github/workflows/`: CI and release; `.github/scripts/configure-client.sh` fills the client CSP and Api origin.
-- `Govern.Core` is ignored: excluded from all rules. Leave it alone unless asked.
+- `Govern.Core` is the pure game engine (base class library only, shared with the client); see `.claude/rules/game-core.md`. Game work branches from and PRs to `gamecore` (`docs/plans/game-delivery.md`).
 
 ## Commands
 
@@ -35,7 +35,7 @@ dotnet build Govern.slnx                                        # warnings are e
 dotnet test Govern.slnx                                         # ALL tests (Microsoft Testing Platform, xUnit v3)
 dotnet test --project tests/Govern.ArchitectureTests            # one project while iterating
 dotnet test Govern.slnx --coverage --coverage-output-format cobertura   # coverage → ./TestResults
-dotnet format Govern.slnx --verify-no-changes --exclude src/Govern.Core
+dotnet format Govern.slnx --verify-no-changes
 dotnet ef migrations add <Name> --project src/Govern.Infrastructure --startup-project src/Govern.Api --output-dir Persistence/Migrations
 dotnet tool restore                                             # local tools (cwm-roslyn-navigator, dotnet-ef)
 dotnet run --project src/Govern.Api                             # needs user-secrets: see docs/operations/local-development.md
@@ -54,7 +54,7 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 
 1. Planned in the `.claude/rules/planning.md` format.
 2. Tests written or updated:
-   - unit tests (Utils and Domain only)
+   - unit tests (Utils, Core and Domain only)
    - integration tests (happy path, 400, 401/403, domain errors)
    - client tests (bUnit) for client components and services
    - architecture tests (for new conventions)
@@ -94,7 +94,7 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 | Kind | Items |
 |---|---|
 | Rules, always loaded | `project-map`, `planning` |
-| Rules, path-scoped | `architecture` (src), `blazor-client` (Client), `csharp-style` (*.cs, *.razor), `xml-docs`, `logging`, `mapping`, `error-handling` (src/*.cs), `caching` (Infrastructure/Caching, repositories), `persistence` (Domain, Application, Infrastructure), `api-endpoints` (Api), `auth` (Api, Users, Identity), `security` (src, infra, .github, appsettings), `unit-tests`, `integration-tests`, `client-tests`, `architecture-tests`, `docs` |
+| Rules, path-scoped | `architecture` (src), `blazor-client` (Client), `csharp-style` (*.cs, *.razor), `xml-docs`, `logging`, `mapping`, `error-handling` (src/*.cs), `game-core` (Core), `caching` (Infrastructure/Caching, repositories), `persistence` (Domain, Application, Infrastructure), `api-endpoints` (Api), `auth` (Api, Users, Identity), `security` (src, infra, .github, appsettings), `unit-tests`, `integration-tests`, `client-tests`, `architecture-tests`, `docs` |
 | Skills | `/develop-feature` (the dev flow), `/verify` (quality gate), `/add-use-case`, `/add-entity`, `/add-migration`, `/add-infra-concern` (recipes from the real Users slice), `/outdated-packages` (manual only) |
 | Agents (read-only, project memory) | `code-reviewer` (after every feature), `security-auditor` (before every stage → main release PR, and after auth, endpoint, config, infra or CI changes), `ef-core-specialist` (entities, configurations, migrations, slow queries) |
 | Hooks (`.claude/hooks/`) | bash guard (destructive git, protected branches, `rm -rf`), protected generated/secret files, whitespace format on edit, restore on csproj/props edit, test gate on Stop, branch info on SessionStart |

@@ -192,12 +192,10 @@ public class CodeMetricsTests
 
     private static IEnumerable<string> RazorFiles() =>
         SourceTree.ProjectFolders()
-            .Where(static folder => !Layers.Ignored.Contains(Path.GetFileName(folder)))
             .SelectMany(SourceTree.RazorFiles);
 
     private static List<SourceFile> LoadSourceTrees() =>
         SourceTree.ProjectFolders()
-            .Where(static folder => !Layers.Ignored.Contains(Path.GetFileName(folder)))
             .SelectMany(SourceTree.CSharpFiles)
             .Where(static file => !IsGenerated(file))
             .Select(static file => CSharpSyntaxTree.ParseText(File.ReadAllText(file), path: file))
