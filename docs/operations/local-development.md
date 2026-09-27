@@ -36,6 +36,10 @@ dotnet run --project src/Govern.Api
 - The Api listens on `http://localhost:5153` and `https://localhost:7294`.
 - Migrations are applied at startup.
 - The OpenAPI document is at `/openapi/v1.json` (Development only).
+- **Swagger UI** is at https://localhost:7294/swagger (Development only). To call protected endpoints:
+  1. Run `POST /api/users/sign-up`, then `POST /api/users/sign-in`, and copy `accessToken` from the response.
+  2. Click **Authorize**, paste the token (without `Bearer `) and confirm. Swagger UI then sends `Authorization: Bearer <token>`.
+  3. The access token expires after 15 minutes; sign in again or call `POST /api/users/refresh`.
 - `src/Govern.Api/Govern.Api.http` contains ready-made requests: sign-up → sign-in → me → refresh → health.
 - The mocked welcome email appears in the console log.
 
