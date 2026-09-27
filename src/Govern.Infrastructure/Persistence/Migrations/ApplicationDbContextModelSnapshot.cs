@@ -22,6 +22,97 @@ namespace Govern.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Govern.Domain.Entities.Game", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("creator_id");
+
+                    b.Property<string>("InviteCode")
+                        .IsRequired()
+                        .HasMaxLength(22)
+                        .HasColumnType("character varying(22)")
+                        .HasColumnName("invite_code");
+
+                    b.Property<string>("Phase")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("phase");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<string>("State")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("state");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_games");
+
+                    b.HasIndex("CreatorId")
+                        .HasDatabaseName("ix_games_creator_id");
+
+                    b.HasIndex("InviteCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_games_invite_code");
+
+                    b.ToTable("games", (string)null);
+                });
+
+            modelBuilder.Entity("Govern.Domain.Entities.GamePlayer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("game_id");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.Property<int>("Seat")
+                        .HasColumnType("integer")
+                        .HasColumnName("seat");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_game_players");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_game_players_user_id");
+
+                    b.HasIndex("GameId", "Seat")
+                        .IsUnique()
+                        .HasDatabaseName("ix_game_players_game_id_seat");
+
+                    b.HasIndex("GameId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_game_players_game_id_user_id");
+
+                    b.ToTable("game_players", (string)null);
+                });
+
             modelBuilder.Entity("Govern.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -108,6 +199,33 @@ namespace Govern.Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Govern.Domain.Entities.Game", b =>
+                {
+                    b.HasOne("Govern.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_games_users_creator_id");
+                });
+
+            modelBuilder.Entity("Govern.Domain.Entities.GamePlayer", b =>
+                {
+                    b.HasOne("Govern.Domain.Entities.Game", null)
+                        .WithMany("Players")
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_game_players_games_game_id");
+
+                    b.HasOne("Govern.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_game_players_users_user_id");
+                });
+
             modelBuilder.Entity("Govern.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("Govern.Domain.Entities.User", null)
@@ -116,6 +234,11 @@ namespace Govern.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_refresh_tokens_users_user_id");
+                });
+
+            modelBuilder.Entity("Govern.Domain.Entities.Game", b =>
+                {
+                    b.Navigation("Players");
                 });
 
             modelBuilder.Entity("Govern.Domain.Entities.User", b =>

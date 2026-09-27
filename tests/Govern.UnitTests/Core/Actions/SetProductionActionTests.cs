@@ -31,7 +31,7 @@ public class SetProductionActionTests
 
         var result = GameEngine.Execute(state, P1, new SetProductionCommand(new CityId(999), UnitType.Settler));
 
-        result.ShouldFailWith(GameErrors.CityNotFound);
+        result.ShouldFailWith(RuleViolations.CityNotFound);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class SetProductionActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new SetProductionCommand(city, UnitType.Settler));
 
-        result.ShouldFailWith(GameErrors.CityNotFound);
+        result.ShouldFailWith(RuleViolations.CityNotFound);
     }
 
     [Fact]
@@ -53,6 +53,6 @@ public class SetProductionActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new SetProductionCommand(city, (UnitType)99));
 
-        result.ShouldFailWith(GameErrors.UnknownUnitType);
+        result.ShouldFailWith(RuleViolations.UnknownUnitType);
     }
 }

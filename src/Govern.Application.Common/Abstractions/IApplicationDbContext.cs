@@ -15,6 +15,12 @@ public interface IApplicationDbContext : IAsyncDisposable
     /// <summary>Refresh tokens (owned by users).</summary>
     DbSet<RefreshToken> RefreshTokens { get; }
 
+    /// <summary>Games (lobbies and running games).</summary>
+    DbSet<Game> Games { get; }
+
+    /// <summary>Seats in games (owned by games).</summary>
+    DbSet<GamePlayer> GamePlayers { get; }
+
     /// <summary>
     /// Saves all tracked changes; audit timestamps are set and domain events are dispatched after a successful save.
     /// </summary>

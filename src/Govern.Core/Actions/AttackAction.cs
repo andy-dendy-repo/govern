@@ -34,32 +34,32 @@ internal static class AttackRule
 
         if (state.UnitAt(command.Target) is { } defender)
         {
-            return defender.Owner == actor ? GameErrors.OwnTarget : Destroy(state, attacker, defender);
+            return defender.Owner == actor ? RuleViolations.OwnTarget : Destroy(state, attacker, defender);
         }
 
         if (state.CityAt(command.Target) is { } city)
         {
-            return city.Owner == actor ? GameErrors.OwnTarget : Capture(state, attacker, city);
+            return city.Owner == actor ? RuleViolations.OwnTarget : Capture(state, attacker, city);
         }
 
-        return GameErrors.NoTarget;
+        return RuleViolations.NoTarget;
     }
 
-    private static GameError? Check(GameState state, Unit attacker, AttackCommand command)
+    private static RuleViolation? Check(GameState state, Unit attacker, AttackCommand command)
     {
         if (!attacker.Definition.CanAttack)
         {
-            return GameErrors.CannotAttack;
+            return RuleViolations.CannotAttack;
         }
 
         if (attacker.MovementLeft <= 0)
         {
-            return GameErrors.NoMovementLeft;
+            return RuleViolations.NoMovementLeft;
         }
 
         return state.Map.Contains(command.Target) && attacker.Position.DistanceTo(command.Target) == 1
             ? null
-            : GameErrors.NotAdjacent;
+            : RuleViolations.NotAdjacent;
     }
 
     private static CommandResult Destroy(GameState state, Unit attacker, Unit defender)

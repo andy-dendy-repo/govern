@@ -16,3 +16,10 @@ Fixed in the same PR: both oracles, ReachableTiles viewer scoping, JsonException
 
 **Why:** hidden information is the core anti-cheat promise of ADR 0004; these leaks pass all unit tests.
 **How to apply:** on any Core change, re-run the oracle check per error code, and on Plans 2-5 check the Api maps errors without adding detail and never sends GameState/raw events. See [[convention-sweep-gaps]].
+
+Plan 2 review (2026-09-27, feature/game-lobby: Game/GamePlayer, jsonb state, 5 /api/games endpoints). No critical findings. Checks worth repeating on Plans 3-5:
+- `PlayerId` = `GamePlayer.Id` (never a user id); every response with a `PlayerView` must stay free of user ids (`Get_Started_ResponseContainsNoUserIds` pattern).
+- Endpoints whose request has a Guid `NotEmpty` validator return 400 but tended to miss `.ProducesValidationProblem()` and `<response code="400">` (Get/Start). Check every new route-id endpoint.
+- Race handling via `Revision` concurrency token + unique indexes is correct, but `Task.WhenAll` tests don't deterministically hit the catch branches; ask for a forced race if a new catch path is added.
+- jsonb reorders object keys, so anything deserialized from `games.state` needs `AllowOutOfOrderMetadataProperties` (GameSerializer has it; HTTP JSON options do not, so Plan 3 command bodies must go through `GameSerializer.Options`).
+- Core `RuleViolations` and Application `GameErrors` share the `game.` code prefix; watch for collisions when Plan 3 maps violations to `Error`.

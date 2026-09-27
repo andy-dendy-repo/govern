@@ -65,7 +65,7 @@ public class AttackActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new AttackCommand(attacker, At(5, 3)));
 
-        result.ShouldFailWith(GameErrors.NotAdjacent);
+        result.ShouldFailWith(RuleViolations.NotAdjacent);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class AttackActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new AttackCommand(settler, At(4, 3)));
 
-        result.ShouldFailWith(GameErrors.CannotAttack);
+        result.ShouldFailWith(RuleViolations.CannotAttack);
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class AttackActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new AttackCommand(attacker, At(4, 3)));
 
-        result.ShouldFailWith(GameErrors.OwnTarget);
+        result.ShouldFailWith(RuleViolations.OwnTarget);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class AttackActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new AttackCommand(attacker, At(0, 0)));
 
-        result.ShouldFailWith(GameErrors.OwnTarget);
+        result.ShouldFailWith(RuleViolations.OwnTarget);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class AttackActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new AttackCommand(attacker, At(4, 3)));
 
-        result.ShouldFailWith(GameErrors.NoTarget);
+        result.ShouldFailWith(RuleViolations.NoTarget);
     }
 
     [Fact]
@@ -123,6 +123,6 @@ public class AttackActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new AttackCommand(attacker, At(4, 3)));
 
-        result.ShouldFailWith(GameErrors.NoMovementLeft);
+        result.ShouldFailWith(RuleViolations.NoMovementLeft);
     }
 }

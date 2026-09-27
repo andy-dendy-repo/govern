@@ -20,7 +20,7 @@ public static class GameEngine
     /// <param name="state">Current state.</param>
     /// <param name="actor">Player who sent the command.</param>
     /// <param name="command">The command.</param>
-    /// <returns>The update, or the <c>GameError</c> that rejected the command (the state is then unchanged).</returns>
+    /// <returns>The update, or the <see cref="RuleViolation"/> that rejected the command (the state is then unchanged).</returns>
     public static CommandResult Execute(GameState state, PlayerId actor, GameCommand command)
     {
         ArgumentNullException.ThrowIfNull(state);

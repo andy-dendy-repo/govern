@@ -36,6 +36,12 @@ paths:
 - **Columns and indexes:** every string gets a max length; unique business keys get unique indexes (email, token hash); foreign keys get indexes.
 - **Collections:** backing fields with `UsePropertyAccessMode(PropertyAccessMode.Field)`. Aggregates change children only through methods on the root.
 - **Value objects:** map a single-value object (e.g. `Email`) to one column with `HasConversion(vo => vo.Value, value => Vo.Create(value))` plus `HasMaxLength` in the owning configuration (example: `UserConfiguration`). In queries, compare value object to value object (`user.Email == email`) so EF applies the converter; never use `.Value` inside `Where`. Reading `.Value` in the final `Select` is fine. Because `Create` re-validates on every read, tightening a value object's rules is a data change: before release, check (read-only SQL) that no stored row breaks the new rules, or migrate the rows. A normalising `Create` must be idempotent (`Create(Create(x).Value) == Create(x)`), and a unit test must prove it.
+- **JSON snapshots (`jsonb`):** an immutable aggregate snapshot (e.g. `Game.State`, a Core `GameState`) is one `jsonb` column:
+  - Convert it with `HasColumnType("jsonb")` + `HasConversion(value => GameSerializer.Serialize(value), json => GameSerializer.DeserializeState(json), comparer)`, never with EF's owned JSON mapping, so storage uses the same versioned format as the Api and client.
+  - Pass a **reference-equality `ValueComparer`**: the snapshot is replaced, never mutated, so EF must not deep-compare or snapshot a large object graph.
+  - The column is exempt from "every string gets a max length": it is `jsonb`, and its size is bounded by the aggregate (e.g. the map size limits in `GameSetup`).
+  - **Never query inside the JSON.** Anything a `Where`, `OrderBy` or list projection needs gets its own column, updated by the aggregate (e.g. `games.phase`).
+  - Example: `GameConfiguration`; covered by `StartGameEndpointTests.Post_Started_StoresStateAsJsonbObjectInTheSerializerFormat`.
 - **Races:**
   - For check-then-act on a row (e.g. single-use tokens), mark the state column `IsConcurrencyToken()` and translate `DbUpdateConcurrencyException` into an `Error` (example: `RefreshTokenConfiguration` + `RefreshTokenHandler`).
   - For uniqueness, keep the `AnyAsync` pre-check (friendly error) **and** catch `DbUpdateException` when `IDbExceptionClassificationService.IsUniqueViolation(...)` (example: `SignUpHandler`).

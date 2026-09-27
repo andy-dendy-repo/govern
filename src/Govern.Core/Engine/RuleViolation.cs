@@ -5,4 +5,4 @@ namespace Govern.Core.Engine;
 /// </summary>
 /// <param name="Code">Stable, snake_case code namespaced by topic (e.g. <c>move.unreachable</c>); clients may depend on it.</param>
 /// <param name="Message">Human-readable reason, safe to show to the player.</param>
-public sealed record GameError(string Code, string Message);
+public sealed record RuleViolation(string Code, string Message);

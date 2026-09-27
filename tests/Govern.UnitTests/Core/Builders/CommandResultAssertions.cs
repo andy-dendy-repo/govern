@@ -6,13 +6,13 @@ internal static class CommandResultAssertions
 {
     public static GameUpdate ShouldSucceed(this CommandResult result)
     {
-        result.IsSuccess.ShouldBeTrue($"expected success but got {result.Error?.Code}");
+        result.IsSuccess.ShouldBeTrue($"expected success but got {result.Violation?.Code}");
         return result.Update!;
     }
 
-    public static void ShouldFailWith(this CommandResult result, GameError expected)
+    public static void ShouldFailWith(this CommandResult result, RuleViolation expected)
     {
         result.IsSuccess.ShouldBeFalse();
-        result.Error.ShouldBe(expected);
+        result.Violation.ShouldBe(expected);
     }
 }
