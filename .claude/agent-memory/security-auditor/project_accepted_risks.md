@@ -21,4 +21,10 @@ Accepted/documented risks (don't re-report unless changed or cheaper fix appears
 
 Findings from the 2026-09-27 audit (verdict RELEASE OK):
 - Fixed the same day (review-fix commit): release jobs restricted to refs/heads/main (+ environment deployment branches documented); actions pinned to SHAs + Dependabot; Ssl Mode=VerifyFull; SCM/FTP basic auth disabled; concurrent refresh race (RevokedAt concurrency token); users.md enumeration wording corrected.
-- Still open, tracked in docs/plans/template-solution-roadmap.md "Follow-ups": sign-out endpoint; per-account sign-in limiter; monitoring/alerts; refresh_tokens cleanup; AllowedHosts; Key Vault purge protection (owner decision); SWA CSP (gate for client auth).
+- Still open, tracked in docs/plans/follow-ups.md: per-account sign-in limiter; monitoring/alerts; AllowedHosts; Key Vault purge protection (owner decision); SWA CSP (gate for client auth).
+- Sign-out, sign-out everywhere, a per-user session cap and on-request refresh_tokens cleanup were added on feature/session-lifecycle (2026-09-27). Reuse detection now fires only for rotated tokens (ReplacedByTokenId set).
+
+Session-lifecycle audit (2026-09-27, uncommitted feature/session-lifecycle): no Critical/High.
+- Medium (open until fixed): SignOutHandler ignores an already-rotated token (filters RevokedAt == null), so a client signing out with a token an attacker already rotated gets a silent 204 and theft detection never fires; refresh expiry is sliding, so the attacker chain lives on. Fix: treat a rotated token presented to sign-out as reuse.
+- Recurring design fact: every non-rotation revocation must pass replacedByTokenId: null; only RotateRefreshToken sets it. Re-check any new revocation path.
+- Sign-out/sign-out-everywhere intentionally RequireAuthorization() with no rate-limit policy (no global limiter exists).

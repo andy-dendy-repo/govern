@@ -32,6 +32,7 @@ public static class DependencyInjection
 
             services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
             services.AddScoped<UserTokenIssuingService>();
+            services.AddScoped<RefreshTokenReuseService>();
 
             return services;
         }

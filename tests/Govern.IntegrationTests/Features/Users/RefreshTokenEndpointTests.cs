@@ -37,7 +37,7 @@ public class RefreshTokenEndpointTests(GovernApiFixture fixture) : ApiTestBase(f
     }
 
     [Fact]
-    public async Task Post_ReusedRevokedToken_Returns401AndRevokesAllActiveTokens()
+    public async Task Post_ReusedRotatedToken_Returns401AndRevokesAllActiveTokens()
     {
         var (_, tokens) = await UsersApi.CreateSignedInUserAsync(Client, Ct);
         var rotated = (await (await UsersApi.RefreshAsync(Client, tokens.RefreshToken, Ct)).Content.ReadFromJsonAsync<RefreshTokenResponse>(Ct))!;
@@ -90,5 +90,43 @@ public class RefreshTokenEndpointTests(GovernApiFixture fixture) : ApiTestBase(f
         var response = await UsersApi.RefreshAsync(Client, "", Ct);
 
         await response.ShouldBeValidationProblemAsync(Ct, "RefreshToken");
+    }
+
+    [Fact]
+    public async Task Post_SignedOutToken_Returns401WithoutRevokingOtherSessions()
+    {
+        var (email, signedOut) = await UsersApi.CreateSignedInUserAsync(Client, Ct);
+        var otherDevice = await UsersApi.SignInTokensAsync(Client, email, Ct);
+        (await UsersApi.SignOutAsync(Client, signedOut.AccessToken, signedOut.RefreshToken, Ct)).EnsureSuccessStatusCode();
+
+        var response = await UsersApi.RefreshAsync(Client, signedOut.RefreshToken, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Unauthorized, "user.invalid_refresh_token", Ct);
+        (await UsersApi.RefreshAsync(Client, otherDevice.RefreshToken, Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_UserHasExpiredTokens_DeletesThemAndKeepsRotatedToken()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        using var factory = Fixture.Factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(time)));
+        using var client = factory.CreateClient();
+        var (email, _) = await UsersApi.CreateSignedInUserAsync(client, Ct);
+        time.Advance(TimeSpan.FromDays(10));
+        var current = await UsersApi.SignInTokensAsync(client, email, Ct);
+        time.Advance(TimeSpan.FromDays(5));
+
+        var response = await UsersApi.RefreshAsync(client, current.RefreshToken, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var (scope, db) = await Fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            var stored = await db.RefreshTokens.AsNoTracking().ToListAsync(Ct);
+            stored.Count.ShouldBe(2);
+            stored.Count(token => token.RevokedAt is not null && token.ReplacedByTokenId is not null).ShouldBe(1);
+        }
     }
 }

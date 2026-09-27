@@ -1,3 +1,3 @@
-- [Known limitations](project_known_limitations.md) — race and post-commit patterns from the first review (all fixed 2026-09-27); what to keep checking
-- [Analyzer false positives](reference_analyzer_false_positives.md) — AP010/AP009/AP002/AP005/AP003 noise to skip in Govern reviews
+- [Known limitations](project_known_limitations.md) — race/post-commit patterns (review 1) and token-revocation race + reuse checks (review 2)
+- [Analyzer false positives](reference_analyzer_false_positives.md) — AP010/AP009/AP002/AP005/AP003/AP007 noise to skip in Govern reviews
 - [Convention sweep gaps](feedback_convention_sweep.md) — rule changes miss .claude/agents and rule-file code examples; VO converters validate on read

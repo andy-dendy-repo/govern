@@ -6,13 +6,13 @@ using Govern.Domain.Entities;
 using Govern.Utils.Mediator.Abstractions;
 using Govern.Utils.Results;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Govern.Application.Users.Contracts;
 
 /// <summary>
 /// Exchanges a refresh token for a new token pair. Refresh tokens are single-use: the presented token is revoked.
-/// Presenting an already revoked token is treated as theft and revokes all of the user's active refresh tokens.
+/// Presenting an already rotated token is treated as theft and revokes all of the user's active refresh tokens;
+/// tokens revoked by sign-out or the session cap are simply rejected.
 /// </summary>
 /// <param name="RefreshToken">The raw refresh token from sign-in or a previous refresh.</param>
 public sealed record RefreshTokenRequest(string RefreshToken) : IRequest<RefreshTokenRequest, RefreshTokenResponse>;
@@ -47,14 +47,14 @@ public sealed class RefreshTokenValidator : AbstractValidator<RefreshTokenReques
 }
 
 /// <summary>
-/// Handles <see cref="RefreshTokenRequest"/> with rotation and reuse detection.
+/// Handles <see cref="RefreshTokenRequest"/> with rotation and reuse detection (<see cref="RefreshTokenReuseService"/>).
 /// </summary>
-internal sealed partial class RefreshTokenHandler(
+internal sealed class RefreshTokenHandler(
     IApplicationDbContextFactory dbContextFactory,
     ITokenService tokenService,
     UserTokenIssuingService tokenIssuing,
-    TimeProvider timeProvider,
-    ILogger<RefreshTokenHandler> logger) : IRequestHandler<RefreshTokenRequest, RefreshTokenResponse>
+    RefreshTokenReuseService tokenReuse,
+    TimeProvider timeProvider) : IRequestHandler<RefreshTokenRequest, RefreshTokenResponse>
 {
     /// <inheritdoc />
     public async ValueTask<Result<RefreshTokenResponse>> HandleAsync(RefreshTokenRequest request, CancellationToken cancellationToken)
@@ -73,9 +73,9 @@ internal sealed partial class RefreshTokenHandler(
             .Include(candidate => candidate.RefreshTokens.Where(token => token.RevokedAt == null && token.ExpiresAt > now))
             .SingleAsync(candidate => candidate.Id == presented.UserId, cancellationToken);
 
-        if (presented.RevokedAt is not null)
+        if (RefreshTokenReuseService.IsReuse(presented))
         {
-            await RevokeAllAfterReuseAsync(db, user, now);
+            await tokenReuse.RevokeAllAsync(db, user, now);
             return UserErrors.InvalidRefreshToken;
         }
 
@@ -84,7 +84,19 @@ internal sealed partial class RefreshTokenHandler(
             return UserErrors.InvalidRefreshToken;
         }
 
-        var tokens = tokenIssuing.Rotate(user, presented);
+        return await RotateAsync(db, user, presented, now, cancellationToken);
+    }
+
+    // Deletes the user's expired tokens, then exchanges the presented token for a new pair.
+    private async Task<Result<RefreshTokenResponse>> RotateAsync(
+        IApplicationDbContext db,
+        User user,
+        RefreshToken presented,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        await RefreshTokenCleanupService.DeleteExpiredAsync(db, user.Id, now, cancellationToken);
+        var tokens = tokenIssuing.Rotate(user, presented, now);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -96,28 +108,5 @@ internal sealed partial class RefreshTokenHandler(
         }
 
         return RefreshTokenResponse.From(tokens);
-    }
-
-    // A revoked token was presented again: treat it as theft and revoke every active token of the user.
-    // Security-critical, so it completes even if the caller disconnects (no request cancellation).
-    private async Task RevokeAllAfterReuseAsync(IApplicationDbContext db, User user, DateTimeOffset now)
-    {
-        user.RevokeAllRefreshTokens(now);
-        try
-        {
-            await db.SaveChangesAsync(CancellationToken.None);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            // Another request revoked some of the tokens concurrently; they are revoked either way.
-        }
-
-        Log.RefreshTokenReused(logger, user.Id);
-    }
-
-    private static partial class Log
-    {
-        [LoggerMessage(EventId = 1001, Level = LogLevel.Warning, Message = "Revoked refresh token reused for user {UserId}; all active refresh tokens revoked")]
-        public static partial void RefreshTokenReused(ILogger logger, Guid userId);
     }
 }

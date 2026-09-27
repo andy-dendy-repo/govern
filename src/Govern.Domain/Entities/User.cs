@@ -48,16 +48,26 @@ public sealed class User : BaseAuditableEntity
     }
 
     /// <summary>
-    /// Issues a new refresh token (e.g. on sign-in).
+    /// Issues a new refresh token on sign-in. When the user already has <paramref name="maxActiveTokens"/> active
+    /// tokens, the least recently issued or rotated ones (earliest expiry) are revoked first, so the session count
+    /// stays within the cap. The caller must load the user's active tokens.
     /// </summary>
     /// <param name="tokenHash">Hash of the raw token handed to the client.</param>
     /// <param name="expiresAt">Expiry of the new token.</param>
+    /// <param name="now">The current time.</param>
+    /// <param name="maxActiveTokens">Maximum number of active tokens (signed-in sessions) per user.</param>
     /// <returns>The new token.</returns>
-    public RefreshToken IssueRefreshToken(string tokenHash, DateTimeOffset expiresAt)
+    public RefreshToken IssueRefreshToken(string tokenHash, DateTimeOffset expiresAt, DateTimeOffset now, int maxActiveTokens)
     {
-        var token = RefreshToken.Create(Id, tokenHash, expiresAt);
-        _refreshTokens.Add(token);
-        return token;
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxActiveTokens, 1);
+
+        var active = _refreshTokens.Where(token => token.IsActive(now)).OrderBy(static token => token.ExpiresAt).ToList();
+        foreach (var evicted in active.Take(active.Count - maxActiveTokens + 1))
+        {
+            evicted.Revoke(now, replacedByTokenId: null);
+        }
+
+        return AddRefreshToken(tokenHash, expiresAt);
     }
 
     /// <summary>
@@ -77,13 +87,30 @@ public sealed class User : BaseAuditableEntity
             throw new InvalidOperationException("The refresh token belongs to another user.");
         }
 
-        var replacement = IssueRefreshToken(newTokenHash, expiresAt);
+        var replacement = AddRefreshToken(newTokenHash, expiresAt);
         current.Revoke(now, replacement.Id);
         return replacement;
     }
 
     /// <summary>
-    /// Revokes every loaded, still active refresh token, e.g. when a revoked token is reused (possible theft).
+    /// Revokes one refresh token on sign-out. Revoking an already revoked token does nothing.
+    /// </summary>
+    /// <param name="token">The token to revoke; must belong to this user.</param>
+    /// <param name="now">The current time.</param>
+    /// <exception cref="InvalidOperationException">The token belongs to another user.</exception>
+    public void RevokeRefreshToken(RefreshToken token, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        if (token.UserId != Id)
+        {
+            throw new InvalidOperationException("The refresh token belongs to another user.");
+        }
+
+        token.Revoke(now, replacedByTokenId: null);
+    }
+
+    /// <summary>
+    /// Revokes every loaded, still active refresh token: sign-out everywhere, or a rotated token reused (possible theft).
     /// </summary>
     /// <param name="now">The current time.</param>
     public void RevokeAllRefreshTokens(DateTimeOffset now)
@@ -92,5 +119,12 @@ public sealed class User : BaseAuditableEntity
         {
             token.Revoke(now, replacedByTokenId: null);
         }
+    }
+
+    private RefreshToken AddRefreshToken(string tokenHash, DateTimeOffset expiresAt)
+    {
+        var token = RefreshToken.Create(Id, tokenHash, expiresAt);
+        _refreshTokens.Add(token);
+        return token;
     }
 }
