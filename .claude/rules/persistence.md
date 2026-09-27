@@ -35,6 +35,7 @@ paths:
 - **Naming:** snake_case tables, columns and constraints come from `UseSnakeCaseNamingConvention()`. Don't hard-code table names.
 - **Columns and indexes:** every string gets a max length; unique business keys get unique indexes (email, token hash); foreign keys get indexes.
 - **Collections:** backing fields with `UsePropertyAccessMode(PropertyAccessMode.Field)`. Aggregates change children only through methods on the root.
+- **Value objects:** map a single-value object (e.g. `Email`) to one column with `HasConversion(vo => vo.Value, value => Vo.Create(value))` plus `HasMaxLength` in the owning configuration (example: `UserConfiguration`). In queries, compare value object to value object (`user.Email == email`) so EF applies the converter; never use `.Value` inside `Where`. Reading `.Value` in the final `Select` is fine.
 - **Races:**
   - For check-then-act on a row (e.g. single-use tokens), mark the state column `IsConcurrencyToken()` and translate `DbUpdateConcurrencyException` into an `Error` (example: `RefreshTokenConfiguration` + `RefreshTokenHandler`).
   - For uniqueness, keep the `AnyAsync` pre-check (friendly error) **and** catch `DbUpdateException` when `IDbExceptionClassificationService.IsUniqueViolation(...)` (example: `SignUpHandler`).

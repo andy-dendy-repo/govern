@@ -1,4 +1,5 @@
 using Govern.Domain.EntityBase;
+using Govern.Domain.ValueObjects;
 
 namespace Govern.Domain.Events;
 
@@ -6,5 +7,5 @@ namespace Govern.Domain.Events;
 /// Raised when a new user account is created.
 /// </summary>
 /// <param name="UserId">Identifier of the new user.</param>
-/// <param name="Email">Normalised email address of the new user.</param>
-public sealed record UserSignedUpEvent(Guid UserId, string Email) : BaseEvent;
+/// <param name="Email">Email address of the new user.</param>
+public sealed record UserSignedUpEvent(Guid UserId, Email Email) : BaseEvent;

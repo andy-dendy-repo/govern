@@ -7,7 +7,7 @@ Govern is an HTTP Web API with a Blazor WASM client. The server layers follow Cl
 | Path | Purpose |
 |---|---|
 | `src/` | Production projects |
-| `tests/` | `Govern.UnitTests` (Utils only), `Govern.IntegrationTests` (everything else, Postgres Testcontainers), `Govern.ArchitectureTests` (rules) |
+| `tests/` | `Govern.UnitTests` (Utils and Domain only), `Govern.IntegrationTests` (everything else, Postgres Testcontainers), `Govern.ArchitectureTests` (rules) |
 | `docs/` | Knowledge base used for RAG (see `docs.md` rule) |
 | `infra/` | Bicep (Azure) |
 | `.github/workflows/` | CI (PR → stage/main) and release (stage → main) |

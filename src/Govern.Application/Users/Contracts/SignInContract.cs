@@ -2,7 +2,7 @@ using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Users.Models;
 using Govern.Application.Users.Services;
-using Govern.Domain.Entities;
+using Govern.Domain.ValueObjects;
 using Govern.Utils.Mediator.Abstractions;
 using Govern.Utils.Results;
 using Microsoft.EntityFrameworkCore;
@@ -45,13 +45,13 @@ public sealed class SignInValidator : AbstractValidator<SignInRequest>
     /// <summary>Creates the validation rules.</summary>
     public SignInValidator()
     {
-        RuleFor(request => request.Email).NotEmpty().MaximumLength(320);
+        RuleFor(request => request.Email).NotEmpty().MaximumLength(Email.MaxLength);
         RuleFor(request => request.Password).NotEmpty().MaximumLength(SignUpValidator.PasswordMaxLength);
     }
 }
 
 /// <summary>
-/// Handles <see cref="SignInRequest"/>. Unknown emails and wrong passwords return the same
+/// Handles <see cref="SignInRequest"/>. Malformed or unknown emails and wrong passwords return the same
 /// <see cref="UserErrors.InvalidCredentials"/> and take comparable time (a hash is always verified).
 /// </summary>
 internal sealed class SignInHandler(
@@ -62,7 +62,12 @@ internal sealed class SignInHandler(
     /// <inheritdoc />
     public async ValueTask<Result<SignInResponse>> HandleAsync(SignInRequest request, CancellationToken cancellationToken)
     {
-        var email = User.NormalizeEmail(request.Email);
+        if (!Email.TryCreate(request.Email, out var email))
+        {
+            passwordHashing.SimulateVerify(request.Password);
+            return UserErrors.InvalidCredentials;
+        }
+
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var user = await db.Users.FirstOrDefaultAsync(candidate => candidate.Email == email, cancellationToken);
 

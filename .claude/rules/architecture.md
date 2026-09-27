@@ -42,6 +42,7 @@ Content inside UF/AGFT folders may be organised in sub-folders freely. `Contract
 | `Repositories` | end with `Repository` |
 | `Enums` | be enums |
 | `Events` (Domain) | end with `Event` (and derive from `BaseEvent`) |
+| `ValueObjects` (Domain) | be sealed and immutable, and not derive from `BaseEntity` (write them as `sealed record`) |
 | `Middlewares` / `Filters` / `HealthChecks` | end with `Middleware` / `Filter` / `HealthCheck` |
 | `Configurations` / `Interceptors` | end with `Configuration` / `Interceptor` |
 | `Api/Features` | be `static` classes ending with `Endpoint` that expose `Map(IEndpointRouteBuilder)`; exactly one type per file, named after the file |

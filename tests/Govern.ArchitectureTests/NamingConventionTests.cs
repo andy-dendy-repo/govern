@@ -114,6 +114,19 @@ public class NamingConventionTests
     }
 
     [Fact]
+    public void DomainValueObjects_AreSealedImmutableAndNotEntities()
+    {
+        Classes().That().ResideInNamespaceMatching(@"^Govern\.Domain\.ValueObjects(?:\..*)?$")
+            .And().AreNotNested().And().DoNotHaveNameContaining("<")
+            .Should().BeSealed()
+            .AndShould().BeImmutable()
+            .AndShould().NotBeAssignableTo(typeof(BaseEntity))
+            .Because("value objects are sealed records compared by value; they have no identity and never change")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
     public void EventHandlers_AreSealedNotificationHandlers()
     {
         Classes().That().ResideInNamespaceMatching(InFolder("EventHandlers"))
