@@ -1,4 +1,6 @@
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Govern.Api.Middlewares;
 using Govern.Api.Models;
@@ -16,8 +18,8 @@ using Microsoft.IdentityModel.Tokens;
 namespace Govern.Api;
 
 /// <summary>
-/// Registers the HTTP layer: ProblemDetails, OpenAPI, JWT authentication with a deny-by-default authorization
-/// fallback, rate limiting, CORS and the current-user accessor.
+/// Registers the HTTP layer: ProblemDetails, OpenAPI, JSON (enums as camelCase strings, matching <c>GameSerializer</c>), JWT
+/// authentication with a deny-by-default authorization fallback, rate limiting, CORS and the current-user accessor.
 /// </summary>
 public static class DependencyInjection
 {
@@ -40,6 +42,8 @@ public static class DependencyInjection
 
             services.AddProblemDetails();
             services.AddOpenApi();
+            services.ConfigureHttpJsonOptions(static json => json.SerializerOptions.Converters.Add(
+                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddTransient<ExceptionHandlingMiddleware>();

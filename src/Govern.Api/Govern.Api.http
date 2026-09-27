@@ -2,6 +2,7 @@
 @api = http://localhost:5153
 @email = someone@example.com
 @password = Pa$$w0rd-123
+@email2 = opponent@example.com
 
 ### Sign up
 POST {{api}}/api/users/sign-up
@@ -36,6 +37,47 @@ Content-Type: application/json
 
 ### Sign out everywhere
 POST {{api}}/api/users/sign-out-everywhere
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
+
+### Games: sign up and sign in the second player
+POST {{api}}/api/users/sign-up
+Content-Type: application/json
+
+{ "email": "{{email2}}", "password": "{{password}}" }
+
+###
+# @name signIn2
+POST {{api}}/api/users/sign-in
+Content-Type: application/json
+
+{ "email": "{{email2}}", "password": "{{password}}" }
+
+### Create a game (first player; returns the invite code)
+# @name createGame
+POST {{api}}/api/games
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
+
+### Join with the invite code (second player)
+POST {{api}}/api/games/join
+Authorization: Bearer {{signIn2.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "inviteCode": "{{createGame.response.body.$.inviteCode}}" }
+
+### Start (creator only; returns the creator's view)
+POST {{api}}/api/games/{{createGame.response.body.$.id}}/start
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
+
+### Get the game as the first player
+GET {{api}}/api/games/{{createGame.response.body.$.id}}
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
+
+### Get the game as the second player (a different fog-of-war view)
+GET {{api}}/api/games/{{createGame.response.body.$.id}}
+Authorization: Bearer {{signIn2.response.body.$.accessToken}}
+
+### List my games
+GET {{api}}/api/games?page=1&pageSize=20
 Authorization: Bearer {{signIn.response.body.$.accessToken}}
 
 ### Liveness (no dependencies; the App Service Health check path)
