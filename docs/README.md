@@ -13,7 +13,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [architecture.md](architecture.md): layers, allowed references, request flow, folder templates (UF / AGFT / 3DFT), naming rules and how they are enforced.
 
 ## Features
-- [features/users.md](features/users.md): sign-up, sign-in, refresh token rotation and reuse detection, current user; endpoints, errors, data model.
+- [features/users.md](features/users.md): sign-up, sign-in, refresh token rotation and reuse detection, session cap and cleanup, sign-out, current user; endpoints, errors, data model.
 
 ## Decisions
 - [decisions/0001-mediator.md](decisions/0001-mediator.md): in-house mediator with `Result` responses and error-handling, logging and validation pipelines.
@@ -29,4 +29,5 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 
 ## Plans
 - [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step, with status.
-- [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (sign-out, least-privilege DB access, per-account limiter, email verification, monitoring, cleanup, outbox, Blazor client).
+- [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (least-privilege DB access, per-account limiter, monitoring, host filtering, Key Vault purge protection, Blazor client, stricter email validation).
+- [plans/session-and-email-verification.md](plans/session-and-email-verification.md): remaining increments: sign-up email inside the DB transaction, then email verification.
