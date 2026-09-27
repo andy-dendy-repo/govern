@@ -11,6 +11,8 @@ Open work found by the first code review and security audit of the template Api 
 
 Sign-out, refresh token cleanup, the transactional sign-up email and email verification (formerly #1, #4, #6 and #7) are planned in [session-and-email-verification](session-and-email-verification.md). Item numbers are kept so existing references stay valid. #11 (quiet first migration log) was dropped as not needed: the one-off EF Core 20102 error on a brand-new database is accepted.
 
+The remaining items are planned, in delivery order, in [follow-ups-delivery](follow-ups-delivery.md). #12 (stricter email validation) is done: see the email rules in [users](../features/users.md).
+
 | # | Priority | Item | Size |
 |---|---|---|---|
 | 2 | High | [Least-privilege database access](#2-least-privilege-database-access) | M |
@@ -19,7 +21,6 @@ Sign-out, refresh token cleanup, the transactional sign-up email and email verif
 | 8 | Low | [Host filtering and health check split](#8-host-filtering-and-health-check-split) | S |
 | 9 | Decide | [Key Vault purge protection](#9-key-vault-purge-protection) | XS |
 | 10 | Next feature | [Blazor client](#10-blazor-client) | L |
-| 12 | Low | [Stricter email validation](#12-stricter-email-validation) | XS |
 
 ## 2. Least-privilege database access
 
@@ -77,9 +78,3 @@ Sign-out, refresh token cleanup, the transactional sign-up email and email verif
   - login, register and profile pages
 - **Gate:** `staticwebapp.config.json` with a strict CSP (`default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://<api>; frame-ancestors 'none'`) and security headers **before** tokens are stored.
 - **Also:** add `.claude/rules/blazor-client.md` and a Client folder spec in `tests/Govern.ArchitectureTests/Conventions/Templates.cs`.
-
-## 12. Stricter email validation
-
-- **Why:** `Email.IsValid` (`src/Govern.Domain/ValueObjects/Email.cs`) only checks for exactly one `@` that is neither first nor last. It accepts control characters (CR/LF), internal whitespace, zero-width characters and un-normalised Unicode, so someone can register a lookalike of another user's address. There is no takeover path today (no password reset, and email delivery is mocked), but a real SMTP provider could be exposed to header injection (security audit of the Email value object, Low).
-- **Approach:** in `Email.IsValid`, reject `char.IsControl` and whitespace, and apply `Normalize(NormalizationForm.FormC)` before lower-casing (or reject non-ASCII local parts). Do this before password reset or real email delivery, and always send mail to the stored address.
-- **Tests:** unit cases in `tests/Govern.UnitTests/Domain/ValueObjects/EmailTests.cs`; sign-up returns 400 for these inputs.
