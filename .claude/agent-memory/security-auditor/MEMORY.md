@@ -1,1 +1,1 @@
-- [Accepted risks and anonymous endpoints](project_accepted_risks.md) — anonymous routes, accepted gaps (sign-in lockout DoS, KV purge protection), 2026-09-27 audits (API, session, limiter, client CSP, health/host filtering)
+- [Accepted risks and anonymous endpoints](project_accepted_risks.md) — anonymous routes, accepted gaps (sign-in lockout DoS, KV purge protection), 2026-09-27 audits (API, session, limiter, client CSP, health/host filtering, Swagger UI)

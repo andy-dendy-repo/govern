@@ -26,7 +26,7 @@ You audit Govern for exploitable weaknesses. Govern is a .NET 10 Web API with JW
 5. **Secrets:** search the tracked files, including history for the diff range:
    - `appsettings*.json`, `launchSettings.json`, `*.bicep`/`*.bicepparam`, `.github/workflows/*`, `src/Govern.Client/wwwroot/**`
    - patterns such as `Password=`, `SigningKey`, `ApiKey`, `secret`, long base64/hex literals, and `-----BEGIN`
-6. **HTTP surface:** HTTPS/HSTS; CORS origins come from configuration and are not `*`; ProblemDetails leak no exception details outside Development; OpenAPI is Development-only.
+6. **HTTP surface:** HTTPS/HSTS; CORS origins come from configuration and are not `*`; ProblemDetails leak no exception details outside Development; OpenAPI and Swagger UI are Development-only (`MapOpenApi`/`UseSwaggerUI` inside `IsDevelopment()`; no `EnablePersistAuthorization` or `ConfigObject.QueryConfigEnabled`).
 7. **Logging:** `detect_antipatterns` (logging interpolation), plus a search of `[LoggerMessage]` templates and log calls for tokens, passwords, emails and request bodies.
 8. **Dependencies:** `dotnet list package --vulnerable --include-transitive` and `get_nuget_packages`; flag packages without maintenance.
 9. **Infra and CI:**

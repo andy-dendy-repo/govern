@@ -44,7 +44,7 @@ Govern is a public API with JWT bearer auth, a public WASM client, and Postgres 
 - **CORS:** allow-list the Static Web App origin(s) from configuration. Never combine `AllowAnyOrigin` with credentials or use `*` in production.
 - **Host header:** `HostAllowListMiddleware` allows only `HostFiltering:AllowedHosts` (set by Bicep) and answers 400 otherwise; only `/health/live` is exempt. Never build absolute URLs from `Request.Host`; use configured base URLs.
 - Errors are ProblemDetails without stack traces, exception messages or SQL in production. Details are logged server-side, not returned.
-- OpenAPI and developer endpoints are exposed only in Development.
+- OpenAPI, Swagger UI and developer endpoints are exposed only in Development.
 - **Client (Static Web App):** `wwwroot/staticwebapp.config.json` serves a strict CSP (`script-src 'self' 'wasm-unsafe-eval'` + the import map hash, never `'unsafe-inline'`/`'unsafe-eval'` for scripts; inline styles only as attributes; `connect-src` limited to the Api origin; `frame-ancestors 'none'`; built-in SWA auth disabled) and security headers. The client never renders raw HTML (`MarkupString`) and loads no external assets, and only `Auth/TokenStore.cs` touches `localStorage` (where the tokens are). Details: `blazor-client.md`; enforced by `ClientSecurityTests`.
 
 ## Logging and privacy
