@@ -24,3 +24,8 @@ Open after the Plan 3a audit:
 
 **Why:** Plan 3b (SSE, events) builds on these handlers.
 **How to apply:** at the 3b audit check event filtering per viewer, SSE auth/connection limits per user, and whether the storage-growth Medium got a time-based quota or alerting.
+
+Plan 3b SSE audit 2026-09-28 (GET /api/games/{id}/stream, feature/game-live-updates):
+- Verified: membership checked before streaming (404) and on every re-read (SQL filter); hub carries only game id, snapshot = GetGameResponse per caller, deduped on (Phase, Players.Count, View.Version) so fog-hidden changes emit nothing; heartbeat timer not reset by hidden changes (no timing leak); closes at token exp (lifetime <= 1h by JwtOptions); header-only token (no OnMessageReceived); subscriptions removed on dispose.
+- MEDIUM, open at audit: `game-streams` concurrency cap evicted while streams are open. RateLimiter.CreateChained's IdleDuration is non-null when the fixed window is idle even with concurrency leases held (verified empirically, .NET 10); DefaultPartitionedRateLimiter drops partitions idle >10 s -> fresh cap every ~70 s (~50 streams/account per 15-min token). Fix: OwningChainedRateLimiter.IdleDuration returns null if any inner limiter's is null.
+- Every command (even hidden) triggers one full-game read per open watcher (<= 8 per game when the cap works).

@@ -11,7 +11,7 @@ paths:
 ## Purity (enforced)
 
 - **Base class library only:** no project references, no `PackageReference` (`ProjectReferenceTests.Core_HasNoPackageReferences`) and no `Microsoft.*` types (`LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`). Core does not use `Govern.Utils`: it has its own `RuleViolation`/`CommandResult`, and Application maps `RuleViolation` to `Error`. (`RuleViolation`, not `GameError`, so the name never clashes with the Application feature's `GameErrors` or with `Utils.Results.Error`.)
-- **No I/O, clock, async or `System.Random`** (`Core_DoesNotUseNondeterministicOrIoApis`). **No `Guid.NewGuid`, `Guid.CreateVersion7` or `GetHashCode(`** (`Core_DoesNotCreateIdentifiersOrUseHashCodes`). Logging and DI are also out (no `Microsoft.*`). Randomness goes through `DeterministicRandom`, whose state lives in `GameState.RngState`; new ids come from `GameState.NextId`. The same state, actor and command must always give the same result; order-dependent code sorts explicitly.
+- **No I/O, clock, async or `System.Random`** (`Core_DoesNotUseNondeterministicOrIoApis`). **No `Guid.NewGuid`, `Guid.CreateVersion7` or `GetHashCode(`** (`Core_DoesNotCreateIdentifiersOrUseHashCodes`). Logging and DI are also out (no `Microsoft.*`). Randomness goes through `DeterministicRandom`, whose state lives in `GameState.RngState`; new unit and city ids come from the same generator (`GameState.AllocateId`), hashed with SHA-256. **Never send raw `DeterministicRandom` output to a client** (SplitMix64 is invertible: two raw values reveal `RngState`); hash it, or expose only a few bits of a small range. Never add a counter an opponent could read activity from. `GameFactoryTests.Create_Ids_AreNotRawGeneratorDraws` guards the ids. The same state, actor and command must always give the same result; order-dependent code sorts explicitly.
 
 ## State and rules
 
@@ -24,6 +24,7 @@ paths:
 - **Rule violations are returned as `RuleViolations.Xxx`** (a stable snake_case code) and never thrown. Throw only for programming errors: an invalid `GameSetup`, an unknown command type, a missing entity inside a rule.
 - **New unit or terrain stats** go in `UnitCatalog` / `TerrainCatalog` as data, not in `if` chains inside rules.
 - **Clients only ever receive `GameEngine.ViewFor`** (`PlayerView`), never `GameState` or unfiltered events. Anything added to state that an opponent must not see must be filtered in `VisibilityCalculator.ViewFor`.
+- **`PlayerView.Version` is an opaque fingerprint** of the rest of the view (SHA-256 of its JSON). Everything in the view is hashed, so a new view field must hold only what the viewer may see; never put `GameState.Version` or another counter into the view.
 - **Rejections must not leak hidden information.** Another player's unit or city is `*.not_found`. A rule that inspects tiles or objects the actor cannot see must return the same error it would return if they were empty. Keep `UnitCatalogTests`' invariants (sight ≥ movement; settler sight ≥ city spacing − 1) or filter by visibility.
 - **Enum values from commands are untrusted:** check `Enum.IsDefined` in the rule before any catalog lookup, otherwise the catalog throws and the Api returns 500.
 
@@ -32,7 +33,7 @@ paths:
 - JSON goes through `GameSerializer.Options` only.
 - `type` discriminators (`move_unit`, `unit_moved`, …) are a storage and wire format: never rename one.
 - Computed properties get `[JsonIgnore]`.
-- A breaking change to the shape of `GameState` bumps `GameState.CurrentSchemaVersion` and needs a migration for stored games.
+- A breaking change to the shape of `GameState` bumps `GameState.CurrentSchemaVersion` and needs an upgrade in `GameSerializer.DeserializeState` for stored games (e.g. v1 → v2 drops `nextId`).
 
 ## Folders and naming
 

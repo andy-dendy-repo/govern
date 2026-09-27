@@ -8,6 +8,7 @@ using Govern.Infrastructure.Options;
 using Govern.Infrastructure.Persistence;
 using Govern.Infrastructure.Persistence.Interceptors;
 using Govern.Infrastructure.Persistence.Services;
+using Govern.Infrastructure.Realtime.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,7 @@ namespace Govern.Infrastructure;
 
 /// <summary>
 /// Registers Infrastructure implementations: persistence (PostgreSQL), identity (JWT, password hashing),
-/// email (mocked), in-memory sign-in throttling and the database health check.
+/// email (mocked), in-memory sign-in throttling, the in-process game change hub and the database health check.
 /// </summary>
 public static class DependencyInjection
 {
@@ -47,6 +48,7 @@ public static class DependencyInjection
             services.AddSingleton<IPasswordHashingService, PasswordHashingService>();
             services.AddSingleton<IEmailService, LoggingEmailService>();
             services.AddSingleton<ISignInThrottlingService, MemorySignInThrottlingService>();
+            services.AddSingleton<IGameChangeService, InMemoryGameChangeService>();
 
             return services;
         }

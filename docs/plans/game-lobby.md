@@ -2,7 +2,7 @@
 title: "Game plan 2: games, lobby and invite links"
 tags: [plan, game, lobby, invite, persistence, jsonb, ef-core, games]
 code: [src/Govern.Domain/Entities, src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Infrastructure/Persistence/Configurations]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Plan: Game plan 2: games, lobby and invite links
@@ -202,6 +202,7 @@ Players can then create a game, send the link, see who joined, start the game an
 - **Medium, mitigated in Plan 3a, still open:** per-user `games`/`game-commands` rate limits and a cap of 20 unfinished games ([games limits](../features/games.md#games-limits)) slow the growth, but finished games are neither capped nor deleted, and `resign` finishes a game at once. Two accounts looping create → join → start → resign still add ~10–13 games (~13 KB state each) per minute, indefinitely (Plan 3a security audit). Remaining fix before stage → main: a rolling per-user quota on create/join (e.g. games created or joined in the last 24 h, finished included), plus a storage alert (follow-ups #5) or storage auto-grow. **Original finding:** the lobby cap counts only `lobby` games, and starting a game frees a slot. A create → join → start loop can therefore write ~20 KB `jsonb` rows without limit, and the Postgres storage (32 GB, auto-grow off) would fill. Fix: a `games` rate-limit policy partitioned by user id on create, join and start (and on the Plan 3 command endpoint), plus a cap on games that are not finished.
 - **Low:** the lobby cap is a soft cap, because simultaneous creates can overshoot it.
 - **Medium, open (raised by Plan 3a):** lobbies never expire and can't be left or cancelled. With the unfinished-games cap (20, which counts joined lobbies), a user who joins 20 lobbies that are never started is locked out of create and join. Add lobby leave/cancel and expiry of stale lobbies before stage → main.
-- **Low, moved to Plan 3b:** `PlayerView.Version` and the shared `NextId` counter reveal how many things the opponent did. Decide before the SSE format is frozen (per-player counters or opaque ids). Plan 3a only asks clients to echo `view.version` as `expectedVersion`, so either fix keeps the command contract.
+- **Low, open (found in Plan 3b review):** `GET /api/games` returns and sorts by `updatedAt`, which every accepted command bumps, including moves hidden from the opponent, so polling the list reveals when the opponent acts. Fix in Plan 3c: drop `updatedAt` from `MyGameItem` or replace it with a column that changes only on events both players see (join, start, turn change, finish), and sort by that.
+- **Low, resolved in Plan 3b:** `PlayerView.Version` and the shared `NextId` counter revealed how many things the opponent did. `PlayerView.Version` is now an opaque fingerprint of the viewer's own view, and ids are drawn from the game RNG ([ADR 0005](../decisions/0005-live-updates.md)).
 - **Plan 3, resolved in 3a:** Core `RuleViolations` and Application `GameErrors` share the `game.` prefix without colliding; `GameErrorCodesTests` keeps them disjoint. Command bodies are read with `GameSerializer` (`GameCommandBody`).
 - **Plan 4:** put the invite code in a URL fragment (`/join#<code>`), never in the path or query. The client needs its own `GamePhase` model, because it can reference only Core.
