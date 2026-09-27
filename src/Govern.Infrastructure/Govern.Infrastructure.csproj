@@ -2,6 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Govern.Application\Govern.Application.csproj" />
     <ProjectReference Include="..\Govern.Application.Common\Govern.Application.Common.csproj" />
+    <ProjectReference Include="..\Govern.Core\Govern.Core.csproj" />
     <ProjectReference Include="..\Govern.Domain\Govern.Domain.csproj" />
     <ProjectReference Include="..\Govern.Utils\Govern.Utils.csproj" />
   </ItemGroup>

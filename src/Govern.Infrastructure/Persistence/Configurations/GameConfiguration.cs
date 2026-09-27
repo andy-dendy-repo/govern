@@ -1,0 +1,60 @@
+using System.Runtime.CompilerServices;
+using Govern.Core.Serialization;
+using Govern.Core.State;
+using Govern.Domain.Entities;
+using Govern.Domain.ValueObjects;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Govern.Infrastructure.Persistence.Configurations;
+
+/// <summary>
+/// Maps <see cref="Game"/>: unique invite code, phase as text, <see cref="Game.Revision"/> as the concurrency token and the
+/// whole <see cref="GameState"/> as one <c>jsonb</c> snapshot written through <see cref="GameSerializer"/>.
+/// </summary>
+internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
+{
+    private const int PhaseMaxLength = 16;
+
+    // The state is immutable and replaced on every change, so reference equality detects changes without comparing or
+    // copying a ~20 KB object graph on every DetectChanges.
+    private static readonly ValueComparer<GameState?> ReferenceComparer = new(
+        static (left, right) => ReferenceEquals(left, right),
+        static state => state == null ? 0 : RuntimeHelpers.GetHashCode(state),
+        static state => state);
+
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<Game> builder)
+    {
+        builder.HasKey(game => game.Id);
+
+        builder.Property(game => game.InviteCode)
+            .HasConversion(code => code.Value, value => InviteCode.Create(value))
+            .HasMaxLength(InviteCode.MaxLength)
+            .IsRequired();
+        builder.HasIndex(game => game.InviteCode).IsUnique();
+
+        builder.Property(game => game.Phase).HasConversion<string>().HasMaxLength(PhaseMaxLength);
+
+        // Join and Start update only the revision they read (WHERE revision = @old), so concurrent changes to the same
+        // game cannot both win; the loser gets DbUpdateConcurrencyException.
+        builder.Property(game => game.Revision).IsConcurrencyToken();
+
+        // Never queried inside: anything a query needs (phase, players) has its own column.
+        builder.Property(game => game.State)
+            .HasColumnType("jsonb")
+            .HasConversion(state => GameSerializer.Serialize(state), json => GameSerializer.DeserializeState(json), ReferenceComparer)
+            .IsRequired(false);
+
+        builder.HasIndex(game => game.CreatorId);
+        builder.HasOne<User>().WithMany().HasForeignKey(game => game.CreatorId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(game => game.Players)
+            .WithOne()
+            .HasForeignKey(player => player.GameId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(game => game.Players).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}

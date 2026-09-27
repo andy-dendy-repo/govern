@@ -14,6 +14,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 
 ## Features
 - [features/game-core.md](features/game-core.md): the pure game engine in `Govern.Core`: hex map, units and cities, commands and rules, error codes, fog of war (`PlayerView`), determinism and the JSON format.
+- [features/games.md](features/games.md): games and lobby: phases, `/api/games` endpoints and status codes, error codes, invite codes, per-game player ids (no user ids exposed), join/start races, `games`/`game_players` tables and the `jsonb` state.
 - [features/client.md](features/client.md): Blazor WASM client architecture (CFT feature folders), `Api:BaseUrl` configuration, CSP and security headers on the Static Web App, release-time configuration, bUnit and architecture tests.
 - [features/users.md](features/users.md): sign-up, sign-in, refresh token rotation and reuse detection, session cap and cleanup, sign-out, current user; endpoints, errors, data model.
 
@@ -32,6 +33,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 
 ## Plans
 - [plans/game-delivery.md](plans/game-delivery.md): the five game plans (Core engine, lobby, commands + SSE, client lobby, client board), status and the `gamecore` branching flow.
+- [plans/game-lobby.md](plans/game-lobby.md): game plan 2 (done): `Game` aggregate, lobby with invite codes, creator-only start, `jsonb` state, five `/api/games` endpoints.
 - [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step, with status.
 - [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (least-privilege DB access, monitoring, Blazor client authentication and pages).
 - [plans/follow-ups-delivery.md](plans/follow-ups-delivery.md): delivery plans for the follow-ups backlog, one increment per item, in order.

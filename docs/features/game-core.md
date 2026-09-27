@@ -14,7 +14,7 @@ updated: 2026-09-27
 | Member | Purpose |
 |---|---|
 | `GameFactory.Create(GameSetup)` | New game: plains map, each player gets a settler plus an adjacent soldier. Turn 1, first player, version 0 |
-| `GameEngine.Execute(state, actor, command)` | Validates and applies one `GameCommand`. Returns `CommandResult`: a `GameUpdate` (new `GameState` + ordered `GameEvent`s) or a `GameError`. A rejected command never changes the state |
+| `GameEngine.Execute(state, actor, command)` | Validates and applies one `GameCommand`. Returns `CommandResult`: a `GameUpdate` (new `GameState` + ordered `GameEvent`s) or a `RuleViolation`. A rejected command never changes the state |
 | `GameEngine.ReachableTiles(state, viewer, unitId)` | Tiles one of the viewer's units can move to this turn, for UI highlights. Another player's unit always returns an empty list |
 | `GameEngine.ViewFor(state, player)` | The fog-of-war `PlayerView`: the only shape a client may receive |
 | `GameSerializer` | The one JSON format for storage (jsonb), the Api and the client |
@@ -67,9 +67,9 @@ After each accepted command, `Execute`:
 - Units of eliminated or resigned players are removed.
 - When one active player is left, the game is `Finished`, `Winner` is set, and `GameWonEvent` is emitted.
 
-## Rule violation error codes (GameErrors)
+## Rule violation error codes (RuleViolations)
 
-Rule violations are returned as `GameError(Code, Message)`, never thrown. Codes are stable:
+Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleViolations`), never thrown. Codes are stable:
 
 | Code | When |
 |---|---|
@@ -95,6 +95,7 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - `PlayerView.Players` lists ids and statuses without the opponents' exploration.
 - **Rejections leak nothing:** a hidden unit on a move target gives `move.unreachable`, not `move.occupied`. Another player's unit or city id gives `*.not_found`. City names count only the founder's cities.
 - **Invariants that keep rejections leak-free:** unit sight ≥ movement / cheapest step, and settler sight ≥ `City.MinimumSpacing - 1`. `UnitCatalogTests` enforces both, so changing a stat that breaks them fails the build until the rules filter by visibility.
+- `PlayerId` values are chosen by the host. Govern uses the per-game seat id (`GamePlayer.Id`), never a user id, so the view reveals no account ids ([games](games.md)).
 - Hosts must send clients `PlayerView`, never `GameState`. Raw `GameEvent`s describe the full state and must be filtered by visibility before being sent to a player.
 
 ## Determinism and randomness
