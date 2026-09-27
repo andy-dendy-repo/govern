@@ -39,6 +39,15 @@ Exceptions outside the mediator are handled as follows:
 - **Anything else:** logged and returned as a 500 ProblemDetails.
 - **Empty error responses** (e.g. a 401 from authentication) get a ProblemDetails body from `UseStatusCodePages`.
 
+## Aborted requests (client disconnects)
+
+- A client disconnect cancels `HttpContext.RequestAborted`. Minimal APIs bind it to the endpoint's `CancellationToken`, which flows through the mediator into EF Core and cancels the running SQL. Always pass the token down so the work actually stops.
+- **No response can be delivered.** The status code exists only for logs and metrics. `ExceptionHandlingMiddleware` records **499 Client Closed Request** (the nginx convention, `StatusCodes.Status499ClientClosedRequest`) with no body, and logs it at Debug (EventId 3002). It is never an Error or a 5xx; aborts are normal on mobile networks.
+- `ErrorHandlingPipeline` rethrows `OperationCanceledException` when the request's token is cancelled, so aborts never become `Error.Unexpected`.
+- **Don't confuse aborts with server-side timeouts.** A server giving up on slow work returns 503/504 (e.g. the RequestTimeouts middleware), and a client too slow to *send* its request gets 408 (Kestrel).
+- **Commits are not undone by an abort.** If a write committed before the client went away, the client never sees the result, and a retry may hit a domain error (e.g. 409 on sign-up). Work that must finish once started (revocation, post-commit events) uses `CancellationToken.None`.
+- Covered by `tests/Govern.IntegrationTests/Pipeline/AbortedRequestTests`.
+
 ## Rules
 
 - Don't `try/catch` in handlers just to log. The pipeline logs unexpected exceptions once. Catch only to translate a *specific, expected* exception into an `Error`: `DbUpdateConcurrencyException`, or `DbUpdateException` filtered with `IDbExceptionClassificationService.IsUniqueViolation`.

@@ -30,20 +30,9 @@ Extra work added along the way:
 - code size limits (architecture tests + CA1502)
 - the mapping rule, with an architecture test banning mapping libraries
 
-### Follow-ups from the first review and security audit (2026-09-27)
+### Follow-ups
 
-| Priority | Item |
-|---|---|
-| High | Sign-out endpoint (revoke the presented refresh token), then "sign out everywhere" |
-| High | Least-privilege Postgres role (or Entra ID authentication with the Web App identity) instead of the admin login |
-| Medium | A per-account sign-in limiter (normalised email) in addition to the per-IP limit; partition IPv6 by /64 |
-| Medium | Email verification (removes sign-up enumeration; return 202 for existing emails) |
-| Medium | Monitoring: Log Analytics diagnostic settings and alerts (EventId 1001, 401/429 spikes, 5xx) |
-| Low | Background cleanup of expired and revoked `refresh_tokens` |
-| Low | Outbox for domain events that must not be lost (email delivery is best-effort today) |
-| Low | `AllowedHosts` set to the real host names; separate liveness (no database) from readiness health checks |
-| Decide | Key Vault purge protection (irreversible) |
-| With client | `staticwebapp.config.json` with a strict CSP (required before tokens are stored in localStorage) |
+Open work from the first review and security audit, and the deferred Blazor client: [follow-ups.md](follow-ups.md).
 
 The rest of this document is the original plan, kept for reference.
 
