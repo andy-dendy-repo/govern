@@ -46,6 +46,12 @@ public sealed record Error(string Code, string Message, ErrorType Type)
     /// <returns>An error of type <see cref="ErrorType.Forbidden"/>.</returns>
     public static Error Forbidden(string code, string message) => new(code, message, ErrorType.Forbidden);
 
+    /// <summary>Creates a too-many-requests error.</summary>
+    /// <param name="code">Stable error code.</param>
+    /// <param name="message">Client-safe message.</param>
+    /// <returns>An error of type <see cref="ErrorType.TooManyRequests"/>.</returns>
+    public static Error TooManyRequests(string code, string message) => new(code, message, ErrorType.TooManyRequests);
+
     /// <summary>Creates the generic unexpected error; never carries exception details.</summary>
     /// <returns>An error of type <see cref="ErrorType.Unexpected"/>.</returns>
     public static Error Unexpected() => new("unexpected", "An unexpected error occurred.", ErrorType.Unexpected);

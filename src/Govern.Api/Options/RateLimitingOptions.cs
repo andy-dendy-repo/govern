@@ -10,7 +10,7 @@ public sealed class RateLimitingOptions
     /// <summary>The configuration section name.</summary>
     public const string SectionName = "RateLimiting";
 
-    /// <summary>Requests allowed per client IP and window (default 10).</summary>
+    /// <summary>Requests allowed per client IP (IPv6: per /64) and window (default 10).</summary>
     [Range(1, 10_000)]
     public int AuthPermitLimit { get; set; } = 10;
 

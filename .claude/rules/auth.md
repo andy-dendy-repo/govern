@@ -37,6 +37,7 @@ paths:
   - length 8–128
   - never logged or returned
 - **Sign-in:** unknown email and wrong password return the same error, and a hash is always verified, so the timing doesn't reveal which accounts exist.
+- **Brute force:** two layers. The `auth` rate-limiting policy counts requests per client IP (IPv6 per /64, `IpPartitionKey`). `ISignInThrottlingService` atomically reserves each attempt per normalised email (`TryBeginAttempt`, `SignInThrottling:*`) *before* the password is verified, returns 429 `user.too_many_sign_in_attempts` past the limit, and is reset on success. Unknown emails are counted the same way, so throttling doesn't reveal accounts. A new credential-checking endpoint must use both.
 
 ## Authorization
 

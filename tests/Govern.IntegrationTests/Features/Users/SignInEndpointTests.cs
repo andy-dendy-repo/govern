@@ -158,4 +158,115 @@ public class SignInEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture
         responses[1].StatusCode.ShouldBe(HttpStatusCode.OK);
         responses[2].StatusCode.ShouldBeOneOf(HttpStatusCode.OK, HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Post_AfterMaxFailedAttempts_Returns429EvenWithCorrectPassword()
+    {
+        var email = await SignUpAsync();
+        await FailSignInsAsync(Client, email.ToUpperInvariant(), 5);
+
+        var response = await UsersApi.SignInAsync(Client, email, UsersApi.Password, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.TooManyRequests, "user.too_many_sign_in_attempts", Ct);
+    }
+
+    [Fact]
+    public async Task Post_ParallelWrongPasswords_OnlyMaxFailedAttemptsAreChecked()
+    {
+        var email = await SignUpAsync();
+
+        var responses = await Task.WhenAll(
+            Enumerable.Range(0, 20).Select(_ => UsersApi.SignInAsync(Client, email, "wrong-password", Ct)));
+
+        responses.Count(r => r.StatusCode == HttpStatusCode.Unauthorized).ShouldBe(5);
+        responses.Count(r => r.StatusCode == HttpStatusCode.TooManyRequests).ShouldBe(15);
+    }
+
+    [Fact]
+    public async Task Post_BlockedAccountWithWrongPassword_Returns429()
+    {
+        var email = await SignUpAsync();
+        await FailSignInsAsync(Client, email, 5);
+
+        var response = await UsersApi.SignInAsync(Client, email, "wrong-password", Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.TooManyRequests, "user.too_many_sign_in_attempts", Ct);
+    }
+
+    [Fact]
+    public async Task Post_MalformedEmailRepeatedly_IsNeverThrottled()
+    {
+        await FailSignInsAsync(Client, "not-an-email", 10);
+    }
+
+    [Fact]
+    public async Task Post_AnotherAccountThrottled_ThisAccountSignsIn()
+    {
+        var throttled = await SignUpAsync();
+        var email = await SignUpAsync();
+        await FailSignInsAsync(Client, throttled, 5);
+
+        var response = await UsersApi.SignInAsync(Client, email, UsersApi.Password, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_SuccessfulSignIn_ResetsFailedAttempts()
+    {
+        var email = await SignUpAsync();
+        await FailSignInsAsync(Client, email, 4);
+        (await UsersApi.SignInAsync(Client, email, UsersApi.Password, Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        await FailSignInsAsync(Client, email, 4);
+
+        var response = await UsersApi.SignInAsync(Client, email, UsersApi.Password, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_UnknownEmailAfterMaxFailedAttempts_Returns429LikeKnownAccount()
+    {
+        var email = UsersApi.NewEmail();
+        await FailSignInsAsync(Client, email, 5);
+
+        var response = await UsersApi.SignInAsync(Client, email, "wrong-password", Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.TooManyRequests, "user.too_many_sign_in_attempts", Ct);
+    }
+
+    [Fact]
+    public async Task Post_AfterThrottlingWindow_SignsInAgain()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        using var factory = Fixture.Factory.WithWebHostBuilder(builder => builder
+            .UseSetting("SignInThrottling:Window", "00:10:00")
+            .ConfigureTestServices(services => services.AddSingleton<TimeProvider>(time)));
+        using var client = factory.CreateClient();
+        var email = UsersApi.NewEmail();
+        (await UsersApi.SignUpAsync(client, email, UsersApi.Password, Ct)).EnsureSuccessStatusCode();
+        await FailSignInsAsync(client, email, 5);
+        time.Advance(TimeSpan.FromMinutes(9));
+        (await UsersApi.SignInAsync(client, email, UsersApi.Password, Ct)).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+
+        time.Advance(TimeSpan.FromMinutes(1));
+        var response = await UsersApi.SignInAsync(client, email, UsersApi.Password, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    private async Task<string> SignUpAsync()
+    {
+        var email = UsersApi.NewEmail();
+        (await UsersApi.SignUpAsync(Client, email, UsersApi.Password, Ct)).EnsureSuccessStatusCode();
+        return email;
+    }
+
+    private static async Task FailSignInsAsync(HttpClient client, string email, int count)
+    {
+        for (var attempt = 0; attempt < count; attempt++)
+        {
+            (await UsersApi.SignInAsync(client, email, "wrong-password", Ct)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+    }
 }
