@@ -27,6 +27,7 @@ public class AbortedRequestTests(GovernApiFixture fixture) : ApiTestBase(fixture
         {
             // Production: no developer exception page, so the Api's own middleware must handle the abort.
             builder.UseEnvironment(Environments.Production);
+            builder.UseSetting("HostFiltering:AllowedHosts:0", "localhost"); // required outside Development
             builder.ConfigureLogging(logging => logging.AddFakeLogging());
             builder.ConfigureTestServices(services =>
             {

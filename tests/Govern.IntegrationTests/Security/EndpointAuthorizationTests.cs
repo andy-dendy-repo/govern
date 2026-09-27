@@ -14,7 +14,8 @@ public class EndpointAuthorizationTests(GovernApiFixture fixture) : ApiTestBase(
         "/api/users/sign-up",
         "/api/users/sign-in",
         "/api/users/refresh",
-        "/health",
+        "/health/live",
+        "/health/ready",
         "/openapi/{documentName}.json",
     ];
 

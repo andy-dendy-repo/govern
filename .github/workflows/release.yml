@@ -80,6 +80,17 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # API_ORIGIN feeds the Api host allow-list (Bicep) and the client (configure-client.sh). A malformed value would
+      # crash-loop the Api at startup validation, so reject it before anything is deployed.
+      - name: Validate API_ORIGIN
+        env:
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+        run: |
+          if [[ -n "$API_ORIGIN" && ! "$API_ORIGIN" =~ ^https://[a-z0-9-]+(\.[a-z0-9-]+)+$ ]]; then
+            echo "::error::API_ORIGIN must be lower-case https://host without port, path or trailing slash, got '$API_ORIGIN'"
+            exit 1
+          fi
+
       - name: Deploy infrastructure and Api image
         id: infra
         env:
@@ -88,6 +99,7 @@ jobs:
           JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
           RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
         run: |
           outputs=$(az deployment group create \
@@ -134,7 +146,7 @@ jobs:
           API_HOST: ${{ steps.infra.outputs.api_host }}
         run: |
           for _ in $(seq 1 30); do
-            if curl --fail --silent "https://${API_HOST}/health"; then echo; exit 0; fi
+            if curl --fail --silent "https://${API_HOST}/health/ready"; then echo; exit 0; fi
             sleep 10
           done
           echo "::error::Api did not become healthy"

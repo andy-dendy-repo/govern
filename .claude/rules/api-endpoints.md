@@ -31,11 +31,11 @@ See `architecture.md` for the full example (`SignUpEndpoint`).
 
 ## Cross-cutting pieces
 
-- **Middleware** (`Middlewares/*Middleware.cs`, `IMiddleware`, registered transient) handles request-wide concerns. The current one is `ExceptionHandlingMiddleware`.
+- **Middleware** (`Middlewares/*Middleware.cs`, `IMiddleware`, registered transient) handles request-wide concerns: `ExceptionHandlingMiddleware` and `HostAllowListMiddleware`.
 - **Endpoint filters** (`Filters/*Filter.cs`, `IEndpointFilter`) handle concerns for specific endpoints. Validation is **not** a filter; the mediator validates.
 - **Options** (`Options/*Options.cs`) are bound and validated at startup (`ValidateDataAnnotations().ValidateOnStart()`).
-- **Health checks:** `/health` is anonymous. Infrastructure registers the checks (`postgres`); Api `HealthChecks/*HealthCheck.cs` holds Api-specific ones.
-- **Pipeline order in `Program.cs`:** exception middleware → status code pages → HSTS (non-Development) → HTTPS redirection → CORS → authentication → authorization → rate limiter → endpoints.
+- **Health checks:** `/health/live` (no checks; App Service probe; exempt from host filtering and not rate limited) and `/health/ready` (checks tagged `ready`; `health` rate-limiting policy) are anonymous. Routes live in `Api/Models/HealthCheckRoutes`, the tag in `Application.Common/Models/HealthCheckTags`. Infrastructure registers the checks (`postgres`, `HealthCheckTags.Ready`); Api `HealthChecks/*HealthCheck.cs` holds Api-specific ones. Anything that touches a dependency goes on `ready`, never on `live`.
+- **Pipeline order in `Program.cs`:** exception middleware → status code pages → host allow-list → HSTS (non-Development) → HTTPS redirection → CORS → authentication → authorization → rate limiter → endpoints.
 
 ## Testing
 
