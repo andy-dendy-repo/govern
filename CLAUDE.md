@@ -87,6 +87,7 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 - `roslyn-refactor`: **code changes.** Rename, move type or namespace, change signature, extract method or interface, add missing usings, format. Use it for multi-file refactors instead of manual edits.
 - `microsoft-docs` / `context7`: current .NET, ASP.NET Core, EF Core, Radzen and Testcontainers APIs. Check them before using an API you aren't sure of.
 - `postgres`: inspect the local database (it is unrestricted; don't run destructive SQL without asking).
+- `playwright`: drive a real browser against the running client (`https://localhost:7042`) to check UI changes end to end: navigate, click, fill forms, read the accessibility snapshot, take screenshots.
 
 ## Claude setup
 
