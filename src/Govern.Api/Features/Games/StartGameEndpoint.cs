@@ -1,4 +1,5 @@
 using Govern.Api.Extensions;
+using Govern.Api.Models;
 using Govern.Application.Games.Contracts;
 using Govern.Utils.Mediator.Abstractions;
 
@@ -14,6 +15,7 @@ public static class StartGameEndpoint
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/api/games/{id:guid}/start", HandleAsync)
             .RequireAuthorization()
+            .RequireRateLimiting(RateLimitingPolicies.Games)
             .WithName(nameof(StartGameEndpoint))
             .WithTags("Games")
             .Produces<GetGameResponse>()
@@ -21,7 +23,8 @@ public static class StartGameEndpoint
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
     /// <summary>Starts the game and returns the caller's view of the new board.</summary>
     /// <param name="id">Game id.</param>
@@ -34,6 +37,7 @@ public static class StartGameEndpoint
     /// <response code="403">The caller plays in the game but did not create it.</response>
     /// <response code="404">No such game, or the caller does not play in it.</response>
     /// <response code="409">The game has already started or is waiting for a second player.</response>
+    /// <response code="429">Too many game creates, joins and starts from this user.</response>
     private static async Task<IResult> HandleAsync(Guid id, IMediatorService mediator, CancellationToken cancellationToken)
     {
         var result = await mediator.SendAsync(new StartGameRequest(id), cancellationToken);

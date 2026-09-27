@@ -23,3 +23,9 @@ Plan 2 review (2026-09-27, feature/game-lobby: Game/GamePlayer, jsonb state, 5 /
 - Race handling via `Revision` concurrency token + unique indexes is correct, but `Task.WhenAll` tests don't deterministically hit the catch branches; ask for a forced race if a new catch path is added.
 - jsonb reorders object keys, so anything deserialized from `games.state` needs `AllowOutOfOrderMetadataProperties` (GameSerializer has it; HTTP JSON options do not, so Plan 3 command bodies must go through `GameSerializer.Options`).
 - Core `RuleViolations` and Application `GameErrors` share the `game.` code prefix; watch for collisions when Plan 3 maps violations to `Error`.
+
+Plan 3a review (2026-09-27, feature/game-commands: command endpoint, per-user rate limits, unfinished-games cap). No critical findings. Verified, don't re-derive:
+- `GameRowLock` makes the command race deterministic: reads aren't blocked, UPDATE ... WHERE revision blocks, EPQ re-check fails -> DbUpdateConcurrencyException -> `game.stale_version`.
+- `MapInboundClaims = false` and UseRateLimiter comes after UseAuthorization, so per-user (`sub`) partitions work; the IP fallback in `PerUser` is unreachable.
+- `GameSerializer` has `RespectRequiredConstructorParameters` and throws on `null`, so empty/`null`/missing-field bodies are 400 from `GameCommandBody.BindAsync`.
+Checks worth repeating: any per-user cap must have a way out for every counted state (joined lobbies can't be left, resigned or expire, so the unfinished-games cap can lock a user out); new 409 codes must also go into the endpoint table rows of games.md, not only the error-code table; a shared rate-limit policy test must hit every endpoint it claims (Join was unasserted); the size cap has two branches (Content-Length and streamed) and each needs a test.

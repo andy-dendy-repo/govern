@@ -20,12 +20,12 @@ See `architecture.md` for the full example (`SignUpEndpoint`).
 |---|---|
 | Routes | `/api/{feature-plural}/{kebab-action}` for commands (`/api/users/sign-up`), resource paths for reads (`/api/users/me`). Lower-case, kebab-case |
 | Verbs | GET reads (no body); POST creates or actions; PUT/PATCH updates; DELETE deletes |
-| Body | Bind the Application `XxxRequest` directly; route or query values are merged with `request with { Id = id }` |
+| Body | Bind the Application `XxxRequest` directly; route or query values are merged with `request with { Id = id }`. **Exception:** a body carrying Core game types (polymorphic `GameCommand`) is an `Api/Models/XxxBody` record with a static `BindAsync` that reads it with `GameSerializer.Options` and a byte cap, throwing `BadHttpRequestException` (400/413/415). The HTTP JSON defaults would turn a missing `type` into a 500 (`GameCommandBody`). Enforced by `NamingConventionTests.ApiEndpointParameters_WithCoreGameTypes_AreBoundWithGameSerializer` and `ApiModelBodies_DeclareBindAsync` |
 | Handler body | Two lines: `var result = await mediator.SendAsync(request, cancellationToken);` then `return result.ToHttpResult(...)` |
 | Success status | 200 `Ok` (default), 201 `TypedResults.Created(location, response)` for creation, 204 `NoContent` when there is nothing to return |
 | Errors | Never build them by hand; `ToHttpResult()` maps `Error` → ProblemDetails (`error-handling.md`) |
 | Auth | Always explicit: `.RequireAuthorization(...)` or `.AllowAnonymous()` (`security.md`, `auth.md`). The fallback policy denies anything undeclared |
-| Rate limiting | `.RequireRateLimiting(RateLimitingPolicies.Auth)` on anonymous credential endpoints |
+| Rate limiting | `.RequireRateLimiting(RateLimitingPolicies.Auth)` on anonymous credential endpoints (per client IP). Signed-in endpoints that write a lot or can be spammed use a per-user policy (partitioned by the JWT `sub`): `Games` on game create/join/start, `GameCommands` on game commands. Limits live in `RateLimitingOptions` and are raised to 10000 in `GovernApiFactory` |
 | OpenAPI metadata | `.WithName(nameof(XxxEndpoint))`, `.WithTags("Feature")`, `.Produces<TResponse>(status)`, `.ProducesValidationProblem()`, `.ProducesProblem(status)` for every non-2xx status the use case returns |
 | Cancellation | Take `CancellationToken cancellationToken` and pass it to the mediator |
 

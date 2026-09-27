@@ -65,8 +65,24 @@ Content-Type: application/json
 { "inviteCode": "{{createGame.response.body.$.inviteCode}}" }
 
 ### Start (creator only; returns the creator's view)
+# @name startGame
 POST {{api}}/api/games/{{createGame.response.body.$.id}}/start
 Authorization: Bearer {{signIn.response.body.$.accessToken}}
+
+### End the first turn (expectedVersion = the view.version you last saw)
+# @name endTurn
+POST {{api}}/api/games/{{createGame.response.body.$.id}}/commands
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "expectedVersion": {{startGame.response.body.$.view.version}}, "command": { "type": "end_turn" } }
+
+### Move a unit as the second player (pick a unit id and a target from view.units / view.tiles)
+POST {{api}}/api/games/{{createGame.response.body.$.id}}/commands
+Authorization: Bearer {{signIn2.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "expectedVersion": {{endTurn.response.body.$.view.version}}, "command": { "type": "move_unit", "unitId": { "value": 2 }, "target": { "q": 3, "r": 3 } } }
 
 ### Get the game as the first player
 GET {{api}}/api/games/{{createGame.response.body.$.id}}

@@ -2,9 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using Govern.Application.Games.Contracts;
 using Govern.Application.Games.Models;
+using Govern.Core.Actions;
 using Govern.Domain.Enums;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Govern.IntegrationTests.Features.Games;
@@ -72,5 +74,55 @@ public class CreateGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fix
         var response = await GamesApi.CreateAsync(Client, creator.AccessToken, Ct);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Post_AtUnfinishedGameLimit_Returns409()
+    {
+        var other = await GamesApi.NewPlayerAsync(Client, Ct);
+        var caller = await GamesApi.NewPlayerAsync(Client, Ct);
+        await GamesApi.SeedJoinedLobbiesAsync(Fixture, other.UserId, caller.UserId, GameErrors.MaxUnfinishedGamesPerUser, Ct);
+
+        var response = await GamesApi.CreateAsync(Client, caller.AccessToken, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.too_many_unfinished_games", Ct);
+    }
+
+    [Fact]
+    public async Task Post_AtUnfinishedGameLimitAfterAGameFinished_Returns201()
+    {
+        var (game, caller, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var other = await GamesApi.NewPlayerAsync(Client, Ct);
+        await GamesApi.SeedJoinedLobbiesAsync(Fixture, other.UserId, caller.UserId, GameErrors.MaxUnfinishedGamesPerUser - 1, Ct);
+        await (await GamesApi.CreateAsync(Client, caller.AccessToken, Ct)).ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.too_many_unfinished_games", Ct);
+        var version = (await GamesApi.GetGameAsync(Client, caller, game.Id, Ct)).View!.Version;
+        (await GamesApi.SendCommandAsync(Client, caller.AccessToken, game.Id, version, new ResignCommand(), Ct)).EnsureSuccessStatusCode();
+
+        var response = await GamesApi.CreateAsync(Client, caller.AccessToken, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Post_OverGamesRateLimit_Returns429PerUserAcrossCreateJoinAndStart()
+    {
+        using var factory = Fixture.Factory.WithWebHostBuilder(static builder => builder.UseSetting("RateLimiting:GamesPermitLimit", "2"));
+        using var client = factory.CreateClient();
+        var creator = await GamesApi.NewPlayerAsync(client, Ct);
+        var joiner = await GamesApi.NewPlayerAsync(client, Ct);
+        var host = await GamesApi.NewPlayerAsync(client, Ct);
+        var game = await GamesApi.CreateGameAsync(client, creator, Ct);
+        (await GamesApi.JoinAsync(client, joiner.AccessToken, game.InviteCode, Ct)).EnsureSuccessStatusCode();
+        (await GamesApi.CreateAsync(client, joiner.AccessToken, Ct)).EnsureSuccessStatusCode();
+        (await GamesApi.StartAsync(client, creator.AccessToken, game.Id, Ct)).EnsureSuccessStatusCode();
+        var hostLobby = await GamesApi.CreateGameAsync(client, host, Ct);
+
+        var joinLimited = await GamesApi.JoinAsync(client, joiner.AccessToken, hostLobby.InviteCode, Ct);
+        var createLimited = await GamesApi.CreateAsync(client, creator.AccessToken, Ct);
+        var otherUser = await GamesApi.CreateAsync(client, host.AccessToken, Ct);
+
+        joinLimited.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        createLimited.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        otherUser.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
 }
