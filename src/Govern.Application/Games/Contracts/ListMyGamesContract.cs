@@ -69,7 +69,13 @@ internal sealed class ListMyGamesHandler(IApplicationDbContextFactory dbContextF
             .ThenByDescending(game => game.Id)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(game => new MyGameItem(game.Id, game.Phase, game.Players.Count, game.CreatorId == userId, game.UpdatedAt))
+            .Select(game => new MyGameItem(
+                game.Id,
+                game.Phase,
+                game.Players.Count,
+                game.CreatorId == userId,
+                game.Players.Any(player => player.UserId == userId && player.Id == game.CurrentPlayerId),
+                game.UpdatedAt))
             .ToListAsync(cancellationToken);
 
         return new ListMyGamesResponse(items, total);

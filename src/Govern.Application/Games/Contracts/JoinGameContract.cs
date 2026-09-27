@@ -13,7 +13,7 @@ namespace Govern.Application.Games.Contracts;
 
 /// <summary>
 /// Takes the free seat of the lobby that uses <paramref name="InviteCode"/>. Joining a game you already play in succeeds and
-/// changes nothing.
+/// changes nothing. A new player must play in fewer than <see cref="GameErrors.MaxUnfinishedGamesPerUser"/> unfinished games.
 /// </summary>
 /// <param name="InviteCode">The code from the invite link (sent in the body so it never appears in URLs or access logs).</param>
 public sealed record JoinGameRequest(string InviteCode) : IRequest<JoinGameRequest, JoinGameResponse>;
@@ -83,6 +83,13 @@ internal sealed class JoinGameHandler(
         if (Evaluate(game, userId) is { } outcome)
         {
             return outcome;
+        }
+
+        var unfinished = await db.Games.CountAsync(
+            candidate => candidate.Phase != GamePhase.Finished && candidate.Players.Any(player => player.UserId == userId), cancellationToken);
+        if (unfinished >= GameErrors.MaxUnfinishedGamesPerUser)
+        {
+            return GameErrors.TooManyUnfinishedGames;
         }
 
         game.Join(userId, timeProvider.GetUtcNow());

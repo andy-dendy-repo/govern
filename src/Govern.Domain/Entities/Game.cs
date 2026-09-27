@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using Govern.Core.Engine;
 using Govern.Core.State;
 using Govern.Domain.EntityBase;
 using Govern.Domain.Enums;
@@ -51,6 +52,12 @@ public sealed class Game : BaseAuditableEntity
     /// The engine state; <see langword="null"/> while in the <see cref="GamePhase.Lobby"/>. Immutable: changes replace it.
     /// </summary>
     public GameState? State { get; private set; }
+
+    /// <summary>
+    /// The seat id (<see cref="GamePlayer.PlayerId"/>) of the player whose turn it is, copied from <see cref="State"/> so lists can show
+    /// "your turn" without reading the snapshot; <see langword="null"/> in the lobby and once the game has finished.
+    /// </summary>
+    public Guid? CurrentPlayerId { get; private set; }
 
     /// <summary>
     /// The seated players (the caller must load them).
@@ -132,7 +139,38 @@ public sealed class Game : BaseAuditableEntity
         var players = _players.OrderBy(static player => player.Seat).Select(static player => player.PlayerId);
         State = GameFactory.Create(new GameSetup([.. players], NewSeed()));
         Phase = GamePhase.InProgress;
+        CurrentPlayerId = State.CurrentPlayer.Value;
         Revision++;
+    }
+
+    /// <summary>
+    /// Runs one player's command through the engine. An accepted command replaces <see cref="State"/>, moves
+    /// <see cref="CurrentPlayerId"/> and finishes the game when the engine does; a rejected one changes nothing.
+    /// </summary>
+    /// <param name="userId">The seated user sending the command.</param>
+    /// <param name="command">The command.</param>
+    /// <returns>The engine's result: the update, or the <see cref="RuleViolation"/> that rejected the command.</returns>
+    /// <exception cref="InvalidOperationException">The game has not started, or the user has no seat in it.</exception>
+    public CommandResult Execute(Guid userId, GameCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        if (State is null || FindPlayer(userId) is not { } player)
+        {
+            throw new InvalidOperationException("Only a seated player of a started game can send commands.");
+        }
+
+        var result = GameEngine.Execute(State, player.PlayerId, command);
+        if (result.IsSuccess)
+        {
+            State = result.Update.State;
+            var finished = State.Status == GameStatus.Finished;
+            Phase = finished ? GamePhase.Finished : GamePhase.InProgress;
+            CurrentPlayerId = finished ? null : State.CurrentPlayer.Value;
+            Revision++;
+        }
+
+        return result;
     }
 
     // The seed decides spawn positions and any later randomness, so it comes from a secure RNG and never leaves the server.
