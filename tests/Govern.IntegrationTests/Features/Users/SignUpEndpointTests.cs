@@ -67,6 +67,30 @@ public class SignUpEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture
         Fixture.Factory.Emails.Sent.ShouldBeEmpty();
     }
 
+    [Theory]
+    [InlineData("user\r\nBcc: victim@example.com@example.com")]
+    [InlineData("us er@example.com")]
+    [InlineData("user\u200B@example.com")]
+    public async Task Post_EmailWithUnsafeCharacters_Returns400(string email)
+    {
+        var response = await UsersApi.SignUpAsync(Client, email, UsersApi.Password, Ct);
+
+        await response.ShouldBeValidationProblemAsync(Ct, "Email");
+        Fixture.Factory.Emails.Sent.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Post_LookalikeInDifferentUnicodeComposition_Returns409()
+    {
+        var local = $"e\u0301-{Guid.NewGuid():N}";
+        (await UsersApi.SignUpAsync(Client, $"{local}@example.com", UsersApi.Password, Ct)).EnsureSuccessStatusCode();
+
+        var composed = $"\u00E9{local[2..]}@example.com";
+        var response = await UsersApi.SignUpAsync(Client, composed, UsersApi.Password, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "user.email_taken", Ct);
+    }
+
     [Fact]
     public async Task Post_MalformedJson_Returns400()
     {

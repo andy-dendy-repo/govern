@@ -81,6 +81,8 @@ public class SignInEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture
     [InlineData("not-an-email")]
     [InlineData("@example.com")]
     [InlineData("a@b@example.com")]
+    [InlineData("user\r\n@example.com")]
+    [InlineData("user\u200B@example.com")]
     public async Task Post_MalformedEmail_Returns401WithSameErrorAsWrongPassword(string email)
     {
         var response = await UsersApi.SignInAsync(Client, email, UsersApi.Password, Ct);
