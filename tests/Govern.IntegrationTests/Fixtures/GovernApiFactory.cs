@@ -21,6 +21,7 @@ public sealed class GovernApiFactory(string connectionString) : WebApplicationFa
         builder.UseSetting("ConnectionStrings:Govern", connectionString);
         builder.UseSetting("Jwt:SigningKey", SigningKey);
         builder.UseSetting("RateLimiting:AuthPermitLimit", "10000");
+        builder.UseSetting("RateLimiting:HealthPermitLimit", "10000");
 
         builder.ConfigureTestServices(services =>
         {

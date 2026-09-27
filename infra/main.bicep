@@ -42,6 +42,9 @@ param jwtSigningKey string
 @description('Extra browser origins for the Api CORS policy (custom client domains). The Static Web App default host is always added.')
 param extraCorsOrigins array = []
 
+@description('Custom domain host names of the Api (e.g. api.example.com). The default azurewebsites.net host is always allowed.')
+param apiCustomHostnames array = []
+
 var suffix = uniqueString(resourceGroup().id)
 var tags = {
   application: appName
@@ -93,6 +96,7 @@ module appService 'modules/appService.bicep' = {
     connectionStringSecretUri: keyVault.outputs.connectionStringSecretUri
     jwtSigningKeySecretUri: keyVault.outputs.jwtSigningKeySecretUri
     corsAllowedOrigins: concat(['https://${staticWebApp.outputs.defaultHostname}'], extraCorsOrigins)
+    customHostnames: apiCustomHostnames
     tags: tags
   }
 }

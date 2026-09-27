@@ -28,6 +28,7 @@ DNS is hosted on Cloudflare. Azure serves the Api (App Service) and the client (
    - Then create a managed certificate and a TLS binding.
 3. **Client:** Portal → Static Web App → Custom domains → Add, using CNAME validation. Azure issues the certificate.
 4. **CORS:** add `https://app.<domain>` to `extraCorsOrigins` in `infra/main.bicepparam` and release.
+5. **Api host allow-list and client:** set the repository variable `API_ORIGIN` to `https://api.<domain>` and release. The client then calls the custom domain, and the Api adds `api.<domain>` to `HostFiltering:AllowedHosts`; before that, requests to the custom domain get 400.
 
 ## TLS and the Cloudflare proxy
 

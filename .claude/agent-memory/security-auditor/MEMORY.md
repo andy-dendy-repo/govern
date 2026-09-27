@@ -1,1 +1,1 @@
-- [Accepted risks and anonymous endpoints](project_accepted_risks.md) — anonymous routes, accepted gaps (incl. sign-in lockout DoS), open findings from 2026-09-27 audits (API, session, limiter, Blazor client CSP)
+- [Accepted risks and anonymous endpoints](project_accepted_risks.md) — anonymous routes, accepted gaps (sign-in lockout DoS, KV purge protection), 2026-09-27 audits (API, session, limiter, client CSP, health/host filtering)

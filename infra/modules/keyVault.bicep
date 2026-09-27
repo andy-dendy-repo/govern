@@ -32,6 +32,9 @@ resource vault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enableRbacAuthorization: true
     enableSoftDelete: true
     softDeleteRetentionInDays: 7
+    // Irreversible: nobody (not even an Owner) can purge the JWT key or connection string before the retention ends,
+    // and a deleted vault's name stays reserved for 7 days.
+    enablePurgeProtection: true
     publicNetworkAccess: 'Enabled'
   }
 }

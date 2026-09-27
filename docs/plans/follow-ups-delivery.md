@@ -13,7 +13,7 @@ Delivery plans for the items in [follow-ups](follow-ups.md). Each increment gets
 
 | Item | Decision |
 |---|---|
-| #9 Key Vault purge protection | Enabled (irreversible, accepted) |
+| #9 Key Vault purge protection | Enabled (irreversible, accepted); done |
 | #2 Database access | Microsoft Entra authentication with the Web App's system-assigned managed identity |
 | #3 Per-account limiter store | In-memory counters (single B1 instance); done |
 | #5 Monitoring | One Log Analytics workspace, workspace-based Application Insights, Azure Monitor OpenTelemetry distro exporting Warning+ logs only |
@@ -22,70 +22,13 @@ Delivery plans for the items in [follow-ups](follow-ups.md). Each increment gets
 
 1. ~~#12 stricter email validation~~ (done).
 2. ~~#3 per-account sign-in limiter~~ (done).
-3. #8 + #9 health check split, host filtering and Key Vault purge protection; `/health/ready` is then used by the deploy checks of the next plans.
+3. ~~#8 + #9 health check split, host filtering and Key Vault purge protection~~ (done, see [deployment](../operations/deployment.md#health-checks-and-host-filtering)). The release workflow now waits on `/health/ready`, which Plans 4 and 5 reuse.
 4. #2 least-privilege database access through Entra.
 5. #5 monitoring and alerts.
 6. ~~#10a Blazor client foundation and CSP gate~~ (done, see [client](../features/client.md)).
 7. #10b Blazor client authentication and pages, in [blazor-client-delivery](blazor-client-delivery.md).
 
 Plans 2 and 3 of [session-and-email-verification](session-and-email-verification.md) are separate. They fit best before #10b, so the client gets the confirm-email page from the start.
-
-## Plan 3: Health split, host filtering, Key Vault purge protection (#8, #9)
-
-### Context
-`/health` hits the database on every anonymous call with no throttling, and App Service probes it. `AllowedHosts` is `*`. The JWT key and connection string can be purged permanently. This plan fixes all three before production data exists.
-
-### Scope
-- In:
-  - `/health/live` (no checks) and `/health/ready` (tag `ready`, database), with `/health` removed
-  - a per-IP rate limit on `/health/ready`
-  - `AllowedHosts` from Bicep
-  - `enablePurgeProtection: true`
-- Out: making the Api private (network isolation).
-
-### Affected areas
-- **Api:**
-  - `Program.cs:35`
-  - `Models/RateLimitingPolicies.cs` (+`Health`)
-  - `Options/RateLimitingOptions.cs` (+`HealthPermitLimit` = 30, `HealthWindow` = 1 min)
-  - `DependencyInjection.cs` (policy)
-- **Infra:**
-  - `infra/modules/appService.bicep`: `healthCheckPath: '/health/live'` and an `AllowedHosts` app setting.
-  - `infra/main.bicep`: new param `apiCustomHostnames array = []`. `AllowedHosts` = `'${webAppName}.azurewebsites.net'` plus the custom names, joined with `;`.
-  - `infra/modules/keyVault.bicep`: `enablePurgeProtection: true`.
-- **Workflow:** `.github/workflows/release.yml:124-133` waits on `/health/ready`.
-
-### Steps
-1. **Api:**
-   - Map `/health/live` with `Predicate = _ => false` and `/health/ready` with `Predicate = c => c.Tags.Contains("ready")` plus `RequireRateLimiting(Health)`. Both anonymous.
-   - Keep `appsettings.json` `AllowedHosts: "*"` for local and tests; production is set by the app setting.
-2. **Infra:** the Bicep changes above, plus `main.bicepparam` (`apiCustomHostnames`, empty by default).
-3. **Workflow:** the health URL.
-
-### Tests
-- **Integration:**
-  - `HealthEndpointTests`: live 200 "Healthy"; ready 200 "Healthy"; `/health` 404; ready over limit (`UseSetting("RateLimiting:HealthPermitLimit","2")`) → 429.
-  - New `Security/HostFilteringTests`: with `UseSetting("AllowedHosts","api.govern.test")`, a request with Host `localhost` → 400 and Host `api.govern.test` → 200.
-  - `EndpointAuthorizationTests.IntentionallyAnonymous`: replace `/health` with both routes.
-- **Architecture:** none.
-- **Infra:** `az bicep build --file infra/main.bicep`.
-
-### Docs & rules
-- `.claude/rules/api-endpoints.md:37` (health routes).
-- `docs/operations/deployment.md`: resources, release flow, known gaps (remove AllowedHosts and purge protection).
-- `docs/operations/configuration.md` (`AllowedHosts`, `RateLimiting:Health*`).
-- `docs/operations/dns.md`: after binding a custom domain, add it to `apiCustomHostnames`.
-- Remove #8 and #9 from follow-ups.
-
-### Verification
-- Build, all tests and `az bicep build`.
-- After release: the App Service Health check blade is healthy, and `curl` with a wrong Host header returns 400.
-
-### Risks & open questions
-- If an App Service probe or warm-up request uses a Host header that isn't allowed, the instance is marked unhealthy. The post-deploy check covers this; the fix would be to add that host to `AllowedHosts`.
-- Purge protection is irreversible, and the vault name stays reserved for 7 days after deletion (user accepted this).
-
----
 
 ## Plan 4: Least-privilege database access via Entra managed identity (#2)
 

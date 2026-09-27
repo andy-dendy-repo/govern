@@ -38,5 +38,8 @@ Content-Type: application/json
 POST {{api}}/api/users/sign-out-everywhere
 Authorization: Bearer {{signIn.response.body.$.accessToken}}
 
-### Health
-GET {{api}}/health
+### Liveness (no dependencies; the App Service Health check path)
+GET {{api}}/health/live
+
+### Readiness (database; rate limited per IP)
+GET {{api}}/health/ready
