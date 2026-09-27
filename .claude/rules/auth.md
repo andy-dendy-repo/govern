@@ -28,8 +28,10 @@ paths:
   - Azure: Key Vault secret `Jwt--SigningKey`
 - **Refresh rotation:**
   - Every refresh revokes the presented token and records `ReplacedByTokenId`.
-  - Presenting an already revoked token counts as theft: `User.RevokeAllRefreshTokens` runs and a Warning is logged with the user id.
-  - Expired and unknown tokens return the same `user.invalid_refresh_token` (401).
+  - Presenting an already *rotated* token (`ReplacedByTokenId` set) counts as theft on **every** path that accepts a refresh token (refresh, sign-out): call `RefreshTokenReuseService.IsReuse` / `RevokeAllAsync`, which revokes all active tokens and logs EventId 1001.
+  - Any other revocation (sign-out, session cap, theft response) leaves `ReplacedByTokenId` null, so presenting that token is only rejected. Keep this distinction when adding new revocation paths, and handle `DbUpdateConcurrencyException` on every revocation (reload and re-evaluate, as `SignOutHandler` and `SignInHandler` do).
+  - Expired, revoked and unknown tokens return the same `user.invalid_refresh_token` (401).
+- **Sessions:** sign-in goes through `User.IssueRefreshToken(..., maxActiveTokens)` with the user's active tokens loaded (`Jwt:MaxActiveRefreshTokens`). Sign-in and refresh delete the user's expired tokens (`RefreshTokenCleanupService`); there is no background cleanup job.
 - **Passwords:**
   - `IPasswordHashingService` wraps Identity's `PasswordHasher` (PBKDF2)
   - length 8–128

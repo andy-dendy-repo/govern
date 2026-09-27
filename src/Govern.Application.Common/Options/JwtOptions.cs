@@ -31,4 +31,11 @@ public sealed class JwtOptions
     /// <summary>Refresh token lifetime (default 14 days).</summary>
     [Range(typeof(TimeSpan), "01:00:00", "90.00:00:00")]
     public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(14);
+
+    /// <summary>
+    /// Soft cap on active refresh tokens (signed-in sessions) per user (default 10). Signing in beyond the cap revokes
+    /// the least recently used session; concurrent sign-ins can exceed it briefly.
+    /// </summary>
+    [Range(1, 100)]
+    public int MaxActiveRefreshTokens { get; set; } = 10;
 }

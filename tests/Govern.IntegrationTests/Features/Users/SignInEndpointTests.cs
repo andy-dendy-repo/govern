@@ -6,7 +6,11 @@ using System.Text;
 using Govern.Application.Users.Contracts;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace Govern.IntegrationTests.Features.Users;
@@ -90,5 +94,66 @@ public class SignInEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture
         var response = await UsersApi.SignInAsync(Client, "", "", Ct);
 
         await response.ShouldBeValidationProblemAsync(Ct, "Email", "Password");
+    }
+
+    [Fact]
+    public async Task Post_BeyondSessionCap_RevokesLeastRecentlyUsedSessionOnly()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        using var factory = Fixture.Factory.WithWebHostBuilder(builder => builder
+            .UseSetting("Jwt:MaxActiveRefreshTokens", "2")
+            .ConfigureTestServices(services => services.AddSingleton<TimeProvider>(time)));
+        using var client = factory.CreateClient();
+        var (email, first) = await UsersApi.CreateSignedInUserAsync(client, Ct);
+        time.Advance(TimeSpan.FromMinutes(1));
+        var second = await UsersApi.SignInTokensAsync(client, email, Ct);
+        time.Advance(TimeSpan.FromMinutes(1));
+
+        var third = await UsersApi.SignInTokensAsync(client, email, Ct);
+
+        // The evicted session is rejected without triggering reuse detection, so the other sessions keep working.
+        await (await UsersApi.RefreshAsync(client, first.RefreshToken, Ct))
+            .ShouldBeProblemAsync(HttpStatusCode.Unauthorized, "user.invalid_refresh_token", Ct);
+        (await UsersApi.RefreshAsync(client, second.RefreshToken, Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await UsersApi.RefreshAsync(client, third.RefreshToken, Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_UserHasExpiredTokens_DeletesThem()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        using var factory = Fixture.Factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(time)));
+        using var client = factory.CreateClient();
+        var (email, _) = await UsersApi.CreateSignedInUserAsync(client, Ct);
+        await UsersApi.SignInTokensAsync(client, email, Ct);
+        time.Advance(TimeSpan.FromDays(15));
+
+        var current = await UsersApi.SignInTokensAsync(client, email, Ct);
+
+        var (scope, db) = await Fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            var stored = await db.RefreshTokens.AsNoTracking().SingleAsync(Ct);
+            stored.ExpiresAt.ShouldBe(current.RefreshTokenExpiresAt);
+        }
+    }
+
+    [Fact]
+    public async Task Post_AtSessionCapConcurrentlyWithRefreshOfEvictedToken_NeverFails()
+    {
+        using var factory = Fixture.Factory.WithWebHostBuilder(builder => builder.UseSetting("Jwt:MaxActiveRefreshTokens", "1"));
+        using var client = factory.CreateClient();
+        var (email, oldest) = await UsersApi.CreateSignedInUserAsync(client, Ct);
+
+        var responses = await Task.WhenAll(
+            UsersApi.SignInAsync(client, email, UsersApi.Password, Ct),
+            UsersApi.SignInAsync(client, email, UsersApi.Password, Ct),
+            UsersApi.RefreshAsync(client, oldest.RefreshToken, Ct));
+
+        responses[0].StatusCode.ShouldBe(HttpStatusCode.OK);
+        responses[1].StatusCode.ShouldBe(HttpStatusCode.OK);
+        responses[2].StatusCode.ShouldBeOneOf(HttpStatusCode.OK, HttpStatusCode.Unauthorized);
     }
 }

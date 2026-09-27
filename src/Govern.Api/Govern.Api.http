@@ -20,11 +20,23 @@ Content-Type: application/json
 GET {{api}}/api/users/me
 Authorization: Bearer {{signIn.response.body.$.accessToken}}
 
-### Refresh
+### Refresh (rotates the sign-in refresh token)
+# @name refresh
 POST {{api}}/api/users/refresh
 Content-Type: application/json
 
 { "refreshToken": "{{signIn.response.body.$.refreshToken}}" }
+
+### Sign out (this device)
+POST {{api}}/api/users/sign-out
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "refreshToken": "{{refresh.response.body.$.refreshToken}}" }
+
+### Sign out everywhere
+POST {{api}}/api/users/sign-out-everywhere
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
 
 ### Health
 GET {{api}}/health

@@ -5,7 +5,8 @@ namespace Govern.Domain.Entities;
 /// <summary>
 /// A refresh token issued to a <see cref="User"/>. Only the SHA-256 hash of the token is stored; the raw value is
 /// returned to the client once. Tokens are rotated on use: the used token is revoked and points to its replacement.
-/// Created and revoked only through <see cref="User"/>.
+/// Tokens are also revoked by sign-out, by the per-user session cap and by the response to a reused token; those
+/// revocations have no replacement. Created and revoked only through <see cref="User"/>.
 /// </summary>
 public sealed class RefreshToken : BaseAuditableEntity
 {
@@ -29,12 +30,14 @@ public sealed class RefreshToken : BaseAuditableEntity
     public DateTimeOffset ExpiresAt { get; private set; }
 
     /// <summary>
-    /// When the token was revoked (rotated, or revoked because of reuse); <see langword="null"/> while usable.
+    /// When the token was revoked (rotated, signed out, evicted by the session cap, or revoked because of reuse);
+    /// <see langword="null"/> while usable.
     /// </summary>
     public DateTimeOffset? RevokedAt { get; private set; }
 
     /// <summary>
-    /// The token that replaced this one on rotation, if any.
+    /// The token that replaced this one on rotation, if any. Only rotation sets it, which is how reuse detection tells
+    /// a rotated token (presenting it again is theft) from one revoked for any other reason.
     /// </summary>
     public Guid? ReplacedByTokenId { get; private set; }
 

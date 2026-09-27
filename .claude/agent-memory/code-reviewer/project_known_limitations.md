@@ -12,3 +12,6 @@ First review (2026-09-27, feature/template-api) found three gaps. All were fixed
 
 **Why:** these are the project's patterns for races and post-commit side effects (now in `.claude/rules/persistence.md`).
 **How to apply:** in new code, check that check-then-act on rows uses a concurrency token, that unique inserts catch unique violations, and that irreversible side effects are not raised inside explicit transactions. Don't re-report the fixed items above.
+
+Second review (2026-09-27, feature/session-lifecycle: sign-out, session cap, cleanup): every new token-revocation path is a new check-then-act on `revoked_at`. The sign-in cap eviction was added without a `DbUpdateConcurrencyException` catch (500 on a concurrent sign-in/refresh at the cap), and sign-out presented a token without applying the reuse rule from `auth.md`.
+**How to apply:** for any handler that revokes or updates refresh tokens, check (1) the concurrency exception is translated or retried, (2) a presented *rotated* token (`ReplacedByTokenId` set) triggers the theft response on every endpoint that accepts a raw refresh token, not only `/refresh`, (3) one `now` is used across handler, cleanup and issuing.
