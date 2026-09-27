@@ -1,5 +1,5 @@
 using Govern.Core.Cities;
-using Govern.Core.Maps;
+using Govern.Core.Map;
 using Govern.Core.Units;
 
 namespace Govern.UnitTests.Core.Units;

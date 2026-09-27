@@ -54,6 +54,7 @@ Folders are created on demand. The templates list which folders **may** exist; n
 - **UF (utility folders):** Helpers, Models, Enums, Options, Exceptions, Extensions, Attributes, Services.
 - **AGFT (application general folders):** UF plus Abstractions, EventHandlers and Repositories, with root files `DependencyInjection.cs` and `GlobalUsings.cs`.
 - **3DFT (DDD folders):** AGFT plus one folder per feature. Each feature folder follows AGFT and adds `Contracts/`.
+- **Core template (game engine):** a fixed set of concept folders (`Engine`, `State`, `Map`, `Units`, `Cities`, `Events`, `Visibility`, `Serialization`) plus a flat `Actions/` folder where each `XxxAction.cs` holds one player action: its `XxxCommand` and the `XxxRule` that applies it. It deliberately avoids UF names: UF suffix rules (e.g. `Services` → `Service`) don't fit engine code.
 
 | Project | Template | Extras |
 |---|---|---|
@@ -62,13 +63,13 @@ Folders are created on demand. The templates list which folders **may** exist; n
 | Infrastructure | UF | one folder per concern (each UF), `Background/`, `Persistence/` (Configurations, Interceptors, Migrations, `ApplicationDbContext*.cs`) |
 | Domain | UF | Entities, Events, ValueObjects, EntityBase |
 | Api | UF | Middlewares, Filters, HealthChecks, `Features/[Feature]/XxxEndpoint.cs` |
-| Core | free-form (like Utils) | concept folders such as `Hexes/`, `Maps/`, `Units/`, `Engine/`; `Commands/` hold `*Command` and `Rules/` hold `*Rule` types (see [game-core](features/game-core.md)) |
+| Core | Core template | `Engine/`, `State/`, `Map/`, `Units/`, `Cities/`, `Events/`, `Visibility/`, `Serialization/`, plus flat `Actions/XxxAction.cs` holding exactly `XxxCommand` + `XxxRule`; no root files (see [game-core](features/game-core.md)) |
 | Client | CFT (UF) | Layout, Components, Auth, `Features/[Feature]/` with `Pages/XxxPage.razor`, `Components/`, `Clients/XxxClient.cs` (see [client](features/client.md)) |
 
 ## Naming rules
 
 - The `Helper` suffix is forbidden. Classes are named by role (Resolver, Mapper, Calculator, …).
-- Types carry the suffix of their folder: Options, Exception, Extensions, Attribute, Service, EventHandler, Repository, Middleware, Filter, HealthCheck, Configuration, Interceptor, Event, Endpoint, Command, Rule.
+- Types carry the suffix of their folder: Options, Exception, Extensions, Attribute, Service, EventHandler, Repository, Middleware, Filter, HealthCheck, Configuration, Interceptor, Event, Endpoint.
 - A use case lives in `XxxContract.cs`, which contains only `XxxRequest`, `XxxResponse`, `XxxValidator`, `XxxHandler` and file-scoped helper types.
 - Handlers are sealed and implement `IRequestHandler<TRequest, TResponse>`.
 - Repositories exist only when a service needs caching. All queries for that data then go through the repository.
@@ -81,7 +82,7 @@ Folders are created on demand. The templates list which folders **may** exist; n
 | Test class | Checks |
 |---|---|
 | ProjectReferenceTests | csproj references against the allowed-reference table; every src project is registered; `Govern.UnitTests` references only Core, Domain and Utils; Core has no package references; `Govern.ClientTests` references only Client |
-| FolderStructureTests | folders and root files (`.cs` and `.razor`) against the templates; contract file contents; one endpoint per file |
+| FolderStructureTests | folders and root files (`.cs` and `.razor`) against the templates (including Core); contract file contents; Core action files hold exactly their command and rule; one endpoint per file |
 | LayerDependencyTests | type-level dependencies between layers (ArchUnitNET); Core depends on the base class library only; the client uses `HttpClient` only in typed clients and `Auth`, and JS interop only in `Auth` and `Services` |
 | NamingConventionTests | Helper ban, folder suffixes, contract type names, sealed handlers, interface prefix, sealed immutable value objects; client pages, components and typed clients |
 | CodeMetricsTests | file, member and parameter size limits; `.razor` file and `@code` block limits |

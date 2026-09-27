@@ -11,7 +11,7 @@ The build uses `TreatWarningsAsErrors`, `AnalysisLevel=latest-Recommended` and `
 ## Language
 
 Use modern features wherever they make the code clearer:
-- File-scoped namespaces; usings outside the namespace; one top-level type per file (except `Contract` files, see `architecture.md`).
+- File-scoped namespaces; usings outside the namespace; one top-level type per file (except `Contract` files and Core `Action` files, see `architecture.md`).
 - Primary constructors for DI (`sealed class FooService(IBar bar, ILogger<FooService> logger)`); don't copy parameters into fields unless you need mutation.
 - `record` / `sealed record` for DTOs, requests, responses and value objects. Use `required` + `init` when positional records get long.
 - Collection expressions (`[]`, `[.. a, b]`) instead of `new List<T>()` or `Array.Empty<T>()`.

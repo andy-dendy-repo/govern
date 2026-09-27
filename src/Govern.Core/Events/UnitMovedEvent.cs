@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using Govern.Core.Hexes;
+using Govern.Core.Map;
 using Govern.Core.Units;
 
 namespace Govern.Core.Events;

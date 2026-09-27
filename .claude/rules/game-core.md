@@ -16,11 +16,11 @@ paths:
 ## State and rules
 
 - `GameState` and everything in it are immutable records. Change them with `with` and the `internal` `GameState.WithUnit`/`WithoutUnit`/`WithCity`/`WithPlayer`/`AllocateId` helpers. Collections are `ImmutableArray` so the JSON stays plain.
-- **Only `GameEngine.Execute` changes a game.** Adding a command means:
-  1. a `Commands/XxxCommand` record plus its `[JsonDerivedType]` on `GameCommand`;
-  2. an `internal static` `Rules/XxxRule` with `Apply(state, actor, command) → CommandResult`;
+- **Only `GameEngine.Execute` changes a game.** Adding an action means:
+  1. one `Actions/XxxAction.cs` holding the `XxxCommand` record and the `internal static class XxxRule` with `Apply(state, actor, command) → CommandResult`;
+  2. its `[JsonDerivedType]` on `Engine/GameCommand`;
   3. a case in `GameEngine.Dispatch`;
-  4. events in `Events/XxxEvent` plus `[JsonDerivedType]` on `GameEvent`.
+  4. new events in `Events/XxxEvent` plus `[JsonDerivedType]` on `GameEvent`, and new codes in `Engine/GameErrors`.
 - **Rule violations are returned as `GameErrors.Xxx`** (a stable snake_case code) and never thrown. Throw only for programming errors: an invalid `GameSetup`, an unknown command type, a missing entity inside a rule.
 - **New unit or terrain stats** go in `UnitCatalog` / `TerrainCatalog` as data, not in `if` chains inside rules.
 - **Clients only ever receive `GameEngine.ViewFor`** (`PlayerView`), never `GameState` or unfiltered events. Anything added to state that an opponent must not see must be filtered in `VisibilityCalculator.ViewFor`.
@@ -36,8 +36,22 @@ paths:
 
 ## Folders and naming
 
-- The folders are free-form concept folders (`Hexes/`, `Maps/`, `Units/`, `Cities/`, `Players/`, `State/`, `Commands/`, `Events/`, `Rules/`, `Pathfinding/`, `Visibility/`, `Engine/`, `Errors/`, `Serialization/`).
-- Types in `Commands/` end with `Command`, in `Events/` with `Event`, and in `Rules/` with `Rule` (`NamingConventionTests`).
+Whitelisted by `Templates.Core()` and checked by `FolderStructureTests`:
+
+| Folder | Holds |
+|---|---|
+| `Engine/` | The pipeline: `GameEngine`, `CommandResult`, `GameUpdate`, `GameCommand` (base + discriminators), `GameError`/`GameErrors`, the cross-action `CommandGuardRule` and `VictoryRule`, `DeterministicRandom` |
+| `State/` | The snapshot: `GameState`, `GameStatus`, `GameSetup`, `GameFactory`, `Player`, `PlayerId`, `PlayerStatus` |
+| `Map/` | Geometry and movement: `HexCoord`, `GameMap`, `Tile`, terrain types and catalog, `ReachabilityCalculator` |
+| `Units/`, `Cities/` | The things on the map and the unit catalog |
+| `Actions/` | Flat; one `XxxAction.cs` per player action with exactly `XxxCommand` + `XxxRule` (`ActionFiles_DeclareExactlyThePrefixedCommandAndRule`) |
+| `Events/` | `GameEvent` + events; shared by several actions, so not per action. Types end with `Event` |
+| `Visibility/` | Fog of war: `VisibilityCalculator`, `PlayerView` and its parts |
+| `Serialization/` | `GameSerializer` |
+
+- There are no root files.
+- Concept folders may get sub-folders when they grow.
+- A new top-level folder needs a template change: update `Templates.CoreFolders`, this table and `architecture.md` together.
 
 ## Tests
 

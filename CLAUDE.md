@@ -65,7 +65,7 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 
 ## Core conventions (details in `.claude/rules/`)
 
-- **Folder templates:** UF / AGFT / 3DFT per project, CFT for the client (`blazor-client.md`). Folders are created on demand and are whitelisted by `FolderStructureTests`.
+- **Folder templates:** UF / AGFT / 3DFT per project, CFT for the client (`blazor-client.md`), the Core template for the game engine (`game-core.md`). Folders are created on demand and are whitelisted by `FolderStructureTests`.
 - **No `Helper` suffix.** Name classes by role: Resolver, Mapper, Calculator, Builder…
 - **Suffix per folder:** `Options`, `Exception`, `Service`, `Repository`, `EventHandler`, `Endpoint`, and so on.
 - **Use case files:** `Application/[Feature]/Contracts/XxxContract.cs` holds `XxxRequest`, `XxxResponse`, `XxxValidator`, `XxxHandler` and `file` types only.

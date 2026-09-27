@@ -1,7 +1,7 @@
-using Govern.Core.Commands;
+using Govern.Core.Actions;
 using Govern.Core.Engine;
-using Govern.Core.Maps;
-using Govern.Core.Players;
+using Govern.Core.Map;
+using Govern.Core.State;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
 using Govern.UnitTests.Core.Builders;
