@@ -30,7 +30,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 
 ## Plans
 - [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step, with status.
-- [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (least-privilege DB access, monitoring, host filtering, Key Vault purge protection, Blazor client).
+- [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (least-privilege DB access, monitoring, Blazor client authentication and pages).
 - [plans/follow-ups-delivery.md](plans/follow-ups-delivery.md): delivery plans for the follow-ups backlog, one increment per item, in order.
 - [plans/blazor-client-delivery.md](plans/blazor-client-delivery.md): remaining delivery plan for the Blazor client (authentication and pages).
 - [plans/session-and-email-verification.md](plans/session-and-email-verification.md): remaining increments: sign-up email inside the DB transaction, then email verification.

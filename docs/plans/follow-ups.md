@@ -11,15 +11,16 @@ Open work found by the first code review and security audit of the template Api 
 
 Sign-out, refresh token cleanup, the transactional sign-up email and email verification (formerly #1, #4, #6 and #7) are planned in [session-and-email-verification](session-and-email-verification.md). Item numbers are kept so existing references stay valid. #11 (quiet first migration log) was dropped as not needed: the one-off EF Core 20102 error on a brand-new database is accepted.
 
-The remaining items are planned, in delivery order, in [follow-ups-delivery](follow-ups-delivery.md). Done: #12 (stricter email validation) and #3 (per-account sign-in limiter); see the email rules and sign-in throttling in [users](../features/users.md).
+The remaining items are planned, in delivery order, in [follow-ups-delivery](follow-ups-delivery.md). Done:
+- #12 stricter email validation and #3 per-account sign-in limiter: see the email rules and sign-in throttling in [users](../features/users.md).
+- #8 host filtering and health check split, and #9 Key Vault purge protection (enabled): see [deployment](../operations/deployment.md#health-checks-and-host-filtering).
+- #10 client foundation (Radzen, CFT architecture, CSP gate, bUnit): see [client](../features/client.md). Authentication and pages remain.
 
 | # | Priority | Item | Size |
 |---|---|---|---|
 | 2 | High | [Least-privilege database access](#2-least-privilege-database-access) | M |
 | 5 | Medium | [Monitoring and alerts](#5-monitoring-and-alerts) | M |
-| 8 | Low | [Host filtering and health check split](#8-host-filtering-and-health-check-split) | S |
-| 9 | Decide | [Key Vault purge protection](#9-key-vault-purge-protection) | XS |
-| 10 | Next feature | [Blazor client](#10-blazor-client) | L |
+| 10 | Next feature | [Blazor client](#10-blazor-client): authentication and pages (foundation done) | M |
 
 ## 2. Least-privilege database access
 
@@ -39,21 +40,6 @@ The remaining items are planned, in delivery order, in [follow-ups-delivery](fol
   - Alerts on EventId 1001, on 5xx rate and on 401/429 spikes.
   - Optionally OpenTelemetry to Application Insights.
 - **Tests:** `az bicep build`; a manual check after deploy.
-
-## 8. Host filtering and health check split
-
-- **Why:**
-  - `AllowedHosts` is `*`.
-  - `/health` hits the database on every call, anonymously and without throttling.
-- **Approach:**
-  - Set `AllowedHosts` to the Api host names (via Bicep app settings) once custom domains exist.
-  - `/health/live` (no dependencies) for the App Service health check, `/health/ready` (tag `ready`, database) for diagnostics.
-- **Tests:** update `HealthEndpointTests` and the endpoint allow-list.
-
-## 9. Key Vault purge protection
-
-- **Why:** someone with Contributor rights could purge the JWT key and the connection string permanently.
-- **Decision needed:** `enablePurgeProtection: true` cannot be turned off again, and it keeps the vault name reserved for the retention period after deletion. Decide before production data exists.
 
 ## 10. Blazor client
 

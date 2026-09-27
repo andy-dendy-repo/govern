@@ -152,7 +152,7 @@ Each step ships its own tests per `/develop-feature`: unit tests for step 1, int
 - `.claude/rules/blazor-client.md` (step 9); Claude rules and agents (step 13), pattern skills (step 14).
 
 ## Verification
-After each step, `/verify` is green. At the end: register → login → profile works locally (Api + Client + Postgres) and in Azure after a stage → main release, and `/health` reports Postgres as healthy.
+After each step, `/verify` is green. At the end: register → login → profile works locally (Api + Client + Postgres) and in Azure after a stage → main release, and `/health/ready` reports Postgres as healthy.
 
 ## Risks & open questions
 - The mediator API shape (step 1) affects every later step; settle it first.

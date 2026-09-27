@@ -65,7 +65,7 @@ The client stores tokens in `localStorage` ([ADR 0002](../decisions/0002-auth-to
 ## Configuring the client at release
 
 `.github/scripts/configure-client.sh <published wwwroot> <api origin>` runs in `release.yml` after `dotnet publish src/Govern.Client`:
-1. It checks that the Api origin is `https://host[:port]`. The origin is the repository variable `API_ORIGIN` when set (custom domain), otherwise `https://<apiHostname>` from the Bicep outputs.
+1. It checks that the Api origin is lower-case `https://host` without port or path (the release workflow validates `API_ORIGIN` the same way before deploying). The origin is the repository variable `API_ORIGIN` when set (custom domain), otherwise `https://<apiHostname>` from the Bicep outputs.
 2. It computes the SHA-256 of the import map in `index.html`, failing if `index.html` has any other inline script.
 3. It replaces `__API_ORIGIN__` and `__IMPORTMAP_HASH__` in `staticwebapp.config.json` and `appsettings.Production.json`, and deletes their stale `.br`/`.gz` copies.
 4. It fails the job if a placeholder is left.
