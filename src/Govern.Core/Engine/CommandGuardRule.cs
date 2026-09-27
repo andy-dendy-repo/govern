@@ -11,19 +11,19 @@ namespace Govern.Core.Engine;
 /// </summary>
 internal static class CommandGuardRule
 {
-    public static GameError? CheckTurn(GameState state, PlayerId actor, GameCommand command)
+    public static RuleViolation? CheckTurn(GameState state, PlayerId actor, GameCommand command)
     {
         if (state.Status == GameStatus.Finished)
         {
-            return GameErrors.GameFinished;
+            return RuleViolations.GameFinished;
         }
 
         if (state.FindPlayer(actor) is not { Status: PlayerStatus.Active })
         {
-            return GameErrors.NotAPlayer;
+            return RuleViolations.NotAPlayer;
         }
 
-        return command is not ResignCommand && state.CurrentPlayer != actor ? GameErrors.NotYourTurn : null;
+        return command is not ResignCommand && state.CurrentPlayer != actor ? RuleViolations.NotYourTurn : null;
     }
 
     public static bool TryGetOwnedUnit(
@@ -31,14 +31,14 @@ internal static class CommandGuardRule
         PlayerId actor,
         UnitId unitId,
         [NotNullWhen(true)] out Unit? unit,
-        [NotNullWhen(false)] out GameError? error)
+        [NotNullWhen(false)] out RuleViolation? error)
     {
         // Someone else's unit is reported as not found, so probing ids reveals nothing about hidden enemy units.
         unit = state.FindUnit(unitId);
         if (unit is null || unit.Owner != actor)
         {
             unit = null;
-            error = GameErrors.UnitNotFound;
+            error = RuleViolations.UnitNotFound;
             return false;
         }
 

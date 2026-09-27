@@ -29,7 +29,7 @@ public class GameEngineTests
 
         var result = GameEngine.Execute(state, new PlayerId(Guid.NewGuid()), new EndTurnCommand());
 
-        result.ShouldFailWith(GameErrors.NotAPlayer);
+        result.ShouldFailWith(RuleViolations.NotAPlayer);
     }
 
     [Fact]
