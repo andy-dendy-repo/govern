@@ -36,7 +36,7 @@ public class FoundCityActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new FoundCityCommand(soldier));
 
-        result.ShouldFailWith(GameErrors.CannotFoundCity);
+        result.ShouldFailWith(RuleViolations.CannotFoundCity);
     }
 
     [Theory]
@@ -57,7 +57,7 @@ public class FoundCityActionTests
         }
         else
         {
-            result.ShouldFailWith(GameErrors.CityTooClose);
+            result.ShouldFailWith(RuleViolations.CityTooClose);
         }
     }
 
@@ -69,7 +69,7 @@ public class FoundCityActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new FoundCityCommand(settler));
 
-        result.ShouldFailWith(GameErrors.CityTileTaken);
+        result.ShouldFailWith(RuleViolations.CityTileTaken);
     }
 
     [Fact]
@@ -80,6 +80,6 @@ public class FoundCityActionTests
 
         var result = GameEngine.Execute(builder.Build(), P1, new FoundCityCommand(settler));
 
-        result.ShouldFailWith(GameErrors.NoMovementLeft);
+        result.ShouldFailWith(RuleViolations.NoMovementLeft);
     }
 }

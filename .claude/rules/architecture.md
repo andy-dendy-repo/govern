@@ -24,7 +24,7 @@ Every rule here is enforced by `tests/Govern.ArchitectureTests`. The folder spec
 | Domain | UF | `Entities/`, `Events/`, `ValueObjects/`, `EntityBase/` (`BaseEntity.cs`, `BaseAuditableEntity.cs`, `BaseEvent.cs`). Root: `GlobalUsings.cs` |
 | Api | UF | `Middlewares/`, `Filters/` (endpoint filters), `HealthChecks/`, `Features/[Feature]/XxxEndpoint.cs`. Root: `DependencyInjection.cs`, `GlobalUsings.cs`, `Program.cs` |
 | Utils | free-form | naming rules still apply |
-| Core | Core template | `Engine/` (GameEngine, CommandResult, GameCommand, GameError(s), guard and victory rules, DeterministicRandom), `State/` (GameState, setup, players), `Map/` (hexes, terrain, pathfinding), `Units/`, `Cities/`, `Events/`, `Visibility/`, `Serialization/` (free-form inside), and flat `Actions/XxxAction.cs`, each holding exactly `XxxCommand` + `XxxRule`. No root files. Details: `game-core.md` |
+| Core | Core template | `Engine/` (GameEngine, CommandResult, GameCommand, RuleViolation(s), guard and victory rules, DeterministicRandom), `State/` (GameState, setup, players), `Map/` (hexes, terrain, pathfinding), `Units/`, `Cities/`, `Events/`, `Visibility/`, `Serialization/` (free-form inside), and flat `Actions/XxxAction.cs`, each holding exactly `XxxCommand` + `XxxRule`. No root files. Details: `game-core.md` |
 | Client | CFT (UF) | `Layout/`, `Components/`, `Auth/`, `Features/[Feature]/` = UF + `Pages/` (`XxxPage.razor`), `Components/`, `Clients/` (`XxxClient.cs`). Root: `App.razor`, `_Imports.razor`, `DependencyInjection.cs`, `GlobalUsings.cs`, `Program.cs`. Details: `blazor-client.md` |
 
 Content inside UF/AGFT folders and Core concept folders may be organised in sub-folders freely. `Contracts/`, `Features/[Feature]/` and Core `Actions/` are flat.

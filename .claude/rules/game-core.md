@@ -10,7 +10,7 @@ paths:
 
 ## Purity (enforced)
 
-- **Base class library only:** no project references, no `PackageReference` (`ProjectReferenceTests.Core_HasNoPackageReferences`) and no `Microsoft.*` types (`LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`). Core does not use `Govern.Utils`: it has its own `GameError`/`CommandResult`, and Application maps `GameError` to `Error`.
+- **Base class library only:** no project references, no `PackageReference` (`ProjectReferenceTests.Core_HasNoPackageReferences`) and no `Microsoft.*` types (`LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`). Core does not use `Govern.Utils`: it has its own `RuleViolation`/`CommandResult`, and Application maps `RuleViolation` to `Error`. (`RuleViolation`, not `GameError`, so the name never clashes with the Application feature's `GameErrors` or with `Utils.Results.Error`.)
 - **No I/O, clock, async or `System.Random`** (`Core_DoesNotUseNondeterministicOrIoApis`). **No `Guid.NewGuid`, `Guid.CreateVersion7` or `GetHashCode(`** (`Core_DoesNotCreateIdentifiersOrUseHashCodes`). Logging and DI are also out (no `Microsoft.*`). Randomness goes through `DeterministicRandom`, whose state lives in `GameState.RngState`; new ids come from `GameState.NextId`. The same state, actor and command must always give the same result; order-dependent code sorts explicitly.
 
 ## State and rules
@@ -20,8 +20,8 @@ paths:
   1. one `Actions/XxxAction.cs` holding the `XxxCommand` record and the `internal static class XxxRule` with `Apply(state, actor, command) → CommandResult`;
   2. its `[JsonDerivedType]` on `Engine/GameCommand`;
   3. a case in `GameEngine.Dispatch`;
-  4. new events in `Events/XxxEvent` plus `[JsonDerivedType]` on `GameEvent`, and new codes in `Engine/GameErrors`.
-- **Rule violations are returned as `GameErrors.Xxx`** (a stable snake_case code) and never thrown. Throw only for programming errors: an invalid `GameSetup`, an unknown command type, a missing entity inside a rule.
+  4. new events in `Events/XxxEvent` plus `[JsonDerivedType]` on `GameEvent`, and new codes in `Engine/RuleViolations`.
+- **Rule violations are returned as `RuleViolations.Xxx`** (a stable snake_case code) and never thrown. Throw only for programming errors: an invalid `GameSetup`, an unknown command type, a missing entity inside a rule.
 - **New unit or terrain stats** go in `UnitCatalog` / `TerrainCatalog` as data, not in `if` chains inside rules.
 - **Clients only ever receive `GameEngine.ViewFor`** (`PlayerView`), never `GameState` or unfiltered events. Anything added to state that an opponent must not see must be filtered in `VisibilityCalculator.ViewFor`.
 - **Rejections must not leak hidden information.** Another player's unit or city is `*.not_found`. A rule that inspects tiles or objects the actor cannot see must return the same error it would return if they were empty. Keep `UnitCatalogTests`' invariants (sight ≥ movement; settler sight ≥ city spacing − 1) or filter by visibility.
@@ -40,7 +40,7 @@ Whitelisted by `Templates.Core()` and checked by `FolderStructureTests`:
 
 | Folder | Holds |
 |---|---|
-| `Engine/` | The pipeline: `GameEngine`, `CommandResult`, `GameUpdate`, `GameCommand` (base + discriminators), `GameError`/`GameErrors`, the cross-action `CommandGuardRule` and `VictoryRule`, `DeterministicRandom` |
+| `Engine/` | The pipeline: `GameEngine`, `CommandResult`, `GameUpdate`, `GameCommand` (base + discriminators), `RuleViolation`/`RuleViolations`, the cross-action `CommandGuardRule` and `VictoryRule`, `DeterministicRandom` |
 | `State/` | The snapshot: `GameState`, `GameStatus`, `GameSetup`, `GameFactory`, `Player`, `PlayerId`, `PlayerStatus` |
 | `Map/` | Geometry and movement: `HexCoord`, `GameMap`, `Tile`, terrain types and catalog, `ReachabilityCalculator` |
 | `Units/`, `Cities/` | The things on the map and the unit catalog |
@@ -57,5 +57,5 @@ Whitelisted by `Templates.Core()` and checked by `FolderStructureTests`:
 
 - **Location:** `tests/Govern.UnitTests/Core/<Folder>/XxxTests.cs`.
 - **Rules:** tested through `GameEngine.Execute`, with scenarios from `Builders/GameStateBuilder`. Give both players a city or settler (e.g. `WithCapitals()`), otherwise `VictoryRule` ends the game after the first command.
-- **Assertions:** `result.ShouldSucceed()` / `result.ShouldFailWith(GameErrors.X)`.
+- **Assertions:** `result.ShouldSucceed()` / `result.ShouldFailWith(RuleViolations.X)`.
 - **Records holding `ImmutableArray` don't compare structurally.** Compare their elements, or the `GameSerializer` JSON.
