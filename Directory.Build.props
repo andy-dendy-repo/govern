@@ -13,6 +13,11 @@
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
 
+    <ItemGroup>
+        <!-- Thresholds for code metric analyzers (CA1502 cyclomatic complexity). -->
+        <AdditionalFiles Include="$(MSBuildThisFileDirectory)CodeMetricsConfig.txt" />
+    </ItemGroup>
+
     <!-- XML docs are required for every production project under src/ (CS1591 fails the build). -->
     <PropertyGroup Condition="$([MSBuild]::MakeRelative('$(MSBuildThisFileDirectory)', '$(MSBuildProjectDirectory)').StartsWith('src')) And '$(MSBuildProjectName)' != 'Govern.Core'">
         <GenerateDocumentationFile>true</GenerateDocumentationFile>

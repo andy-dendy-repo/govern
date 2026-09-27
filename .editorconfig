@@ -125,3 +125,16 @@ dotnet_naming_symbols.types_and_members.applicable_kinds = class,struct,enum,pro
 dotnet_naming_symbols.types_and_members.applicable_accessibilities = *
 
 dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+# Code metrics: cyclomatic complexity (threshold in CodeMetricsConfig.txt). Size limits are enforced by tests/Govern.ArchitectureTests/CodeMetricsTests.
+dotnet_diagnostic.CA1502.severity = warning
+
+# CA1716: VB.NET keyword clashes (Error, Next, ...) are irrelevant; Govern is C#-only.
+dotnet_diagnostic.CA1716.severity = none
+
+# CA1711: our convention names domain event handlers *EventHandler (INotificationHandler<T>, not delegates).
+dotnet_code_quality.CA1711.allowed_suffixes = EventHandler
+
+# EF Core migrations are generated: analyzers and dotnet format skip them.
+[src/**/Persistence/Migrations/*.cs]
+generated_code = true

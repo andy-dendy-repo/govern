@@ -1,12 +1,14 @@
+using Govern.Utils.Results;
+
 namespace Govern.Utils.Mediator.Abstractions;
 
 /// <summary>
-/// Handles a single request type and produces its response.
+/// Handles a single request type. Expected failures are returned as an <see cref="Error"/>, not thrown.
 /// </summary>
 /// <typeparam name="TRequest">The handled request type.</typeparam>
 /// <typeparam name="TResponse">The produced response type.</typeparam>
 public interface IRequestHandler<TRequest, TResponse>
-    where TRequest : IRequest
+    where TRequest : IRequest<TRequest, TResponse>
     where TResponse : IResponse
 {
     /// <summary>
@@ -14,6 +16,6 @@ public interface IRequestHandler<TRequest, TResponse>
     /// </summary>
     /// <param name="request">The request to handle.</param>
     /// <param name="cancellationToken">Token that cancels the operation.</param>
-    /// <returns>The response for the request.</returns>
-    ValueTask<TResponse> Handle(TRequest request, CancellationToken cancellationToken);
+    /// <returns>The response, or the error describing why the request failed.</returns>
+    ValueTask<Result<TResponse>> HandleAsync(TRequest request, CancellationToken cancellationToken);
 }

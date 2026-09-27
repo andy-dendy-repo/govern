@@ -53,4 +53,9 @@ Follow `logging.md`: no passwords, tokens, keys, connection strings or personal 
 
 - NuGet audit is on. A vulnerable package fails the build (warnings are errors), so don't suppress it; upgrade instead. CI runs `dotnet list package --vulnerable --include-transitive`.
 - **Postgres:** SSL required, firewall limited to Azure services and the app, and least-privilege app user (no superuser).
-- Use managed identities over keys where Azure supports them. The container runs as non-root.
+- Use managed identities over keys where Azure supports them. The container runs as non-root. Basic-auth publishing (SCM/FTP) stays disabled.
+- **GitHub Actions:**
+  - Pin every action to a full commit SHA with the version in a comment; Dependabot bumps them.
+  - Deploy jobs run only for `refs/heads/main` and in the `production` environment (deployment branches: main).
+  - Permissions are least-privilege per job.
+  - Never `pull_request_target` with a checkout of PR code.

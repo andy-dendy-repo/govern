@@ -1,0 +1,133 @@
+# Release: runs on every push to main (a merged stage -> main PR).
+# CI -> Api image to GHCR -> Bicep deployment (sets the new image) -> client to Static Web Apps -> health check.
+# Setup (OIDC federated credential, environment secrets, GHCR visibility): docs/operations/deployment.md.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  publish-api-image:
+    needs: ci
+    # Never publish or deploy from another branch, even via workflow_dispatch.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: image
+        run: |
+          repository="${GITHUB_REPOSITORY_OWNER,,}/govern-api"
+          dotnet publish src/Govern.Api --configuration Release -t:PublishContainer \
+            -p:ContainerRegistry=ghcr.io \
+            -p:ContainerRepository="$repository" \
+            -p:ContainerImageTags="\"${GITHUB_SHA};latest\""
+          echo "image=ghcr.io/${repository}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: publish-api-image
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Azure login (OIDC)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy infrastructure and Api image
+        id: infra
+        env:
+          CONTAINER_IMAGE: ${{ needs.publish-api-image.outputs.image }}
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+        run: |
+          outputs=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "govern-${GITHUB_RUN_NUMBER}" \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam \
+            --query properties.outputs --output json)
+          echo "api_host=$(jq -r .apiHostname.value <<<"$outputs")" >> "$GITHUB_OUTPUT"
+          echo "swa_name=$(jq -r .staticWebAppName.value <<<"$outputs")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish client
+        run: dotnet publish src/Govern.Client --configuration Release --output client-publish
+
+      - name: Get Static Web App deployment token
+        id: swa
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          SWA_NAME: ${{ steps.infra.outputs.swa_name }}
+        run: |
+          token=$(az staticwebapp secrets list --resource-group "$RESOURCE_GROUP" --name "$SWA_NAME" --query properties.apiKey --output tsv)
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy client
+        uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.swa.outputs.token }}
+          action: upload
+          app_location: client-publish/wwwroot
+          skip_app_build: true
+          skip_api_build: true
+
+      - name: Health check
+        env:
+          API_HOST: ${{ steps.infra.outputs.api_host }}
+        run: |
+          for _ in $(seq 1 30); do
+            if curl --fail --silent "https://${API_HOST}/health"; then echo; exit 0; fi
+            sleep 10
+          done
+          echo "::error::Api did not become healthy"
+          exit 1

@@ -54,6 +54,16 @@ public class LayerDependencyTests
             .Check(GovernArchitecture.Instance);
     }
 
+    [Fact]
+    public void Types_DoNotUseMappingLibraries()
+    {
+        Types().That().ResideInNamespaceMatching(GovernArchitecture.GovernNamespace)
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^(?:AutoMapper|Mapster|MapsterMapper|Riok\.Mapperly)(?:\..*)?$")
+            .Because("mapping is explicit: EF Select projections and static Projection/From members (see .claude/rules/mapping.md)")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
     private static string[] ForbiddenProjects(string project) =>
         GovernArchitecture.AssemblyNames
             .Where(other => other != project && !Layers.AllowedReferences[project].Contains(other))
