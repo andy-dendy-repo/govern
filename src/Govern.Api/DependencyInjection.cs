@@ -1,5 +1,6 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using Govern.Api.Extensions;
 using Govern.Api.Middlewares;
 using Govern.Api.Models;
 using Govern.Api.Options;
@@ -16,7 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace Govern.Api;
 
 /// <summary>
-/// Registers the HTTP layer: ProblemDetails, OpenAPI, JWT authentication with a deny-by-default authorization
+/// Registers the HTTP layer: ProblemDetails, OpenAPI (with the Bearer security scheme), JWT authentication with a deny-by-default authorization
 /// fallback, rate limiting, CORS and the current-user accessor.
 /// </summary>
 public static class DependencyInjection
@@ -39,7 +40,7 @@ public static class DependencyInjection
             ArgumentNullException.ThrowIfNull(configuration);
 
             services.AddProblemDetails();
-            services.AddOpenApi();
+            services.AddOpenApi(static options => options.AddBearerSecurity());
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddTransient<ExceptionHandlingMiddleware>();

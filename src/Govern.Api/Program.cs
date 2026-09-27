@@ -26,6 +26,17 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+if (app.Environment.IsDevelopment())
+{
+    // Swagger UI is static files served by middleware, not an endpoint: it runs before authorization, whose fallback policy would answer 401.
+    app.UseSwaggerUI(static options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "Govern API v1");
+        options.DocumentTitle = "Govern API";
+    });
+}
+
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

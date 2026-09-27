@@ -9,7 +9,8 @@ namespace Govern.IntegrationTests.Security;
 
 public class EndpointAuthorizationTests(GovernApiFixture fixture) : ApiTestBase(fixture)
 {
-    private static readonly string[] IntentionallyAnonymous =
+    // Also used by OpenApi/SwaggerUiTests: the OpenAPI document must mark exactly these routes as not needing a token.
+    internal static readonly string[] IntentionallyAnonymous =
     [
         "/api/users/sign-up",
         "/api/users/sign-in",
