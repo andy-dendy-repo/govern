@@ -23,6 +23,16 @@ public class ErrorTests
     }
 
     [Fact]
+    public void TooManyRequests_HasTypeCodeAndMessage()
+    {
+        var error = Error.TooManyRequests("x.too_many", "Slow down.");
+
+        error.Type.ShouldBe(ErrorType.TooManyRequests);
+        error.Code.ShouldBe("x.too_many");
+        error.Message.ShouldBe("Slow down.");
+    }
+
+    [Fact]
     public void Unexpected_HasGenericMessage()
     {
         var error = Error.Unexpected();

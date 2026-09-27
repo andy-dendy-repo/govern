@@ -28,3 +28,10 @@ Session-lifecycle audit (2026-09-27, uncommitted feature/session-lifecycle): no 
 - Medium (open until fixed): SignOutHandler ignores an already-rotated token (filters RevokedAt == null), so a client signing out with a token an attacker already rotated gets a silent 204 and theft detection never fires; refresh expiry is sliding, so the attacker chain lives on. Fix: treat a rotated token presented to sign-out as reuse.
 - Recurring design fact: every non-rotation revocation must pass replacedByTokenId: null; only RotateRefreshToken sets it. Re-check any new revocation path.
 - Sign-out/sign-out-everywhere intentionally RequireAuthorization() with no rate-limit policy (no global limiter exists).
+
+Sign-in limiter audit (2026-09-27, feature/sign-in-limiter, follow-up #3): no Critical/High; re-audit after fixes clean.
+- Accepted risks (docs/features/users.md "Sign-in throttling"): per-account lockout DoS for as long as the attack continues (refresh not throttled, sessions survive); weak existence signal via owner success resetting the count.
+- Fixed same day: TOCTOU (now TryBeginAttempt reserves under a lock before hashing; parallel integration test); cache compaction evicting counters (entries NeverRemove, MaxTrackedAccounts 50k-1M, fail open for new emails only); TooManyRequests logged at Warning; IPv6 /48 caveat documented.
+- Verified empirically (Caching.Memory 10.0.12): NeverRemove survives overflow compaction; expired entries (any priority) are purged only by the ExpirationScanFrequency scan (default 1 min), so a full store recovers about 1 min after entries expire.
+- Only SignInHandler verifies passwords; any new credential-checking path must use ISignInThrottlingService + the `auth` IP policy.
+- Fact: App Service IPv6 inbound is off in Bicep; forwarded-header trust via ASPNETCORE_FORWARDEDHEADERS_ENABLED (ForwardLimit 1, rightmost XFF) is correct.

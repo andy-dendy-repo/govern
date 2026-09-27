@@ -22,11 +22,14 @@ Configuration follows the standard ASP.NET Core order: `appsettings.json` → `a
 | `Jwt:MaxActiveRefreshTokens` | no | `10` | appsettings | 1 – 100 active sessions per user; beyond it the least recently used session is revoked |
 | `Database:MigrateOnStartup` | no | `true` | appsettings | Apply EF migrations at startup |
 | `Cors:AllowedOrigins` | no | `[]` (Development: local client ports) | appsettings; Bicep adds the Static Web App origin | Exact browser origins; `*` is rejected at startup |
-| `RateLimiting:AuthPermitLimit` | no | `10` | appsettings | Requests per IP and window for sign-up, sign-in and refresh |
+| `RateLimiting:AuthPermitLimit` | no | `10` | appsettings | Requests per client IP (IPv6: per /64) and window for sign-up, sign-in and refresh |
 | `RateLimiting:AuthWindow` | no | `00:01:00` | appsettings | Rate-limit window |
+| `SignInThrottling:MaxFailedAttempts` | no | `5` | appsettings | 1 – 100 sign-in attempts per email and window without a success; the next returns 429 |
+| `SignInThrottling:Window` | no | `00:15:00` | appsettings | 1 min – 1 h, starting at the first attempt |
+| `SignInThrottling:MaxTrackedAccounts` | no | `100000` | appsettings | 50 000 – 1 000 000 emails tracked in memory; tracked counters are never evicted early, and when full new emails are not throttled (fail open) |
 | `ASPNETCORE_FORWARDEDHEADERS_ENABLED` | no | — | Bicep (`true` in Azure) | Trust App Service `X-Forwarded-*` headers (scheme and client IP) |
 
-Options with data annotations (`Jwt`, `RateLimiting`) are validated at startup. A missing or short signing key, or a missing connection string, stops the app with a clear error.
+Options with data annotations (`Jwt`, `RateLimiting`, `SignInThrottling`) are validated at startup. A missing or short signing key, or a missing connection string, stops the app with a clear error.
 
 ## Rules
 

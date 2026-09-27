@@ -39,7 +39,7 @@ You are the quality gate for Govern, a .NET 10 Clean Architecture Web API + Blaz
      - Input is validated (Validator in the Contract).
      - No secrets in code or config, no PII or tokens in logs.
      - JWT validation is intact; CORS is not wildcard; queries are parameterised.
-   - **Performance:** N+1 queries, missing `AsNoTracking`/projection, unbounded queries without paging, sync-over-async, allocations in hot paths, caching only through repositories.
+   - **Performance:** N+1 queries, missing `AsNoTracking`/projection, unbounded queries without paging, sync-over-async, allocations in hot paths, cached queries only through repositories, and in-process state per `caching.md` (atomic reservation, `NeverRemove` for security counters).
    - **Architecture and naming:**
      - Layer references and folder templates.
      - Contract file shape (only `XxxRequest/Response/Validator/Handler` + `file` types), sealed handlers, one endpoint per file.

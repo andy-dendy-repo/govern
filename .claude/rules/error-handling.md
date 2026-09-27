@@ -32,6 +32,7 @@ paths:
 | Forbidden | 403 |
 | NotFound | 404 |
 | Conflict | 409 |
+| TooManyRequests | 429 (e.g. per-account sign-in throttling; the rate limiter's own 429 happens before the endpoint) |
 | Unexpected | 500 |
 
 Exceptions outside the mediator are handled as follows:

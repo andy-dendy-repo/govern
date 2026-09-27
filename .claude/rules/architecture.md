@@ -130,7 +130,7 @@ public static class SignUpEndpoint
 
 ## Repositories
 
-Add a repository only when a service needs caching. Then **all** queries for that data go through the repository, and the service uses the repository together with the cache. Without caching, handlers use `IApplicationDbContextFactory` directly. Never add a generic repository over EF Core.
+Add a repository only when a service needs cached *queries*. Then **all** queries for that data go through the repository, and the service uses the repository together with the cache. Without caching, handlers use `IApplicationDbContextFactory` directly. Never add a generic repository over EF Core. In-process state that isn't query data (counters, throttling) goes behind an `Application.Common` abstraction instead; see `caching.md`.
 
 ## Application.Common
 

@@ -2,3 +2,4 @@
 - [Analyzer false positives](reference_analyzer_false_positives.md) — AP010/AP009/AP002/AP005/AP003/AP007 noise to skip in Govern reviews
 - [Convention sweep gaps](feedback_convention_sweep.md) — rule changes miss .claude/agents and rule-file code examples; VO converters validate on read
 - [Value-object normalisation](project_value_object_normalisation.md) — Email NFC/lower idempotence bug, converter re-validation, raw vs normalised length
+- [In-process state checks](project_in_process_state.md) — limiter TOCTOU across PBKDF2, MemoryCache SizeLimit evicts LRU (not fail-open), Reset race
