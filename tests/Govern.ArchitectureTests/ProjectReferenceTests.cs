@@ -24,13 +24,23 @@ public class ProjectReferenceTests
     public void Project_ReferencesOnlyAllowedProjects(string project)
     {
         var csproj = Path.Combine(SourceTree.SourceRoot, project, project + ".csproj");
-        var references = XDocument.Load(csproj)
-            .Descendants("ProjectReference")
-            .Select(static reference => Path.GetFileNameWithoutExtension(reference.Attribute("Include")!.Value.Replace('\\', '/')))
-            .ToList();
-
-        var forbidden = references.Except(Layers.AllowedReferences[project]).ToList();
+        var forbidden = ProjectReferences(csproj).Except(Layers.AllowedReferences[project]).ToList();
 
         forbidden.ShouldBeEmpty($"{project} may only reference: {string.Join(", ", Layers.AllowedReferences[project])}");
     }
+
+    [Fact]
+    public void UnitTests_ReferenceOnlyPureProjects()
+    {
+        var csproj = Path.Combine(SourceTree.RepositoryRoot, "tests", "Govern.UnitTests", "Govern.UnitTests.csproj");
+        var forbidden = ProjectReferences(csproj).Except(Layers.UnitTestReferences).ToList();
+
+        forbidden.ShouldBeEmpty($"Govern.UnitTests may only reference: {string.Join(", ", Layers.UnitTestReferences)}; test everything else with integration tests");
+    }
+
+    private static List<string> ProjectReferences(string csproj) =>
+        XDocument.Load(csproj)
+            .Descendants("ProjectReference")
+            .Select(static reference => Path.GetFileNameWithoutExtension(reference.Attribute("Include")!.Value.Replace('\\', '/')))
+            .ToList();
 }

@@ -30,7 +30,7 @@ public sealed record GetCurrentUserResponse(Guid Id, string Email, DateTimeOffse
 {
     /// <summary>EF Core projection from <see cref="User"/>.</summary>
     public static Expression<Func<User, GetCurrentUserResponse>> Projection { get; } =
-        user => new GetCurrentUserResponse(user.Id, user.Email, user.CreatedAt);
+        user => new GetCurrentUserResponse(user.Id, user.Email.Value, user.CreatedAt);
 }
 
 // handler

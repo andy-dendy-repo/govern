@@ -5,19 +5,21 @@ paths:
 
 # Unit tests
 
-**Scope:** unit tests cover **`Govern.Utils` only**, since it is framework-agnostic and pure. Everything else (handlers, persistence, endpoints, auth) is covered by integration tests against a real Postgres. Don't write unit tests with mocked `DbContext`s or handlers.
+**Scope:** unit tests cover **`Govern.Utils` and `Govern.Domain` only**, since both are framework-agnostic and pure (value objects, entity methods and invariants). `Govern.UnitTests` may reference only these two projects (`ProjectReferenceTests.UnitTests_ReferenceOnlyPureProjects`). Everything else (handlers, persistence, endpoints, auth) is covered by integration tests against a real Postgres. Don't write unit tests with mocked `DbContext`s or handlers.
 
 ## Stack
 
 - xUnit v3 on Microsoft Testing Platform (`global.json` → `test.runner`). `Xunit` and `Shouldly` are global usings.
 - **Assertions:** Shouldly (`result.ShouldBe(…)`, `Should.Throw<T>(…)`, `await Should.ThrowAsync<T>(…)`). Don't use `Assert.*`.
-- **Mocks:** avoid them. Use real implementations or tiny hand-written fakes. Mock only boundaries Utils doesn't own (NSubstitute, added on demand).
+- **Mocks:** avoid them. Use real implementations or tiny hand-written fakes. Mock only boundaries Utils and Domain don't own (NSubstitute, added on demand).
 - Pass `TestContext.Current.CancellationToken` to anything that takes a `CancellationToken` (analyzer xUnit1051 fails the build otherwise).
 - For time, use `FakeTimeProvider` (Microsoft.Extensions.TimeProvider.Testing) and never real delays.
 
 ## Layout and naming
 
-- The folder and namespace mirror Utils: `src/Govern.Utils/Mediator/Services/MediatorService.cs` → `tests/Govern.UnitTests/Mediator/Services/MediatorServiceTests.cs`.
+- The folder and namespace mirror the source:
+  - Utils at the project root: `src/Govern.Utils/Mediator/Services/MediatorService.cs` → `tests/Govern.UnitTests/Mediator/Services/MediatorServiceTests.cs`.
+  - Domain under `Domain/`: `src/Govern.Domain/ValueObjects/Email.cs` → `tests/Govern.UnitTests/Domain/ValueObjects/EmailTests.cs`.
 - Name the class `<TypeUnderTest>Tests` and each test `Method_Scenario_ExpectedResult`. Underscores are allowed in tests (CA1707 is off for `tests/**`). For example: `SendAsync_HandlerRegistered_ReturnsHandlerResponse`.
 - Arrange / Act / Assert blocks separated by blank lines. Use one behaviour per test; several asserts about that behaviour are fine.
 - Use `[Theory]` + `[InlineData]` / `TheoryData<…>` for input variations instead of copy-pasted facts.

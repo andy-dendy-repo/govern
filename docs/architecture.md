@@ -69,6 +69,7 @@ Folders are created on demand. The templates list which folders **may** exist; n
 - A use case lives in `XxxContract.cs`, which contains only `XxxRequest`, `XxxResponse`, `XxxValidator`, `XxxHandler` and file-scoped helper types.
 - Handlers are sealed and implement `IRequestHandler<TRequest, TResponse>`.
 - Repositories exist only when a service needs caching. All queries for that data then go through the repository.
+- Value objects (`Domain/ValueObjects`) are sealed, immutable records compared by value, such as `Email`. Invalid input can't become a value object: `TryCreate` handles untrusted input and `Create` throws for already-validated input. EF Core stores a single-value object in one column through a value converter in the entity's configuration.
 
 ## How the rules are enforced
 
@@ -76,9 +77,9 @@ Folders are created on demand. The templates list which folders **may** exist; n
 
 | Test class | Checks |
 |---|---|
-| ProjectReferenceTests | csproj references against the allowed-reference table; every src project is registered |
+| ProjectReferenceTests | csproj references against the allowed-reference table; every src project is registered; `Govern.UnitTests` references only Domain and Utils |
 | FolderStructureTests | folders and root files against the templates; contract file contents; one endpoint per file |
 | LayerDependencyTests | type-level dependencies between layers (ArchUnitNET) |
-| NamingConventionTests | Helper ban, folder suffixes, contract type names, sealed handlers, interface prefix |
+| NamingConventionTests | Helper ban, folder suffixes, contract type names, sealed handlers, interface prefix, sealed immutable value objects |
 
 The templates and reference table are data in `tests/Govern.ArchitectureTests/Conventions/`. The matching Claude rules are in `.claude/rules/architecture.md` and `.claude/rules/project-map.md`.

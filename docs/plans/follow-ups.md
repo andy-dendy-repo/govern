@@ -22,6 +22,7 @@ Open work found by the first code review and security audit of the template Api 
 | 9 | Decide | [Key Vault purge protection](#9-key-vault-purge-protection) | XS |
 | 10 | Next feature | [Blazor client](#10-blazor-client) | L |
 | 11 | Low | [Quiet first migration log](#11-quiet-first-migration-log) | XS |
+| 12 | Low | [Stricter email validation](#12-stricter-email-validation) | XS |
 
 ## 1. Sign-out and sign-out everywhere
 
@@ -134,3 +135,9 @@ Open work found by the first code review and security audit of the template Api 
 - **Why:** on a brand-new database, EF Core logs `fail: Microsoft.EntityFrameworkCore.Database.Command[20102]` for `SELECT ... FROM "__EFMigrationsHistory"` before it creates the history table. It is harmless, but it looks like an error in the first production log and could trip error alerts (#5).
 - **Approach:** create the history table explicitly before migrating (`IHistoryRepository.CreateIfNotExistsAsync`), or filter that single event during `DatabaseMigrationService.StartAsync`.
 - **Tests:** an integration test on a fresh container asserting no Error-level logs at startup.
+
+## 12. Stricter email validation
+
+- **Why:** `Email.IsValid` (`src/Govern.Domain/ValueObjects/Email.cs`) only checks for exactly one `@` that is neither first nor last. It accepts control characters (CR/LF), internal whitespace, zero-width characters and un-normalised Unicode, so someone can register a lookalike of another user's address. There is no takeover path today (no password reset, and email delivery is mocked), but a real SMTP provider could be exposed to header injection (security audit of the Email value object, Low).
+- **Approach:** in `Email.IsValid`, reject `char.IsControl` and whitespace, and apply `Normalize(NormalizationForm.FormC)` before lower-casing (or reject non-ASCII local parts). Do this before password reset or real email delivery, and always send mail to the stored address.
+- **Tests:** unit cases in `tests/Govern.UnitTests/Domain/ValueObjects/EmailTests.cs`; sign-up returns 400 for these inputs.
