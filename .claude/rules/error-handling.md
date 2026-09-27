@@ -12,7 +12,7 @@ paths:
 | Invalid input | Let the `XxxValidator` fail; the mediator's `ValidationPipeline` returns `Error.Validation` (400) before the handler runs |
 | Business rule / state conflict (duplicate, not found, not allowed) | `return XxxErrors.Something;` from the handler (`Result<T>` converts implicitly) |
 | Bug, broken invariant, infrastructure failure | Throw (or let it propagate). `ErrorHandlingPipeline` logs it once and returns `Error.Unexpected()` (500, no details) |
-| Domain invariant violated by a caller (`User.SignUp("")`) | Throw `ArgumentException` / `InvalidOperationException` from the domain; it's a programming error |
+| Domain invariant violated by a caller (`Email.Create("")`, `User.SignUp(null!, hash)`) | Throw `ArgumentException` / `InvalidOperationException` from the domain; it's a programming error |
 
 - `Result<TValue>` and `Error` live in `Govern.Utils.Results`. Handlers return `ValueTask<Result<TResponse>>`.
 - Feature errors are `static readonly Error` fields in `Application/[Feature]/Models/XxxErrors.cs`, e.g. `UserErrors.EmailTaken`. Never build ad-hoc errors inline in handlers.

@@ -25,7 +25,7 @@ public sealed class UserTokenIssuingService(ITokenService tokenService, IOptions
         var expiresAt = timeProvider.GetUtcNow() + options.Value.RefreshTokenLifetime;
         user.IssueRefreshToken(refreshToken.TokenHash, expiresAt);
 
-        return new AuthTokens(tokenService.CreateAccessToken(user.Id, user.Email), refreshToken.Token, expiresAt);
+        return new AuthTokens(tokenService.CreateAccessToken(user.Id, user.Email.Value), refreshToken.Token, expiresAt);
     }
 
     /// <summary>
@@ -43,6 +43,6 @@ public sealed class UserTokenIssuingService(ITokenService tokenService, IOptions
         var expiresAt = now + options.Value.RefreshTokenLifetime;
         user.RotateRefreshToken(current, refreshToken.TokenHash, expiresAt, now);
 
-        return new AuthTokens(tokenService.CreateAccessToken(user.Id, user.Email), refreshToken.Token, expiresAt);
+        return new AuthTokens(tokenService.CreateAccessToken(user.Id, user.Email.Value), refreshToken.Token, expiresAt);
     }
 }

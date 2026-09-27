@@ -22,7 +22,7 @@ Errors are RFC 9457 ProblemDetails with a stable `code` extension. Validation er
 
 ## Signing up
 
-- The email must be a valid address (max 320 characters). It is normalised (trimmed, lower-case), and it must be unique regardless of case. Concurrent sign-ups with the same email create exactly one account; the others get 409.
+- The email must be a valid address (max 320 characters, exactly one `@` that is neither first nor last). It is normalised (trimmed, lower-case), and it must be unique regardless of case. These rules live in the `Email` value object (`src/Govern.Domain/ValueObjects/Email.cs`), which `SignUpValidator` and both handlers use, so a lookup can never skip normalisation. Concurrent sign-ups with the same email create exactly one account; the others get 409.
 - **Accepted risk:** 409 `user.email_taken` reveals that an email is registered, and the sign-up rate limit only slows enumeration down. Removing the risk needs email verification: always return 202 and email the owner.
 - The password must be 8–128 characters. Only a PBKDF2 hash is stored (ASP.NET Core Identity `PasswordHasher`).
 - A successful sign-up raises `UserSignedUpEvent`. After the save, `UserSignedUpEventHandler` sends a "Welcome to Govern" email through `IEmailService`. Email delivery is currently mocked (`LoggingEmailService` only logs the subject). Event delivery is best-effort: if the email fails, the sign-up still succeeds and the failure is logged.
@@ -30,7 +30,7 @@ Errors are RFC 9457 ProblemDetails with a stable `code` extension. Validation er
 ## Signing in
 
 - A correct email and password return a 15-minute access token (JWT) and a 14-day refresh token.
-- Unknown email and wrong password return the same 401 `user.invalid_credentials`, with comparable response time, so sign-in does not reveal whether an account exists (sign-up does; see above).
+- A malformed email, an unknown email and a wrong password all return the same 401 `user.invalid_credentials`, with comparable response time, so sign-in does not reveal whether an account exists (sign-up does; see above).
 - Each sign-in creates a new refresh token, so one user can be signed in on several devices.
 
 ## Refreshing tokens

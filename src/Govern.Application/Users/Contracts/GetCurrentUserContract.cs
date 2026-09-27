@@ -25,7 +25,7 @@ public sealed record GetCurrentUserResponse(Guid Id, string Email, DateTimeOffse
     /// EF Core projection from <see cref="User"/>; translated to SQL so only these columns are read.
     /// </summary>
     public static Expression<Func<User, GetCurrentUserResponse>> Projection { get; } =
-        user => new GetCurrentUserResponse(user.Id, user.Email, user.CreatedAt);
+        user => new GetCurrentUserResponse(user.Id, user.Email.Value, user.CreatedAt);
 }
 
 /// <summary>

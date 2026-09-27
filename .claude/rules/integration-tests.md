@@ -5,7 +5,7 @@ paths:
 
 # Integration tests
 
-**Scope:** everything except Utils: endpoints, handlers, validation, persistence, auth, health checks and background work. Tests go **through the HTTP API** using `WebApplicationFactory<Program>` against a **real Postgres in Testcontainers**.
+**Scope:** everything except the pure code unit-tested in isolation (Utils, Domain value objects and invariants): endpoints, handlers, validation, persistence, auth, health checks and background work. Tests go **through the HTTP API** using `WebApplicationFactory<Program>` against a **real Postgres in Testcontainers**.
 - Never use EF InMemory or SQLite.
 - Never mock the database or the mediator.
 

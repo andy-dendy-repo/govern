@@ -25,7 +25,7 @@ public class SignUpEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture
         await using (db)
         {
             var user = await db.Users.AsNoTracking().SingleAsync(u => u.Id == body!.UserId, Ct);
-            user.Email.ShouldBe(email);
+            user.Email.Value.ShouldBe(email);
             user.PasswordHash.ShouldNotContain(UsersApi.Password);
             user.CreatedAt.ShouldBeGreaterThan(DateTimeOffset.UtcNow.AddMinutes(-1));
         }
