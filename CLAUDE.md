@@ -19,7 +19,7 @@ Govern is an HTTP Web API with a Blazor WASM client.
 
 - `src/`: production projects. See `.claude/rules/project-map.md` for what goes where and allowed references.
 - `tests/`:
-  - `Govern.UnitTests`: Utils only.
+  - `Govern.UnitTests`: Utils and Domain only (pure code).
   - `Govern.IntegrationTests`: everything else, via HTTP against Postgres in Testcontainers.
   - `Govern.ArchitectureTests`: enforces the rules.
 - `docs/`: knowledge base (RAG); index in `docs/README.md`.
@@ -52,7 +52,7 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 
 1. Planned in the `.claude/rules/planning.md` format.
 2. Tests written or updated:
-   - unit tests (Utils only)
+   - unit tests (Utils and Domain only)
    - integration tests (happy path, 400, 401/403, domain errors)
    - architecture tests (for new conventions)
 3. XML docs on every public member (the build fails otherwise).

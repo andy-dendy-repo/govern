@@ -2,6 +2,7 @@ using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Users.Models;
 using Govern.Domain.Entities;
+using Govern.Domain.ValueObjects;
 using Govern.Utils.Mediator.Abstractions;
 using Govern.Utils.Results;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +36,12 @@ public sealed class SignUpValidator : AbstractValidator<SignUpRequest>
     /// <summary>Creates the validation rules.</summary>
     public SignUpValidator()
     {
-        RuleFor(request => request.Email).NotEmpty().EmailAddress().MaximumLength(320);
+        RuleFor(request => request.Email)
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty()
+            .MaximumLength(Email.MaxLength)
+            .Must(Email.IsValid)
+            .WithMessage("'Email' is not a valid email address.");
         RuleFor(request => request.Password).NotEmpty().Length(PasswordMinLength, PasswordMaxLength);
     }
 }
@@ -51,7 +57,7 @@ internal sealed class SignUpHandler(
     /// <inheritdoc />
     public async ValueTask<Result<SignUpResponse>> HandleAsync(SignUpRequest request, CancellationToken cancellationToken)
     {
-        var email = User.NormalizeEmail(request.Email);
+        var email = Email.Create(request.Email);
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         if (await db.Users.AnyAsync(user => user.Email == email, cancellationToken))

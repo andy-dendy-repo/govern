@@ -11,6 +11,11 @@ public static class Layers
     public static readonly string[] Ignored = ["Govern.Core"];
 
     /// <summary>
+    /// Source projects <c>Govern.UnitTests</c> may reference: only pure, framework-agnostic code (see <c>.claude/rules/unit-tests.md</c>).
+    /// </summary>
+    public static readonly string[] UnitTestReferences = ["Govern.Domain", "Govern.Utils"];
+
+    /// <summary>
     /// Every known source project mapped to the projects it may reference.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, string[]> AllowedReferences = new Dictionary<string, string[]>

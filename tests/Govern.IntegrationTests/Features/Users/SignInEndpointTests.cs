@@ -61,6 +61,30 @@ public class SignInEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture
     }
 
     [Fact]
+    public async Task Post_EmailInDifferentCaseWithWhitespace_Returns200()
+    {
+        var email = UsersApi.NewEmail();
+        (await UsersApi.SignUpAsync(Client, email, UsersApi.Password, Ct)).EnsureSuccessStatusCode();
+
+        var response = await UsersApi.SignInAsync(Client, $"  {email.ToUpperInvariant()} ", UsersApi.Password, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var tokens = (await response.Content.ReadFromJsonAsync<SignInResponse>(Ct))!;
+        new JsonWebToken(tokens.AccessToken).GetClaim(JwtRegisteredClaimNames.Email).Value.ShouldBe(email);
+    }
+
+    [Theory]
+    [InlineData("not-an-email")]
+    [InlineData("@example.com")]
+    [InlineData("a@b@example.com")]
+    public async Task Post_MalformedEmail_Returns401WithSameErrorAsWrongPassword(string email)
+    {
+        var response = await UsersApi.SignInAsync(Client, email, UsersApi.Password, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Unauthorized, "user.invalid_credentials", Ct);
+    }
+
+    [Fact]
     public async Task Post_MissingFields_Returns400WithFieldErrors()
     {
         var response = await UsersApi.SignInAsync(Client, "", "", Ct);

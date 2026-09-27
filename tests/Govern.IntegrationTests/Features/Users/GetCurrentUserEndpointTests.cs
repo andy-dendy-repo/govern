@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Govern.Application.Users.Contracts;
+using Govern.Domain.ValueObjects;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -49,7 +50,7 @@ public class GetCurrentUserEndpointTests(GovernApiFixture fixture) : ApiTestBase
         await using (scope)
         await using (db)
         {
-            await db.Users.Where(u => u.Email == email).ExecuteDeleteAsync(Ct);
+            await db.Users.Where(u => u.Email == Email.Create(email)).ExecuteDeleteAsync(Ct);
         }
 
         var response = await UsersApi.GetMeAsync(Client, tokens.AccessToken, Ct);

@@ -1,5 +1,6 @@
 using Govern.Domain.EntityBase;
 using Govern.Domain.Events;
+using Govern.Domain.ValueObjects;
 
 namespace Govern.Domain.Entities;
 
@@ -16,9 +17,9 @@ public sealed class User : BaseAuditableEntity
     }
 
     /// <summary>
-    /// The normalised (trimmed, lower-case) email address; unique across users.
+    /// The normalised email address; unique across users.
     /// </summary>
-    public string Email { get; private set; } = string.Empty;
+    public Email Email { get; private set; } = null!;
 
     /// <summary>
     /// The password hash produced by the password hashing service; never the password itself.
@@ -31,24 +32,17 @@ public sealed class User : BaseAuditableEntity
     public IReadOnlyCollection<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
 
     /// <summary>
-    /// Normalises an email address the same way it is stored, for lookups and uniqueness checks.
-    /// </summary>
-    /// <param name="email">The email as entered.</param>
-    /// <returns>The trimmed, lower-case email.</returns>
-    public static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
-
-    /// <summary>
     /// Creates a new account and raises <see cref="UserSignedUpEvent"/>.
     /// </summary>
-    /// <param name="email">The email address; normalised before storing.</param>
+    /// <param name="email">The email address.</param>
     /// <param name="passwordHash">The already hashed password.</param>
     /// <returns>The new user.</returns>
-    public static User SignUp(string email, string passwordHash)
+    public static User SignUp(Email email, string passwordHash)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        ArgumentNullException.ThrowIfNull(email);
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
 
-        var user = new User { Email = NormalizeEmail(email), PasswordHash = passwordHash };
+        var user = new User { Email = email, PasswordHash = passwordHash };
         user.AddDomainEvent(new UserSignedUpEvent(user.Id, user.Email));
         return user;
     }

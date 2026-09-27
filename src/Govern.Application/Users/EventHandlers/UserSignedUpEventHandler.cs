@@ -16,7 +16,7 @@ internal sealed class UserSignedUpEventHandler(IEmailService emailService) : INo
     /// <inheritdoc />
     public async ValueTask HandleAsync(UserSignedUpEvent notification, CancellationToken cancellationToken)
     {
-        var message = new EmailMessage(notification.Email, WelcomeSubject, "Your Govern account has been created.");
+        var message = new EmailMessage(notification.Email.Value, WelcomeSubject, "Your Govern account has been created.");
         await emailService.SendAsync(message, cancellationToken);
     }
 }
