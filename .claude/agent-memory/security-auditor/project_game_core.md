@@ -25,3 +25,11 @@ Fog invariants that currently hold (re-check when unit/terrain/city stats change
 **How to apply:** at the audit of step 3, re-verify each open item and treat the move.occupied oracle as High if still present; check event filtering and the command body size limit.
 
 Re-verified 2026-09-27 at the Plan 3a command-endpoint audit (feature/game-commands): all rejections reachable over HTTP respect fog (move.occupied only for visible targets; unit/city not_found for enemy ids; attack adjacency and city.too_close within sight; Movement 2 <= Sight 2, plains cost 1). No command input found that throws (Map.Contains checked before DistanceTo; no checked arithmetic). Events are not returned yet.
+
+Plan 3b audit 2026-09-28 (uncommitted feature/game-live-updates, base origin/gamecore):
+- HIGH, open at audit: unit/city ids became raw draws of the gameplay SplitMix64 (`random.Next(1, int.MaxValue)`, 31 of 64 output bits). Two consecutive own ids recover the state in ~2 s on a 12-core laptop (2^33 candidates, SplitMix64 mix is invertible; ~4 candidates, disambiguate by own spawn); state - k*gamma = seed. Gives enemy spawn tiles, exact count of hidden enemy creations (step gamma until own next id matches) and all future draws. Probe: C brute force in scratchpad (not kept). Proposed fix: ids from a keyed PRF (HMAC-SHA256(IdKey 32 CSPRNG bytes, counter)) separate from gameplay RNG; never expose SplitMix64 outputs.
+- Low: PlayerView lists units/cities in state (creation) order -> relative creation order of visible enemy objects; sort by id in ViewFor.
+- PlayerView.Version is now SHA-256 of the view JSON (viewer-visible data only): not an oracle; stale check compares against caller's own view.
+
+**Why:** RNG outputs visible to clients break the "Seed/RngState never reach the client" invariant.
+**How to apply:** at every Core change, check that no client-visible value is a direct output of DeterministicRandom.

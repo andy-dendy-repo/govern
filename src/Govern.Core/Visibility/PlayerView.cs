@@ -10,7 +10,11 @@ namespace Govern.Core.Visibility;
 /// that is not on a currently visible tile, so reading it in the browser reveals nothing the player could not see on screen.
 /// </summary>
 /// <param name="Viewer">Player this view is for.</param>
-/// <param name="Version">State version the view was built from.</param>
+/// <param name="Version">
+/// Opaque fingerprint of this view (a hash of everything else in it): equal views have equal versions. Compare it only for
+/// equality (the client echoes it as <c>expectedVersion</c>); it is not ordered and does not count commands, so it reveals
+/// nothing the viewer cannot already see.
+/// </param>
 /// <param name="Turn">Round number.</param>
 /// <param name="CurrentPlayer">Player who may act now.</param>
 /// <param name="Status">Whether the game is still running.</param>
@@ -18,8 +22,8 @@ namespace Govern.Core.Visibility;
 /// <param name="Width">Map columns.</param>
 /// <param name="Height">Map rows.</param>
 /// <param name="Tiles">Every tile, row-major, with what the viewer knows about it.</param>
-/// <param name="Units">The viewer's units and the enemy units on visible tiles.</param>
-/// <param name="Cities">The viewer's cities and the enemy cities on visible tiles.</param>
+/// <param name="Units">The viewer's units and the enemy units on visible tiles, ordered by id.</param>
+/// <param name="Cities">The viewer's cities and the enemy cities on visible tiles, ordered by id.</param>
 /// <param name="Players">Participants in turn order.</param>
 public sealed record PlayerView(
     PlayerId Viewer,

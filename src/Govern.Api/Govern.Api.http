@@ -69,28 +69,34 @@ Content-Type: application/json
 POST {{api}}/api/games/{{createGame.response.body.$.id}}/start
 Authorization: Bearer {{signIn.response.body.$.accessToken}}
 
-### End the first turn (expectedVersion = the view.version you last saw)
-# @name endTurn
+### Live updates as the first player (server-sent events: `game` snapshots and `heartbeat`s; run it in a terminal with
+### curl -N -H "Authorization: Bearer <token>" to keep it open while you send commands below)
+GET {{api}}/api/games/{{createGame.response.body.$.id}}/stream
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
+Accept: text/event-stream
+
+### End the first turn (expectedVersion = the view.version you last saw; it is per player and opaque)
 POST {{api}}/api/games/{{createGame.response.body.$.id}}/commands
 Authorization: Bearer {{signIn.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "expectedVersion": {{startGame.response.body.$.view.version}}, "command": { "type": "end_turn" } }
 
-### Move a unit as the second player (pick a unit id and a target from view.units / view.tiles)
-POST {{api}}/api/games/{{createGame.response.body.$.id}}/commands
-Authorization: Bearer {{signIn2.response.body.$.accessToken}}
-Content-Type: application/json
-
-{ "expectedVersion": {{endTurn.response.body.$.view.version}}, "command": { "type": "move_unit", "unitId": { "value": 2 }, "target": { "q": 3, "r": 3 } } }
-
 ### Get the game as the first player
 GET {{api}}/api/games/{{createGame.response.body.$.id}}
 Authorization: Bearer {{signIn.response.body.$.accessToken}}
 
-### Get the game as the second player (a different fog-of-war view)
+### Get the game as the second player (a different fog-of-war view, with its own view.version)
+# @name getGame2
 GET {{api}}/api/games/{{createGame.response.body.$.id}}
 Authorization: Bearer {{signIn2.response.body.$.accessToken}}
+
+### Move a unit as the second player (ids are random: pick a unit id and a target from view.units / view.tiles)
+POST {{api}}/api/games/{{createGame.response.body.$.id}}/commands
+Authorization: Bearer {{signIn2.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "expectedVersion": {{getGame2.response.body.$.view.version}}, "command": { "type": "move_unit", "unitId": { "value": 123456 }, "target": { "q": 3, "r": 3 } } }
 
 ### List my games
 GET {{api}}/api/games?page=1&pageSize=20

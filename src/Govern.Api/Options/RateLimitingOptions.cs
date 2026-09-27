@@ -41,4 +41,16 @@ public sealed class RateLimitingOptions
     /// <summary>Game command window length (default 1 minute).</summary>
     [Range(typeof(TimeSpan), "00:00:01", "01:00:00")]
     public TimeSpan GameCommandsWindow { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>Game streams one user may have open at the same time (default 4).</summary>
+    [Range(1, 1_000)]
+    public int GameStreamsConcurrentLimit { get; set; } = 4;
+
+    /// <summary>Game streams one user may open per window (default 30), which bounds reconnect loops.</summary>
+    [Range(1, 10_000)]
+    public int GameStreamsPermitLimit { get; set; } = 30;
+
+    /// <summary>Game stream window length (default 1 minute).</summary>
+    [Range(typeof(TimeSpan), "00:00:01", "01:00:00")]
+    public TimeSpan GameStreamsWindow { get; set; } = TimeSpan.FromMinutes(1);
 }

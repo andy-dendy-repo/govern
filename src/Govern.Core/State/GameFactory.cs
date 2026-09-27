@@ -25,14 +25,14 @@ public static class GameFactory
 
         var map = GameMap.Create(setup.Width, setup.Height);
         var random = new DeterministicRandom(setup.Seed);
+        var ids = new HashSet<int>();
         var units = ImmutableArray.CreateBuilder<Unit>();
-        var nextId = 1;
 
         for (var index = 0; index < setup.Players.Length; index++)
         {
             var (settlerTile, soldierTile) = SpawnTiles(map, random, isLeftSide: index == 0);
-            units.Add(new Unit(new UnitId(nextId++), setup.Players[index], UnitType.Settler, settlerTile, UnitCatalog.Get(UnitType.Settler).Movement));
-            units.Add(new Unit(new UnitId(nextId++), setup.Players[index], UnitType.Soldier, soldierTile, UnitCatalog.Get(UnitType.Soldier).Movement));
+            units.Add(NewUnit(random, ids, setup.Players[index], UnitType.Settler, settlerTile));
+            units.Add(NewUnit(random, ids, setup.Players[index], UnitType.Soldier, soldierTile));
         }
 
         var state = new GameState
@@ -45,7 +45,6 @@ public static class GameFactory
             Players = [.. setup.Players.Select(static id => new Player(id, PlayerStatus.Active, []))],
             Units = units.ToImmutable(),
             Cities = ImmutableArray<City>.Empty,
-            NextId = nextId,
             RngState = random.State,
         };
 
@@ -63,6 +62,14 @@ public static class GameFactory
         {
             throw new ArgumentException("Players must be distinct and non-empty.", nameof(players));
         }
+    }
+
+    // Ids come from the game's generator, like every later id (GameState.AllocateId), so they reveal no creation count.
+    private static Unit NewUnit(DeterministicRandom random, HashSet<int> ids, PlayerId owner, UnitType type, HexCoord tile)
+    {
+        var id = GameState.NewId(random, ids.Contains);
+        ids.Add(id);
+        return new Unit(new UnitId(id), owner, type, tile, UnitCatalog.Get(type).Movement);
     }
 
     // The settler stands in the player's quarter; the soldier stands next to it, towards the map centre.

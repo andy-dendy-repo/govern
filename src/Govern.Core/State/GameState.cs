@@ -1,4 +1,6 @@
+using System.Buffers.Binary;
 using System.Collections.Immutable;
+using System.Security.Cryptography;
 using Govern.Core.Cities;
 using Govern.Core.Engine;
 using Govern.Core.Map;
@@ -12,8 +14,11 @@ namespace Govern.Core.State;
 /// </summary>
 public sealed record GameState
 {
-    /// <summary>Version of this shape; bump it (and migrate stored games) on breaking changes.</summary>
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>
+    /// Version of this shape; bump it (and migrate stored games in <c>GameSerializer.DeserializeState</c>) on breaking changes.
+    /// Version 2 removed the shared id counter: ids are drawn from <see cref="RngState"/>.
+    /// </summary>
+    public const int CurrentSchemaVersion = 2;
 
     /// <summary>Schema version the snapshot was written with.</summary>
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
@@ -45,10 +50,10 @@ public sealed record GameState
     /// <summary>Every city on the map.</summary>
     public required ImmutableArray<City> Cities { get; init; }
 
-    /// <summary>Next free id for a unit or city.</summary>
-    public required int NextId { get; init; }
-
-    /// <summary>State of the <see cref="DeterministicRandom"/> generator.</summary>
+    /// <summary>
+    /// State of the <see cref="DeterministicRandom"/> generator. It also draws unit and city ids, so an id tells an opponent
+    /// nothing about how many units or cities were created. Never sent to clients.
+    /// </summary>
     public required ulong RngState { get; init; }
 
     /// <summary>Returns the unit with the given id.</summary>
@@ -88,7 +93,32 @@ public sealed record GameState
     internal GameState WithPlayer(Player player) =>
         this with { Players = Players.Replace(FindPlayer(player.Id) ?? throw new InvalidOperationException("The player is not part of the game."), player) };
 
-    internal (GameState State, int Id) AllocateId() => (this with { NextId = NextId + 1 }, NextId);
+    // A random id not used by any unit or city; drawn from the game's generator, so replays give the same ids.
+    internal (GameState State, int Id) AllocateId()
+    {
+        var random = new DeterministicRandom(RngState);
+        var id = NewId(random, IsIdInUse);
+        return (this with { RngState = random.State }, id);
+    }
+
+    // Ids are shown to opponents, so they never carry raw generator output: SplitMix64 is invertible, and two raw draws would
+    // let a player rebuild RngState (and with it hidden spawns and every future id). A SHA-256 of the draw keeps the id
+    // deterministic but reveals nothing about the state.
+    internal static int NewId(DeterministicRandom random, Func<int, bool> isInUse)
+    {
+        Span<byte> draw = stackalloc byte[sizeof(ulong)];
+        int id;
+        do
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(draw, random.NextUInt64());
+            id = (int)(BinaryPrimitives.ReadUInt32LittleEndian(SHA256.HashData(draw)) & int.MaxValue);
+        }
+        while (id == 0 || isInUse(id));
+
+        return id;
+    }
+
+    private bool IsIdInUse(int id) => Units.Any(unit => unit.Id.Value == id) || Cities.Any(city => city.Id.Value == id);
 
     private static InvalidOperationException MissingUnit(UnitId id) => new($"Unit {id.Value} does not exist.");
 }

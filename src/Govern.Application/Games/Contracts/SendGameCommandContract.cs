@@ -16,8 +16,9 @@ namespace Govern.Application.Games.Contracts;
 /// </summary>
 /// <param name="GameId">Game id.</param>
 /// <param name="ExpectedVersion">
-/// The <c>view.version</c> the command is based on. When the game has moved on since, the command is rejected with
-/// <see cref="GameErrors.StaleVersion"/> instead of being applied to a board the player has not seen.
+/// The <c>view.version</c> the command is based on. When the caller's view has changed since, the command is rejected with
+/// <see cref="GameErrors.StaleVersion"/> instead of being applied to a board the player has not seen. The version is a
+/// fingerprint of the caller's own view, so changes hidden from them never make their command stale.
 /// </param>
 /// <param name="Command">The command.</param>
 public sealed record SendGameCommandRequest(Guid GameId, long ExpectedVersion, GameCommand Command)
@@ -64,7 +65,7 @@ internal sealed class SendGameCommandHandler(IApplicationDbContextFactory dbCont
             return GameErrors.NotFound;
         }
 
-        if (Check(game, request.ExpectedVersion) is { } error)
+        if (Check(game, caller, request.ExpectedVersion) is { } error)
         {
             return error;
         }
@@ -88,10 +89,10 @@ internal sealed class SendGameCommandHandler(IApplicationDbContextFactory dbCont
     }
 
     // Why the command cannot reach the engine, or null when it can (a finished game is left to the engine: game.finished).
-    private static Error? Check(Game game, long expectedVersion) => game switch
+    private static Error? Check(Game game, GamePlayer caller, long expectedVersion) => game switch
     {
         { Phase: GamePhase.Lobby } or { State: null } => GameErrors.NotStarted,
-        { State.Version: var version } when version != expectedVersion => GameErrors.StaleVersion,
+        { State: var state } when GameEngine.ViewFor(state, caller.PlayerId).Version != expectedVersion => GameErrors.StaleVersion,
         _ => null,
     };
 }

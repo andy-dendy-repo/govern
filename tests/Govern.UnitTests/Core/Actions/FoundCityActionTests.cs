@@ -24,7 +24,9 @@ public class FoundCityActionTests
         city.Name.ShouldBe("City 2");
         city.Producing.ShouldBe(UnitType.Soldier);
         city.ProductionProgress.ShouldBe(0);
-        update.State.NextId.ShouldBe(state.NextId + 1);
+        state.Units.ShouldNotContain(unit => unit.Id.Value == city.Id.Value);
+        state.Cities.ShouldNotContain(existing => existing.Id.Value == city.Id.Value);
+        update.State.RngState.ShouldNotBe(state.RngState);
         update.Events.ShouldHaveSingleItem().ShouldBe(new CityFoundedEvent(city, settler));
     }
 

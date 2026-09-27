@@ -13,8 +13,8 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [architecture.md](architecture.md): layers, allowed references, request flow, folder templates (UF / AGFT / 3DFT), naming rules and how they are enforced.
 
 ## Features
-- [features/game-core.md](features/game-core.md): the pure game engine in `Govern.Core`: hex map, units and cities, commands and rules, error codes, fog of war (`PlayerView`), determinism and the JSON format.
-- [features/games.md](features/games.md): games and lobby: phases, `/api/games` endpoints and status codes, sending commands (`expectedVersion`, rule-violation codes), error codes, per-user rate limits and caps, invite codes, per-game player ids (no user ids exposed), join/start/command races, `games`/`game_players` tables and the `jsonb` state.
+- [features/game-core.md](features/game-core.md): the pure game engine in `Govern.Core`: hex map, units and cities, commands and rules, error codes, fog of war (`PlayerView`), the opaque view version, random ids, determinism and the JSON format (schema v2).
+- [features/games.md](features/games.md): games and lobby: phases, `/api/games` endpoints and status codes, sending commands (opaque per-player `expectedVersion`, rule-violation codes), live updates over SSE (`/stream`, heartbeat, push on visible change), error codes, per-user rate limits and caps, invite codes, per-game player ids (no user ids exposed), join/start/command races, `games`/`game_players` tables and the `jsonb` state.
 - [features/client.md](features/client.md): Blazor WASM client architecture (CFT feature folders), `Api:BaseUrl` configuration, CSP and security headers on the Static Web App, release-time configuration, bUnit and architecture tests.
 - [features/users.md](features/users.md): sign-up, sign-in, refresh token rotation and reuse detection, session cap and cleanup, sign-out, current user; endpoints, errors, data model.
 
@@ -23,6 +23,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [decisions/0002-auth-tokens.md](decisions/0002-auth-tokens.md): JWT access tokens, rotating refresh tokens, and client token storage.
 - [decisions/0003-no-mapping-libraries.md](decisions/0003-no-mapping-libraries.md): EF projections and static `Projection`/`From` members instead of mapping libraries.
 - [decisions/0004-game-engine.md](decisions/0004-game-engine.md): authoritative server with a pure, deterministic, dependency-free game engine; hex map, alternating turns, fog of war.
+- [decisions/0005-live-updates.md](decisions/0005-live-updates.md): live game updates over SSE with per-player snapshots, an in-process change hub, an opaque view version and random ids.
 
 ## Operations
 - [operations/local-development.md](operations/local-development.md): prerequisites, local Postgres, user-secrets, running the Api, tests and the container.

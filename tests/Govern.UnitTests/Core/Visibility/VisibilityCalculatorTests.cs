@@ -25,6 +25,60 @@ public class VisibilityCalculatorTests
     }
 
     [Fact]
+    public void ViewFor_SameState_GivesTheSameNonNegativeVersion()
+    {
+        var state = new GameStateBuilder().WithCapitals().Build();
+
+        var first = GameEngine.ViewFor(state, P1);
+        var second = GameEngine.ViewFor(state, P1);
+
+        first.Version.ShouldBe(second.Version);
+        first.Version.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public void ViewFor_ChangeTheViewerSees_ChangesTheVersion()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var own = builder.AddUnit(P1, UnitType.Soldier, 2, 2);
+        var state = builder.Build();
+
+        var moved = GameEngine.Execute(state, P1, new MoveUnitCommand(own, At(3, 2))).ShouldSucceed().State;
+
+        GameEngine.ViewFor(moved, P1).Version.ShouldNotBe(GameEngine.ViewFor(state, P1).Version);
+    }
+
+    [Fact]
+    public void ViewFor_EnemyMoveOutOfSight_KeepsTheVersion()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithCurrentPlayer(P2);
+        builder.AddUnit(P1, UnitType.Soldier, 2, 2);
+        var enemy = builder.AddUnit(P2, UnitType.Soldier, 9, 7);
+        var state = builder.Build();
+
+        var moved = GameEngine.Execute(state, P2, new MoveUnitCommand(enemy, At(8, 7))).ShouldSucceed().State;
+
+        moved.Version.ShouldBe(state.Version + 1);
+        GameEngine.ViewFor(moved, P1).Version.ShouldBe(GameEngine.ViewFor(state, P1).Version);
+    }
+
+    [Fact]
+    public void ViewFor_UnitsAndCities_AreOrderedByIdNotByCreation()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddUnit(P1, UnitType.Soldier, 2, 2);
+        builder.AddUnit(P1, UnitType.Settler, 3, 3);
+        var state = builder.Build();
+        var reversed = state with { Units = [.. state.Units.Reverse()], Cities = [.. state.Cities.Reverse()] };
+
+        var view = GameEngine.ViewFor(reversed, P1);
+
+        view.Units.Select(static unit => unit.Id.Value).ShouldBeInOrder();
+        view.Cities.Select(static city => city.Id.Value).ShouldBeInOrder();
+        view.Version.ShouldBe(GameEngine.ViewFor(state, P1).Version);
+    }
+
+    [Fact]
     public void ViewFor_EnemyInSight_ShowsTheirUnit()
     {
         var builder = new GameStateBuilder().WithCapitals();

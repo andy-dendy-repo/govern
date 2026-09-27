@@ -65,7 +65,7 @@ public class LayerDependencyTests
                 .Select(token => $"{SourceTree.Relative(file)}: {token}"))
             .ToList();
 
-        violations.ShouldBeEmpty("Core ids come from GameState.NextId and hash codes can differ between processes; both would break replay determinism");
+        violations.ShouldBeEmpty("Core ids are drawn from the game's DeterministicRandom (GameState.RngState) and hash codes can differ between processes; both would break replay determinism");
     }
 
     [Fact]

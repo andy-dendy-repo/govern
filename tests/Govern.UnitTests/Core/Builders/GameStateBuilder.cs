@@ -66,7 +66,6 @@ internal sealed class GameStateBuilder
         Players = [new Player(P1, PlayerStatus.Active, []), new Player(P2, PlayerStatus.Active, [])],
         Units = [.. _units],
         Cities = [.. _cities],
-        NextId = _nextId,
         RngState = 42,
     });
 }
