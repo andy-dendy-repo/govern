@@ -22,18 +22,19 @@ The server side follows Clean Architecture: dependencies point inward, toward th
 | Project | Responsibility | May reference |
 |---|---|---|
 | Govern.Utils | Framework-agnostic building blocks such as the mediator | — |
-| Govern.Domain | Entities, value objects, domain events | Utils |
-| Govern.Application.Common | Abstractions implemented by Infrastructure (DB context, factory, transaction, …), shared models and options | Domain, Utils |
-| Govern.Application | Use cases grouped by feature (`[Feature]/Contracts`) | Application.Common, Domain, Utils |
-| Govern.Infrastructure | Persistence (EF Core + Npgsql) and external integrations, one folder per concern | Application, Application.Common, Domain, Utils |
+| Govern.Core | Pure, deterministic game engine (rules, fog of war, JSON format), base class library only; shared with the client ([game-core](features/game-core.md)) | — |
+| Govern.Domain | Entities, value objects, domain events | Core, Utils |
+| Govern.Application.Common | Abstractions implemented by Infrastructure (DB context, factory, transaction, …), shared models and options | Core, Domain, Utils |
+| Govern.Application | Use cases grouped by feature (`[Feature]/Contracts`) | Application.Common, Core, Domain, Utils |
+| Govern.Infrastructure | Persistence (EF Core + Npgsql) and external integrations, one folder per concern | Application, Application.Common, Core, Domain, Utils |
 | Govern.Api | Composition root, minimal API endpoints, middlewares, filters, health checks | all server projects |
-| Govern.Client | Blazor WASM UI | no server project |
+| Govern.Client | Blazor WASM UI | Core only (no server project) |
 
 Additional constraints:
 - The domain does not use EF Core or ASP.NET Core.
 - Application does not use ASP.NET Core.
 - API endpoints (`Api/Features`) use Application contracts only, never Infrastructure or Domain types directly.
-- `Govern.Core` is excluded from all rules.
+- `Govern.Core` depends on the base class library only: no project or package references and no `Microsoft.*` types.
 
 ## Request flow
 
@@ -53,6 +54,7 @@ Folders are created on demand. The templates list which folders **may** exist; n
 - **UF (utility folders):** Helpers, Models, Enums, Options, Exceptions, Extensions, Attributes, Services.
 - **AGFT (application general folders):** UF plus Abstractions, EventHandlers and Repositories, with root files `DependencyInjection.cs` and `GlobalUsings.cs`.
 - **3DFT (DDD folders):** AGFT plus one folder per feature. Each feature folder follows AGFT and adds `Contracts/`.
+- **Core template (game engine):** a fixed set of concept folders (`Engine`, `State`, `Map`, `Units`, `Cities`, `Events`, `Visibility`, `Serialization`) plus a flat `Actions/` folder where each `XxxAction.cs` holds one player action: its `XxxCommand` and the `XxxRule` that applies it. It deliberately avoids UF names: UF suffix rules (e.g. `Services` → `Service`) don't fit engine code.
 
 | Project | Template | Extras |
 |---|---|---|
@@ -61,6 +63,7 @@ Folders are created on demand. The templates list which folders **may** exist; n
 | Infrastructure | UF | one folder per concern (each UF), `Background/`, `Persistence/` (Configurations, Interceptors, Migrations, `ApplicationDbContext*.cs`) |
 | Domain | UF | Entities, Events, ValueObjects, EntityBase |
 | Api | UF | Middlewares, Filters, HealthChecks, `Features/[Feature]/XxxEndpoint.cs` |
+| Core | Core template | `Engine/`, `State/`, `Map/`, `Units/`, `Cities/`, `Events/`, `Visibility/`, `Serialization/`, plus flat `Actions/XxxAction.cs` holding exactly `XxxCommand` + `XxxRule`; no root files (see [game-core](features/game-core.md)) |
 | Client | CFT (UF) | Layout, Components, Auth, `Features/[Feature]/` with `Pages/XxxPage.razor`, `Components/`, `Clients/XxxClient.cs` (see [client](features/client.md)) |
 
 ## Naming rules
@@ -78,9 +81,9 @@ Folders are created on demand. The templates list which folders **may** exist; n
 
 | Test class | Checks |
 |---|---|
-| ProjectReferenceTests | csproj references against the allowed-reference table; every src project is registered; `Govern.UnitTests` references only Domain and Utils; `Govern.ClientTests` references only Client |
-| FolderStructureTests | folders and root files (`.cs` and `.razor`) against the templates; contract file contents; one endpoint per file |
-| LayerDependencyTests | type-level dependencies between layers (ArchUnitNET); the client uses `HttpClient` only in typed clients and `Auth`, and JS interop only in `Auth` and `Services` |
+| ProjectReferenceTests | csproj references against the allowed-reference table; every src project is registered; `Govern.UnitTests` references only Core, Domain and Utils; Core has no package references; `Govern.ClientTests` references only Client |
+| FolderStructureTests | folders and root files (`.cs` and `.razor`) against the templates (including Core); contract file contents; Core action files hold exactly their command and rule; one endpoint per file |
+| LayerDependencyTests | type-level dependencies between layers (ArchUnitNET); Core depends on the base class library only; the client uses `HttpClient` only in typed clients and `Auth`, and JS interop only in `Auth` and `Services` |
 | NamingConventionTests | Helper ban, folder suffixes, contract type names, sealed handlers, interface prefix, sealed immutable value objects; client pages, components and typed clients |
 | CodeMetricsTests | file, member and parameter size limits; `.razor` file and `@code` block limits |
 | ClientSecurityTests | the client's CSP and security headers, self-hosted assets, no raw HTML, no secrets in client config |

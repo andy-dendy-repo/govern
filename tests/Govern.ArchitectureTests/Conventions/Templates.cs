@@ -25,6 +25,12 @@ public static class Templates
     public static readonly string[] ApplicationGeneralRootFiles = ["DependencyInjection.cs", "GlobalUsings.cs"];
 
     /// <summary>
+    /// Concept folders of the game engine (<c>Govern.Core</c>); see <c>.claude/rules/game-core.md</c>.
+    /// </summary>
+    public static readonly string[] CoreFolders =
+        ["Engine", "State", "Map", "Units", "Cities", "Events", "Visibility", "Serialization"];
+
+    /// <summary>
     /// Folder specs per project. Projects that are not listed here are not validated.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, FolderSpec> Projects = new Dictionary<string, FolderSpec>
@@ -35,6 +41,7 @@ public static class Templates
         ["Govern.Domain"] = Domain(),
         ["Govern.Api"] = Api(),
         ["Govern.Client"] = Client(),
+        ["Govern.Core"] = Core(),
     };
 
     // 3DFT: AGFT + feature folders, each feature folder is AGFT + Contracts.
@@ -105,6 +112,19 @@ public static class Templates
             AllowedFilesDescription = "GlobalUsings.cs",
         };
     }
+
+    // Game engine: concept folders + flat Actions/XxxAction.cs (command and rule together); no root files.
+    private static FolderSpec Core() => new()
+    {
+        Folders = new Dictionary<string, FolderSpec>(FreeFormFolders(CoreFolders))
+        {
+            ["Actions"] = new FolderSpec
+            {
+                IsAllowedFile = static file => file.EndsWith("Action.cs", StringComparison.Ordinal),
+                AllowedFilesDescription = "*Action.cs (XxxCommand + XxxRule)",
+            },
+        },
+    };
 
     // UF + Middlewares, Filters, HealthChecks, Features/[Feature]/XxxEndpoint.cs.
     private static FolderSpec Api()

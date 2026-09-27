@@ -47,7 +47,7 @@ You are the quality gate for Govern, a .NET 10 Clean Architecture Web API + Blaz
      - No `Helper` suffix; folder suffixes; `DependencyInjection.cs` registration by scanning.
    - **Tests:**
      - Integration tests cover the happy path, 400, 401/403 and domain errors for each new or changed endpoint.
-     - Unit tests exist only for Utils and Domain.
+     - Unit tests exist only for Utils, Core and Domain.
      - Client components and services changed → bUnit tests in `tests/Govern.ClientTests` cover what the user sees.
      - Arch rules exist for new conventions, and tests are independent.
    - **Docs:** XML docs on public members (meaningful, not restating names), `<response>` codes on endpoints, `docs/features/*.md` and `docs/README.md` updated, and rule files updated if a convention changed.

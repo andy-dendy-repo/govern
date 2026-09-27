@@ -138,7 +138,8 @@ public class SignInEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture
         await using (db)
         {
             var stored = await db.RefreshTokens.AsNoTracking().SingleAsync(Ct);
-            stored.ExpiresAt.ShouldBe(current.RefreshTokenExpiresAt);
+            // Postgres keeps microseconds; Linux clocks tick in 100 ns, so compare at the stored precision.
+            stored.ExpiresAt.ShouldBe(current.RefreshTokenExpiresAt, TimeSpan.FromMicroseconds(1));
         }
     }
 
