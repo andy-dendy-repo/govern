@@ -13,6 +13,13 @@ public static class UserErrors
     /// <summary>Unknown email or wrong password; deliberately indistinguishable.</summary>
     public static readonly Error InvalidCredentials = Error.Unauthorized("user.invalid_credentials", "Invalid email or password.");
 
+    /// <summary>
+    /// Too many failed sign-ins for this email within the window; returned for unknown emails too, and before the
+    /// password is checked.
+    /// </summary>
+    public static readonly Error TooManySignInAttempts =
+        Error.TooManyRequests("user.too_many_sign_in_attempts", "Too many failed sign-in attempts. Try again later.");
+
     /// <summary>Unknown, expired or revoked refresh token.</summary>
     public static readonly Error InvalidRefreshToken = Error.Unauthorized("user.invalid_refresh_token", "The refresh token is invalid or expired.");
 

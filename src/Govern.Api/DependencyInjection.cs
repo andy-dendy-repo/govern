@@ -6,6 +6,7 @@ using Govern.Api.Options;
 using Govern.Api.Services;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Common.Options;
+using Govern.Utils.Networking;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -81,7 +82,7 @@ public static class DependencyInjection
                 {
                     var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
                     return RateLimitPartition.GetFixedWindowLimiter(
-                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        IpPartitionKey.From(context.Connection.RemoteIpAddress),
                         _ => new FixedWindowRateLimiterOptions { PermitLimit = settings.AuthPermitLimit, Window = settings.AuthWindow });
                 });
             });

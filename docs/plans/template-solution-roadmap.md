@@ -23,7 +23,7 @@ updated: 2026-09-27
 | 10 Container | Done (chiseled Noble image) |
 | 11 Bicep | Done; not yet deployed (see [deployment](../operations/deployment.md)) |
 | 12 GitHub workflows | Done; not yet run (no remote yet) |
-| 13 Claude rules and agents | Done: mapping, error-handling, persistence, api-endpoints, auth rules, `ef-core-specialist`. Still deferred: `blazor-client.md` (with step 9) and `caching.md` (first cache) |
+| 13 Claude rules and agents | Done: mapping, error-handling, persistence, api-endpoints, auth rules, `ef-core-specialist`. Still deferred: `blazor-client.md` (with step 9). `caching.md` was added with the first in-process cache (sign-in throttling) |
 | 14 Pattern skills | Done: add-use-case, add-entity, add-migration, add-infra-concern, outdated-packages |
 
 Extra work added along the way:

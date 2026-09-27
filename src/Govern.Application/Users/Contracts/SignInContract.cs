@@ -53,6 +53,9 @@ public sealed class SignInValidator : AbstractValidator<SignInRequest>
 /// <summary>
 /// Handles <see cref="SignInRequest"/>. Malformed or unknown emails and wrong passwords return the same
 /// <see cref="UserErrors.InvalidCredentials"/> and take comparable time (a hash is always verified).
+/// Each attempt for a valid email is reserved with <see cref="ISignInThrottlingService"/> before the password is checked;
+/// past <see cref="Common.Options.SignInThrottlingOptions.MaxFailedAttempts"/> within the window, sign-in returns
+/// <see cref="UserErrors.TooManySignInAttempts"/> without checking the password. Success resets the count.
 /// A successful sign-in deletes the user's expired refresh tokens and applies the active-session cap. Evicting a session
 /// races with refreshes and sign-outs of that token (concurrency token on <c>revoked_at</c>), so issuing is retried
 /// with fresh state; the password is verified only once.
@@ -60,6 +63,7 @@ public sealed class SignInValidator : AbstractValidator<SignInRequest>
 internal sealed class SignInHandler(
     IApplicationDbContextFactory dbContextFactory,
     IPasswordHashingService passwordHashing,
+    ISignInThrottlingService signInThrottling,
     UserTokenIssuingService tokenIssuing,
     TimeProvider timeProvider) : IRequestHandler<SignInRequest, SignInResponse>
 {
@@ -74,10 +78,17 @@ internal sealed class SignInHandler(
             return UserErrors.InvalidCredentials;
         }
 
+        if (!signInThrottling.TryBeginAttempt(email))
+        {
+            return UserErrors.TooManySignInAttempts;
+        }
+
         if (await FindVerifiedUserIdAsync(email, request.Password, cancellationToken) is not { } userId)
         {
             return UserErrors.InvalidCredentials;
         }
+
+        signInThrottling.Reset(email);
 
         for (var attempt = 1; ; attempt++)
         {
