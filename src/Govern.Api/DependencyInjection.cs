@@ -49,7 +49,7 @@ public static class DependencyInjection
             services.AddTransient<ExceptionHandlingMiddleware>();
 
             services.AddJwtAuthentication();
-            services.AddIpRateLimiting(configuration);
+            services.AddRateLimiting(configuration);
             services.AddHostAllowList(configuration);
             services.AddAllowListCors(configuration);
 
@@ -79,7 +79,7 @@ public static class DependencyInjection
                 .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
         }
 
-        private void AddIpRateLimiting(IConfiguration configuration)
+        private void AddRateLimiting(IConfiguration configuration)
         {
             services.AddOptions<RateLimitingOptions>().Bind(configuration.GetSection(RateLimitingOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
             services.AddRateLimiter(static limiter =>
@@ -89,6 +89,10 @@ public static class DependencyInjection
                     context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.AuthPermitLimit, Window = settings.AuthWindow }));
                 limiter.AddPolicy(RateLimitingPolicies.Health, static context => PerClientIp(
                     context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.HealthPermitLimit, Window = settings.HealthWindow }));
+                limiter.AddPolicy(RateLimitingPolicies.Games, static context => PerUser(
+                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.GamesPermitLimit, Window = settings.GamesWindow }));
+                limiter.AddPolicy(RateLimitingPolicies.GameCommands, static context => PerUser(
+                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.GameCommandsPermitLimit, Window = settings.GameCommandsWindow }));
             });
         }
 
@@ -119,5 +123,18 @@ public static class DependencyInjection
     {
         var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
         return RateLimitPartition.GetFixedWindowLimiter(IpPartitionKey.From(context.Connection.RemoteIpAddress), _ => limits(settings));
+    }
+
+    // Fixed window per signed-in user (the JWT subject). The limiter runs after authorization, so a protected endpoint never
+    // gets here without a user; the client-IP fallback only guards against the policy being put on an anonymous endpoint.
+    private static RateLimitPartition<string> PerUser(HttpContext context, Func<RateLimitingOptions, FixedWindowRateLimiterOptions> limits)
+    {
+        if (context.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value is not { Length: > 0 } userId)
+        {
+            return PerClientIp(context, limits);
+        }
+
+        var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
+        return RateLimitPartition.GetFixedWindowLimiter($"user:{userId}", _ => limits(settings));
     }
 }

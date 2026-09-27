@@ -36,6 +36,10 @@ namespace Govern.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("creator_id");
 
+                    b.Property<Guid?>("CurrentPlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("current_player_id");
+
                     b.Property<string>("InviteCode")
                         .IsRequired()
                         .HasMaxLength(22)

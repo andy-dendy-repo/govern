@@ -1,3 +1,4 @@
+using System.Reflection;
 using ArchUnitNET.Fluent.Syntax.Elements.Types;
 using ArchUnitNET.xUnitV3;
 using Govern.ArchitectureTests.Support;
@@ -70,6 +71,35 @@ public class NamingConventionTests
             .Because("endpoints are static XxxEndpoint classes with Map(IEndpointRouteBuilder), discovered by convention")
             .WithoutRequiringPositiveResults()
             .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
+    public void ApiEndpointParameters_WithCoreGameTypes_AreBoundWithGameSerializer()
+    {
+        // The HTTP JSON defaults turn a polymorphic GameCommand without 'type' into a 500, so a body carrying Core types
+        // must be an Api/Models/XxxBody with 'public static ValueTask<XxxBody?> BindAsync(HttpContext)' (api-endpoints.md).
+        var violations = typeof(Govern.Api.DependencyInjection).Assembly.GetTypes()
+            .Where(static type => type.Namespace?.StartsWith("Govern.Api.Features", StringComparison.Ordinal) == true)
+            .SelectMany(static type => type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)
+                .Where(static method => method.Name == "HandleAsync")
+                .SelectMany(method => method.GetParameters().Select(parameter => (Endpoint: type.Name, parameter.ParameterType))))
+            .Where(static candidate => CarriesCoreTypes(candidate.ParameterType) && !HasBindAsync(candidate.ParameterType))
+            .Select(static candidate => $"{candidate.Endpoint}: {candidate.ParameterType.Name}")
+            .ToList();
+
+        violations.ShouldBeEmpty("bodies with Core game types must be Api/Models/*Body records with a static BindAsync(HttpContext)");
+    }
+
+    [Fact]
+    public void ApiModelBodies_DeclareBindAsync()
+    {
+        var violations = typeof(Govern.Api.DependencyInjection).Assembly.GetTypes()
+            .Where(static type => type.Namespace == "Govern.Api.Models" && type.Name.EndsWith("Body", StringComparison.Ordinal))
+            .Where(static type => !HasBindAsync(type))
+            .Select(static type => type.Name)
+            .ToList();
+
+        violations.ShouldBeEmpty("Api/Models/*Body types exist to be bound by their own static BindAsync(HttpContext)");
     }
 
     [Fact]
@@ -220,4 +250,14 @@ public class NamingConventionTests
             .And().DoNotHaveNameContaining("<");
 
     private static string InFolder(string folder) => $@"^Govern(?:\.\w+)*\.{folder}(?:\.\w+)*$";
+
+    private static bool IsCoreType(Type type) => type.Namespace?.StartsWith("Govern.Core", StringComparison.Ordinal) == true;
+
+    private static bool CarriesCoreTypes(Type type) =>
+        IsCoreType(type) || type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Any(static property => IsCoreType(property.PropertyType));
+
+    private static bool HasBindAsync(Type type) =>
+        type.GetMethod("BindAsync", BindingFlags.Public | BindingFlags.Static, [typeof(Microsoft.AspNetCore.Http.HttpContext)]) is { } method
+        && method.ReturnType.IsGenericType
+        && method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>);
 }

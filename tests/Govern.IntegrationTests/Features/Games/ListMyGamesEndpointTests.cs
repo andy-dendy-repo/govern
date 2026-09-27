@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Govern.Application.Games.Contracts;
+using Govern.Core.Actions;
 using Govern.Domain.Enums;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
@@ -92,6 +93,36 @@ public class ListMyGamesEndpointTests(GovernApiFixture fixture) : ApiTestBase(fi
         var response = await GamesApi.ListAsync(Client, accessToken: null, string.Empty, Ct);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Get_RunningGame_FlagsYourTurnForThePlayerToMoveOnly()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+
+        (await ListAsync(creator, "")).Items.ShouldHaveSingleItem().IsYourTurn.ShouldBeTrue();
+        (await ListAsync(joiner, "")).Items.ShouldHaveSingleItem().IsYourTurn.ShouldBeFalse();
+
+        var version = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Version;
+        (await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, version, new EndTurnCommand(), Ct)).EnsureSuccessStatusCode();
+
+        (await ListAsync(creator, "")).Items.ShouldHaveSingleItem().IsYourTurn.ShouldBeFalse();
+        (await ListAsync(joiner, "")).Items.ShouldHaveSingleItem().IsYourTurn.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Get_FinishedGame_IsNobodysTurn()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var version = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Version;
+        (await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, version, new ResignCommand(), Ct)).EnsureSuccessStatusCode();
+
+        foreach (var player in new[] { creator, joiner })
+        {
+            var item = (await ListAsync(player, "")).Items.ShouldHaveSingleItem();
+            item.Phase.ShouldBe(GamePhase.Finished);
+            item.IsYourTurn.ShouldBeFalse();
+        }
     }
 
     private async Task<ListMyGamesResponse> ListAsync(GamesApi.Player caller, string query)

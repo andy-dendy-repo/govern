@@ -14,7 +14,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 
 ## Features
 - [features/game-core.md](features/game-core.md): the pure game engine in `Govern.Core`: hex map, units and cities, commands and rules, error codes, fog of war (`PlayerView`), determinism and the JSON format.
-- [features/games.md](features/games.md): games and lobby: phases, `/api/games` endpoints and status codes, error codes, invite codes, per-game player ids (no user ids exposed), join/start races, `games`/`game_players` tables and the `jsonb` state.
+- [features/games.md](features/games.md): games and lobby: phases, `/api/games` endpoints and status codes, sending commands (`expectedVersion`, rule-violation codes), error codes, per-user rate limits and caps, invite codes, per-game player ids (no user ids exposed), join/start/command races, `games`/`game_players` tables and the `jsonb` state.
 - [features/client.md](features/client.md): Blazor WASM client architecture (CFT feature folders), `Api:BaseUrl` configuration, CSP and security headers on the Static Web App, release-time configuration, bUnit and architecture tests.
 - [features/users.md](features/users.md): sign-up, sign-in, refresh token rotation and reuse detection, session cap and cleanup, sign-out, current user; endpoints, errors, data model.
 
