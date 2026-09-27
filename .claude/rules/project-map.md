@@ -16,7 +16,7 @@ Govern is an HTTP Web API with a Blazor WASM client. The server layers follow Cl
 
 | Project | Purpose | May reference |
 |---|---|---|
-| `Govern.Utils` | Framework-agnostic building blocks (Mediator, …). Free-form folders | nothing |
+| `Govern.Utils` | Framework-agnostic building blocks: `Mediator/` (requests, handlers, pipelines, notifications), `Results/` (`Result<T>`, `Error`). Free-form folders | nothing |
 | `Govern.Domain` | Entities, value objects, domain events, `EntityBase/` | Utils |
 | `Govern.Application.Common` | Abstractions implemented by Infrastructure (db context, factory, transaction, current user, …) + common models/options | Domain, Utils |
 | `Govern.Application` | Use cases: `[Feature]/Contracts/XxxContract.cs` (Request/Response/Validator/Handler) | Application.Common, Domain, Utils |
@@ -37,6 +37,10 @@ Extra constraints:
 | An entity / value object / domain event | `Domain/Entities`, `Domain/ValueObjects`, `Domain/Events` |
 | A use case (command or query) | `Application/[Feature]/Contracts/[UseCase]Contract.cs` |
 | A reaction to a domain event | `Application/[Feature]/EventHandlers/XxxEventHandler.cs` |
+| Feature errors (`Error` constants) | `Application/[Feature]/Models/[Feature]Errors.cs` |
+| A service shared by several use cases of one feature | `Application/[Feature]/Services/XxxService.cs` |
+| A reusable projection / mapping | a static `Projection` / `From` member on the target response or model (`mapping.md`) |
+| A mediator pipeline (cross-cutting for all requests) | `Utils/Mediator/Pipelines/XxxPipeline.cs`, registered in `Application/DependencyInjection.cs` |
 | Cached queries for a service | `Application/[Feature]/Repositories/XxxRepository.cs` (only when caching is needed) |
 | An interface Infrastructure implements | `Application.Common/Abstractions/IXxx.cs` |
 | DB context / factory / transaction abstraction | `Application.Common/Abstractions/IApplicationDbContext*.cs` |

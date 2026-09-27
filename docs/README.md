@@ -10,16 +10,23 @@ updated: 2026-09-27
 The project's knowledge base, used for RAG. Every document has front matter (title, tags, code paths, updated date) and covers one topic. The writing rules are in `.claude/rules/docs.md`.
 
 ## Architecture
-- [architecture.md](architecture.md): layers, allowed references, folder templates (UF / AGFT / 3DFT), naming rules, and how they are enforced.
+- [architecture.md](architecture.md): layers, allowed references, request flow, folder templates (UF / AGFT / 3DFT), naming rules and how they are enforced.
 
 ## Features
-_None yet. Add `features/<feature>.md` per Application feature._
+- [features/users.md](features/users.md): sign-up, sign-in, refresh token rotation and reuse detection, current user; endpoints, errors, data model.
 
 ## Decisions
-_None yet. Add `decisions/NNNN-<slug>.md`._
+- [decisions/0001-mediator.md](decisions/0001-mediator.md): in-house mediator with `Result` responses and error-handling, logging and validation pipelines.
+- [decisions/0002-auth-tokens.md](decisions/0002-auth-tokens.md): JWT access tokens, rotating refresh tokens, and client token storage.
+- [decisions/0003-no-mapping-libraries.md](decisions/0003-no-mapping-libraries.md): EF projections and static `Projection`/`From` members instead of mapping libraries.
 
 ## Operations
-_None yet. Add `operations/<topic>.md` for infra, deployment and configuration._
+- [operations/local-development.md](operations/local-development.md): prerequisites, local Postgres, user-secrets, running the Api, tests and the container.
+- [operations/configuration.md](operations/configuration.md): every configuration key, its default and where secrets come from.
+- [operations/deployment.md](operations/deployment.md): Azure resources, release workflow, one-time setup, known gaps.
+- [operations/dns.md](operations/dns.md): Cloudflare records and Azure custom domain binding.
+- [operations/branching.md](operations/branching.md): branches, PR flow, release and protection.
 
 ## Plans
-- [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): steps to grow the empty template into a working solution with one `User` entity.
+- [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step, with status.
+- [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (sign-out, least-privilege DB access, per-account limiter, email verification, monitoring, cleanup, outbox, Blazor client).

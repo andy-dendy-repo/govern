@@ -1,0 +1,1 @@
+- [Accepted risks and anonymous endpoints](project_accepted_risks.md) — allow-listed anonymous routes, documented gaps, fixed vs open findings from the 2026-09-27 audit
