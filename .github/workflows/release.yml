@@ -100,8 +100,12 @@ jobs:
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
           API_ORIGIN: ${{ vars.API_ORIGIN }}
+          ALERT_EMAIL: ${{ vars.ALERT_EMAIL }}
           RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
         run: |
+          if [ -z "$ALERT_EMAIL" ]; then
+            echo "::warning::ALERT_EMAIL is not set: the database storage alert is deployed without a notification."
+          fi
           outputs=$(az deployment group create \
             --resource-group "$RESOURCE_GROUP" \
             --name "govern-${GITHUB_RUN_NUMBER}" \

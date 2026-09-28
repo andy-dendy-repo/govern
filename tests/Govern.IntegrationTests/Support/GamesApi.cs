@@ -5,10 +5,12 @@ using System.Text.Json;
 using Govern.Api.Models;
 using Govern.Application.Games.Contracts;
 using Govern.Application.Users.Contracts;
+using Govern.Core.Actions;
 using Govern.Core.Engine;
 using Govern.Core.Serialization;
 using Govern.Domain.Entities;
 using Govern.IntegrationTests.Fixtures;
+using Microsoft.EntityFrameworkCore;
 
 namespace Govern.IntegrationTests.Support;
 
@@ -28,6 +30,12 @@ public static class GamesApi
 
     public static Task<HttpResponseMessage> StartAsync(HttpClient client, string? accessToken, Guid gameId, CancellationToken ct) =>
         SendAsync(client, HttpMethod.Post, $"/api/games/{gameId}/start", accessToken, content: null, ct);
+
+    public static Task<HttpResponseMessage> LeaveAsync(HttpClient client, string? accessToken, Guid gameId, CancellationToken ct) =>
+        SendAsync(client, HttpMethod.Post, $"/api/games/{gameId}/leave", accessToken, content: null, ct);
+
+    public static Task<HttpResponseMessage> CancelAsync(HttpClient client, string? accessToken, Guid gameId, CancellationToken ct) =>
+        SendAsync(client, HttpMethod.Delete, $"/api/games/{gameId}", accessToken, content: null, ct);
 
     public static Task<HttpResponseMessage> GetAsync(HttpClient client, string? accessToken, Guid gameId, CancellationToken ct) =>
         SendAsync(client, HttpMethod.Get, $"/api/games/{gameId}", accessToken, content: null, ct);
@@ -109,6 +117,41 @@ public static class GamesApi
             }
 
             await db.SaveChangesAsync(ct);
+        }
+    }
+
+    /// <summary>
+    /// Stores <paramref name="count"/> games that <paramref name="userId"/> joined at <paramref name="joinedAt"/> and
+    /// resigned at once, directly in the database: seats that count toward the rolling quota but not the unfinished cap.
+    /// </summary>
+    public static async Task SeedFinishedGamesAsync(
+        GovernApiFixture fixture, Guid opponentId, Guid userId, int count, DateTimeOffset joinedAt, CancellationToken ct)
+    {
+        var (scope, db) = await fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var game = Game.Create(opponentId, joinedAt);
+                game.Join(userId, joinedAt);
+                game.Start(opponentId, joinedAt);
+                game.Execute(userId, new ResignCommand(), joinedAt);
+                db.Games.Add(game);
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
+    }
+
+    /// <summary>Whether a game with <paramref name="gameId"/> is still stored.</summary>
+    public static async Task<bool> ExistsAsync(GovernApiFixture fixture, Guid gameId, CancellationToken ct)
+    {
+        var (scope, db) = await fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            return await db.Games.AnyAsync(game => game.Id == gameId, ct);
         }
     }
 

@@ -1,8 +1,8 @@
-- [Known limitations](project_known_limitations.md) — race/post-commit patterns (review 1) and token-revocation race + reuse checks (review 2)
+- [Known limitations](project_known_limitations.md) — race/post-commit patterns, token-revocation race; EF10 skips SaveChangesFailed on concurrency errors
 - [Analyzer false positives](reference_analyzer_false_positives.md) — AP010/AP009/AP002/AP005/AP003/AP007 noise to skip in Govern reviews
 - [Convention sweep gaps](feedback_convention_sweep.md) — rule changes miss .claude/agents, skills (develop-feature/verify) and rule-file examples
 - [Value-object normalisation](project_value_object_normalisation.md) — Email NFC/lower idempotence bug, converter re-validation, raw vs normalised length
 - [In-process state checks](project_in_process_state.md) — limiter TOCTOU across PBKDF2, MemoryCache SizeLimit evicts LRU (not fail-open), Reset race
 - [Client checks](project_client_checks.md) — Blazor client: verified WASM env/boot facts, configure-client.sh, arch-rule exemptions, Plan 7 traps
 - [App Service hosting checks](project_app_service_hosting.md) — Health check pings default domain, release deploys before API_ORIGIN is validated
-- [Game core checks](project_game_core_checks.md) — fog oracles, STJ; Plans 2/3a checks; 3b: PRNG output exposure via ids, updatedAt activity leak
+- [Game core checks](project_game_core_checks.md) — fog oracles, STJ; Plans 2/3a/3b checks; 3c: FK 23503 on insert racing a parent delete

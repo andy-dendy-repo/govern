@@ -26,7 +26,7 @@ public sealed class RateLimitingOptions
     [Range(typeof(TimeSpan), "00:00:01", "01:00:00")]
     public TimeSpan HealthWindow { get; set; } = TimeSpan.FromMinutes(1);
 
-    /// <summary>Game creates, joins and starts allowed per user and window (default 20).</summary>
+    /// <summary>Game creates, joins, starts, leaves and cancels allowed per user and window (default 20).</summary>
     [Range(1, 10_000)]
     public int GamesPermitLimit { get; set; } = 20;
 

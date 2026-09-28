@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Govern.Application.Games.Contracts;
 
 /// <summary>
-/// Lists the games the caller plays in, most recently changed first.
+/// Lists the games the caller plays in, the most recent activity both players see first.
 /// </summary>
 /// <param name="Page">One-based page number, 1–<see cref="ListMyGamesValidator.MaxPage"/>.</param>
 /// <param name="PageSize">Items per page, 1–<see cref="ListMyGamesValidator.MaxPageSize"/>.</param>
@@ -65,7 +65,7 @@ internal sealed class ListMyGamesHandler(IApplicationDbContextFactory dbContextF
 
         var total = await games.CountAsync(cancellationToken);
         var items = await games
-            .OrderByDescending(game => game.UpdatedAt)
+            .OrderByDescending(game => game.ActivityAt)
             .ThenByDescending(game => game.Id)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
@@ -75,7 +75,7 @@ internal sealed class ListMyGamesHandler(IApplicationDbContextFactory dbContextF
                 game.Players.Count,
                 game.CreatorId == userId,
                 game.Players.Any(player => player.UserId == userId && player.Id == game.CurrentPlayerId),
-                game.UpdatedAt))
+                game.ActivityAt))
             .ToListAsync(cancellationToken);
 
         return new ListMyGamesResponse(items, total);

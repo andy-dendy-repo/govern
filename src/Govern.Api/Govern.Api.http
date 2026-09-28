@@ -98,8 +98,28 @@ Content-Type: application/json
 
 { "expectedVersion": {{getGame2.response.body.$.view.version}}, "command": { "type": "move_unit", "unitId": { "value": 123456 }, "target": { "q": 3, "r": 3 } } }
 
-### List my games
+### List my games (newest activity both players see first)
 GET {{api}}/api/games?page=1&pageSize=20
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
+
+### Lobby lifecycle: create a second lobby (first player)
+# @name createLobby
+POST {{api}}/api/games
+Authorization: Bearer {{signIn.response.body.$.accessToken}}
+
+### Join it (second player)
+POST {{api}}/api/games/join
+Authorization: Bearer {{signIn2.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "inviteCode": "{{createLobby.response.body.$.inviteCode}}" }
+
+### Leave it again (second player; 204, the seat is free and they may rejoin with the code)
+POST {{api}}/api/games/{{createLobby.response.body.$.id}}/leave
+Authorization: Bearer {{signIn2.response.body.$.accessToken}}
+
+### Cancel it (creator only; 204, the lobby and its invite code are deleted, and GET then returns 404)
+DELETE {{api}}/api/games/{{createLobby.response.body.$.id}}
 Authorization: Bearer {{signIn.response.body.$.accessToken}}
 
 ### Liveness (no dependencies; the App Service Health check path)

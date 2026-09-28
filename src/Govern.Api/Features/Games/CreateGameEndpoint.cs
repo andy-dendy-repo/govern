@@ -30,7 +30,10 @@ public static class CreateGameEndpoint
     /// <response code="201">Lobby created; <c>Location</c> points to the game.</response>
     /// <response code="401">Missing or invalid access token.</response>
     /// <response code="409">The caller already has the maximum number of open lobbies or unfinished games.</response>
-    /// <response code="429">Too many game creates, joins and starts from this user.</response>
+    /// <response code="429">
+    /// Too many game requests from this user, or the caller created or joined the maximum number of games in
+    /// the last 24 hours (<c>game.daily_quota_reached</c>).
+    /// </response>
     private static async Task<IResult> HandleAsync(IMediatorService mediator, CancellationToken cancellationToken)
     {
         var result = await mediator.SendAsync(new CreateGameRequest(), cancellationToken);

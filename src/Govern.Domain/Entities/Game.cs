@@ -12,7 +12,8 @@ namespace Govern.Domain.Entities;
 /// <summary>
 /// A two-player game: a lobby joined through an invite code, then a running game whose whole <see cref="GameState"/> is
 /// stored as one snapshot. The aggregate root for <see cref="GamePlayer"/>. Every change increments <see cref="Revision"/>,
-/// which the persistence layer uses as an optimistic concurrency token, and raises a <see cref="GameChangedEvent"/>.
+/// which the persistence layer uses as an optimistic concurrency token, and raises a <see cref="GameChangedEvent"/>. A lobby
+/// can be left by the joiner and cancelled by the creator; a running game ends through the engine (e.g. resign).
 /// </summary>
 /// <remarks>
 /// The methods throw on calls the rules forbid (joining a full game, starting as a non-creator): handlers check those
@@ -22,6 +23,11 @@ public sealed class Game : BaseAuditableEntity
 {
     /// <summary>Number of seats.</summary>
     public const int MaxPlayers = GameSetup.PlayerCount;
+
+    /// <summary>
+    /// How long a lobby may go without activity (<see cref="ActivityAt"/>) before it expires and is deleted.
+    /// </summary>
+    public static readonly TimeSpan LobbyLifetime = TimeSpan.FromDays(7);
 
     private readonly List<GamePlayer> _players = [];
 
@@ -61,6 +67,13 @@ public sealed class Game : BaseAuditableEntity
     public Guid? CurrentPlayerId { get; private set; }
 
     /// <summary>
+    /// When the game last changed in a way every player sees: created, a seat taken or left, started, the turn passed or the
+    /// game finished. Unlike <see cref="BaseAuditableEntity.UpdatedAt"/>, a command whose effect may be hidden from the
+    /// opponent (a move, a production change) leaves it alone, so it reveals nothing about hidden activity.
+    /// </summary>
+    public DateTimeOffset ActivityAt { get; private set; }
+
+    /// <summary>
     /// The seated players (the caller must load them).
     /// </summary>
     public IReadOnlyCollection<GamePlayer> Players => _players.AsReadOnly();
@@ -79,7 +92,7 @@ public sealed class Game : BaseAuditableEntity
     /// <exception cref="ArgumentException"><paramref name="creatorId"/> is empty.</exception>
     public static Game Create(Guid creatorId, DateTimeOffset now)
     {
-        var game = new Game { CreatorId = creatorId, InviteCode = InviteCode.New(), Phase = GamePhase.Lobby };
+        var game = new Game { CreatorId = creatorId, InviteCode = InviteCode.New(), Phase = GamePhase.Lobby, ActivityAt = now };
         game._players.Add(GamePlayer.Create(game.Id, creatorId, seat: 0, now));
         return game;
     }
@@ -119,19 +132,56 @@ public sealed class Game : BaseAuditableEntity
 
         var player = GamePlayer.Create(Id, userId, _players.Count, now);
         _players.Add(player);
-        Revision++;
-        AddDomainEvent(new GameChangedEvent(Id));
+        MarkChanged(now);
         return player;
+    }
+
+    /// <summary>
+    /// Frees the seat of <paramref name="userId"/> in the lobby. The creator cannot leave; they <see cref="Cancel"/> instead.
+    /// </summary>
+    /// <param name="userId">The leaving user.</param>
+    /// <param name="now">The current time.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The game is not in the lobby, the user has no seat in it, or the user is the creator.
+    /// </exception>
+    public void Leave(Guid userId, DateTimeOffset now)
+    {
+        if (Phase != GamePhase.Lobby || userId == CreatorId || FindPlayer(userId) is not { } player)
+        {
+            throw new InvalidOperationException("Only a joined player can leave, and only a lobby.");
+        }
+
+        // Two seats and the creator can't leave, so only seat 1 is ever freed and Join's next seat (_players.Count) is 1 again.
+        // More seats would need Join to take the lowest free seat instead.
+        _players.Remove(player);
+        MarkChanged(now);
+    }
+
+    /// <summary>
+    /// Cancels the lobby: raises the change for its watchers. The caller then deletes the game, which frees the seats and
+    /// retires the invite code.
+    /// </summary>
+    /// <param name="userId">The user cancelling the lobby.</param>
+    /// <exception cref="InvalidOperationException">The user is not the creator, or the game is not in the lobby.</exception>
+    public void Cancel(Guid userId)
+    {
+        if (userId != CreatorId || Phase != GamePhase.Lobby)
+        {
+            throw new InvalidOperationException("Only the creator can cancel, and only a lobby.");
+        }
+
+        AddDomainEvent(new GameChangedEvent(Id));
     }
 
     /// <summary>
     /// Starts the game: creates the engine state with the players in seat order and a secret random seed.
     /// </summary>
     /// <param name="userId">The user starting the game.</param>
+    /// <param name="now">The current time.</param>
     /// <exception cref="InvalidOperationException">
     /// The user is not the creator, the game is not in the lobby, or it is not full.
     /// </exception>
-    public void Start(Guid userId)
+    public void Start(Guid userId, DateTimeOffset now)
     {
         if (userId != CreatorId || Phase != GamePhase.Lobby || !IsFull)
         {
@@ -142,19 +192,20 @@ public sealed class Game : BaseAuditableEntity
         State = GameFactory.Create(new GameSetup([.. players], NewSeed()));
         Phase = GamePhase.InProgress;
         CurrentPlayerId = State.CurrentPlayer.Value;
-        Revision++;
-        AddDomainEvent(new GameChangedEvent(Id));
+        MarkChanged(now);
     }
 
     /// <summary>
     /// Runs one player's command through the engine. An accepted command replaces <see cref="State"/>, moves
     /// <see cref="CurrentPlayerId"/> and finishes the game when the engine does; a rejected one changes nothing.
+    /// <see cref="ActivityAt"/> moves only when the turn passes or the game finishes.
     /// </summary>
     /// <param name="userId">The seated user sending the command.</param>
     /// <param name="command">The command.</param>
+    /// <param name="now">The current time.</param>
     /// <returns>The engine's result: the update, or the <see cref="RuleViolation"/> that rejected the command.</returns>
     /// <exception cref="InvalidOperationException">The game has not started, or the user has no seat in it.</exception>
-    public CommandResult Execute(Guid userId, GameCommand command)
+    public CommandResult Execute(Guid userId, GameCommand command, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(command);
 
@@ -168,13 +219,27 @@ public sealed class Game : BaseAuditableEntity
         {
             State = result.Update.State;
             var finished = State.Status == GameStatus.Finished;
+            var (phase, currentPlayerId) = (Phase, CurrentPlayerId);
             Phase = finished ? GamePhase.Finished : GamePhase.InProgress;
             CurrentPlayerId = finished ? null : State.CurrentPlayer.Value;
+            if (Phase != phase || CurrentPlayerId != currentPlayerId)
+            {
+                ActivityAt = now;
+            }
+
             Revision++;
             AddDomainEvent(new GameChangedEvent(Id));
         }
 
         return result;
+    }
+
+    // A change every player sees: bumps the revision and the activity time, and notifies watchers.
+    private void MarkChanged(DateTimeOffset now)
+    {
+        ActivityAt = now;
+        Revision++;
+        AddDomainEvent(new GameChangedEvent(Id));
     }
 
     // The seed decides spawn positions and any later randomness, so it comes from a secure RNG and never leaves the server.

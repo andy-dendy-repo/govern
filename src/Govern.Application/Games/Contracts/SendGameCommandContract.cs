@@ -42,8 +42,10 @@ public sealed class SendGameCommandValidator : AbstractValidator<SendGameCommand
 /// Handles <see cref="SendGameCommandRequest"/>. Two concurrent commands race on the game's revision; the loser gets
 /// <see cref="GameErrors.StaleVersion"/>. A rule violation becomes a conflict with the violation's code.
 /// </summary>
-internal sealed class SendGameCommandHandler(IApplicationDbContextFactory dbContextFactory, ICurrentUserService currentUser)
-    : IRequestHandler<SendGameCommandRequest, GetGameResponse>
+internal sealed class SendGameCommandHandler(
+    IApplicationDbContextFactory dbContextFactory,
+    ICurrentUserService currentUser,
+    TimeProvider timeProvider) : IRequestHandler<SendGameCommandRequest, GetGameResponse>
 {
     /// <inheritdoc />
     public async ValueTask<Result<GetGameResponse>> HandleAsync(SendGameCommandRequest request, CancellationToken cancellationToken)
@@ -70,7 +72,7 @@ internal sealed class SendGameCommandHandler(IApplicationDbContextFactory dbCont
             return error;
         }
 
-        var result = game.Execute(userId, request.Command);
+        var result = game.Execute(userId, request.Command, timeProvider.GetUtcNow());
         if (!result.IsSuccess)
         {
             return GameErrors.FromViolation(result.Violation);

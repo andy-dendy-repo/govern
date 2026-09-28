@@ -43,6 +43,36 @@ public class WatchGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixt
     }
 
     [Fact]
+    public async Task Get_JoinerLeaves_CreatorGetsTheOneSeatLobbyAndTheLeaversStreamEnds()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateFullLobbyAsync(Client, Ct);
+        await using var creatorStream = await GameEventsReader.OpenAsync(Client, creator.AccessToken, game.Id, Ct);
+        await using var joinerStream = await GameEventsReader.OpenAsync(Client, joiner.AccessToken, game.Id, Ct);
+        await creatorStream.NextGameAsync();
+        await joinerStream.NextGameAsync();
+
+        (await GamesApi.LeaveAsync(Client, joiner.AccessToken, game.Id, Ct)).EnsureSuccessStatusCode();
+
+        (await creatorStream.NextGameAsync()).Players.ShouldHaveSingleItem().IsYou.ShouldBeTrue();
+        await joinerStream.ShouldEndAsync();
+    }
+
+    [Fact]
+    public async Task Get_CreatorCancels_BothStreamsEnd()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateFullLobbyAsync(Client, Ct);
+        await using var creatorStream = await GameEventsReader.OpenAsync(Client, creator.AccessToken, game.Id, Ct);
+        await using var joinerStream = await GameEventsReader.OpenAsync(Client, joiner.AccessToken, game.Id, Ct);
+        await creatorStream.NextGameAsync();
+        await joinerStream.NextGameAsync();
+
+        (await GamesApi.CancelAsync(Client, creator.AccessToken, game.Id, Ct)).EnsureSuccessStatusCode();
+
+        await creatorStream.ShouldEndAsync();
+        await joinerStream.ShouldEndAsync();
+    }
+
+    [Fact]
     public async Task Get_EndTurn_PushesTheNewTurnToBothPlayersWithTheirOwnViews()
     {
         var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);
