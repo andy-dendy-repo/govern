@@ -28,6 +28,10 @@ namespace Govern.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset>("ActivityAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("activity_at");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -75,6 +79,9 @@ namespace Govern.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_games_invite_code");
 
+                    b.HasIndex("Phase", "ActivityAt")
+                        .HasDatabaseName("ix_games_phase_activity_at");
+
                     b.ToTable("games", (string)null);
                 });
 
@@ -103,9 +110,6 @@ namespace Govern.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_game_players");
 
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_game_players_user_id");
-
                     b.HasIndex("GameId", "Seat")
                         .IsUnique()
                         .HasDatabaseName("ix_game_players_game_id_seat");
@@ -113,6 +117,9 @@ namespace Govern.Infrastructure.Persistence.Migrations
                     b.HasIndex("GameId", "UserId")
                         .IsUnique()
                         .HasDatabaseName("ix_game_players_game_id_user_id");
+
+                    b.HasIndex("UserId", "JoinedAt")
+                        .HasDatabaseName("ix_game_players_user_id_joined_at");
 
                     b.ToTable("game_players", (string)null);
                 });

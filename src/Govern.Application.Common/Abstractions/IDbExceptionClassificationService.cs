@@ -12,4 +12,12 @@ public interface IDbExceptionClassificationService
     /// <param name="exception">The exception thrown by <c>SaveChangesAsync</c>.</param>
     /// <returns><see langword="true"/> for unique violations.</returns>
     bool IsUniqueViolation(Exception exception);
+
+    /// <summary>
+    /// Whether <paramref name="exception"/> was caused by a foreign key violation, e.g. a child row inserted while its
+    /// parent was deleted concurrently.
+    /// </summary>
+    /// <param name="exception">The exception thrown by <c>SaveChangesAsync</c>.</param>
+    /// <returns><see langword="true"/> for foreign key violations.</returns>
+    bool IsForeignKeyViolation(Exception exception);
 }

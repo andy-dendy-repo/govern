@@ -35,8 +35,11 @@ public static class JoinGameEndpoint
     /// <response code="400">The invite code is malformed.</response>
     /// <response code="401">Missing or invalid access token.</response>
     /// <response code="404">No game uses this invite code.</response>
-    /// <response code="409">The game has started or is full, or the caller already plays in the maximum number of unfinished games.</response>
-    /// <response code="429">Too many game creates, joins and starts from this user.</response>
+    /// <response code="409">The game has started or is full, or the caller already plays in the maximum number of unfinished games (leave or cancel a lobby to free one).</response>
+    /// <response code="429">
+    /// Too many game requests from this user, or the caller created or joined the maximum number of games in
+    /// the last 24 hours (<c>game.daily_quota_reached</c>).
+    /// </response>
     private static async Task<IResult> HandleAsync(JoinGameRequest request, IMediatorService mediator, CancellationToken cancellationToken)
     {
         var result = await mediator.SendAsync(request, cancellationToken);

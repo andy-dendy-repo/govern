@@ -51,6 +51,7 @@ paths:
 
 - `AuditableEntityInterceptor` sets `CreatedAt` / `UpdatedAt` from `TimeProvider`. Never set them by hand.
 - `DispatchDomainEventsInterceptor` publishes domain events after a successful `SaveChangesAsync`. A synchronous `SaveChanges` with pending events throws.
+  - The entities with events are captured before the save, so an entity deleted by that save (e.g. a cancelled lobby: `game.Cancel(...)` then `db.Games.Remove(game)`) still publishes its events. A failed or cancelled save keeps the events on the entities.
   - Delivery is **best-effort**: the data is already saved, so a failing handler is logged (EventId 2001) and does not fail the request. Handlers also run without the request's cancellation token.
   - Inside an explicit `BeginTransactionAsync`, events fire on each save, **before** the transaction commits. Don't send irreversible side effects (emails) from events raised inside explicit transactions.
   - When an event must never be lost, use an outbox in `Infrastructure/Background/` (not built yet).

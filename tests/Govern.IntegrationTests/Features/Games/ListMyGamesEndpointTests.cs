@@ -2,16 +2,18 @@ using System.Net;
 using System.Net.Http.Json;
 using Govern.Application.Games.Contracts;
 using Govern.Core.Actions;
+using Govern.Core.Engine;
 using Govern.Domain.Enums;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
+using Microsoft.EntityFrameworkCore;
 
 namespace Govern.IntegrationTests.Features.Games;
 
 public class ListMyGamesEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixture)
 {
     [Fact]
-    public async Task Get_ReturnsOnlyCallersGamesMostRecentlyChangedFirst()
+    public async Task Get_ReturnsOnlyCallersGamesMostRecentActivityFirst()
     {
         var me = await GamesApi.NewPlayerAsync(Client, Ct);
         var other = await GamesApi.NewPlayerAsync(Client, Ct);
@@ -123,6 +125,55 @@ public class ListMyGamesEndpointTests(GovernApiFixture fixture) : ApiTestBase(fi
             item.Phase.ShouldBe(GamePhase.Finished);
             item.IsYourTurn.ShouldBeFalse();
         }
+    }
+
+    [Fact]
+    public async Task Get_MoveLeavesActivityAndOrderAloneButEndTurnMovesTheGameToTheTop()
+    {
+        var me = await GamesApi.NewPlayerAsync(Client, Ct);
+        var older = await StartGameWithNewOpponentAsync(me);
+        var newer = await StartGameWithNewOpponentAsync(me);
+        var before = await ListAsync(me, "");
+
+        await SendAsync(me, older, await AnyMoveAsync(older, me));
+        var afterMove = await ListAsync(me, "");
+        await SendAsync(me, older, new EndTurnCommand());
+        var afterEndTurn = await ListAsync(me, "");
+
+        before.Items.Select(i => i.Id).ShouldBe([newer, older]);
+        afterMove.Items.ShouldBe(before.Items);
+        afterEndTurn.Items.Select(i => i.Id).ShouldBe([older, newer]);
+        afterEndTurn.Items[0].ActivityAt.ShouldBeGreaterThan(before.Items[1].ActivityAt);
+    }
+
+    private async Task<Guid> StartGameWithNewOpponentAsync(GamesApi.Player creator)
+    {
+        var opponent = await GamesApi.NewPlayerAsync(Client, Ct);
+        var game = await GamesApi.CreateGameAsync(Client, creator, Ct);
+        (await GamesApi.JoinAsync(Client, opponent.AccessToken, game.InviteCode, Ct)).EnsureSuccessStatusCode();
+        (await GamesApi.StartAsync(Client, creator.AccessToken, game.Id, Ct)).EnsureSuccessStatusCode();
+        return game.Id;
+    }
+
+    private async Task<GameCommand> AnyMoveAsync(Guid gameId, GamesApi.Player mover)
+    {
+        var (scope, db) = await Fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            var game = await db.Games.AsNoTracking().Include(g => g.Players).SingleAsync(g => g.Id == gameId, Ct);
+            var seat = game.FindPlayer(mover.UserId)!.PlayerId;
+            return game.State!.Units
+                .Where(unit => unit.Owner == seat)
+                .SelectMany(unit => GameEngine.ReachableTiles(game.State, seat, unit.Id).Select(target => new MoveUnitCommand(unit.Id, target)))
+                .First();
+        }
+    }
+
+    private async Task SendAsync(GamesApi.Player player, Guid gameId, GameCommand command)
+    {
+        var version = (await GamesApi.GetGameAsync(Client, player, gameId, Ct)).View!.Version;
+        (await GamesApi.SendCommandAsync(Client, player.AccessToken, gameId, version, command, Ct)).EnsureSuccessStatusCode();
     }
 
     private async Task<ListMyGamesResponse> ListAsync(GamesApi.Player caller, string query)
