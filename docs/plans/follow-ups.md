@@ -2,7 +2,7 @@
 title: Follow-ups backlog (after the template Api)
 tags: [plan, backlog, follow-ups, security, auth, operations]
 code: [src/Govern.Application/Users, src/Govern.Api, infra, .github/workflows]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Follow-ups backlog
@@ -39,6 +39,7 @@ The remaining items are planned, in delivery order, in [follow-ups-delivery](fol
   - Log Analytics workspace, plus diagnostic settings for App Service console and HTTP logs and PostgreSQL logs (Bicep).
   - Alerts on EventId 1001, on 5xx rate and on 401/429 spikes.
   - Optionally OpenTelemetry to Application Insights.
+- **Done:** a database storage alert (`infra/modules/alerts.bicep`, action group emailing the `ALERT_EMAIL` variable), added with game plan 3c; the log-based alerts above can reuse its action group.
 - **Tests:** `az bicep build`; a manual check after deploy.
 
 ## 10. Blazor client

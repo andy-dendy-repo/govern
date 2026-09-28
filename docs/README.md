@@ -2,7 +2,7 @@
 title: Govern knowledge base index
 tags: [index, docs]
 code: [docs]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Govern knowledge base
@@ -14,7 +14,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 
 ## Features
 - [features/game-core.md](features/game-core.md): the pure game engine in `Govern.Core`: hex map, units and cities, commands and rules, error codes, fog of war (`PlayerView`), the opaque view version, random ids, determinism and the JSON format (schema v2).
-- [features/games.md](features/games.md): games and lobby: phases, `/api/games` endpoints and status codes, sending commands (opaque per-player `expectedVersion`, rule-violation codes), live updates over SSE (`/stream`, heartbeat, push on visible change), error codes, per-user rate limits and caps, invite codes, per-game player ids (no user ids exposed), join/start/command races, `games`/`game_players` tables and the `jsonb` state.
+- [features/games.md](features/games.md): games and lobby: phases, `/api/games` endpoints and status codes, sending commands (opaque per-player `expectedVersion`, rule-violation codes), live updates over SSE (`/stream`, heartbeat, push on visible change), lobby leave/cancel and 7-day expiry, the list's `activityAt`, error codes, per-user rate limits, caps and the rolling 24-hour quota, invite codes, per-game player ids (no user ids exposed), join/start/command races, `games`/`game_players` tables and the `jsonb` state.
 - [features/client.md](features/client.md): Blazor WASM client architecture (CFT feature folders), `Api:BaseUrl` configuration, CSP and security headers on the Static Web App, release-time configuration, bUnit and architecture tests.
 - [features/users.md](features/users.md): sign-up, sign-in, refresh token rotation and reuse detection, session cap and cleanup, sign-out, current user; endpoints, errors, data model.
 
@@ -33,7 +33,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [operations/branching.md](operations/branching.md): branches, PR flow, release and protection.
 
 ## Plans
-- [plans/game-delivery.md](plans/game-delivery.md): the five game plans (Core engine, lobby, commands + SSE, client lobby, client board), status and the `gamecore` branching flow.
+- [plans/game-delivery.md](plans/game-delivery.md): the game plans (Core engine, lobby, commands + SSE + lobby lifecycle, client lobby, client board), status and the `gamecore` branching flow.
 - [plans/game-lobby.md](plans/game-lobby.md): game plan 2 (done): `Game` aggregate, lobby with invite codes, creator-only start, `jsonb` state, five `/api/games` endpoints.
 - [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step, with status.
 - [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (least-privilege DB access, monitoring, Blazor client authentication and pages).

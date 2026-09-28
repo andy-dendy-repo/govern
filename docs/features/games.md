@@ -1,37 +1,45 @@
 ---
-title: Games feature (lobby, invite codes, start, commands, live updates, player views, game list, limits)
-tags: [games, game, lobby, invite, invite-code, start, commands, expected-version, live-updates, sse, server-sent-events, stream, heartbeat, rate-limit, player-view, fog-of-war, jsonb, concurrency, privacy]
-code: [src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Api/Models/GameCommandBody.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Domain/Entities/Game.cs, src/Govern.Domain/Entities/GamePlayer.cs, src/Govern.Domain/ValueObjects/InviteCode.cs, src/Govern.Infrastructure/Persistence/Configurations/GameConfiguration.cs]
+title: Games feature (lobby, invite codes, leave, cancel, lobby expiry, start, commands, live updates, player views, game list, limits, quota)
+tags: [games, game, lobby, invite, invite-code, leave, cancel, expiry, quota, activity-at, start, commands, expected-version, live-updates, sse, server-sent-events, stream, heartbeat, rate-limit, player-view, fog-of-war, jsonb, concurrency, privacy]
+code: [src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Api/Models/GameCommandBody.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Infrastructure/Background/ExpiredLobbyCleanupService.cs, src/Govern.Domain/Entities/Game.cs, src/Govern.Domain/Entities/GamePlayer.cs, src/Govern.Domain/ValueObjects/InviteCode.cs, src/Govern.Infrastructure/Persistence/Configurations/GameConfiguration.cs]
 updated: 2026-09-28
 ---
 
 # Games feature
 
-The Games feature lets a signed-in user create a two-player game, share an invite code, see who joined, start the game, send commands (move, attack, found city, set production, end turn, resign), read their own fog-of-war view of the board and watch it change live over server-sent events. The rules themselves live in the Core engine ([game-core](game-core.md)); this feature stores games and exposes them over HTTP.
+The Games feature lets a signed-in user create a two-player game, share an invite code, see who joined, leave or cancel a lobby, start the game, send commands (move, attack, found city, set production, end turn, resign), read their own fog-of-war view of the board and watch it change live over server-sent events. The rules themselves live in the Core engine ([game-core](game-core.md)); this feature stores games and exposes them over HTTP.
 
 ## Game lifecycle (GamePhase)
 
 | Phase | Meaning | Allowed |
 |---|---|---|
-| `lobby` | Created; waiting for a second player. `state` is null | Join with the invite code; the creator starts once both seats are taken |
+| `lobby` | Created; waiting for a second player. `state` is null | Join with the invite code; the joiner leaves; the creator cancels (deletes) it, or starts once both seats are taken. Deleted after 7 days without activity |
 | `inProgress` | Started: `GameFactory.Create` built the board with a secret random seed. The creator (seat 0) moves first | Send commands; read the view |
 | `finished` | The engine decided the game (victory or resignation). Set by the same command that ended it | Read; every command returns `game.finished` |
 
-Phases are stored as text (`games.phase`) and sent as camelCase strings. Leaving a lobby, cancelling a game and regenerating an invite code are not supported yet.
+Phases are stored as text (`games.phase`) and sent as camelCase strings. A cancelled or expired lobby is deleted, not given a phase: its rows and invite code are gone, and GET returns 404. Leaving a running game is done by resigning. Regenerating an invite code is not supported yet.
+
+- **Leave** (`Game.Leave`): only a joined player, only in the lobby. The seat row is deleted, the creator sees a one-seat lobby again, and the leaver may rejoin with the code (seat 1 again).
+- **Cancel** (`Game.Cancel`, then the handler deletes the game): only the creator, only in the lobby. The creator can't leave their own lobby (`game.creator_cannot_leave`).
+- **Expiry:** `Infrastructure/Background/ExpiredLobbyCleanupService` runs every `LobbyCleanup:Interval` (1 hour) and deletes lobbies whose `activity_at` is older than `Game.LobbyLifetime` (7 days), in batches of `LobbyCleanup:BatchSize` (500). The delete repeats the predicate, so a lobby joined in between survives. It uses `ExecuteDeleteAsync` (no domain events), so it signals the deleted games' watchers itself. An expired lobby lingers for up to one interval.
 
 ## Games endpoints
 
-All endpoints require a bearer token (`.RequireAuthorization()`). Create, join and start also answer 429 past the per-user `games` rate limit (see [Games limits](#games-limits)).
+All endpoints require a bearer token (`.RequireAuthorization()`). Create, join, start, leave and cancel also answer 429 past the per-user `games` rate limit (see [Games limits](#games-limits)).
 
 | Method and route | Use case | Success | Errors |
 |---|---|---|---|
-| `POST /api/games` | `CreateGameContract` | 201 `{ id, inviteCode }`, `Location: /api/games/{id}` | 401; 409 `game.too_many_open_lobbies`, `game.too_many_unfinished_games`; 429 |
-| `POST /api/games/join` body `{ inviteCode }` | `JoinGameContract` | 200 `{ gameId }` | 400 malformed code; 401; 404 `game.invite_not_found`; 409 `game.already_started`, `game.full`, `game.too_many_unfinished_games`; 429 |
-| `POST /api/games/{id}/start` | `StartGameContract` | 200 `GetGameResponse` (the caller's view of the new board) | 400 empty id; 401; 403 `game.not_creator`; 404 `game.not_found`; 409 `game.already_started`, `game.not_enough_players`; 429 |
+| `POST /api/games` | `CreateGameContract` | 201 `{ id, inviteCode }`, `Location: /api/games/{id}` | 401; 409 `game.too_many_open_lobbies`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
+| `POST /api/games/join` body `{ inviteCode }` | `JoinGameContract` | 200 `{ gameId }` | 400 malformed code; 401; 404 `game.invite_not_found`; 409 `game.already_started`, `game.full`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
+| `POST /api/games/{id}/leave` | `LeaveGameContract` | 204 | 400 empty id; 401; 404 `game.not_found`; 409 `game.creator_cannot_leave`, `game.already_started`, `game.stale_version`; 429 |
+| `DELETE /api/games/{id}` | `CancelGameContract` | 204 (the lobby is deleted) | 400 empty id; 401; 403 `game.not_creator`; 404 `game.not_found`; 409 `game.already_started`, `game.stale_version`; 429 |
+| `POST /api/games/{id}/start` | `StartGameContract` | 200 `GetGameResponse` (the caller's view of the new board) | 400 empty id; 401; 403 `game.not_creator`; 404 `game.not_found`; 409 `game.already_started`, `game.not_enough_players`, `game.stale_version`; 429 |
 | `POST /api/games/{id}/commands` body `{ expectedVersion, command }` | `SendGameCommandContract` | 200 `GetGameResponse` (the caller's view after the command) | 400 malformed body or unknown command type, empty id, negative version; 401; 404 `game.not_found`; 409 `game.not_started`, `game.stale_version` or a rule-violation code; 413 body over 4 KiB; 415 not JSON; 429 |
 | `GET /api/games/{id}` | `GetGameContract` | 200 `GetGameResponse` | 400 empty id; 401; 404 `game.not_found` |
 | `GET /api/games/{id}/stream` | `WatchGameContract` | 200 `text/event-stream` of `game` (a `GetGameResponse`) and `heartbeat` events (see [Live game updates](#live-game-updates-sse)) | 400 empty id; 401; 404 `game.not_found`; 429 |
-| `GET /api/games?page=1&pageSize=20` | `ListMyGamesContract` | 200 `{ items: [{ id, phase, playerCount, isCreator, isYourTurn, updatedAt }], total }` | 400 page outside 1–10,000 or page size outside 1–50; 401 |
+| `GET /api/games?page=1&pageSize=20` | `ListMyGamesContract` | 200 `{ items: [{ id, phase, playerCount, isCreator, isYourTurn, activityAt }], total }` | 400 page outside 1–10,000 or page size outside 1–50; 401 |
+
+The list is ordered by `activityAt`, newest first: the last change both players see (created, a seat taken or left, the start, a turn change, the finish). A move or production change leaves it alone, so the list reveals nothing about the opponent's hidden activity. It is stored in `games.activity_at` and set by `Game`; `updated_at` is only the audit column and is never returned.
 
 `GetGameResponse` is `{ id, phase, isCreator, inviteCode, players: [{ playerId, seat, isYou, isCreator }], view, createdAt }`:
 - `inviteCode` is set only for the creator, and only while in the lobby.
@@ -44,13 +52,15 @@ All endpoints require a bearer token (`.RequireAuthorization()`). Create, join a
 | `game.too_many_open_lobbies` | 409 | The caller already created `GameErrors.MaxOpenLobbiesPerUser` (5) games that are still in the lobby. The count is not locked, so simultaneous creates can overshoot it (a soft cap; see Risks in the plan) |
 | `game.invite_not_found` | 404 | No game uses the invite code |
 | `game.not_found` | 404 | The game does not exist **or** the caller does not play in it. The two are deliberately indistinguishable |
-| `game.not_creator` | 403 | A player other than the creator tried to start |
-| `game.already_started` | 409 | Join or start after the game left the lobby |
+| `game.not_creator` | 403 | A player other than the creator tried to start or cancel |
+| `game.creator_cannot_leave` | 409 | The creator tried to leave their own lobby; they cancel it instead |
+| `game.already_started` | 409 | Join, start, leave or cancel after the game left the lobby |
 | `game.full` | 409 | Both seats are taken |
 | `game.not_enough_players` | 409 | Start with only the creator seated |
-| `game.too_many_unfinished_games` | 409 | Create or join (as a new player) while the caller already plays in `GameErrors.MaxUnfinishedGamesPerUser` (20) games that are not finished, joined lobbies included. A soft cap, like the lobby cap |
+| `game.too_many_unfinished_games` | 409 | Create or join (as a new player) while the caller already plays in `GameErrors.MaxUnfinishedGamesPerUser` (20) games that are not finished, joined lobbies included. A soft cap, like the lobby cap. Leaving or cancelling a lobby frees a slot |
+| `game.daily_quota_reached` | 429 | Create or join (as a new player) after the caller took `GameErrors.MaxGamesJoinedPerWindow` (30) seats in the last 24 hours (`GameErrors.QuotaWindow`), finished games included. A soft cap |
 | `game.not_started` | 409 | A command for a game still in the lobby |
-| `game.stale_version` | 409 | `expectedVersion` is not the caller's current `view.version` (their view changed since), or another command was saved first. Reload the game (or take the latest stream snapshot) and decide again |
+| `game.stale_version` | 409 | `expectedVersion` is not the caller's current `view.version` (their view changed since), or another command was saved first. Also returned when a start, leave or cancel lost a race and the game still allows it (e.g. the joiner left and someone else joined). Reload the game (or take the latest stream snapshot) and decide again |
 
 The Core rule-violation codes (`move.unreachable`, `game.not_your_turn`, `game.finished`, …) come from `RuleViolations` ([game-core](game-core.md)). `GameErrors.FromViolation` returns them as 409 with the same code and message. Both sets use the `game.` prefix, so `GameErrorCodesTests` checks that no code appears in both.
 
@@ -75,18 +85,20 @@ The Core rule-violation codes (`move.unreachable`, `game.not_your_turn`, `game.f
 
 | Limit | Value | Where |
 |---|---|---|
-| `games` rate-limit policy | 20 requests per user per minute, shared by create, join and start (`RateLimiting:GamesPermitLimit` / `GamesWindow`) | Fixed window partitioned by the JWT `sub` |
+| `games` rate-limit policy | 20 requests per user per minute, shared by create, join, start, leave and cancel (`RateLimiting:GamesPermitLimit` / `GamesWindow`) | Fixed window partitioned by the JWT `sub` |
 | `game-commands` rate-limit policy | 120 commands per user per minute (`RateLimiting:GameCommandsPermitLimit` / `GameCommandsWindow`) | Fixed window partitioned by the JWT `sub` |
 | `game-streams` rate-limit policy | 4 open streams per user (`RateLimiting:GameStreamsConcurrentLimit`), and 30 streams opened per user per minute (`GameStreamsPermitLimit` / `GameStreamsWindow`) | A concurrency limiter chained with a fixed window (`Api/Helpers/OwningChainedRateLimiter`), partitioned by the JWT `sub`; the concurrency permit is held while the stream is open, and the partition is never dropped while a stream holds one |
 | Open lobbies created | 5 per user (`GameErrors.MaxOpenLobbiesPerUser`) | `CreateGameHandler` |
-| Unfinished games played in | 20 per user (`GameErrors.MaxUnfinishedGamesPerUser`) | `CreateGameHandler`, `JoinGameHandler` (new players only) |
+| Unfinished games played in | 20 per user (`GameErrors.MaxUnfinishedGamesPerUser`) | `GameSeatLimitService`, from `CreateGameHandler` and `JoinGameHandler` (new players only) |
+| Seats taken (rolling quota) | 30 per user in any 24 hours, finished games included (`GameErrors.MaxGamesJoinedPerWindow`, `QuotaWindow`); counted from `game_players.joined_at` | `GameSeatLimitService` |
+| Lobby lifetime | 7 days without activity (`Game.LobbyLifetime`), then deleted | `ExpiredLobbyCleanupService` |
 | Command body | 4 KiB (`GameCommandBody.MaxBytes`) | `GameCommandBody.BindAsync` |
 
-**Known gap (lock-out):** joined lobbies count toward the unfinished cap, but a lobby can't be left, cancelled or resigned and never expires. A user who joins 20 lobbies that are never started can't create or join again until they start. Lobby leave/cancel/expiry is a tracked follow-up ([game-lobby](../plans/game-lobby.md)). Dropping lobbies from the count is not the fix: `Start` doesn't check the cap, so creators could then push a joiner past 20 running games.
+Joined lobbies count toward the unfinished cap (dropping them would let creators push a joiner past 20 running games, because `Start` doesn't check the cap). A user at the cap leaves or cancels a lobby, and a lobby nobody starts expires after 7 days.
 
 The rate limiter runs after authentication, so every game request has a user. The counts behind the caps aren't locked: a burst of simultaneous requests can overshoot a cap by up to the rate-limit permit count (20). The rate limit bounds how far.
 
-**Known gap (storage):** finished games are neither capped nor deleted, and `resign` finishes a game at once, so a pair of accounts can still add games indefinitely, only slower. A rolling per-user quota is an open follow-up ([game-lobby](../plans/game-lobby.md)). Rate-limit counters are in memory, one set per Api instance.
+**Storage:** finished games are kept, so the rolling quota bounds how fast one account can add them (at most 30 games, about 13 KB of state each, per 24 hours). A seat given up by leaving or cancelling a lobby no longer counts, which is harmless: a lobby holds no board state, and a started game keeps both seats. An Azure Monitor alert fires when database storage passes 80% ([deployment](../operations/deployment.md)). Rate-limit counters are in memory, one set per Api instance.
 
 ## Live game updates (SSE)
 
@@ -94,15 +106,14 @@ The rate limiter runs after authentication, so every game request has a user. Th
 
 | Event type | Data | When |
 |---|---|---|
-| `game` | A `GetGameResponse`, the same JSON as `GET /api/games/{id}` | First the current snapshot, then each time the caller's phase, seats or view change (a join, the start, a visible command, the end) |
+| `game` | A `GetGameResponse`, the same JSON as `GET /api/games/{id}` | First the current snapshot, then each time the caller's phase, seats or view change (a join, a leave, the start, a visible command, the end) |
 | `heartbeat` | `null` | After `GameStream:HeartbeatInterval` (20 s) without an event, so proxies and Azure (idle timeout about 230 s) keep the connection and clients can detect a dead one |
 
 - **Push on change, per player:** a command wakes every stream of the game, and each stream reads the game again for its own player. A snapshot is sent only when `(phase, player count, view.version)` changed, so a move hidden by the fog of war sends the opponent nothing (not even an empty event). Events never carry data another player may not see.
-- **End of the stream:** the server ends it after the `finished` snapshot, and when the caller's access token expires (its `exp`). The client then refreshes its token and reconnects. There is no `Last-Event-ID` resume: the first event of every connection is the current snapshot, so a reconnect is a resync.
+- **End of the stream:** the server ends it after the `finished` snapshot, when the caller can no longer read the game (they left the lobby, or it was cancelled or expired), and when the caller's access token expires (its `exp`). The client then refreshes its token and reconnects. There is no `Last-Event-ID` resume: the first event of every connection is the current snapshot, so a reconnect is a resync.
 - **Errors before streaming:** membership is checked first, so an outsider or unknown game gets a normal 404 ProblemDetails, not an empty stream. Limits: see [Games limits](#games-limits).
-- **How changes travel:** `Game.Join` (a new seat), `Start` and an accepted `Execute` raise `GameChangedEvent`. After the save, `GameChangedEventHandler` calls `IGameChangeService.Publish`, and `InMemoryGameChangeService` signals each subscription (a one-slot channel, so bursts coalesce and a slow stream never blocks a command). `WatchGameHandler` subscribes **before** its first read, so no change is missed.
+- **How changes travel:** `Game.Join` (a new seat), `Leave`, `Cancel`, `Start` and an accepted `Execute` raise `GameChangedEvent` (the interceptor dispatches the events of deleted entities too). After the save, `GameChangedEventHandler` calls `IGameChangeService.Publish`, and `InMemoryGameChangeService` signals each subscription (a one-slot channel, so bursts coalesce and a slow stream never blocks a command). `WatchGameHandler` subscribes **before** its first read, so no change is missed.
 - **Errors after the stream started:** a failure while re-reading the game ends the connection (the client reconnects); it is logged by ASP.NET Core, not by the mediator pipelines.
-- **Known gap:** the game list's `updatedAt` changes on every accepted command, including moves hidden from the opponent, so polling `GET /api/games` still reveals when the opponent acts. Tracked for Plan 3c ([game-lobby](../plans/game-lobby.md)).
 - **Single instance:** the hub is in process. A second Api instance would not see the first one's changes; scaling out needs a backplane such as Postgres `LISTEN/NOTIFY` (deferred). See [ADR 0005](../decisions/0005-live-updates.md).
 
 ## Player identity and privacy
@@ -117,22 +128,23 @@ The rate limiter runs after authentication, so every game request has a user. Th
 - **The database settles races:**
   - `game_players` has unique `(game_id, seat)` and `(game_id, user_id)` indexes.
   - `games.revision` is an optimistic concurrency token that every join and start increments.
-- **The loser re-reads once:** a request that loses a race gets a unique violation or a `DbUpdateConcurrencyException`. It then reads the game again and returns what the winner left:
+- **The loser re-reads once:** a request that loses a race gets a unique violation, a `DbUpdateConcurrencyException`, or a foreign key violation (the lobby was cancelled or expired under its seat insert; `IDbExceptionClassificationService.IsForeignKeyViolation`). It then reads the game again and returns what the winner left:
   - `game.full` when another user took the seat;
+  - `game.invite_not_found` when the lobby was deleted;
   - success when the same user joined twice at once.
-- **Start races:** two simultaneous starts race on `revision`, and the loser gets `game.already_started`.
+- **Start, leave and cancel races:** they race on `revision` (and cancel and leave also on the joiner's seat row). The loser reads the game again once and returns what the winner left: `game.already_started`, `game.not_enough_players` (the joiner left first), `game.not_found` (cancelled first), or `game.stale_version` when the game still allows the action.
 
 ## Games data model
 
 | Table | Columns | Constraints |
 |---|---|---|
-| `games` | `id`, `creator_id`, `invite_code` (varchar 22), `phase` (varchar 16), `revision` (concurrency token), `state` (`jsonb`, null in the lobby), `current_player_id` (the `game_players.id` to move; null in the lobby and once finished; no FK), `created_at`, `updated_at` | Unique `invite_code`; index and restrict FK on `creator_id` → `users` |
-| `game_players` | `id` (= `PlayerId`), `game_id`, `user_id`, `seat` (0 or 1), `joined_at` | Unique `(game_id, seat)` and `(game_id, user_id)`; index and restrict FK on `user_id` → `users`; cascade delete from `games` |
+| `games` | `id`, `creator_id`, `invite_code` (varchar 22), `phase` (varchar 16), `revision` (concurrency token), `state` (`jsonb`, null in the lobby), `current_player_id` (the `game_players.id` to move; null in the lobby and once finished; no FK), `activity_at` (last change both players see), `created_at`, `updated_at` | Unique `invite_code`; index `(phase, activity_at)` for the lobby sweep; index and restrict FK on `creator_id` → `users` |
+| `game_players` | `id` (= `PlayerId`), `game_id`, `user_id`, `seat` (0 or 1), `joined_at` | Unique `(game_id, seat)` and `(game_id, user_id)`; index `(user_id, joined_at)` (the FK, member filters and the quota) and restrict FK on `user_id` → `users`; cascade delete from `games` |
 
 - **The `jsonb` state snapshot:** `games.state` holds the whole `GameState`, written and read through `GameSerializer`. That is the same format the Api and client use, and it carries `schemaVersion`.
   - EF compares the state by reference. The state is immutable and replaced on every change, so there is no deep comparison.
   - Queries never look inside the JSON: anything a list needs has its own column. `ListMyGames` never reads `state`; `isYourTurn` compares `current_player_id` with the caller's seat.
-- **Migrations:** `AddGames`, `AddGameCurrentPlayer`.
+- **Migrations:** `AddGames`, `AddGameCurrentPlayer`, `AddGameLobbyLifecycle` (existing rows got `activity_at` = 0001-01-01, so lobbies created before it are swept at once and older games sort last; `gamecore` was never deployed, so only local data is affected).
 
 ## Games JSON format
 
@@ -142,12 +154,15 @@ The rate limiter runs after authentication, so every game request has a user. Th
 
 - **Unit** (`tests/Govern.UnitTests/Domain`):
   - `InviteCodeTests`: shape, uniqueness, round-trip and malformed input.
-  - `GameTests`: seats, idempotent join, start order, no user ids in the state, revision increments, `Execute` (accepted, rejected, resign finishes, lobby and outsider throw), and `GameChangedEvent` on join, start and accepted commands only.
+  - `GameTests`: seats, idempotent join, start order, no user ids in the state, revision increments, `Execute` (accepted, rejected, resign finishes, lobby and outsider throw), `GameChangedEvent` on join, leave, cancel, start and accepted commands only, leave and cancel rules, and `ActivityAt` (moves only on changes both players see).
 - **Integration** (`tests/Govern.IntegrationTests/Features/Games`): every endpoint's happy path, 400, 401, 403/404 and each error code. Also covered:
   - the stream (`WatchGameEndpointTests`, read with `Support/GameEventsReader`): the lobby → join → start sequence, both players' snapshots after `end_turn`, no push to the opponent after a hidden move (only heartbeats), the end after a resign or for a finished game, the end at token expiry (`FakeTimeProvider`), and both parts of the `game-streams` limit, and the open-stream limit still holding after the window refilled (a real 13 s wait);
   - concurrent joins (two users; the same user twice), concurrent starts and concurrent commands with the same version;
   - the command body (type in any position, malformed, 413, 415), stale versions and rule-violation codes;
-  - both rate-limit policies (per user) and the unfinished-games cap;
+  - both rate-limit policies (per user), the unfinished-games cap and the rolling quota (seeded seats inside and outside the window);
+  - leave and cancel (freed caps, rejoin, deleted invite code, streams that end) and their races with start, join and each other (`Support/GameRowLock`; `RaceInOrderAsync` fixes the winner, e.g. a cancel that deletes the lobby under a join's seat insert → `game.invite_not_found`, not a 500);
+  - the list order by `activityAt` (a move leaves it alone, `end_turn` moves the game up);
+  - the expired-lobby sweep (`Background/ExpiredLobbyCleanupServiceTests`, `FakeTimeProvider`): only stale lobbies go, their streams end;
   - the `jsonb` column type;
   - the `view` JSON equals `GameSerializer`;
   - no user ids in responses.

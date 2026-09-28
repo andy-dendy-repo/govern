@@ -125,4 +125,31 @@ public class CreateGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fix
         createLimited.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
         otherUser.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
+
+    [Fact]
+    public async Task Post_QuotaOfSeatsInTheLastDayReached_Returns429DailyQuotaReached()
+    {
+        var me = await GamesApi.NewPlayerAsync(Client, Ct);
+        var opponent = await GamesApi.NewPlayerAsync(Client, Ct);
+        await GamesApi.SeedFinishedGamesAsync(
+            Fixture, opponent.UserId, me.UserId, GameErrors.MaxGamesJoinedPerWindow - 1, DateTimeOffset.UtcNow.AddHours(-1), Ct);
+        (await GamesApi.CreateAsync(Client, me.AccessToken, Ct)).StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var response = await GamesApi.CreateAsync(Client, me.AccessToken, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.TooManyRequests, "game.daily_quota_reached", Ct);
+    }
+
+    [Fact]
+    public async Task Post_SeatsOlderThanTheQuotaWindow_DoNotCount()
+    {
+        var me = await GamesApi.NewPlayerAsync(Client, Ct);
+        var opponent = await GamesApi.NewPlayerAsync(Client, Ct);
+        var outsideWindow = DateTimeOffset.UtcNow - GameErrors.QuotaWindow - TimeSpan.FromMinutes(5);
+        await GamesApi.SeedFinishedGamesAsync(Fixture, opponent.UserId, me.UserId, GameErrors.MaxGamesJoinedPerWindow, outsideWindow, Ct);
+
+        var response = await GamesApi.CreateAsync(Client, me.AccessToken, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
 }

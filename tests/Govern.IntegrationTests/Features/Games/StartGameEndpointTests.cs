@@ -152,4 +152,15 @@ public class StartGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixt
             await rejected.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.already_started", Ct);
         }
     }
+
+    [Fact]
+    public async Task Post_AfterTheJoinerLeft_Returns409NotEnoughPlayers()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateFullLobbyAsync(Client, Ct);
+        (await GamesApi.LeaveAsync(Client, joiner.AccessToken, game.Id, Ct)).EnsureSuccessStatusCode();
+
+        var response = await GamesApi.StartAsync(Client, creator.AccessToken, game.Id, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.not_enough_players", Ct);
+    }
 }

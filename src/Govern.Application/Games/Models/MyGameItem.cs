@@ -10,5 +10,8 @@ namespace Govern.Application.Games.Models;
 /// <param name="PlayerCount">Seats taken.</param>
 /// <param name="IsCreator">Whether the caller created the game.</param>
 /// <param name="IsYourTurn">Whether the game is running and waiting for the caller's move.</param>
-/// <param name="UpdatedAt">When the game last changed; the list is ordered by it, newest first.</param>
-public sealed record MyGameItem(Guid Id, GamePhase Phase, int PlayerCount, bool IsCreator, bool IsYourTurn, DateTimeOffset UpdatedAt);
+/// <param name="ActivityAt">
+/// When the game last changed in a way both players see (a seat taken or left, the start, a turn change, the finish); the
+/// list is ordered by it, newest first. Moves hidden from the caller never change it.
+/// </param>
+public sealed record MyGameItem(Guid Id, GamePhase Phase, int PlayerCount, bool IsCreator, bool IsYourTurn, DateTimeOffset ActivityAt);

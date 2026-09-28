@@ -1,5 +1,5 @@
 // Govern infrastructure (resource group scope):
-// PostgreSQL Flexible Server (B1ms) + Key Vault + Linux App Service (B1, container) + Static Web App (Free).
+// PostgreSQL Flexible Server (B1ms) + Key Vault + Linux App Service (B1, container) + Static Web App (Free) + alerts.
 // Deployed by .github/workflows/release.yml; see docs/operations/deployment.md.
 targetScope = 'resourceGroup'
 
@@ -45,6 +45,9 @@ param extraCorsOrigins array = []
 @description('Custom domain host names of the Api (e.g. api.example.com). The default azurewebsites.net host is always allowed.')
 param apiCustomHostnames array = []
 
+@description('Email address for operational alerts (database storage); empty deploys the alerts without notifications.')
+param alertEmail string = ''
+
 var suffix = uniqueString(resourceGroup().id)
 var tags = {
   application: appName
@@ -60,6 +63,16 @@ module postgres 'modules/postgres.bicep' = {
     databaseName: databaseName
     administratorLogin: postgresAdministratorLogin
     administratorPassword: postgresAdministratorPassword
+    tags: tags
+  }
+}
+
+module alerts 'modules/alerts.bicep' = {
+  name: 'alerts'
+  params: {
+    namePrefix: '${appName}-${environmentName}'
+    postgresServerId: postgres.outputs.id
+    alertEmail: alertEmail
     tags: tags
   }
 }
