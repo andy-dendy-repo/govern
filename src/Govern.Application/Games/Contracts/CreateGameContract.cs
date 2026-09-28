@@ -1,5 +1,6 @@
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Games.Models;
+using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
@@ -23,8 +24,8 @@ public sealed record CreateGameResponse(Guid Id, string InviteCode) : IResponse;
 
 /// <summary>
 /// Handles <see cref="CreateGameRequest"/>; a user may hold at most <see cref="GameErrors.MaxOpenLobbiesPerUser"/> unstarted
-/// lobbies and play in at most <see cref="GameErrors.MaxUnfinishedGamesPerUser"/> unfinished games. The checks are not
-/// locked, so simultaneous creates can overshoot them: soft caps, bounded by the per-user rate limit.
+/// lobbies, and the seat limits of <see cref="GameSeatLimitService"/> apply. The checks are not locked, so simultaneous
+/// creates can overshoot them: soft caps, bounded by the per-user rate limit.
 /// </summary>
 internal sealed class CreateGameHandler(
     IApplicationDbContextFactory dbContextFactory,
@@ -46,14 +47,13 @@ internal sealed class CreateGameHandler(
             return GameErrors.TooManyOpenLobbies;
         }
 
-        var unfinished = await db.Games.CountAsync(
-            game => game.Phase != GamePhase.Finished && game.Players.Any(player => player.UserId == userId), cancellationToken);
-        if (unfinished >= GameErrors.MaxUnfinishedGamesPerUser)
+        var now = timeProvider.GetUtcNow();
+        if (await GameSeatLimitService.CheckAsync(db, userId, now, cancellationToken) is { } limit)
         {
-            return GameErrors.TooManyUnfinishedGames;
+            return limit;
         }
 
-        var game = Game.Create(userId, timeProvider.GetUtcNow());
+        var game = Game.Create(userId, now);
         db.Games.Add(game);
         await db.SaveChangesAsync(cancellationToken);
 

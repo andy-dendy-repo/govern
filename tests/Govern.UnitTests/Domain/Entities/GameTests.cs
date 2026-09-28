@@ -97,7 +97,7 @@ public class GameTests
         var game = Game.Create(Creator, Now);
         game.Join(Joiner, Now);
 
-        game.Start(Creator);
+        game.Start(Creator, Now);
 
         game.Phase.ShouldBe(GamePhase.InProgress);
         var state = game.State.ShouldNotBeNull();
@@ -124,7 +124,7 @@ public class GameTests
         var game = Game.Create(Creator, Now);
         game.Join(Joiner, Now);
 
-        Should.Throw<InvalidOperationException>(() => game.Start(Joiner));
+        Should.Throw<InvalidOperationException>(() => game.Start(Joiner, Now));
         game.Phase.ShouldBe(GamePhase.Lobby);
     }
 
@@ -133,7 +133,7 @@ public class GameTests
     {
         var game = Game.Create(Creator, Now);
 
-        Should.Throw<InvalidOperationException>(() => game.Start(Creator));
+        Should.Throw<InvalidOperationException>(() => game.Start(Creator, Now));
         game.State.ShouldBeNull();
     }
 
@@ -142,7 +142,7 @@ public class GameTests
     {
         var game = StartedGame();
 
-        Should.Throw<InvalidOperationException>(() => game.Start(Creator));
+        Should.Throw<InvalidOperationException>(() => game.Start(Creator, Now));
     }
 
     [Fact]
@@ -154,7 +154,7 @@ public class GameTests
         game.Join(Joiner, Now);
         game.Revision.ShouldBe(1);
 
-        game.Start(Creator);
+        game.Start(Creator, Now);
         game.Revision.ShouldBe(2);
     }
 
@@ -173,7 +173,7 @@ public class GameTests
         var game = StartedGame();
         var before = game.State!;
 
-        var result = game.Execute(Creator, new EndTurnCommand());
+        var result = game.Execute(Creator, new EndTurnCommand(), Now);
 
         result.IsSuccess.ShouldBeTrue();
         game.State.ShouldBeSameAs(result.Update!.State);
@@ -189,7 +189,7 @@ public class GameTests
         var game = StartedGame();
         var before = game.State;
 
-        var result = game.Execute(Joiner, new EndTurnCommand());
+        var result = game.Execute(Joiner, new EndTurnCommand(), Now);
 
         result.Violation.ShouldBe(RuleViolations.NotYourTurn);
         game.State.ShouldBeSameAs(before);
@@ -202,7 +202,7 @@ public class GameTests
     {
         var game = StartedGame();
 
-        var result = game.Execute(Joiner, new ResignCommand());
+        var result = game.Execute(Joiner, new ResignCommand(), Now);
 
         result.IsSuccess.ShouldBeTrue();
         game.Phase.ShouldBe(GamePhase.Finished);
@@ -217,7 +217,7 @@ public class GameTests
         var game = Game.Create(Creator, Now);
         game.Join(Joiner, Now);
 
-        Should.Throw<InvalidOperationException>(() => game.Execute(Creator, new EndTurnCommand()));
+        Should.Throw<InvalidOperationException>(() => game.Execute(Creator, new EndTurnCommand(), Now));
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public class GameTests
     {
         var game = StartedGame();
 
-        Should.Throw<InvalidOperationException>(() => game.Execute(Guid.CreateVersion7(), new EndTurnCommand()));
+        Should.Throw<InvalidOperationException>(() => game.Execute(Guid.CreateVersion7(), new EndTurnCommand(), Now));
     }
 
     [Fact]
@@ -242,8 +242,8 @@ public class GameTests
         var game = Game.Create(Creator, Now);
 
         game.Join(Joiner, Now);
-        game.Start(Creator);
-        game.Execute(Creator, new EndTurnCommand());
+        game.Start(Creator, Now);
+        game.Execute(Creator, new EndTurnCommand(), Now);
 
         game.DomainEvents.ShouldBe([new GameChangedEvent(game.Id), new GameChangedEvent(game.Id), new GameChangedEvent(game.Id)]);
     }
@@ -255,16 +255,154 @@ public class GameTests
         game.ClearDomainEvents();
 
         game.Join(Joiner, Now);
-        game.Execute(Joiner, new EndTurnCommand());
+        game.Execute(Joiner, new EndTurnCommand(), Now);
 
         game.DomainEvents.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Leave_Joiner_FreesTheSeatAndRaisesAChange()
+    {
+        var game = Game.Create(Creator, Now);
+        game.Join(Joiner, Now);
+        game.ClearDomainEvents();
+
+        game.Leave(Joiner, Now.AddMinutes(5));
+
+        game.IsPlayer(Joiner).ShouldBeFalse();
+        game.Players.ShouldHaveSingleItem().UserId.ShouldBe(Creator);
+        game.Revision.ShouldBe(2);
+        game.ActivityAt.ShouldBe(Now.AddMinutes(5));
+        game.DomainEvents.ShouldBe([new GameChangedEvent(game.Id)]);
+    }
+
+    [Fact]
+    public void Leave_ThenAnotherUserJoins_TakesSeatOne()
+    {
+        var game = Game.Create(Creator, Now);
+        game.Join(Joiner, Now);
+        game.Leave(Joiner, Now);
+
+        var seat = game.Join(Guid.CreateVersion7(), Now);
+
+        seat.Seat.ShouldBe(1);
+        game.IsFull.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Leave_Creator_Throws()
+    {
+        var game = Game.Create(Creator, Now);
+        game.Join(Joiner, Now);
+
+        Should.Throw<InvalidOperationException>(() => game.Leave(Creator, Now));
+        game.Players.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Leave_NonMember_Throws()
+    {
+        var game = Game.Create(Creator, Now);
+
+        Should.Throw<InvalidOperationException>(() => game.Leave(Joiner, Now));
+    }
+
+    [Fact]
+    public void Leave_StartedGame_Throws()
+    {
+        var game = StartedGame();
+
+        Should.Throw<InvalidOperationException>(() => game.Leave(Joiner, Now));
+        game.Players.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Cancel_CreatorInLobby_RaisesAChange()
+    {
+        var game = Game.Create(Creator, Now);
+        game.Join(Joiner, Now);
+        game.ClearDomainEvents();
+
+        game.Cancel(Creator);
+
+        game.DomainEvents.ShouldBe([new GameChangedEvent(game.Id)]);
+    }
+
+    [Fact]
+    public void Cancel_NonCreator_Throws()
+    {
+        var game = Game.Create(Creator, Now);
+        game.Join(Joiner, Now);
+
+        Should.Throw<InvalidOperationException>(() => game.Cancel(Joiner));
+    }
+
+    [Fact]
+    public void Cancel_StartedGame_Throws()
+    {
+        var game = StartedGame();
+
+        Should.Throw<InvalidOperationException>(() => game.Cancel(Creator));
+    }
+
+    [Fact]
+    public void ActivityAt_SetByCreateJoinAndStart()
+    {
+        var game = Game.Create(Creator, Now);
+        game.ActivityAt.ShouldBe(Now);
+
+        game.Join(Joiner, Now.AddMinutes(1));
+        game.ActivityAt.ShouldBe(Now.AddMinutes(1));
+
+        game.Start(Creator, Now.AddMinutes(2));
+        game.ActivityAt.ShouldBe(Now.AddMinutes(2));
+    }
+
+    [Fact]
+    public void ActivityAt_JoinAgain_Unchanged()
+    {
+        var game = Game.Create(Creator, Now);
+        game.Join(Joiner, Now);
+
+        game.Join(Joiner, Now.AddMinutes(1));
+
+        game.ActivityAt.ShouldBe(Now);
+    }
+
+    [Fact]
+    public void ActivityAt_EndTurnAndFinish_Change()
+    {
+        var game = StartedGame();
+
+        game.Execute(Creator, new EndTurnCommand(), Now.AddMinutes(1));
+        game.ActivityAt.ShouldBe(Now.AddMinutes(1));
+
+        game.Execute(Creator, new ResignCommand(), Now.AddMinutes(2));
+        game.ActivityAt.ShouldBe(Now.AddMinutes(2));
+    }
+
+    [Fact]
+    public void ActivityAt_MoveOrRejectedCommand_Unchanged()
+    {
+        var game = StartedGame();
+        var mover = game.FindPlayer(Creator)!.PlayerId;
+        var move = game.State!.Units
+            .Where(unit => unit.Owner == mover)
+            .SelectMany(unit => GameEngine.ReachableTiles(game.State, mover, unit.Id).Select(target => new MoveUnitCommand(unit.Id, target)))
+            .First();
+
+        game.Execute(Creator, move, Now.AddMinutes(1)).IsSuccess.ShouldBeTrue();
+        game.Execute(Joiner, new EndTurnCommand(), Now.AddMinutes(2)).IsSuccess.ShouldBeFalse();
+
+        game.ActivityAt.ShouldBe(Now);
+        game.Revision.ShouldBe(3);
     }
 
     private static Game StartedGame()
     {
         var game = Game.Create(Creator, Now);
         game.Join(Joiner, Now);
-        game.Start(Creator);
+        game.Start(Creator, Now);
         return game;
     }
 }

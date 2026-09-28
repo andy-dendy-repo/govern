@@ -23,7 +23,7 @@ paths:
 
 ## Layout and naming
 
-- `Features/[Feature]/[UseCase]EndpointTests.cs` mirrors `Api/Features`. Infrastructure-only behaviour (interceptors, migrations, seeding) goes in `Persistence/…Tests.cs`.
+- `Features/[Feature]/[UseCase]EndpointTests.cs` mirrors `Api/Features`. Infrastructure-only behaviour (interceptors, migrations, seeding) goes in `Persistence/…Tests.cs`, and hosted background work in `Background/…Tests.cs` (drive its timer with a derived factory's `FakeTimeProvider`, arrange rows through `OpenDbAsync`, and poll the database with a deadline).
 - Shared plumbing lives in `Fixtures/` (`PostgresFixture`, `GovernApiFactory`) and `Support/` (auth helpers, test data builders).
 - Name tests `Method_Scenario_ExpectedResult`, e.g. `Post_ValidRequest_Returns201AndPersistsUser` or `Post_DuplicateEmail_Returns409ProblemDetails`.
 

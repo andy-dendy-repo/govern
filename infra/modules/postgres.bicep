@@ -68,5 +68,8 @@ resource allowAzureServices 'Microsoft.DBforPostgreSQL/flexibleServers/firewallR
   }
 }
 
+@description('Server resource id.')
+output id string = server.id
+
 @description('Server host name.')
 output fullyQualifiedDomainName string = server.properties.fullyQualifiedDomainName

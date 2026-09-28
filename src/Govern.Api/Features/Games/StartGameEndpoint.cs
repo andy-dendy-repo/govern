@@ -36,8 +36,8 @@ public static class StartGameEndpoint
     /// <response code="401">Missing or invalid access token.</response>
     /// <response code="403">The caller plays in the game but did not create it.</response>
     /// <response code="404">No such game, or the caller does not play in it.</response>
-    /// <response code="409">The game has already started or is waiting for a second player.</response>
-    /// <response code="429">Too many game creates, joins and starts from this user.</response>
+    /// <response code="409">The game has already started, is waiting for a second player, or changed while starting.</response>
+    /// <response code="429">Too many game requests from this user.</response>
     private static async Task<IResult> HandleAsync(Guid id, IMediatorService mediator, CancellationToken cancellationToken)
     {
         var result = await mediator.SendAsync(new StartGameRequest(id), cancellationToken);

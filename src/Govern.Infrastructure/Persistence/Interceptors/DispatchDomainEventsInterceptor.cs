@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Govern.Domain.EntityBase;
 using Govern.Utils.Mediator.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,9 @@ namespace Govern.Infrastructure.Persistence.Interceptors;
 /// dispatching asynchronous handlers synchronously would block (sync-over-async).
 /// </summary>
 /// <remarks>
+/// The entities with events are captured before the save, because a deleted entity is detached once it is saved and would
+/// otherwise drop its events. A failed save leaves the events on the entities, so a later save of the same context
+/// dispatches them once.
 /// The data is already committed when events are dispatched, so a failing handler must not fail the request:
 /// each event is published independently, failures are logged, and the request's cancellation is not applied.
 /// Delivery is best-effort; use an outbox (<c>Infrastructure/Background</c>) when an event must never be lost.
@@ -20,6 +24,9 @@ internal sealed partial class DispatchDomainEventsInterceptor(
     IMediatorService mediator,
     ILogger<DispatchDomainEventsInterceptor> logger) : SaveChangesInterceptor
 {
+    // Scoped, but one scope can create several contexts (the factory), so captures are kept per context.
+    private readonly ConditionalWeakTable<DbContext, List<BaseEntity>> _pending = [];
+
     /// <inheritdoc />
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
@@ -32,22 +39,60 @@ internal sealed partial class DispatchDomainEventsInterceptor(
     }
 
     /// <inheritdoc />
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData,
+        InterceptionResult<int> result,
+        CancellationToken cancellationToken = default)
+    {
+        // Always overwrite, even with an empty list: EF does not call SaveChangesFailedAsync for a concurrency failure, so
+        // a stale capture from a failed save must never survive into the next save of the same context.
+        if (eventData.Context is { } context)
+        {
+            _pending.AddOrUpdate(context, [.. CollectEntities(context)]);
+        }
+
+        return base.SavingChangesAsync(eventData, result, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public override async ValueTask<int> SavedChangesAsync(
         SaveChangesCompletedEventData eventData,
         int result,
         CancellationToken cancellationToken = default)
     {
-        if (eventData.Context is not null)
+        if (eventData.Context is { } context && _pending.TryGetValue(context, out var entities))
         {
-            await DispatchAsync(eventData.Context);
+            _pending.Remove(context);
+            await DispatchAsync(entities);
         }
 
         return await base.SavedChangesAsync(eventData, result, cancellationToken);
     }
 
-    private async Task DispatchAsync(DbContext context)
+    /// <inheritdoc />
+    public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
     {
-        var entities = CollectEntities(context).ToList();
+        if (eventData.Context is { } context)
+        {
+            _pending.Remove(context);
+        }
+
+        return base.SaveChangesFailedAsync(eventData, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override Task SaveChangesCanceledAsync(DbContextEventData eventData, CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context)
+        {
+            _pending.Remove(context);
+        }
+
+        return base.SaveChangesCanceledAsync(eventData, cancellationToken);
+    }
+
+    private async Task DispatchAsync(List<BaseEntity> entities)
+    {
         var events = entities.SelectMany(static entity => entity.DomainEvents).ToList();
         entities.ForEach(static entity => entity.ClearDomainEvents());
 

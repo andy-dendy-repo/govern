@@ -189,4 +189,37 @@ public class JoinGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixtu
             return [.. seats.Select(p => (p.Seat, p.UserId))];
         }
     }
+
+    [Fact]
+    public async Task Post_QuotaOfSeatsInTheLastDayReached_Returns429DailyQuotaReached()
+    {
+        var me = await GamesApi.NewPlayerAsync(Client, Ct);
+        var opponent = await GamesApi.NewPlayerAsync(Client, Ct);
+        await GamesApi.SeedFinishedGamesAsync(
+            Fixture, opponent.UserId, me.UserId, GameErrors.MaxGamesJoinedPerWindow, DateTimeOffset.UtcNow.AddHours(-1), Ct);
+        var lobby = await GamesApi.CreateGameAsync(Client, await GamesApi.NewPlayerAsync(Client, Ct), Ct);
+
+        var response = await GamesApi.JoinAsync(Client, me.AccessToken, lobby.InviteCode, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.TooManyRequests, "game.daily_quota_reached", Ct);
+    }
+
+    [Fact]
+    public async Task Post_LobbyCancelledDuringTheJoin_Returns404InviteNotFound()
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+        var joiner = await GamesApi.NewPlayerAsync(Client, Ct);
+        var game = await GamesApi.CreateGameAsync(Client, creator, Ct);
+
+        // The cancel deletes the lobby under the join's seat insert, which then fails on the foreign key.
+        var (cancel, join) = await GameRowLock.RaceInOrderAsync(
+            Fixture.ConnectionString,
+            game.Id,
+            () => GamesApi.CancelAsync(Client, creator.AccessToken, game.Id, Ct),
+            () => GamesApi.JoinAsync(Client, joiner.AccessToken, game.InviteCode, Ct),
+            Ct);
+
+        cancel.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        await join.ShouldBeProblemAsync(HttpStatusCode.NotFound, "game.invite_not_found", Ct);
+    }
 }

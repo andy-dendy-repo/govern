@@ -22,7 +22,7 @@ Govern is a public API with JWT bearer auth, a public WASM client, and Postgres 
 - Keep access tokens short-lived. Tokens are sent only in the `Authorization: Bearer` header, never in URLs, query strings or logs.
 - Passwords are hashed with a slow, salted algorithm (`PasswordHasher<T>` PBKDF2 or Argon2). They are never logged, returned or stored reversibly.
 - Login and registration are rate-limited (ASP.NET Core rate limiter, per IP and IPv6 /64), and failed logins are throttled per account (`ISignInThrottlingService`). Login failures return one generic error that does not reveal whether the email exists.
-- Signed-in endpoints that create rows or can be spammed get a per-user rate-limit policy (the JWT `sub`: `games`, `game-commands`) and, where rows accumulate, a per-user cap (e.g. unfinished games). Bodies with game payloads are capped in bytes (`GameCommandBody.MaxBytes`). Long-lived streams (SSE) cap open connections per user (`game-streams`), end at the access token's expiry, and push only data the caller may see.
+- Signed-in endpoints that create rows or can be spammed get a per-user rate-limit policy (the JWT `sub`: `games`, `game-commands`) and, where rows accumulate, a per-user cap (e.g. unfinished games) plus a rolling quota when the rows outlive the cap (e.g. 30 game seats per 24 hours, finished games included), so storage can't grow without bound. Database storage has an Azure Monitor alert (`infra/modules/alerts.bicep`). Bodies with game payloads are capped in bytes (`GameCommandBody.MaxBytes`). Long-lived streams (SSE) cap open connections per user (`game-streams`), end at the access token's expiry, and push only data the caller may see.
 
 ## Authorization
 

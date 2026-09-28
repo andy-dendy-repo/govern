@@ -48,6 +48,9 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
             .HasConversion(state => GameSerializer.Serialize(state), json => GameSerializer.DeserializeState(json), ReferenceComparer)
             .IsRequired(false);
 
+        // The expired-lobby sweep filters on both (phase = 'Lobby' AND activity_at < cutoff).
+        builder.HasIndex(game => new { game.Phase, game.ActivityAt });
+
         builder.HasIndex(game => game.CreatorId);
         builder.HasOne<User>().WithMany().HasForeignKey(game => game.CreatorId).OnDelete(DeleteBehavior.Restrict);
 

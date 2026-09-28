@@ -15,14 +15,29 @@ public static class GameErrors
     /// <summary>How many games that have not finished (lobbies and running games) one user may play in at a time.</summary>
     public const int MaxUnfinishedGamesPerUser = 20;
 
+    /// <summary>
+    /// How many seats one user may take (by creating or joining a game) within <see cref="QuotaWindow"/>, finished games
+    /// included. A seat given up by leaving or cancelling a lobby no longer counts.
+    /// </summary>
+    public const int MaxGamesJoinedPerWindow = 30;
+
+    /// <summary>The rolling window of <see cref="MaxGamesJoinedPerWindow"/>.</summary>
+    public static readonly TimeSpan QuotaWindow = TimeSpan.FromHours(24);
+
     /// <summary>The caller already created <see cref="MaxOpenLobbiesPerUser"/> lobbies that have not started.</summary>
     public static readonly Error TooManyOpenLobbies = Error.Conflict(
-        "game.too_many_open_lobbies", $"You already have {MaxOpenLobbiesPerUser} open lobbies. Start one before creating another.");
+        "game.too_many_open_lobbies",
+        $"You already have {MaxOpenLobbiesPerUser} open lobbies. Start or cancel one before creating another.");
 
     /// <summary>The caller already plays in <see cref="MaxUnfinishedGamesPerUser"/> games that have not finished.</summary>
     public static readonly Error TooManyUnfinishedGames = Error.Conflict(
         "game.too_many_unfinished_games",
-        $"You already play in {MaxUnfinishedGamesPerUser} unfinished games. Finish or resign a running game, or wait for a lobby you joined to start.");
+        $"You already play in {MaxUnfinishedGamesPerUser} unfinished games. Finish or resign a running game, or leave or cancel a lobby.");
+
+    /// <summary>The caller already took <see cref="MaxGamesJoinedPerWindow"/> seats within <see cref="QuotaWindow"/>.</summary>
+    public static readonly Error DailyQuotaReached = Error.TooManyRequests(
+        "game.daily_quota_reached",
+        $"You have created or joined {MaxGamesJoinedPerWindow} games in the last 24 hours. Try again later.");
 
     /// <summary>No game uses the invite code.</summary>
     public static readonly Error InviteNotFound = Error.NotFound("game.invite_not_found", "No game uses this invite code.");
@@ -30,10 +45,14 @@ public static class GameErrors
     /// <summary>The game does not exist or the caller does not play in it (deliberately indistinguishable).</summary>
     public static readonly Error NotFound = Error.NotFound("game.not_found", "The game was not found.");
 
-    /// <summary>A player other than the creator tried to start the game.</summary>
-    public static readonly Error NotCreator = Error.Forbidden("game.not_creator", "Only the creator can start the game.");
+    /// <summary>A player other than the creator tried to start or cancel the game.</summary>
+    public static readonly Error NotCreator = Error.Forbidden("game.not_creator", "Only the creator can start or cancel the game.");
 
-    /// <summary>The game has left the lobby, so it can no longer be joined or started.</summary>
+    /// <summary>The creator tried to leave their own lobby; they cancel it instead.</summary>
+    public static readonly Error CreatorCannotLeave = Error.Conflict(
+        "game.creator_cannot_leave", "The creator cannot leave the lobby. Cancel it instead.");
+
+    /// <summary>The game has left the lobby, so it can no longer be joined, started, left or cancelled.</summary>
     public static readonly Error AlreadyStarted = Error.Conflict("game.already_started", "The game has already started.");
 
     /// <summary>Every seat is taken.</summary>

@@ -1,6 +1,7 @@
 using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Games.Models;
+using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
@@ -13,7 +14,7 @@ namespace Govern.Application.Games.Contracts;
 
 /// <summary>
 /// Takes the free seat of the lobby that uses <paramref name="InviteCode"/>. Joining a game you already play in succeeds and
-/// changes nothing. A new player must play in fewer than <see cref="GameErrors.MaxUnfinishedGamesPerUser"/> unfinished games.
+/// changes nothing. A new player must be within the seat limits of <see cref="GameSeatLimitService"/>.
 /// </summary>
 /// <param name="InviteCode">The code from the invite link (sent in the body so it never appears in URLs or access logs).</param>
 public sealed record JoinGameRequest(string InviteCode) : IRequest<JoinGameRequest, JoinGameResponse>;
@@ -40,7 +41,8 @@ public sealed class JoinGameValidator : AbstractValidator<JoinGameRequest>
 
 /// <summary>
 /// Handles <see cref="JoinGameRequest"/>. A lost race (another join changed the game first: a revision conflict, or a
-/// unique seat/user violation) is resolved by reading the game again once, so the caller gets the outcome the winner left.
+/// unique seat/user violation; or the lobby was deleted: a foreign key violation) is resolved by reading the game again
+/// once, so the caller gets the outcome the winner left.
 /// </summary>
 internal sealed class JoinGameHandler(
     IApplicationDbContextFactory dbContextFactory,
@@ -85,28 +87,39 @@ internal sealed class JoinGameHandler(
             return outcome;
         }
 
-        var unfinished = await db.Games.CountAsync(
-            candidate => candidate.Phase != GamePhase.Finished && candidate.Players.Any(player => player.UserId == userId), cancellationToken);
-        if (unfinished >= GameErrors.MaxUnfinishedGamesPerUser)
+        var now = timeProvider.GetUtcNow();
+        if (await GameSeatLimitService.CheckAsync(db, userId, now, cancellationToken) is { } limit)
         {
-            return GameErrors.TooManyUnfinishedGames;
+            return limit;
         }
 
-        game.Join(userId, timeProvider.GetUtcNow());
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return null;
-        }
-        catch (DbUpdateException exception) when (dbExceptions.IsUniqueViolation(exception))
+        game.Join(userId, now);
+        if (!await TrySaveAsync(db, cancellationToken))
         {
             return null;
         }
 
         return new JoinGameResponse(game.Id);
+    }
+
+    // False when a concurrent change won: another join (revision or unique seat/user), or a cancel or expiry that deleted
+    // the lobby while the seat was being inserted (foreign key).
+    private async Task<bool> TrySaveAsync(IApplicationDbContext db, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
+        catch (DbUpdateException exception)
+            when (dbExceptions.IsUniqueViolation(exception) || dbExceptions.IsForeignKeyViolation(exception))
+        {
+            return false;
+        }
     }
 
     private async Task<Result<JoinGameResponse>> ReevaluateAsync(InviteCode code, Guid userId, CancellationToken cancellationToken)
