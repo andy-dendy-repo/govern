@@ -19,3 +19,9 @@ Review 7 (2026-09-29, feature/client-lobby, Game Plan 4). Traps worth re-checkin
 - Stop/restart helpers that null fields after `await` race with `DisposeAsync` (Blazor can call SetParametersAsync again or dispose while the previous async lifecycle call is pending): swap fields to locals first.
 - `GamesClient.WatchAsync` contract is "only OCE on cancel": with `IsNetworkFailure` now returning false once the token is cancelled, a non-OCE exception that races the silence-timer cancel escapes; services can't catch HttpRequestException (arch rule), so the mapping must live in the client.
 - Verified: Blazor ignores `StateHasChanged` on a disposed component (no crash, so leaks stay silent); `Permissions-Policy` doesn't block clipboard-write; per-user stream limiter = concurrency(4) then fixed window(30/min), concurrency rejects don't consume the window.
+
+Review 8 (2026-09-29, feature/client-board, Game Plan 5b). Traps for later board/page work:
+- ComponentBase renders ONCE at the first yield of OnParametersSetAsync and then only at completion. GamePage's id change awaits StopWatchingAsync (yields) BEFORE `_game = null`, so the old game's children (GameTable) stay mounted during the next GET and are REUSED for the new game (stale `_error`/`_stale`, no refit, in-flight command's GameChanged overwrites the new game). Look for `@key` on per-game children and an id check in child→page callbacks (OnGameChanged/OnStarted).
+- Board ShouldRender guards are load-bearing: EventCallback params always count as changed, so every parent render calls SetParametersAsync on BoardTerrain/BoardPieces.
+- Client tests compare records holding ImmutableHashSet/ImmutableArray by reference; passes only via `.Empty` singletons.
+- Verified: Core previews (ViewPreviewCalculator) return empty off-turn/finished/non-own unit and exclude the unit's own tile; arch rule Client_UsesCoreOnlyForViewsAndPreviews names real types.

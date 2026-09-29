@@ -8,13 +8,14 @@ using Govern.Client.Extensions;
 using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Models;
+using Govern.Core.Engine;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace Govern.Client.Features.Games.Clients;
 
 /// <summary>
-/// Calls the Api's <c>/api/games</c> endpoints (except commands) and reads a game's live stream. Every call carries the bearer
-/// token through <c>AuthorizationMessageHandler</c>.
+/// Calls the Api's <c>/api/games</c> endpoints and reads a game's live stream. Every call carries the bearer token through
+/// <c>AuthorizationMessageHandler</c>.
 /// </summary>
 public sealed class GamesClient(HttpClient http)
 {
@@ -86,6 +87,26 @@ public sealed class GamesClient(HttpClient http)
         ArgumentOutOfRangeException.ThrowIfGreaterThan(pageSize, MaxPageSize);
         return http.SendForResultAsync<ListMyGamesResponse>(
             new HttpRequestMessage(HttpMethod.Get, $"api/games?page={page}&pageSize={pageSize}"), cancellationToken);
+    }
+
+    /// <summary>Sends one of the caller's commands to a running game.</summary>
+    /// <param name="gameId">The game.</param>
+    /// <param name="expectedVersion">The <c>view.version</c> the command is based on.</param>
+    /// <param name="command">The command.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>
+    /// The game after the command, or the error: 409 <c>game.stale_version</c> (the view changed first; nothing was applied),
+    /// 409 with a rule code (<c>game.not_your_turn</c>, <c>move.unreachable</c>, …), 404 <c>game.not_found</c>, 429.
+    /// </returns>
+    public Task<ApiResult<GetGameResponse>> SendCommandAsync(
+        Guid gameId, long expectedVersion, GameCommand command, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var request = new HttpRequestMessage(HttpMethod.Post, $"api/games/{gameId}/commands")
+        {
+            Content = JsonContent.Create(new SendGameCommandRequest(expectedVersion, command), options: ApiJson.Options),
+        };
+        return http.SendForResultAsync<GetGameResponse>(request, cancellationToken);
     }
 
     /// <summary>
