@@ -69,6 +69,17 @@ public class LayerDependencyTests
     }
 
     [Fact]
+    public void Client_UsesCoreOnlyForViewsAndPreviews()
+    {
+        Types().That().ResideInNamespaceMatching(Layers.NamespacePattern("Govern.Client"))
+            .Should().NotDependOnAnyTypesThat().HaveFullNameMatching(
+                @"^Govern\.Core\.(?:State\.(?:GameState|GameFactory|GameSetup)|Engine\.(?:CommandResult|GameUpdate|DeterministicRandom)|Serialization\.GameSerializer)$")
+            .Because("the server is authoritative: the client reads its PlayerView and the view-based previews, never the full state, GameEngine.Execute or the storage format")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
     public void Application_DoesNotDependOnAspNetCore()
     {
         Types().That().ResideInNamespaceMatching(Layers.NamespacePattern("Govern.Application"))

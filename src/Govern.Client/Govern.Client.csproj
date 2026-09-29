@@ -12,4 +12,8 @@
         <PackageReference Include="Radzen.Blazor" />
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Govern.Core\Govern.Core.csproj" />
+    </ItemGroup>
+
 </Project>

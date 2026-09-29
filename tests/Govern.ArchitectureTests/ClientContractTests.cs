@@ -40,6 +40,7 @@ public partial class ClientContractTests
 
         pairs.Select(static pair => pair.Client.Name).ShouldContain("SignInRequest", "the Users DTOs are checked");
         pairs.Select(static pair => pair.Client.Name).ShouldContain("GetGameResponse", "the Games DTOs are checked");
+        pairs.Select(static pair => pair.Client.Name).ShouldContain("SendGameCommandRequest", "the command body is checked");
         violations.ShouldBeEmpty("a client DTO must mirror the Application contract it is named after (drifted DTOs break silently at runtime)");
     }
 

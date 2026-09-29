@@ -1,0 +1,32 @@
+@* The result of a finished game: who won and how each player left. *@
+@using Govern.Core.State
+@using Govern.Core.Visibility
+
+<RadzenStack Gap="0.5rem" class="game-over">
+    <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H2" class="result">@Result</RadzenText>
+    @foreach (var player in View.Players)
+    {
+        <RadzenText TextStyle="TextStyle.Body2" class="player-result">
+            @(player.Id == View.Viewer ? "You" : "Your opponent"): @Status(player)
+        </RadzenText>
+    }
+    <RadzenLink Path="games" Text="Back to my games" class="back"/>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    private string Result => View.Winner switch
+    {
+        null => "Nobody won.",
+        var winner when winner == View.Viewer => "You won!",
+        _ => "You lost.",
+    };
+
+    private string Status(PlayerSummary player) => player.Status switch
+    {
+        PlayerStatus.Resigned => "resigned",
+        PlayerStatus.Eliminated => "eliminated",
+        _ => player.Id == View.Winner ? "won" : "still standing",
+    };
+}

@@ -17,7 +17,7 @@ Govern.Client/
 ├── Auth/                    token store, auth state provider, bearer/refresh message handler (free-form)
 ├── Features/[Feature]/      UF +
 │   ├── Pages/               routable components: XxxPage.razor (+ .razor.cs / .razor.css), flat
-│   ├── Components/          components used only by this feature
+│   ├── Components/          components used only by this feature (one level of group folders allowed, e.g. Board/)
 │   └── Clients/             typed Api clients: XxxClient.cs, flat
 ├── Helpers Models Enums Options Exceptions Extensions Attributes Services   (UF, free-form, usual suffixes)
 └── wwwroot/                 index.html, css/app.css, js/ (ES modules), appsettings*.json, staticwebapp.config.json
@@ -58,6 +58,13 @@ Govern.Client/
 - **Post-login redirects** go through `Auth/ReturnUrl.Sanitize` (local paths only) and navigate with `replace: true`, so Back skips the form. A URL fragment is carried as a fragment (`Components/RedirectToLogin`, `Features/Users/Helpers/AuthLinks`), never moved into a path or query, so it never reaches a server.
 - **Invite codes** travel only in a URL fragment (`/join#<code>`, `Features/Games/Helpers/InviteLink`) and in a request body, never in a path or query. A page that reads a secret from the fragment replaces the URL at once (`NavigateTo(path, replace: true)`). A link must never act on its own: the invite link only fills in the join form, and joining takes a click (any site can open a link in the player's window).
 - **JS modules** live in `wwwroot/js/` and are imported through `IJSRuntime` `import` (from `Auth/` or `Services/`). They are scanned for eval like the C# sources.
+
+## Game board (Core in the client)
+
+- **Core only for views and previews:** the client uses Core's view types (`PlayerView`, `Unit`, `CityView`, `TileView`), command records and the view-based previews (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a `PlayerView`). It never touches `GameState`, `GameFactory`, `GameSetup`, `GameEngine.Execute` (`CommandResult`, `GameUpdate`), `DeterministicRandom` or `GameSerializer`: the server is authoritative (`LayerDependencyTests.Client_UsesCoreOnlyForViewsAndPreviews`). The Api's `view` JSON already equals the game format, so `ApiJson.Options` reads it.
+- **Board components** live in `Features/Games/Components/Board` (SVG: `<symbol>` + `<use>`, one click handler per tile, pieces with `pointer-events: none`), styles in `wwwroot/css/app.css`. Pure logic (layout, viewport, click resolution) goes to `Features/Games/Helpers` so it is testable without a renderer. Components that re-render often (pointer moves) override `ShouldRender`; the terrain renders only for a new view.
+- **Board JavaScript** (`wwwroot/js/board.js`: the non-passive wheel listener and measuring) goes only through `Features/Games/Services/BoardInteropService`, which degrades to a no-op when the module fails.
+- **Commands:** `GameTable` sends one command at a time (input disabled while in flight) with `expectedVersion` = the `view.version` on screen, reports the answered game upward (`GameChanged`), and on `game.stale_version` reads the game again and says nothing was applied. Never retry a command automatically: the player decides again on the fresh board.
 
 ## Configuration
 
