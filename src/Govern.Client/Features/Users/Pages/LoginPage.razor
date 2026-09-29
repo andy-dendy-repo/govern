@@ -1,0 +1,30 @@
+@page "/login"
+@using Govern.Client.Features.Users.Models
+
+<PageTitle>Sign in - Govern</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">Sign in</RadzenText>
+
+@if (Registered)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="registered">
+        Your account was created. Sign in to continue.
+    </RadzenAlert>
+}
+
+<ApiErrorAlert Error="@_error"/>
+
+<RadzenTemplateForm TItem="SignInRequest" Data="@_form" Submit="@SubmitAsync">
+    <RadzenStack Gap="1rem" Style="max-width: 24rem">
+        <RadzenFormField Text="Email">
+            <RadzenTextBox Name="Email" @bind-Value="_form.Email" AutoCompleteType="AutoCompleteType.Email"/>
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="Email" Text="Enter your email."/>
+        <RadzenFormField Text="Password">
+            <RadzenPassword Name="Password" @bind-Value="_form.Password" AutoCompleteType="AutoCompleteType.CurrentPassword"/>
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="Password" Text="Enter your password."/>
+        <RadzenButton ButtonType="ButtonType.Submit" Text="Sign in" IsBusy="@_busy"/>
+        <RadzenLink Path="@RegisterPath" Text="No account? Register"/>
+    </RadzenStack>
+</RadzenTemplateForm>

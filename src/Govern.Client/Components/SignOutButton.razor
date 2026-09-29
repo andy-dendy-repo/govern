@@ -1,0 +1,26 @@
+@* Signs out of this session. The local session is cleared even when the Api call fails. *@
+@using Govern.Client.Features.Users.Clients
+@inject UsersClient Users
+@inject NavigationManager Navigation
+
+<RadzenButton Text="Sign out" Icon="logout" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@SignOutAsync"
+              IsBusy="@_busy" class="sign-out"/>
+
+@code {
+    private bool _busy;
+
+    private async Task SignOutAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Users.SignOutAsync(CancellationToken.None);
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        Navigation.NavigateTo("/");
+    }
+}

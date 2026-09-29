@@ -1,0 +1,15 @@
+@* Shows an Api error as plain text: the message, then any field validation messages. *@
+@if (Error is not null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="api-error">
+        <div>@Error.Message</div>
+        @foreach (var message in Error.FieldErrors.SelectMany(static field => field.Value))
+        {
+            <div>@message</div>
+        }
+    </RadzenAlert>
+}
+
+@code {
+    [Parameter] public ApiError? Error { get; set; }
+}

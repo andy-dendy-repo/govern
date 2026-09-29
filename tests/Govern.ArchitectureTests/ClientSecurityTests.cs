@@ -19,6 +19,10 @@ public partial class ClientSecurityTests
     private static readonly string[] RawHtmlOrEvalTokens =
         ["MarkupString", "AddMarkupContent", "RadzenHtmlEditor", "RadzenMarkdown", "\"eval\"", "eval(", "\"Function\""];
 
+    // DOM sinks that parse strings as HTML or code in the client's own JavaScript modules.
+    private static readonly string[] JavaScriptSinkTokens =
+        ["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "new Function", "setTimeout('", "setTimeout(\"", "setInterval('", "setInterval(\""];
+
     public static TheoryData<string> RequiredCspDirectives => new(
         "default-src 'self'",
         "script-src 'self' 'wasm-unsafe-eval' __IMPORTMAP_HASH__",
@@ -101,6 +105,7 @@ public partial class ClientSecurityTests
     public void ClientSources_DoNotRenderRawHtmlOrEvalJavaScript()
     {
         var violations = SourceTree.CSharpFiles(ClientRoot).Concat(SourceTree.RazorFiles(ClientRoot))
+            .Concat(Directory.EnumerateFiles(WebRoot, "*.js", SearchOption.AllDirectories))
             .SelectMany(static file => File.ReadLines(file)
                 .Select((line, index) => (line, index))
                 .Where(static entry => RawHtmlOrEvalTokens.Any(token => entry.line.Contains(token, StringComparison.Ordinal)))
@@ -108,6 +113,19 @@ public partial class ClientSecurityTests
             .ToList();
 
         violations.ShouldBeEmpty("raw HTML and eval bypass Blazor's HTML encoding; render text with Radzen components instead");
+    }
+
+    [Fact]
+    public void ClientJavaScript_DoesNotUseHtmlOrCodeSinks()
+    {
+        var violations = Directory.EnumerateFiles(WebRoot, "*.js", SearchOption.AllDirectories)
+            .SelectMany(static file => File.ReadLines(file)
+                .Select((line, index) => (line, index))
+                .Where(static entry => JavaScriptSinkTokens.Any(token => entry.line.Contains(token, StringComparison.Ordinal)))
+                .Select(entry => $"{SourceTree.Relative(file)}:{entry.index + 1}: {entry.line.Trim()}"))
+            .ToList();
+
+        violations.ShouldBeEmpty("JavaScript modules set text (textContent), never HTML or code built from strings");
     }
 
     [Fact]
