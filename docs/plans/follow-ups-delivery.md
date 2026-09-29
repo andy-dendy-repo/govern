@@ -2,7 +2,7 @@
 title: Follow-ups delivery plans
 tags: [plan, backlog, follow-ups, security, auth, rate-limiting, health-checks, key-vault, entra, postgres, monitoring, blazor]
 code: [src/Govern.Application/Users, src/Govern.Api, src/Govern.Infrastructure, src/Govern.Client, infra, .github/workflows]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Follow-ups delivery plans
@@ -26,9 +26,9 @@ Delivery plans for the items in [follow-ups](follow-ups.md). Each increment gets
 4. #2 least-privilege database access through Entra.
 5. #5 monitoring and alerts.
 6. ~~#10a Blazor client foundation and CSP gate~~ (done, see [client](../features/client.md)).
-7. #10b Blazor client authentication and pages, in [blazor-client-delivery](blazor-client-delivery.md).
+7. ~~#10b Blazor client authentication and pages~~ (done through `gamecore`, ahead of game Plan 4; see [client](../features/client.md#client-authentication-sign-in-and-token-refresh)).
 
-Plans 2 and 3 of [session-and-email-verification](session-and-email-verification.md) are separate. They fit best before #10b, so the client gets the confirm-email page from the start.
+Plans 2 and 3 of [session-and-email-verification](session-and-email-verification.md) are separate. #10b shipped first, so Plan 3 adds the client's confirm-email page itself.
 
 ## Plan 4: Least-privilege database access via Entra managed identity (#2)
 

@@ -1,0 +1,15 @@
+@* Sends an anonymous visitor of an [Authorize] page to login, keeping where they were going. The path and query travel in
+   returnUrl; the fragment (e.g. an invite code) stays a fragment, so it is never sent to a server. *@
+@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized()
+    {
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var hash = relative.IndexOf('#', StringComparison.Ordinal);
+        var path = hash < 0 ? relative : relative[..hash];
+        var fragment = hash < 0 ? string.Empty : relative[hash..];
+
+        Navigation.NavigateTo($"login?returnUrl={Uri.EscapeDataString("/" + path)}{fragment}", replace: true);
+    }
+}
