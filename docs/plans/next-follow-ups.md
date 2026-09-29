@@ -2,12 +2,12 @@
 title: Next follow-ups (after the game plans)
 tags: [plan, backlog, follow-ups, release, game, security, auth, email-verification, entra, postgres, monitoring]
 code: [src, infra, .github/workflows]
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Next follow-ups
 
-All earlier plans are done: the [template roadmap](template-solution-roadmap.md), the [follow-ups backlog](follow-ups.md) and its [delivery plans](follow-ups-delivery.md), [session and email verification](session-and-email-verification.md) Plan 1, and game Plans 1–5 ([game delivery](game-delivery.md), [game plan 2](game-lobby.md)). This file holds everything still open, collected from those plans.
+Future game mechanics are listed separately in the [game design roadmap](game-design-roadmap.md). All earlier plans are done: the [template roadmap](template-solution-roadmap.md), the [follow-ups backlog](follow-ups.md) and its [delivery plans](follow-ups-delivery.md), [session and email verification](session-and-email-verification.md) Plan 1, and game Plans 1–5 ([game delivery](game-delivery.md), [game plan 2](game-lobby.md)). This file holds everything still open, collected from those plans.
 
 Run each item through `/develop-feature`. It gets its own plan in `.claude/rules/planning.md` format, a branch, and a PR. Game work branches from and PRs to `gamecore` until the game ships; everything else branches from `stage`. When an item is done, remove it here and update the related docs.
 
@@ -72,14 +72,12 @@ Run each item through `/develop-feature`. It gets its own plan in `.claude/rules
 
 ## 8. Game ideas
 
-Deferred from the [game delivery plan](game-delivery.md). None is scheduled.
+Deferred from the [game delivery plan](game-delivery.md). None is scheduled. Bigger game mechanics (terrain, resources, rivers, city territory and stats, governors, unit roster and HP combat, builders and buildings, science and culture trees, seasons), plus the UI design system and the game rules reference, are in the [game design roadmap](game-design-roadmap.md).
 
 | Idea | Size | Notes |
 |---|---|---|
 | Game log and animations from engine events filtered by visibility (`VisibilityCalculator.EventsFor`) | M–L | Core first, then client UI |
 | Player-chosen city names | S–M | Also closes a small leak: `City N` counts the founder's cities at founding, hidden ones included |
-| More terrain (hills, forest, water) and a builder unit with terrain improvements | M | A terrain with a cost above 1, or impassable, adds view-preview parity scenarios |
-| Strength/HP combat using `DeterministicRandom` | M | Changes the combat rules |
 | Turn timers and handling of absent players | M | Needs server background work; a prerequisite for [simultaneous turns](#9-simultaneous-turns-civ-6-style) |
 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | M | Only needed with more than one instance |
 

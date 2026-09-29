@@ -33,6 +33,7 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [operations/branching.md](operations/branching.md): branches, PR flow, release and protection.
 
 ## Plans
+- [plans/game-design-roadmap.md](plans/game-design-roadmap.md): future game mechanics (G1–G15): the UI design system, a game rules reference, data-driven catalogs, terrain layers, resources and tile yields, rivers and bridges, city territory, stats and production queue, unit roster and combat, builders and buildings with upgrades, science and culture trees with upkeep, civilizations and governors, colonies founded by governors, seasons, ships and river navigation; the decisions taken and open questions.
 - [plans/next-follow-ups.md](plans/next-follow-ups.md): **all open work**, prioritised: ship the game, least-privilege DB access, monitoring, the sign-up email in the transaction, email verification, `UnitView`, invite code rotation, and the deferred game ideas, simultaneous turns, and more than two players.
 - [plans/game-delivery.md](plans/game-delivery.md): the game plans (Core engine, lobby, commands + SSE + lobby lifecycle, client lobby, client board), all done, and the `gamecore` branching flow.
 - [plans/game-lobby.md](plans/game-lobby.md): game plan 2 (done): `Game` aggregate, lobby with invite codes, creator-only start, `jsonb` state, five `/api/games` endpoints.
