@@ -33,9 +33,10 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [operations/branching.md](operations/branching.md): branches, PR flow, release and protection.
 
 ## Plans
-- [plans/game-delivery.md](plans/game-delivery.md): the game plans (Core engine, lobby, commands + SSE + lobby lifecycle, client lobby, client board), status and the `gamecore` branching flow.
+- [plans/next-follow-ups.md](plans/next-follow-ups.md): **all open work**, prioritised: ship the game, least-privilege DB access, monitoring, the sign-up email in the transaction, email verification, `UnitView`, invite code rotation, and the deferred game ideas, simultaneous turns, and more than two players.
+- [plans/game-delivery.md](plans/game-delivery.md): the game plans (Core engine, lobby, commands + SSE + lobby lifecycle, client lobby, client board), all done, and the `gamecore` branching flow.
 - [plans/game-lobby.md](plans/game-lobby.md): game plan 2 (done): `Game` aggregate, lobby with invite codes, creator-only start, `jsonb` state, five `/api/games` endpoints.
-- [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step, with status.
-- [plans/follow-ups.md](plans/follow-ups.md): prioritised backlog (least-privilege DB access, monitoring).
-- [plans/follow-ups-delivery.md](plans/follow-ups-delivery.md): delivery plans for the follow-ups backlog, one increment per item, in order.
-- [plans/session-and-email-verification.md](plans/session-and-email-verification.md): remaining increments: sign-up email inside the DB transaction, then email verification.
+- [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step (done).
+- [plans/follow-ups.md](plans/follow-ups.md): the first backlog (done; open items moved to next follow-ups).
+- [plans/follow-ups-delivery.md](plans/follow-ups-delivery.md): delivery plans for the first backlog (done); its Entra and monitoring sections are the detailed design for next follow-ups items 2 and 3.
+- [plans/session-and-email-verification.md](plans/session-and-email-verification.md): session lifecycle (done); its sign-up email and email verification sections are the detailed design for next follow-ups items 4 and 5.
