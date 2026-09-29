@@ -1,0 +1,44 @@
+@page "/games/{GameId:guid}"
+@attribute [Authorize]
+@using Govern.Client.Features.Games.Components
+@using Govern.Client.Features.Games.Enums
+
+<PageTitle>@Title - Govern</PageTitle>
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
+    <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">@Title</RadzenText>
+    @if (_watch is not null)
+    {
+        <ConnectionBadge Update="@_watch"/>
+    }
+</RadzenStack>
+
+<ApiErrorAlert Error="@_error"/>
+
+@if (_notFound || _watch?.Status == GameWatchStatus.Gone)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="gone">
+        @(_notFound
+            ? "This game does not exist, or you are not playing in it."
+            : "This game was cancelled or expired, or you are no longer in it.")
+    </RadzenAlert>
+    <RadzenLink Path="games" Text="Back to my games" class="back"/>
+}
+else if (_game is not null)
+{
+    <RadzenStack Gap="1rem" class="rz-mt-4">
+        <PlayerList Players="@_game.Players"/>
+        @if (_game.Phase == GamePhase.Lobby)
+        {
+            @if (_game.InviteCode is { } inviteCode)
+            {
+                <InviteShare Code="@inviteCode"/>
+            }
+            <LobbyPanel Game="@_game" Started="@OnStarted" Closed="@OnClosed"/>
+        }
+        else
+        {
+            <GameStatusPanel Game="@_game"/>
+        }
+    </RadzenStack>
+}

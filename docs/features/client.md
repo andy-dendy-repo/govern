@@ -1,13 +1,13 @@
 ---
 title: Blazor client
-tags: [client, blazor, webassembly, radzen, csp, static-web-apps, security-headers, bunit, configuration, auth, jwt, refresh-token, web-locks, login]
-code: [src/Govern.Client, src/Govern.Client/Auth, tests/Govern.ClientTests, tests/Govern.ArchitectureTests/ClientSecurityTests.cs, tests/Govern.ArchitectureTests/ClientContractTests.cs, .github/scripts/configure-client.sh, .github/workflows/release.yml]
-updated: 2026-09-28
+tags: [client, blazor, webassembly, radzen, csp, static-web-apps, security-headers, bunit, configuration, auth, jwt, refresh-token, web-locks, login, games, lobby, invite-link, sse, server-sent-events, reconnect, backoff]
+code: [src/Govern.Client, src/Govern.Client/Auth, src/Govern.Client/Features/Games, tests/Govern.ClientTests, tests/Govern.ArchitectureTests/ClientSecurityTests.cs, tests/Govern.ArchitectureTests/ClientContractTests.cs, .github/scripts/configure-client.sh, .github/workflows/release.yml]
+updated: 2026-09-29
 ---
 
 # Blazor client
 
-`Govern.Client` is a standalone Blazor WebAssembly app built with Radzen components and hosted on Azure Static Web Apps. It calls the Govern Api over HTTPS with a JWT bearer header and references no server project. This document covers the client's architecture, configuration, authentication (sign-in, token refresh, user pages), Content Security Policy and tests. The game pages are planned in [game delivery](../plans/game-delivery.md) (Plan 4).
+`Govern.Client` is a standalone Blazor WebAssembly app built with Radzen components and hosted on Azure Static Web Apps. It calls the Govern Api over HTTPS with a JWT bearer header and references no server project. This document covers the client's architecture, configuration, authentication (sign-in, token refresh, user pages), the game lobby (my games, invite links, live updates), Content Security Policy and tests. The game board comes in [game delivery](../plans/game-delivery.md) Plan 5.
 
 ## Client architecture (CFT folder template)
 
@@ -21,7 +21,7 @@ The client uses feature folders, mirroring the server's 3DFT. `tests/Govern.Arch
 | `Auth/` | `TokenStore`, `AuthSession`, `JwtAuthenticationStateProvider`, `AuthorizationMessageHandler`, the cross-tab lock, `ReturnUrl` | free-form |
 | `Features/[Feature]/Pages/` | routable components, e.g. `Features/Home/Pages/HomePage.razor`, `NotFoundPage.razor` | `XxxPage` |
 | `Features/[Feature]/Components/` | components used by one feature | Razor components |
-| `Features/[Feature]/Clients/` | typed Api clients, the only code besides `Auth/` and their registration in `DependencyInjection.cs` that uses `HttpClient` | sealed `XxxClient` |
+| `Features/[Feature]/Clients/` | typed Api clients, e.g. `UsersClient`, `GamesClient`. The only code besides `Auth/`, the shared send (`Extensions/HttpClientExtensions`) and the registration in `DependencyInjection.cs` that uses `HttpClient` or server-sent events (`System.Net.ServerSentEvents`) | sealed `XxxClient` |
 | `Features/[Feature]/Models/` and other utility folders | DTOs (duplicated from the Application contracts on purpose, guarded by `ClientContractTests`), options, services; root `Models/` holds `ApiResult`, `ApiError` and `ApiJson` | usual suffixes |
 
 Further rules for Blazor components:
@@ -76,7 +76,7 @@ The client signs in against the Api's `/api/users` endpoints ([users](users.md))
 
 ### Typed clients and Api errors
 
-- Typed clients (`Features/[Feature]/Clients`, e.g. `UsersClient`) return `ApiResult` or `ApiResult<T>` and never throw `HttpRequestException`.
+- Typed clients (`Features/[Feature]/Clients`, e.g. `UsersClient`) return `ApiResult` or `ApiResult<T>` and never throw `HttpRequestException`. They send through `Extensions/HttpClientExtensions.SendForResultAsync`, which maps a ProblemDetails body to `ApiError` and network errors, unreadable JSON and timeouts to `ApiError.Network`; the caller's own cancellation still throws.
 - `ApiError` carries the status, the Api's `code` (e.g. `user.email_taken`), a message (the ProblemDetails `title`, or a generic text for an empty body such as the rate limiter's 429) and field errors from a validation problem. Status 0 means the Api was unreachable.
 - `ApiJson.Options` matches the Api's JSON: web defaults and camelCase string enums.
 - `Components/ApiErrorAlert` shows an `ApiError` as plain text.
@@ -86,15 +86,60 @@ The client signs in against the Api's `/api/users` endpoints ([users](users.md))
 
 | Route | Page | Access | Behaviour |
 |---|---|---|---|
-| `/login` | `LoginPage` | anonymous | Signs in, then goes to the sanitized `returnUrl` plus the login URL's fragment; `registered=true` shows "account created" |
-| `/register` | `RegisterPage` | anonymous | Email, password (8–128), confirmation. Signs up, then signs in; if that sign-in fails (e.g. 429) it goes to `login?registered=true` |
+| `/login` | `LoginPage` | anonymous | Signs in, then goes to the sanitized `returnUrl` plus the login URL's fragment, replacing the login history entry; `registered=true` shows "account created" |
+| `/register` | `RegisterPage` | anonymous | Email, password (8–128), confirmation. Signs up, then signs in; if that sign-in fails (e.g. 429) it goes to `login?registered=true`. Either way it replaces the register history entry |
 | `/profile` | `ProfilePage` | `[Authorize]` | Shows `GET /api/users/me`; sign out, and sign out everywhere |
 
-- `App.razor` uses `AuthorizeRouteView`. An anonymous visitor of an `[Authorize]` page gets `Components/RedirectToLogin`, which replaces the URL with `login?returnUrl=<path and query>` and keeps the original fragment as the login URL's fragment. A fragment (e.g. a future invite code) is never sent to a server, so it never moves into the query.
+- `App.razor` uses `AuthorizeRouteView`. An anonymous visitor of an `[Authorize]` page gets `Components/RedirectToLogin`, which replaces the URL with `login?returnUrl=<path and query>` and keeps the original fragment as the login URL's fragment. A fragment (e.g. an invite code) is never sent to a server, so it never moves into the query. After a successful sign-in the login and register pages navigate with `replace`, so Back doesn't return to the form or to a URL that still carries the fragment.
 - **Sign out** (`SignOutButton`, header and profile) runs `AuthSession.SignOutAsync` under the lock: if the access token is due it refreshes first, then sends `POST /api/users/sign-out` with the **current** access and refresh tokens, and always clears the local session, even when the Api call fails. Sending a refresh token that a refresh had already rotated would count as reuse and sign the user out on every device.
 - **Sign out everywhere** (profile) clears the local session only when `POST /api/users/sign-out-everywhere` succeeded (or the Api no longer accepts this session); otherwise it shows the error and stays signed in, so the user can retry, since this is the control used after losing a device.
-- The header shows the email and Sign out, or a Sign in link; the nav shows Profile, or Sign in and Register.
+- The header shows the email and Sign out, or a Sign in link; the nav shows Games, Join game and Profile, or Sign in and Register. The home page links to My games and Join a game, or to Sign in and Register.
 - Not built yet: password reset and email confirmation (see [session plans](../plans/session-and-email-verification.md)). A sign-out or sign-in in another tab updates this tab's UI on its next Api call, not immediately (no `storage` event listener yet).
+
+## Client game lobby (games, invite links, live updates)
+
+The game pages live in `Features/Games` and call the [games API](games.md) through `Features/Games/Clients/GamesClient`. Every page is `[Authorize]`. The Api sends the caller's board (`view`) with each game; the client DTO has no `View` yet and ignores it until the board is built (Plan 5).
+
+| Route | Page | Behaviour |
+|---|---|---|
+| `/games` | `GamesPage` | The caller's games, newest activity first, in a server-paged `RadzenDataGrid` (20 per page, `GET /api/games?page&pageSize`): phase, players ("n/2"), role (created or joined), "Your turn", last activity in local time. "New game" creates a lobby and opens it; caps, the daily quota and 429 show in `ApiErrorAlert`. "Join with a code" opens `/join` |
+| `/join` | `JoinPage` | An invite link (`/join#<code>`) fills in the form ("You were invited…"); a pasted link or code works too (`InviteLink.TryParse`: a bare code, or a link to the join page with the code in its fragment; 22 base64url characters). Joining always takes a click on Join. On success it opens the game, replacing the history entry |
+| `/games/{id}` | `GamePage` | Reads the game (404 shows "does not exist"), then follows it live. In the lobby: `PlayerList`, `InviteShare` (creator only: the link and the code, each with a copy button through `Services/ClipboardService`), `LobbyPanel` (Start once both seats are taken; Cancel for the creator, Leave for the joiner, each confirmed inline first). Once started: `GameStatusPanel`. A `ConnectionBadge` shows Live, Reconnecting in n s, Gone, Signed out or Finished |
+
+### Invite link policy (code only in the fragment or the body)
+
+- The creator shares `{base}join#{code}` (`Features/Games/Helpers/InviteLink.Build`). Browsers never send a fragment to a server, so the code stays out of Static Web App and Api logs, and out of `Referer`.
+- `JoinPage` reads the fragment and **at once** replaces the URL with `/join` (`NavigateTo(..., replace: true)`), so the code leaves the address bar and the Back history. The code only fills in the form; a malformed fragment leaves the form empty and shows "This invite link is not valid".
+- **Joining needs a click.** Opening the link never joins by itself: any site can navigate a signed-in player's window to `/join#<code>`, and an automatic join would drop them into an attacker's game (which the attacker can start at once, so it can't be left) and use up their caps and daily quota. The click sends the code in the body of `POST /api/games/join`; success opens the game (again replacing the entry), and a failure shows the error.
+- The browser's own global history (and address-bar suggestions) still records the visited link: `replace` only rewrites the tab's session history. Anyone using the same browser profile could read the code there; the code stops working once the lobby is full, and the creator can cancel.
+- A signed-out visitor goes through `RedirectToLogin` with the fragment kept as the login URL's fragment, and login (or register) replaces its own history entry. Clicking between login and register pushes one entry that still holds the fragment; it stays in local history only.
+- Joining takes a seat from the daily quota; the joiner can leave the lobby again until the creator starts it.
+
+### Live updates: reconnect and backoff
+
+`GamesClient.WatchAsync` opens `GET /api/games/{id}/stream` with `Accept: text/event-stream` and browser response streaming, reads it with `SseParser`, and yields `GameSnapshotEvent` (a `game` event), `GameHeartbeatEvent` and unknown types skipped. Unless cancelled it always ends with one `GameStreamClosedEvent`:
+
+| Stream result | `GameStreamEnd` |
+|---|---|
+| The Api ended the stream (finished game, the caller can no longer read it, access token expiry) | `Closed` |
+| 404 | `NotFound` |
+| 401 after the handler's refresh failed | `Unauthorized` |
+| 429 (more than 4 open streams, or 30 openings per minute) | `RateLimited` |
+| Anything else: 5xx, the handler's 503 (refresh unavailable), a 200 that isn't an event stream, network errors, bad JSON | `Failed` |
+
+`Features/Games/Services/GameWatchService` (with `TimeProvider`) keeps it open and turns it into `GameWatchUpdate`s for the page:
+
+| Situation | What happens |
+|---|---|
+| A connection that was open ≥ 10 s after its first snapshot ended normally (usually token expiry) | Reconnect after 2–5 s; the new request gets a fresh token because the handler refreshes a due token first |
+| Other failures | Reconnect after a random delay between half the step and the step + 1 s, where the step is min(30 s, 2^n s): 2–3 s, 2–5 s, 4–9 s, 8–17 s, then 15–31 s. A connection that stayed open ≥ 10 s after its first snapshot resets n; a slow attempt that never delivered a snapshot does not |
+| `RateLimited` | Wait 15–20 s (or the failure delay, if longer) |
+| No event for 50 s (the Api sends a heartbeat after 20 s of silence) | Drop the connection and reconnect |
+| `NotFound` | Stop: `Gone` (cancelled, expired or left) |
+| `Unauthorized` | Stop: `SignedOut` (the auth state change also sends the page to login) |
+| `Closed` after a `finished` snapshot | Stop: `Finished` |
+
+Every delay is at least 2 s, which keeps one tab under the 30-openings-per-minute limit; with several tabs failing together, the growing delays keep the user under it. The random spread keeps clients cut off at once (an Api restart) from reconnecting in waves. Each connection starts with the current snapshot, so a reconnect is a full resync and there is no gap detection. `GamePage` restarts the watch when the route's game id changes and cancels it when disposed.
 
 ## Content Security Policy and security headers
 
@@ -131,8 +176,8 @@ CI runs the same script on every PR against a dummy origin, so a change that add
 
 | Project | What it covers |
 |---|---|
-| `tests/Govern.ClientTests` (bUnit) | layout (body, navigation, sidebar toggle, signed-in and anonymous header and nav), `HomePage`/`NotFoundPage`, `App` with the real auth state (redirect to login, signed-in page), `AddClient` (URL validation, no bare `HttpClient`, resolvable services), `Auth/` (token store, JWT payload, auth state, refresh single flight, outcomes, backoff, compare-and-set and completion after the caller gave up, `RenewAt`, cross-tab user changes, the handler's bearer, origin check, retry and 503, the Web Lock module, `ReturnUrl`), sign-out with a due token sending the rotated tokens, `ApiError`, `UsersClient`, the login, register and profile pages, `RedirectToLogin`, `SignOutButton`, `ApiErrorAlert`. `Support/` fakes the Api (`FakeApiHandler`), browser storage (`FakeBrowserStorage`) and time (`FakeTimeProvider`) |
-| `tests/Govern.ArchitectureTests` | CFT folders, page/component/client naming, `System.Net.Http` and `Microsoft.JSInterop` confinement, `.razor` size limits, and `ClientSecurityTests` (CSP directives, no unsafe script sources, headers, no route header overrides, `/.auth/*` blocked, `index.html` without external assets or inline scripts, no raw HTML or eval in `.cs`, `.razor` or `wwwroot` JavaScript, no HTML or code sinks in `wwwroot` JavaScript, `localStorage` only in `Auth/TokenStore.cs`, no secrets in appsettings), and `ClientContractTests` (a client DTO named like an Application contract has only that contract's properties, with the same shapes; `TokenPair` and the refresh body are paired explicitly with the sign-in and refresh contracts) |
+| `tests/Govern.ClientTests` (bUnit) | layout (body, navigation, sidebar toggle, signed-in and anonymous header and nav), `HomePage`/`NotFoundPage`, `App` with the real auth state (redirect to login, signed-in page), `AddClient` (URL validation, no bare `HttpClient`, resolvable services), `Auth/` (token store, JWT payload, auth state, refresh single flight, outcomes, backoff, compare-and-set and completion after the caller gave up, `RenewAt`, cross-tab user changes, the handler's bearer, origin check, retry and 503, the Web Lock module, `ReturnUrl`), sign-out with a due token sending the rotated tokens, `ApiError`, `UsersClient`, the login, register and profile pages (including `replace` after sign-in), `RedirectToLogin`, `SignOutButton`, `ApiErrorAlert`; games: `InviteLink`, `ReconnectBackoff`, `GamesClient` (every endpoint, the code only in the join body, problem mapping, the stream's events and end reasons, a refresh before opening), `GameWatchService` (delays, reset only after a real connection, rate limit, silence, heartbeats, final states, cancellation), the games, join (the fragment dropped at once and only filling the form, no join without a click, history, paste, validation) and game pages (lobby roles, live snapshots, start, cancel, gone, not found, id change dropping the old stream, dispose, dispose while loading), the lobby components and `ClipboardService`. `Support/` fakes the Api (`FakeApiHandler`, `SseResponse` for event streams), browser storage (`FakeBrowserStorage`) and time (`FakeTimeProvider`, with `Eventually` to wait for background work) |
+| `tests/Govern.ArchitectureTests` | CFT folders, page/component/client naming, `System.Net.Http`/`System.Net.ServerSentEvents` and `Microsoft.JSInterop` confinement, `.razor` size limits, and `ClientSecurityTests` (CSP directives, no unsafe script sources, headers, no route header overrides, `/.auth/*` blocked, `index.html` without external assets or inline scripts, no raw HTML or eval in `.cs`, `.razor` or `wwwroot` JavaScript, no HTML or code sinks in `wwwroot` JavaScript, `localStorage` only in `Auth/TokenStore.cs`, no secrets in appsettings), and `ClientContractTests` (a client DTO named like an Application contract has only that contract's properties, with the same shapes; `TokenPair` and the refresh body are paired explicitly with the sign-in and refresh contracts) |
 
 ## Running the client locally
 

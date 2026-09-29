@@ -2,7 +2,7 @@
 title: "ADR 0005: live game updates over SSE with per-player snapshots and an opaque view version"
 tags: [adr, game, sse, server-sent-events, live-updates, stream, fog-of-war, view-version, ids, privacy, rate-limit]
 code: [src/Govern.Application/Games/Contracts/WatchGameContract.cs, src/Govern.Api/Features/Games/WatchGameEndpoint.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Core/Visibility/VisibilityCalculator.cs, src/Govern.Core/State/GameState.cs]
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # ADR 0005: live game updates over SSE
@@ -32,4 +32,5 @@ Players need to see the opponent join, the game start and the opponent's visible
 - Engine events stay server-side until a game-log UI needs them, together with a `VisibilityCalculator.EventsFor`.
 - After the first event, the response has started: a failure while re-reading the game (e.g. the database is down) ends the connection and is logged by ASP.NET Core, not by the mediator pipelines. The client reconnects.
 - After the v1 → v2 upgrade, a client holding a pre-upgrade `expectedVersion` gets one `game.stale_version`.
-- **Known gap:** `GET /api/games` returns `updatedAt` (and sorts by it), which changes on every accepted command, hidden ones included. Polling the list still shows when the opponent acts during their turn. Tracked for Plan 3c.
+- The list no longer leaks hidden activity: since Plan 3c `GET /api/games` returns and sorts by `activityAt`, which moves only on changes both players see.
+- **Client reconnect policy** (`GameWatchService`, see [client game lobby](../features/client.md#live-updates-reconnect-and-backoff)): after a normal end of a connection that was open at least 10 s after its first snapshot (token expiry) the client reconnects in 2–5 s with a freshly refreshed token; other failures back off exponentially with a wide random spread (between half the step and the step + 1 s, steps 2 s up to 30 s), a 429 waits 15–20 s, and 50 s without any event (two missed heartbeats) counts as a dead connection. Every delay is at least 2 s, keeping a tab under the 30 openings per minute. 404 and 401 stop the watch, and so does the end after the `finished` snapshot.

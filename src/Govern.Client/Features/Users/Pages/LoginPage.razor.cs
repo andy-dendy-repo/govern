@@ -46,6 +46,7 @@ public partial class LoginPage
             return;
         }
 
-        Navigation.NavigateTo(AuthLinks.Destination(ReturnPath, Navigation));
+        // Replace the login entry: Back should not return to the form, nor to a URL that carries an invite code.
+        Navigation.NavigateTo(AuthLinks.Destination(ReturnPath, Navigation), replace: true);
     }
 }
