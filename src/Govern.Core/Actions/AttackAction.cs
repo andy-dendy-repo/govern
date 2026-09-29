@@ -27,25 +27,19 @@ internal static class AttackRule
             return error;
         }
 
-        if (Check(state, attacker, command) is { } violation)
+        var defender = state.UnitAt(command.Target);
+        var city = state.CityAt(command.Target);
+        if (Check(attacker, command.Target, state.Map.Contains(command.Target), defender?.Owner, city?.Owner) is { } violation)
         {
             return violation;
         }
 
-        if (state.UnitAt(command.Target) is { } defender)
-        {
-            return defender.Owner == actor ? RuleViolations.OwnTarget : Destroy(state, attacker, defender);
-        }
-
-        if (state.CityAt(command.Target) is { } city)
-        {
-            return city.Owner == actor ? RuleViolations.OwnTarget : Capture(state, attacker, city);
-        }
-
-        return RuleViolations.NoTarget;
+        return defender is not null ? Destroy(state, attacker, defender) : Capture(state, attacker, city!);
     }
 
-    private static RuleViolation? Check(GameState state, Unit attacker, AttackCommand command)
+    // Shared with the view-based preview (ViewPreviewCalculator): everything it inspects is adjacent to the attacker, so it is
+    // visible and the view holds the same owners as the state.
+    public static RuleViolation? Check(Unit attacker, HexCoord target, bool targetOnMap, PlayerId? defenderOwner, PlayerId? cityOwner)
     {
         if (!attacker.Definition.CanAttack)
         {
@@ -57,9 +51,17 @@ internal static class AttackRule
             return RuleViolations.NoMovementLeft;
         }
 
-        return state.Map.Contains(command.Target) && attacker.Position.DistanceTo(command.Target) == 1
-            ? null
-            : RuleViolations.NotAdjacent;
+        if (!targetOnMap || attacker.Position.DistanceTo(target) != 1)
+        {
+            return RuleViolations.NotAdjacent;
+        }
+
+        return (defenderOwner ?? cityOwner) switch
+        {
+            null => RuleViolations.NoTarget,
+            var owner when owner == attacker.Owner => RuleViolations.OwnTarget,
+            _ => null,
+        };
     }
 
     private static CommandResult Destroy(GameState state, Unit attacker, Unit defender)

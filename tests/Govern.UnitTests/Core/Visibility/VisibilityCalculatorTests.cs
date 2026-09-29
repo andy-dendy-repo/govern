@@ -99,8 +99,8 @@ public class VisibilityCalculatorTests
         var view = GameEngine.ViewFor(builder.Build(), P1);
 
         view.Tiles.Length.ShouldBe(Width * Height);
-        view.Tiles.Single(tile => tile.Coord == At(2, 2)).ShouldBe(new TileView(At(2, 2), TileVisibility.Visible, TerrainType.Plains));
-        view.Tiles.Single(tile => tile.Coord == At(9, 5)).ShouldBe(new TileView(At(9, 5), TileVisibility.Unexplored, null));
+        view.TileAt(At(2, 2)).ShouldBe(new TileView(TileVisibility.Visible, TerrainType.Plains));
+        view.TileAt(At(9, 5)).ShouldBe(new TileView(TileVisibility.Unexplored, null));
     }
 
     [Fact]
@@ -113,8 +113,75 @@ public class VisibilityCalculatorTests
         var moved = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(soldier, At(6, 4))).ShouldSucceed().State;
         var view = GameEngine.ViewFor(moved, P1);
 
-        view.Tiles.Single(tile => tile.Coord == behind).ShouldBe(new TileView(behind, TileVisibility.Explored, TerrainType.Plains));
+        view.TileAt(behind).ShouldBe(new TileView(TileVisibility.Explored, TerrainType.Plains));
         moved.FindPlayer(P1)!.Explored.ShouldContain(behind);
+    }
+
+    [Fact]
+    public void CoordAt_EveryIndex_MatchesTheMapTileAndTileAt()
+    {
+        var state = new GameStateBuilder().WithCapitals().Build();
+
+        var view = GameEngine.ViewFor(state, P1);
+
+        for (var index = 0; index < view.Tiles.Length; index++)
+        {
+            var coord = view.CoordAt(index);
+            coord.ShouldBe(state.Map.Tiles[index].Coord);
+            view.TileAt(coord).ShouldBeSameAs(view.Tiles[index]);
+        }
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(Width * Height)]
+    public void CoordAt_IndexOutsideTheMap_Throws(int index)
+    {
+        var view = GameEngine.ViewFor(new GameStateBuilder().WithCapitals().Build(), P1);
+
+        Should.Throw<ArgumentOutOfRangeException>(() => view.CoordAt(index));
+    }
+
+    [Fact]
+    public void TileAt_CoordOutsideTheMap_Throws()
+    {
+        var view = GameEngine.ViewFor(new GameStateBuilder().WithCapitals().Build(), P1);
+
+        view.Contains(At(Width, 0)).ShouldBeFalse();
+        Should.Throw<ArgumentOutOfRangeException>(() => view.TileAt(At(Width, 0)));
+    }
+
+    [Fact]
+    public void ViewFor_EnemyCityInSight_HidesItsProductionButShowsTheOwnersOwn()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
+        var enemyCity = builder.AddCity(P2, 6, 4, UnitType.Settler, progress: 3);
+        var state = builder.Build();
+
+        var seenByP1 = GameEngine.ViewFor(state, P1).Cities.Single(city => city.Id == enemyCity);
+        var seenByP2 = GameEngine.ViewFor(state, P2).Cities.Single(city => city.Id == enemyCity);
+
+        seenByP1.ShouldBe(new CityView(enemyCity, P2, $"City {enemyCity.Value}", At(6, 4), Producing: null, ProductionProgress: null));
+        seenByP2.Producing.ShouldBe(UnitType.Settler);
+        seenByP2.ProductionProgress.ShouldBe(3);
+    }
+
+    [Fact]
+    public void ViewFor_EnemyProductionChangesInSight_KeepsTheVersion()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
+        var enemyCity = builder.AddCity(P2, 6, 4);
+        var state = builder.Build();
+        var city = state.FindCity(enemyCity)!;
+        var progressed = state with
+        {
+            Cities = [.. state.Cities.Select(c => c.Id == enemyCity ? city with { Producing = UnitType.Settler, ProductionProgress = 5 } : c)],
+        };
+
+        GameEngine.ViewFor(progressed, P1).Version.ShouldBe(GameEngine.ViewFor(state, P1).Version);
+        GameEngine.ViewFor(progressed, P2).Version.ShouldNotBe(GameEngine.ViewFor(state, P2).Version);
     }
 
     [Fact]

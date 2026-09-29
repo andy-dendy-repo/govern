@@ -2,6 +2,7 @@ using System.Globalization;
 using Govern.Core.Cities;
 using Govern.Core.Engine;
 using Govern.Core.Events;
+using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.Core.Units;
 
@@ -25,7 +26,7 @@ internal static class FoundCityRule
             return error;
         }
 
-        if (Check(state, settler) is { } violation)
+        if (Check(settler, state.Cities.Select(static city => city.Position)) is { } violation)
         {
             return violation;
         }
@@ -38,7 +39,9 @@ internal static class FoundCityRule
         return new GameUpdate(founded with { Cities = founded.Cities.Add(city) }, [new CityFoundedEvent(city, settler.Id)]);
     }
 
-    private static RuleViolation? Check(GameState state, Unit settler)
+    // Shared with the view-based preview (ViewPreviewCalculator). Every city closer than the spacing is visible to the settler
+    // (settler sight >= spacing - 1, UnitCatalogTests), so the view gives the same answer as the state.
+    public static RuleViolation? Check(Unit settler, IEnumerable<HexCoord> cityPositions)
     {
         if (!settler.Definition.CanFoundCity)
         {
@@ -50,12 +53,13 @@ internal static class FoundCityRule
             return RuleViolations.NoMovementLeft;
         }
 
-        if (state.CityAt(settler.Position) is not null)
+        var positions = cityPositions.ToList();
+        if (positions.Contains(settler.Position))
         {
             return RuleViolations.CityTileTaken;
         }
 
-        return state.Cities.Any(city => city.Position.DistanceTo(settler.Position) < City.MinimumSpacing)
+        return positions.Any(position => position.DistanceTo(settler.Position) < City.MinimumSpacing)
             ? RuleViolations.CityTooClose
             : null;
     }
