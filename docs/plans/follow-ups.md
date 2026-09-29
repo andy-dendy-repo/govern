@@ -2,10 +2,12 @@
 title: Follow-ups backlog (after the template Api)
 tags: [plan, backlog, follow-ups, security, auth, operations]
 code: [src/Govern.Application/Users, src/Govern.Api, infra, .github/workflows]
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Follow-ups backlog
+
+**Status: done (closed 2026-09-29).** The two open items, #2 least-privilege database access and #5 monitoring and alerts, moved to [next follow-ups](next-follow-ups.md) (items 2 and 3). This file is kept for history.
 
 Open work found by the first code review and security audit of the template Api (`feature/template-api`, 2026-09-27). Run each item through `/develop-feature`: it gets its own plan in `.claude/rules/planning.md` format, then a branch from `stage` and a PR. When an item is done, remove it here and update the related docs.
 

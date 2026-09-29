@@ -2,10 +2,12 @@
 title: Follow-ups delivery plans
 tags: [plan, backlog, follow-ups, security, auth, rate-limiting, health-checks, key-vault, entra, postgres, monitoring, blazor]
 code: [src/Govern.Application/Users, src/Govern.Api, src/Govern.Infrastructure, src/Govern.Client, infra, .github/workflows]
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Follow-ups delivery plans
+
+**Status: done (closed 2026-09-29).** Plans 1–3, 6 and 7 are delivered. Plans 4 (#2) and 5 (#5) moved to [next follow-ups](next-follow-ups.md) (items 2 and 3); their sections below stay as the detailed design for those items.
 
 Delivery plans for the items in [follow-ups](follow-ups.md). Each increment gets its own branch from `stage`, goes through `/develop-feature`, and is merged before the next one starts. When a plan merges, it removes its section here and its row and section in `follow-ups.md`. The last one deletes both files and their index lines.
 

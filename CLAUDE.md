@@ -99,4 +99,4 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 | Agents (read-only, project memory) | `code-reviewer` (after every feature), `security-auditor` (before every stage → main release PR, and after auth, endpoint, config, infra or CI changes), `ef-core-specialist` (entities, configurations, migrations, slow queries) |
 | Hooks (`.claude/hooks/`) | bash guard (destructive git, protected branches, `rm -rf`), protected generated/secret files, whitespace format on edit, restore on csproj/props edit, test gate on Stop, branch info on SessionStart |
 
-Build history and status: `docs/plans/template-solution-roadmap.md`. Open work, prioritised: `docs/plans/follow-ups.md`.
+Build history: `docs/plans/template-solution-roadmap.md` (done). Open work, prioritised: `docs/plans/next-follow-ups.md`.
