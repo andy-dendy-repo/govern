@@ -83,7 +83,10 @@ public static class VisibilityCalculator
             [.. tiles],
             // Ordered by (random) id, not by creation, so the order reveals nothing about when enemy objects were created.
             [.. state.Units.Where(unit => unit.Owner == viewer || visible.Contains(unit.Position)).OrderBy(static unit => unit.Id.Value)],
-            [.. state.Cities.Where(city => city.Owner == viewer || visible.Contains(city.Position)).OrderBy(static city => city.Id.Value)],
+            [.. state.Cities
+                .Where(city => city.Owner == viewer || visible.Contains(city.Position))
+                .OrderBy(static city => city.Id.Value)
+                .Select(city => CityView.From(city, viewer))],
             [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status))]);
 
         return view with { Version = Fingerprint(view) };
@@ -99,8 +102,8 @@ public static class VisibilityCalculator
 
     private static TileView ToView(Tile tile, IReadOnlySet<HexCoord> visible, HashSet<HexCoord> explored) => tile.Coord switch
     {
-        var coord when visible.Contains(coord) => new TileView(coord, TileVisibility.Visible, tile.Terrain),
-        var coord when explored.Contains(coord) => new TileView(coord, TileVisibility.Explored, tile.Terrain),
-        var coord => new TileView(coord, TileVisibility.Unexplored, null),
+        var coord when visible.Contains(coord) => new TileView(TileVisibility.Visible, tile.Terrain),
+        var coord when explored.Contains(coord) => new TileView(TileVisibility.Explored, tile.Terrain),
+        _ => new TileView(TileVisibility.Unexplored, null),
     };
 }

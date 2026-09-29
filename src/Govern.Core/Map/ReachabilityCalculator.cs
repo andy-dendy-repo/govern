@@ -8,7 +8,15 @@ namespace Govern.Core.Map;
 /// </summary>
 internal static class ReachabilityCalculator
 {
-    public static Reachability Compute(GameState state, Unit unit)
+    public static Reachability Compute(GameState state, Unit unit) => Compute(
+        unit,
+        coord => state.Map.IsPassable(coord)
+            && state.UnitAt(coord) is null
+            && (state.CityAt(coord) is not { } city || city.Owner == unit.Owner),
+        coord => TerrainCatalog.Get(state.Map.TileAt(coord).Terrain).MovementCost);
+
+    // The search itself; the callers say which tiles the unit may enter and what each costs.
+    public static Reachability Compute(Unit unit, Func<HexCoord, bool> canEnter, Func<HexCoord, int> costOf)
     {
         var costs = new Dictionary<HexCoord, int> { [unit.Position] = 0 };
         var previous = new Dictionary<HexCoord, HexCoord>();
@@ -24,9 +32,9 @@ internal static class ReachabilityCalculator
                 continue;
             }
 
-            foreach (var next in current.Neighbors().Where(coord => CanEnter(state, unit, coord)))
+            foreach (var next in current.Neighbors().Where(canEnter))
             {
-                var nextCost = cost + TerrainCatalog.Get(state.Map.TileAt(next).Terrain).MovementCost;
+                var nextCost = cost + costOf(next);
                 if (nextCost > unit.MovementLeft || (costs.TryGetValue(next, out var known) && known <= nextCost))
                 {
                     continue;
@@ -40,9 +48,4 @@ internal static class ReachabilityCalculator
 
         return new Reachability(unit.Position, costs, previous);
     }
-
-    private static bool CanEnter(GameState state, Unit unit, HexCoord coord) =>
-        state.Map.IsPassable(coord)
-        && state.UnitAt(coord) is null
-        && (state.CityAt(coord) is not { } city || city.Owner == unit.Owner);
 }

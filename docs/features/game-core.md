@@ -1,13 +1,13 @@
 ---
 title: Game Core engine
-tags: [game, core, engine, hex, rules, fog-of-war, view-version, ids, commands, events, serialization, schema-version, determinism]
+tags: [game, core, engine, hex, rules, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Game Core engine
 
-`Govern.Core` is the rules engine of Govern's 2-player, turn-based hex strategy game, a much-simplified Civilization. It is a pure library: the base class library only, no I/O, no clock, no `System.Random` and no project or package references. The Api uses it to validate every move authoritatively, and the Blazor client will use the same code to preview moves. Why it is built this way: [ADR 0004](../decisions/0004-game-engine.md). Delivery status: [game delivery plan](../plans/game-delivery.md).
+`Govern.Core` is the rules engine of Govern's 2-player, turn-based hex strategy game, a much-simplified Civilization. It is a pure library: the base class library only, no I/O, no clock, no `System.Random` and no project or package references. The Api uses it to validate every move authoritatively, and the Blazor client uses the same code to preview moves from its `PlayerView` ([view previews](#view-previews-for-the-client)). Why it is built this way: [ADR 0004](../decisions/0004-game-engine.md). Delivery status: [game delivery plan](../plans/game-delivery.md).
 
 ## Engine entry points (GameEngine)
 
@@ -16,6 +16,7 @@ updated: 2026-09-28
 | `GameFactory.Create(GameSetup)` | New game: plains map, each player gets a settler plus an adjacent soldier. Turn 1, first player, version 0 |
 | `GameEngine.Execute(state, actor, command)` | Validates and applies one `GameCommand`. Returns `CommandResult`: a `GameUpdate` (new `GameState` + ordered `GameEvent`s) or a `RuleViolation`. A rejected command never changes the state |
 | `GameEngine.ReachableTiles(state, viewer, unitId)` | Tiles one of the viewer's units can move to this turn, for UI highlights. Another player's unit always returns an empty list |
+| `GameEngine.ReachableTiles(view, unitId)`, `AttackTargets(view, unitId)`, `CheckFoundCity(view, unitId)` | What `Execute` would decide for a move, an attack or founding a city, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
 | `GameEngine.ViewFor(state, player)` | The fog-of-war `PlayerView`: the only shape a client may receive |
 | `GameSerializer` | The one JSON format for storage (jsonb), the Api and the client |
 
@@ -90,14 +91,30 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 
 - A player sees every tile within the sight radius of their units and cities.
 - Everything a player has ever seen accumulates in `Player.Explored`.
-- `PlayerView.Tiles` marks each tile as `Unexplored` (terrain hidden), `Explored` (terrain known) or `Visible`.
+- `PlayerView.Tiles` marks each tile as `Unexplored` (terrain hidden), `Explored` (terrain known) or `Visible`. A `TileView` carries no coordinates: tiles are row-major (index `row * Width + column`), so `PlayerView.CoordAt(index)` gives a tile's position and `TileAt(coord)` the tile at a position. That keeps every snapshot about a third smaller.
 - `PlayerView.Units` and `PlayerView.Cities` contain the viewer's own objects and enemy objects **on visible tiles only**.
+- **Enemy production is hidden:** cities are `CityView`s, and an enemy city's `Producing` and `ProductionProgress` are null. Its progress would tell the viewer when the next enemy unit appears. A change in enemy production therefore never changes the viewer's `Version`.
 - `PlayerView.Players` lists ids and statuses without the opponents' exploration.
-- **Rejections leak nothing:** a hidden unit on a move target gives `move.unreachable`, not `move.occupied`. Another player's unit or city id gives `*.not_found`. City names count only the founder's cities.
+- **Rejections leak nothing:** a hidden unit on a move target gives `move.unreachable`, not `move.occupied`. Another player's unit or city id gives `*.not_found`.
 - **Invariants that keep rejections leak-free:** unit sight ≥ movement / cheapest step, and settler sight ≥ `City.MinimumSpacing - 1`. `UnitCatalogTests` enforces both, so changing a stat that breaks them fails the build until the rules filter by visibility.
+- **Known residual leaks** (deferred, [game delivery plan](../plans/game-delivery.md#deferred-ideas)): a visible enemy unit's `MovementLeft` shows how far it moved or whether it attacked this turn, and a city's name (`City N`, counting the founder's cities at founding) shows how many cities its founder had then, hidden ones included.
 - `PlayerId` values are chosen by the host. Govern uses the per-game seat id (`GamePlayer.Id`), never a user id, so the view reveals no account ids ([games](games.md)).
 - Hosts must send clients `PlayerView`, never `GameState`.
 - Nothing in a view counts the opponent's activity: `PlayerView.Version` is a fingerprint of the view itself, unit and city ids are hashed random draws (see below), and `Units`/`Cities` are ordered by id rather than creation. Raw `GameEvent`s describe the full state and must be filtered by visibility before being sent to a player.
+
+## View previews for the client
+
+The client only holds a `PlayerView`, never the `GameState`, so the engine answers "what may I do now?" from a view:
+
+| Member | Answer | Equal to |
+|---|---|---|
+| `GameEngine.ReachableTiles(view, unitId)` | Tiles the unit can move to, row then column | the tiles a `MoveUnitCommand` would be accepted for |
+| `GameEngine.AttackTargets(view, unitId)` | Adjacent tiles with an enemy unit or city | the tiles an `AttackCommand` would be accepted for |
+| `GameEngine.CheckFoundCity(view, unitId)` | `null`, or the `RuleViolation` | what a `FoundCityCommand` would return |
+
+- All three give nothing (or the violation) when the game is over, it isn't the viewer's turn, or the unit isn't the viewer's, the same as the command guard.
+- **Why a view is enough:** unit sight ≥ movement, and settler sight ≥ city spacing − 1 (`UnitCatalogTests`). Every tile a unit could reach, attack or be blocked by is therefore visible, and the view shows every unit and city on it. Reachability over a view enters only visible tiles.
+- **They can't drift from the rules:** `AttackRule.Check` and `FoundCityRule.Check` are shared by the rule and the preview, as are the turn check (`CommandGuardRule.CheckTurn`) and the Dijkstra in `ReachabilityCalculator`. `GameEnginePreviewTests` compares each preview with `Execute` for every tile within 3 of the unit, over scenarios covering own and enemy blockers, an own city in reach, enemies just outside sight (where the view and the state differ), the map edge, no movement, the opponent's turn, an enemy unit id and a finished game. The map is plains only today, so a new terrain type adds its own parity scenarios.
 
 ## View version
 
@@ -135,8 +152,9 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - the RNG;
 - game setup;
 - every rule's happy path and errors;
-- fog of war;
-- JSON round-trips;
+- fog of war, including hidden enemy production and the tile index ↔ coordinate mapping;
+- the view previews' parity with `Execute` (`Engine/GameEnginePreviewTests`);
+- JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
 `Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests.

@@ -149,7 +149,7 @@ The rate limiter runs after authentication, so every game request has a user. Th
 
 ## Games JSON format
 
-`AddApi` registers `JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)` for HTTP JSON. Enums (`phase`, and every enum inside `view`) are therefore camelCase strings, and the `view` object is byte-for-byte the `GameSerializer` format that storage uses. Stream events serialize their data with the same HTTP JSON options.
+`AddApi` registers `JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)` for HTTP JSON. Enums (`phase`, and every enum inside `view`) are therefore camelCase strings, and the `view` object is byte-for-byte the `GameSerializer` format that storage uses. In `view`, `tiles` are row-major without coordinates (`{"visibility":"visible","terrain":"plains"}`; the position follows from the index and `width`), and an enemy city's `producing` and `productionProgress` are null ([fog of war](game-core.md#fog-of-war-playerview)). Stream events serialize their data with the same HTTP JSON options.
 
 ## Games tests
 
