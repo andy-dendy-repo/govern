@@ -20,7 +20,7 @@ Govern.Client/
 │   ├── Components/          components used only by this feature
 │   └── Clients/             typed Api clients: XxxClient.cs, flat
 ├── Helpers Models Enums Options Exceptions Extensions Attributes Services   (UF, free-form, usual suffixes)
-└── wwwroot/                 index.html, css/app.css, appsettings*.json, staticwebapp.config.json
+└── wwwroot/                 index.html, css/app.css, js/ (ES modules), appsettings*.json, staticwebapp.config.json
 ```
 
 | Where | Must |
@@ -45,7 +45,17 @@ Govern.Client/
 
 - **`HttpClient`** (anything in `System.Net.Http`) is used only by `Features/[Feature]/Clients/*Client`, `Auth/`, and the root `DependencyInjection` to register them. Components inject a typed client, never `HttpClient`; typed clients return results, not `HttpRequestException`. `AddClient` registers no bare `HttpClient`.
 - **`IJSRuntime`** is used only in `Auth/` and `Services/` (root or `Features/[Feature]/Services`).
-- **Tokens** are read and written only through `Auth/TokenStore.cs` (Plan 7). No other `.cs`, `.razor`, `wwwroot/**/*.js` or `index.html` may mention `localStorage`, even in a string passed to `IJSRuntime` (`ClientSecurityTests.ClientSources_TouchLocalStorageOnlyInTokenStore`). Everything else injects `TokenStore`.
+- **Tokens** are read and written only through `Auth/TokenStore.cs`. No other `.cs`, `.razor`, `wwwroot/**/*.js` or `index.html` may mention `localStorage`, not even in a comment or a string passed to `IJSRuntime` (`ClientSecurityTests.ClientSources_TouchLocalStorageOnlyInTokenStore`); write "browser storage" instead. Everything else goes through `AuthSession`.
+- **Typed clients** (`Features/[Feature]/Clients/XxxClient`) are registered with `AddApiClient<T>` in `DependencyInjection.cs` (`AddHttpClient<T>` + `AuthorizationMessageHandler`); `AddClient` ends with `RemoveAll<HttpClient>()` because `AddHttpClient` also registers a plain `HttpClient`.
+  - They return `ApiResult` / `ApiResult<T>` with an `ApiError` (root `Models/`), serialize with `ApiJson.Options`, and map `HttpRequestException`, `JsonException` and timeouts to `ApiError.Network`. Components show errors with `Components/ApiErrorAlert`.
+  - Requests the handler must leave untouched set `AuthorizationMessageHandler.SendAsIs`: sign-up and sign-in (no token; their 401 means wrong credentials) and sign-out (it carries the tokens `AuthSession.SignOutAsync` chose). The handler adds the bearer only for the Api origin (`ApiOptions.BaseUrl`) and buffers the content so a retry can resend it.
+- **Auth plumbing** (`Auth/`): `AuthorizationMessageHandler` is created by `IHttpClientFactory` in its own scope, so it and everything it uses (`AuthSession`, `TokenStore`, `JwtAuthenticationStateProvider`, `ICrossTabLock`, `TimeProvider`) are singletons. The refresh call uses the named client `AuthSession.HttpClientName`, which has no auth handler. Every change to the stored session (refresh, sign-in, sign-out) runs in `AuthSession` under the in-tab gate and the cross-tab Web Lock (`wwwroot/js/auth-lock.js`), because tabs share one single-use refresh token and a rotated one presented again (to refresh **or to sign out**) makes the Api revoke every session. So:
+  - Never read the refresh token and send it yourself; anything that sends it goes through `AuthSession` (sign-out: `SignOutAsync`, which refreshes first when the token is due).
+  - Session work is not cancelled once started (`CancellationToken.None` inside, `WaitAsync(ct)` outside): a dropped refresh response would leave a rotated token in storage.
+  - When the lock can't be taken (`CrossTabLockUnavailableException`), refresh gives up for now; after an unavailable refresh a tab waits `AuthSession.UnavailableBackoff` (30 s) before calling the Api again.
+  - A refresh stores its tokens only if the stored session is still the one it refreshed (compare-and-set). Only a change of user notifies `AuthenticationStateChanged` (sign-in, sign-out, or another tab's change noticed by `NotifyIfUserChanged` on the next Api call), and always with a completed task; a pending one makes `AuthorizeRouteView` re-create the current page.
+- **Post-login redirects** go through `Auth/ReturnUrl.Sanitize` (local paths only). A URL fragment is carried as a fragment (`Components/RedirectToLogin`, `Features/Users/Helpers/AuthLinks`), never moved into a path or query, so it never reaches a server.
+- **JS modules** live in `wwwroot/js/` and are imported through `IJSRuntime` `import` (from `Auth/` or `Services/`). They are scanned for eval like the C# sources.
 
 ## Configuration
 

@@ -1,3 +1,12 @@
 <RadzenPanelMenu>
-    <RadzenPanelMenuItem Text="Home" Icon="home" Path="" />
+    <RadzenPanelMenuItem Text="Home" Icon="home" Path=""/>
+    <AuthorizeView>
+        <Authorized>
+            <RadzenPanelMenuItem Text="Profile" Icon="person" Path="profile"/>
+        </Authorized>
+        <NotAuthorized>
+            <RadzenPanelMenuItem Text="Sign in" Icon="login" Path="login"/>
+            <RadzenPanelMenuItem Text="Register" Icon="person_add" Path="register"/>
+        </NotAuthorized>
+    </AuthorizeView>
 </RadzenPanelMenu>

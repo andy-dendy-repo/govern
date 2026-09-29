@@ -2,7 +2,7 @@
 title: Template solution roadmap (one User entity)
 tags: [plan, roadmap, template, users, auth, persistence, infra, ci]
 code: [src, tests, infra, .github/workflows]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Plan: grow the empty template into a working solution with one `User` entity
@@ -19,7 +19,7 @@ updated: 2026-09-27
 | 6 Users use cases | Done: sign-up, sign-in, refresh with rotation, current user |
 | 7 Api | Done |
 | 8 Integration test infrastructure | Done |
-| 9 Blazor client | **In progress.** Foundation done: CFT architecture, Radzen shell, `Api:BaseUrl`, CSP and security headers on the Static Web App, bUnit tests, arch rules ([client](../features/client.md)). Auth and pages remain ([delivery plan](blazor-client-delivery.md), Plan 7) |
+| 9 Blazor client | **Done.** CFT architecture, Radzen shell, `Api:BaseUrl`, CSP and security headers on the Static Web App, bUnit tests, arch rules, and authentication with login, register and profile pages ([client](../features/client.md)). The game pages follow in [game delivery](game-delivery.md) |
 | 10 Container | Done (chiseled Noble image) |
 | 11 Bicep | Done; not yet deployed (see [deployment](../operations/deployment.md)) |
 | 12 GitHub workflows | Done; not yet run (no remote yet) |
