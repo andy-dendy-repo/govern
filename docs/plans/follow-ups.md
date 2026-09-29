@@ -7,20 +7,19 @@ updated: 2026-09-28
 
 # Follow-ups backlog
 
-Open work found by the first code review and security audit of the template Api (`feature/template-api`, 2026-09-27), plus the deferred Blazor client. Run each item through `/develop-feature`: it gets its own plan in `.claude/rules/planning.md` format, then a branch from `stage` and a PR. When an item is done, remove it here and update the related docs.
+Open work found by the first code review and security audit of the template Api (`feature/template-api`, 2026-09-27). Run each item through `/develop-feature`: it gets its own plan in `.claude/rules/planning.md` format, then a branch from `stage` and a PR. When an item is done, remove it here and update the related docs.
 
 Sign-out, refresh token cleanup, the transactional sign-up email and email verification (formerly #1, #4, #6 and #7) are planned in [session-and-email-verification](session-and-email-verification.md). Item numbers are kept so existing references stay valid. #11 (quiet first migration log) was dropped as not needed: the one-off EF Core 20102 error on a brand-new database is accepted.
 
 The remaining items are planned, in delivery order, in [follow-ups-delivery](follow-ups-delivery.md). Done:
 - #12 stricter email validation and #3 per-account sign-in limiter: see the email rules and sign-in throttling in [users](../features/users.md).
 - #8 host filtering and health check split, and #9 Key Vault purge protection (enabled): see [deployment](../operations/deployment.md#health-checks-and-host-filtering).
-- #10 client foundation (Radzen, CFT architecture, CSP gate, bUnit): see [client](../features/client.md). Authentication and pages remain.
+- #10 Blazor client: foundation (Radzen, CFT architecture, CSP gate, bUnit) and authentication with the login, register and profile pages, delivered through `gamecore` ahead of game Plan 4: see [client](../features/client.md).
 
 | # | Priority | Item | Size |
 |---|---|---|---|
 | 2 | High | [Least-privilege database access](#2-least-privilege-database-access) | M |
 | 5 | Medium | [Monitoring and alerts](#5-monitoring-and-alerts) | M |
-| 10 | Next feature | [Blazor client](#10-blazor-client): authentication and pages (foundation done) | M |
 
 ## 2. Least-privilege database access
 
@@ -41,14 +40,3 @@ The remaining items are planned, in delivery order, in [follow-ups-delivery](fol
   - Optionally OpenTelemetry to Application Insights.
 - **Done:** a database storage alert (`infra/modules/alerts.bicep`, action group emailing the `ALERT_EMAIL` variable), added with game plan 3c; the log-based alerts above can reuse its action group.
 - **Tests:** `az bicep build`; a manual check after deploy.
-
-## 10. Blazor client
-
-- **Why:** roadmap step 9 was deferred so the Api could come first.
-- **Approach:** see [roadmap step 9](template-solution-roadmap.md) and [ADR 0002](../decisions/0002-auth-tokens.md):
-  - Radzen UI
-  - tokens in localStorage
-  - an `AuthorizationMessageHandler`, with one refresh on 401
-  - login, register and profile pages
-- **Gate (done):** the strict CSP and security headers on the Static Web App, the client architecture, rules and tests are in place ([client](../features/client.md)).
-- **Remaining:** authentication and pages ([blazor-client-delivery](blazor-client-delivery.md), Plan 7).

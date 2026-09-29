@@ -1,0 +1,54 @@
+@page "/profile"
+@attribute [Authorize]
+@using Govern.Client.Features.Users.Clients
+@using Govern.Client.Features.Users.Models
+@inject UsersClient Users
+@inject NavigationManager Navigation
+
+<PageTitle>Profile - Govern</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">Profile</RadzenText>
+
+<ApiErrorAlert Error="@_error"/>
+
+@if (_user is not null)
+{
+    <RadzenStack Gap="0.5rem" class="profile">
+        <RadzenText TextStyle="TextStyle.Body1" class="email">@_user.Email</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body2" class="member-since">Member since @_user.CreatedAt.ToLocalTime().ToString("d", null)</RadzenText>
+    </RadzenStack>
+}
+
+<RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" class="rz-mt-4">
+    <SignOutButton/>
+    <RadzenButton Text="Sign out everywhere" Icon="devices" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                  Click="@SignOutEverywhereAsync" IsBusy="@_busy" class="sign-out-everywhere"/>
+</RadzenStack>
+
+@code {
+    private GetCurrentUserResponse? _user;
+    private ApiError? _error;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Users.GetCurrentUserAsync(CancellationToken.None);
+        _user = result.Value;
+        _error = result.Error;
+    }
+
+    private async Task SignOutEverywhereAsync()
+    {
+        _busy = true;
+        _error = null;
+        var result = await Users.SignOutEverywhereAsync(CancellationToken.None);
+        _busy = false;
+        if (result.IsSuccess)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        _error = result.Error;
+    }
+}

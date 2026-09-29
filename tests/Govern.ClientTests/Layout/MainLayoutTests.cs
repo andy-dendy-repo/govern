@@ -31,4 +31,29 @@ public class MainLayoutTests : ClientTestContext
 
         cut.Find(".rz-sidebar").ClassList.ShouldContain("rz-sidebar-collapsed");
     }
+
+    [Fact]
+    public void Render_Anonymous_OffersSignInAndRegister()
+    {
+        var cut = Render<MainLayout>();
+
+        cut.Find(".rz-header .sign-in").TextContent.ShouldContain("Sign in");
+        cut.FindAll(".sign-out").ShouldBeEmpty();
+        NavItems(cut).ShouldBe(["Home", "Sign in", "Register"]);
+    }
+
+    [Fact]
+    public void Render_SignedIn_ShowsTheUserSignOutAndProfile()
+    {
+        SignIn("player@example.com");
+
+        var cut = Render<MainLayout>();
+
+        cut.Find(".rz-header .user-name").TextContent.ShouldBe("player@example.com");
+        cut.Find(".rz-header .sign-out").ShouldNotBeNull();
+        NavItems(cut).ShouldBe(["Home", "Profile"]);
+    }
+
+    private static string[] NavItems(IRenderedComponent<MainLayout> cut) =>
+        [.. cut.FindAll(".rz-sidebar .rz-navigation-item-text").Select(static item => item.TextContent.Trim())];
 }
