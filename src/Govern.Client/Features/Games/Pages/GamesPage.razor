@@ -1,0 +1,37 @@
+@page "/games"
+@attribute [Authorize]
+@using Govern.Client.Features.Games.Models
+
+<PageTitle>My games - Govern</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">My games</RadzenText>
+
+<ApiErrorAlert Error="@_error"/>
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" class="rz-mb-4">
+    <RadzenButton Text="New game" Icon="add" IsBusy="@_creating" Click="@CreateAsync" class="new-game"/>
+    <RadzenLink Path="join" Text="Join with a code" class="join-link"/>
+</RadzenStack>
+
+<RadzenDataGrid TItem="MyGameItem" Data="@_items" Count="@_total" LoadData="@LoadAsync" IsLoading="@_loading"
+                AllowPaging="true" PageSize="@PageSize" EmptyText="No games yet. Create one, or join with a code." class="games">
+    <Columns>
+        <RadzenDataGridColumn TItem="MyGameItem" Title="Game">
+            <Template Context="game">
+                <RadzenLink Path="@($"games/{game.Id}")" Text="@PhaseText(game.Phase)" class="open-game"/>
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="MyGameItem" Title="Players">
+            <Template Context="game">@game.PlayerCount/2</Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="MyGameItem" Title="Role">
+            <Template Context="game">@(game.IsCreator ? "Created" : "Joined")</Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="MyGameItem" Title="Turn">
+            <Template Context="game">@(game.IsYourTurn ? "Your turn" : string.Empty)</Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="MyGameItem" Title="Last activity">
+            <Template Context="game">@game.ActivityAt.ToLocalTime().ToString("g", null)</Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>

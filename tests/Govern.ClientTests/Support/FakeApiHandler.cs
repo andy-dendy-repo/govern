@@ -52,7 +52,7 @@ public sealed class FakeApiHandler : HttpMessageHandler
     {
         var path = request.RequestUri!.PathAndQuery;
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-        _requests.Enqueue(new RecordedRequest(request.Method, path, request.Headers.Authorization?.ToString(), body));
+        _requests.Enqueue(new RecordedRequest(request.Method, path, request.Headers.Authorization?.ToString(), body, request.Headers.Accept.ToString()));
 
         if (!_routes.TryGetValue(Key(request.Method, path), out var queue) || !TryNext(queue, out var respond))
         {
@@ -77,4 +77,4 @@ public sealed class FakeApiHandler : HttpMessageHandler
 }
 
 /// <summary>A request the fake Api received.</summary>
-public sealed record RecordedRequest(HttpMethod Method, string Path, string? Authorization, string? Body);
+public sealed record RecordedRequest(HttpMethod Method, string Path, string? Authorization, string? Body, string Accept = "");

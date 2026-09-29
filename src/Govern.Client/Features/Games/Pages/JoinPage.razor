@@ -1,0 +1,33 @@
+@page "/join"
+@attribute [Authorize]
+@using Govern.Client.Features.Games.Helpers
+@using Govern.Client.Features.Games.Models
+
+<PageTitle>Join a game - Govern</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">Join a game</RadzenText>
+
+@if (_invalidLink)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="invalid-link">
+        This invite link is not valid. Paste the link or code again.
+    </RadzenAlert>
+}
+
+@if (!string.IsNullOrEmpty(_form.InviteCode) && _error is null && !_joining)
+{
+    <RadzenText TextStyle="TextStyle.Body1" class="invited">You were invited to a game. Join to take the free seat.</RadzenText>
+}
+
+<ApiErrorAlert Error="@_error"/>
+
+<RadzenTemplateForm TItem="JoinGameRequest" Data="@_form" Submit="@SubmitAsync">
+    <RadzenStack Gap="1rem" Style="max-width: 32rem">
+        <RadzenFormField Text="Invite link or code">
+            <RadzenTextBox Name="InviteCode" @bind-Value="_form.InviteCode" autocomplete="off"/>
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="InviteCode" Text="Paste the invite link or code."/>
+        <RadzenCustomValidator Component="InviteCode" Validator="@IsLinkOrCode" Text="This is not an invite link or code."/>
+        <RadzenButton ButtonType="ButtonType.Submit" Text="Join" IsBusy="@_joining" class="join"/>
+    </RadzenStack>
+</RadzenTemplateForm>

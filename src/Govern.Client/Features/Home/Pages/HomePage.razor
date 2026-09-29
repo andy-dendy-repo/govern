@@ -3,4 +3,19 @@
 <PageTitle>Govern</PageTitle>
 
 <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">Govern</RadzenText>
-<RadzenText TextStyle="TextStyle.Body1">Welcome to Govern.</RadzenText>
+<RadzenText TextStyle="TextStyle.Body1">A two-player, turn-based strategy game on a hex map.</RadzenText>
+
+<AuthorizeView>
+    <Authorized>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" class="rz-mt-4 home-links">
+            <RadzenLink Path="games" Text="My games"/>
+            <RadzenLink Path="join" Text="Join a game"/>
+        </RadzenStack>
+    </Authorized>
+    <NotAuthorized>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" class="rz-mt-4 home-links">
+            <RadzenLink Path="login" Text="Sign in"/>
+            <RadzenLink Path="register" Text="Register"/>
+        </RadzenStack>
+    </NotAuthorized>
+</AuthorizeView>

@@ -45,8 +45,10 @@ public partial class RegisterPage
 
         var signIn = await Users.SignInAsync(new SignInRequest { Email = _form.Email, Password = _form.Password }, CancellationToken.None);
         _busy = false;
-        Navigation.NavigateTo(signIn.IsSuccess
-            ? AuthLinks.Destination(ReturnPath, Navigation)
-            : AuthLinks.WithReturn("login?registered=true", ReturnPath, Navigation));
+        Navigation.NavigateTo(
+            signIn.IsSuccess
+                ? AuthLinks.Destination(ReturnPath, Navigation)
+                : AuthLinks.WithReturn("login?registered=true", ReturnPath, Navigation),
+            replace: true);
     }
 }

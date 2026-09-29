@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Govern.Client.Auth;
+using Govern.Client.Extensions;
 using Govern.Client.Features.Users.Models;
 using Govern.Client.Models;
 
@@ -19,7 +19,7 @@ public sealed class UsersClient(HttpClient http, AuthSession session)
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The new account, or the error (e.g. 409 <c>user.email_taken</c>, 400 with field errors).</returns>
     public Task<ApiResult<SignUpResponse>> SignUpAsync(SignUpRequest request, CancellationToken cancellationToken) =>
-        SendAsync<SignUpResponse>(SentAsIs(HttpMethod.Post, "api/users/sign-up", request), cancellationToken);
+        http.SendForResultAsync<SignUpResponse>(SentAsIs(HttpMethod.Post, "api/users/sign-up", request), cancellationToken);
 
     /// <summary>Signs in and stores the session.</summary>
     /// <param name="request">The email and password.</param>
@@ -27,7 +27,7 @@ public sealed class UsersClient(HttpClient http, AuthSession session)
     /// <returns>Success, or the error (e.g. 401 <c>user.invalid_credentials</c>, 429).</returns>
     public async Task<ApiResult> SignInAsync(SignInRequest request, CancellationToken cancellationToken)
     {
-        var result = await SendAsync<SignInResponse>(SentAsIs(HttpMethod.Post, "api/users/sign-in", request), cancellationToken);
+        var result = await http.SendForResultAsync<SignInResponse>(SentAsIs(HttpMethod.Post, "api/users/sign-in", request), cancellationToken);
         if (!result.IsSuccess)
         {
             return ApiResult.Fail(result.Error);
@@ -49,7 +49,7 @@ public sealed class UsersClient(HttpClient http, AuthSession session)
     /// <returns>The Api call's result.</returns>
     public Task<ApiResult> SignOutAsync(CancellationToken cancellationToken) =>
         session.SignOutAsync(
-            (accessToken, refreshToken) => SendAsync(SignOutRequestMessage(accessToken, refreshToken), CancellationToken.None),
+            (accessToken, refreshToken) => http.SendForResultAsync(SignOutRequestMessage(accessToken, refreshToken), CancellationToken.None),
             cancellationToken);
 
     /// <summary>
@@ -60,7 +60,7 @@ public sealed class UsersClient(HttpClient http, AuthSession session)
     /// <returns>The Api call's result.</returns>
     public async Task<ApiResult> SignOutEverywhereAsync(CancellationToken cancellationToken)
     {
-        var result = await SendAsync(new HttpRequestMessage(HttpMethod.Post, "api/users/sign-out-everywhere"), cancellationToken);
+        var result = await http.SendForResultAsync(new HttpRequestMessage(HttpMethod.Post, "api/users/sign-out-everywhere"), cancellationToken);
         if (result.IsSuccess || result.Error.Status == (int)HttpStatusCode.Unauthorized)
         {
             await session.EndAsync(CancellationToken.None);
@@ -73,7 +73,7 @@ public sealed class UsersClient(HttpClient http, AuthSession session)
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The user, or the error.</returns>
     public Task<ApiResult<GetCurrentUserResponse>> GetCurrentUserAsync(CancellationToken cancellationToken) =>
-        SendAsync<GetCurrentUserResponse>(new HttpRequestMessage(HttpMethod.Get, "api/users/me"), cancellationToken);
+        http.SendForResultAsync<GetCurrentUserResponse>(new HttpRequestMessage(HttpMethod.Get, "api/users/me"), cancellationToken);
 
     private static HttpRequestMessage Json<TBody>(HttpMethod method, string path, TBody body) =>
         new(method, path) { Content = JsonContent.Create(body, options: ApiJson.Options) };
@@ -93,54 +93,4 @@ public sealed class UsersClient(HttpClient http, AuthSession session)
         request.Options.Set(AuthorizationMessageHandler.SendAsIs, true);
         return request;
     }
-
-    private async Task<ApiResult<T>> SendAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        using (request)
-        {
-            try
-            {
-                using var response = await http.SendAsync(request, cancellationToken);
-                if (!response.IsSuccessStatusCode)
-                {
-                    return ApiResult.Fail<T>(await ReadErrorAsync(response, cancellationToken));
-                }
-
-                return await response.Content.ReadFromJsonAsync<T>(ApiJson.Options, cancellationToken) is { } value
-                    ? ApiResult.Ok(value)
-                    : ApiResult.Fail<T>(ApiError.FromStatus(response.StatusCode));
-            }
-            catch (Exception exception) when (IsNetworkFailure(exception, cancellationToken))
-            {
-                return ApiResult.Fail<T>(ApiError.Network);
-            }
-        }
-    }
-
-    private async Task<ApiResult> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        using (request)
-        {
-            try
-            {
-                using var response = await http.SendAsync(request, cancellationToken);
-                return response.IsSuccessStatusCode ? ApiResult.Ok() : ApiResult.Fail(await ReadErrorAsync(response, cancellationToken));
-            }
-            catch (Exception exception) when (IsNetworkFailure(exception, cancellationToken))
-            {
-                return ApiResult.Fail(ApiError.Network);
-            }
-        }
-    }
-
-    private static async Task<ApiError> ReadErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        await using var body = await response.Content.ReadAsStreamAsync(cancellationToken);
-        return await ApiError.ReadAsync(response.StatusCode, body, cancellationToken);
-    }
-
-    // A timeout surfaces as TaskCanceledException without the caller's token being cancelled.
-    private static bool IsNetworkFailure(Exception exception, CancellationToken cancellationToken) =>
-        exception is HttpRequestException or JsonException
-        || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested);
 }

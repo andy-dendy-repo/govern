@@ -3,6 +3,6 @@
 - [Convention sweep gaps](feedback_convention_sweep.md) — rule changes miss .claude/agents, skills (develop-feature/verify) and rule-file examples
 - [Value-object normalisation](project_value_object_normalisation.md) — Email NFC/lower idempotence bug, converter re-validation, raw vs normalised length
 - [In-process state checks](project_in_process_state.md) — limiter TOCTOU across PBKDF2, MemoryCache SizeLimit evicts LRU (not fail-open), Reset race
-- [Client checks](project_client_checks.md) — Blazor client: verified WASM env/boot facts, configure-client.sh, arch-rule exemptions, Plan 7 traps
+- [Client checks](project_client_checks.md) — Blazor client: verified WASM env/boot facts, configure-client.sh, arch-rule exemptions, Plan 7 traps, Plan 4 page-lifecycle/SSE traps
 - [App Service hosting checks](project_app_service_hosting.md) — Health check pings default domain, release deploys before API_ORIGIN is validated
 - [Game core checks](project_game_core_checks.md) — fog oracles, STJ; Plans 2/3a/3b checks; 3c: FK 23503 on insert racing a parent delete

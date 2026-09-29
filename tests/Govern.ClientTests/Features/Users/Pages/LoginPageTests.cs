@@ -1,4 +1,5 @@
 using System.Net;
+using Bunit.TestDoubles;
 using Govern.Client.Features.Users.Pages;
 using Govern.ClientTests.Support;
 using Microsoft.AspNetCore.Components;
@@ -63,6 +64,21 @@ public class LoginPageTests : ClientTestContext
 
         cut.WaitForAssertion(() => Navigation.Uri.ShouldBe(expected));
         StoredTokens().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Submit_ValidCredentials_ReplacesTheLoginEntryThatCarriedTheFragment()
+    {
+        Navigation.NavigateTo("login?returnUrl=%2Fjoin#invite-code");
+        Api.On(HttpMethod.Post, "/api/users/sign-in", () => FakeApiHandler.Json(TestTokens.Pair("player@example.com", Time.GetUtcNow())));
+        var cut = Render<LoginPage>();
+
+        FillAndSubmit(cut);
+
+        cut.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/join#invite-code"));
+        var history = ((BunitNavigationManager)Navigation).History;
+        history.Select(static entry => entry.Uri).ShouldBe(["/join#invite-code"], "the login entry is replaced, so Back skips it");
+        history.Single().Options.ReplaceHistoryEntry.ShouldBeTrue();
     }
 
     [Fact]

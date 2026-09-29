@@ -1,6 +1,7 @@
 using System.Net;
 using Govern.Client.Features.Users.Pages;
 using Govern.ClientTests.Support;
+using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,7 +9,7 @@ namespace Govern.ClientTests.Features.Users.Pages;
 
 public class RegisterPageTests : ClientTestContext
 {
-    private NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
+    private BunitNavigationManager Navigation => (BunitNavigationManager)Services.GetRequiredService<NavigationManager>();
 
     [Theory]
     [InlineData("not-an-email", "password1", "password1", "Enter a valid email address.")]
@@ -49,6 +50,7 @@ public class RegisterPageTests : ClientTestContext
         cut.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/profile"));
         Api.Requests.Select(static request => request.Path).ShouldBe(["/api/users/sign-up", "/api/users/sign-in"]);
         StoredTokens().ShouldNotBeNull();
+        Navigation.History.Single().Options.ReplaceHistoryEntry.ShouldBeTrue("Back must not return to the register form");
     }
 
     [Fact]
@@ -62,6 +64,7 @@ public class RegisterPageTests : ClientTestContext
         FillAndSubmit(cut);
 
         cut.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/login?registered=true&returnUrl=%2Fjoin#invite-code"));
+        Navigation.History.Single().Options.ReplaceHistoryEntry.ShouldBeTrue("the register entry carried the invite code");
     }
 
     private static void FillAndSubmit(IRenderedComponent<RegisterPage> cut, string email = "new@example.com",

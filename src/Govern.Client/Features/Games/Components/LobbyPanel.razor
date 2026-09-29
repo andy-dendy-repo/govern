@@ -1,0 +1,31 @@
+@* Lobby actions: the creator starts (once both seats are taken) or cancels; the joiner leaves. Cancel and leave ask first. *@
+@using Govern.Client.Features.Games.Models
+
+<ApiErrorAlert Error="@_error"/>
+
+<RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" Wrap="FlexWrap.Wrap" class="lobby-actions">
+    @if (_confirming is null)
+    {
+        @if (Game.IsCreator)
+        {
+            <RadzenButton Text="Start game" Icon="play_arrow" Disabled="@(Game.Players.Count < 2)" IsBusy="@_busy"
+                          Click="@StartAsync" class="start"/>
+            <RadzenButton Text="Cancel game" Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined"
+                          Disabled="@_busy" Click="@(() => Confirm(LobbyAction.Cancel))" class="cancel"/>
+        }
+        else
+        {
+            <RadzenButton Text="Leave game" Icon="logout" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined"
+                          Disabled="@_busy" Click="@(() => Confirm(LobbyAction.Leave))" class="leave"/>
+        }
+    }
+    else
+    {
+        <RadzenText TextStyle="TextStyle.Body1" class="confirm-text">
+            @(_confirming == LobbyAction.Cancel ? "Cancel this game for both players?" : "Leave this game?")
+        </RadzenText>
+        <RadzenButton Text="@(_confirming == LobbyAction.Cancel ? "Yes, cancel it" : "Yes, leave")" ButtonStyle="ButtonStyle.Danger"
+                      IsBusy="@_busy" Click="@ConfirmedAsync" class="confirm"/>
+        <RadzenButton Text="No" ButtonStyle="ButtonStyle.Light" Disabled="@_busy" Click="@(() => _confirming = null)" class="dismiss"/>
+    }
+</RadzenStack>
