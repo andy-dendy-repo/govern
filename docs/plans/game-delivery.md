@@ -2,7 +2,7 @@
 title: Game delivery plan
 tags: [plan, game, core, lobby, sse, client, roadmap]
 code: [src/Govern.Core]
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Game delivery plan
@@ -18,8 +18,8 @@ Govern is being turned into a 2-player, turn-based hex strategy game. Work is sp
 | 3a. Commands and throttling | `POST /api/games/{id}/commands` with `expectedVersion` (409 `game.stale_version`), actor = the caller's `GamePlayer.Id` (`Game.Execute`), `RuleViolation` → 409 with the same code, denormalised `current_player_id` column and `isYourTurn` in the list, finished phase from the engine. Per-user `games` and `game-commands` rate limits, a 4 KiB command body read with `GameSerializer`, a cap of 20 unfinished games per user (mitigates the Plan 2 Medium audit finding; a rolling quota and lobby leave/expiry remain, see [Plan 2 follow-ups](game-lobby.md)) | Done ([games](../features/games.md#sending-commands)) |
 | 3b. Live updates | `GET /api/games/{id}/stream` (SSE): `game` snapshots (`GetGameResponse`) pushed only when the caller's view changes, `heartbeat` after 20 s of silence, end on finish and at token expiry; in-process change hub fed by `GameChangedEvent`; per-user `game-streams` limit (4 open, 30 per minute). Activity leak fixed: `PlayerView.Version` is an opaque per-player fingerprint and unit/city ids are drawn from the game RNG (schema v2). Engine events stay server-side | Done ([games](../features/games.md#live-game-updates-sse), [ADR 0005](../decisions/0005-live-updates.md)) |
 | 3c. Lobby lifecycle and quota | `POST /api/games/{id}/leave` (joiner) and `DELETE /api/games/{id}` (creator cancels, the lobby is deleted); a background sweep deletes lobbies after 7 days without activity; a rolling quota of 30 seats per user per 24 hours (finished games included); a database storage alert (`ALERT_EMAIL`); the game list sorts by `activityAt`, which moves only on changes both players see. Deleted games now notify their streams. Resolves the Plan 2/3a/3b follow-ups | Done ([games](../features/games.md#game-lifecycle-gamephase)) |
-| 4. Client lobby | Needs the client sign-in, delivered first through `gamecore` as client Plan 7 ([client authentication](../features/client.md#client-authentication-sign-in-and-token-refresh)). Create/join pages, invite link, leave/cancel, SSE client (`HttpClient` streaming with the bearer header + `SseParser`, reconnect with backoff and a fresh token; every connection starts with the current snapshot, so no gap detection) | Next |
-| 5. Client board | SVG hex board component (pan/zoom), unit/city icons, selection, move highlights (add a `PlayerView`-based reachability overload to Core: the client only has the view), end turn, game-over screen | Planned |
+| 4. Client lobby | Built on the client sign-in, delivered first through `gamecore` as client Plan 7 ([client authentication](../features/client.md#client-authentication-sign-in-and-token-refresh)). `/games` (paged list, new game), `/join` (invite link `/join#<code>`: the code only in the fragment and the POST body, dropped from the URL at once; the link fills the form and joining takes a click; or a pasted link or code), `/games/{id}` (players, invite share with copy, start, cancel, leave, status once started). `GamesClient.WatchAsync` (`HttpClient` streaming with the bearer header + `SseParser`) and `GameWatchService` (reconnect with backoff and a fresh token, 50 s liveness; every connection starts with the current snapshot, so no gap detection). The client ignores `view` until Plan 5 | Done ([client game lobby](../features/client.md#client-game-lobby-games-invite-links-live-updates)) |
+| 5. Client board | SVG hex board component (pan/zoom), unit/city icons, selection, move highlights (add a `PlayerView`-based reachability overload to Core: the client only has the view), end turn, game-over screen | Next |
 
 ## Deferred ideas
 - Builder unit and terrain improvements; more terrain types (hills, forest, water).

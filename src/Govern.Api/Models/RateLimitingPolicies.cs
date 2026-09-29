@@ -16,7 +16,7 @@ public static class RateLimitingPolicies
     public const string Health = "health";
 
     /// <summary>
-    /// Fixed window per signed-in user shared by the game-creating endpoints (create, join, start).
+    /// Fixed window per signed-in user shared by the lobby endpoints (create, join, start, leave, cancel).
     /// </summary>
     public const string Games = "games";
 
