@@ -4,8 +4,9 @@ using Govern.Core.Units;
 
 namespace Govern.UnitTests.Core.Units;
 
-// Fog-of-war invariants: pathfinding and city spacing read the full state, so rejections only stay leak-free while
-// nothing a unit can reach or be blocked by lies beyond what it sees. Changing a stat that breaks these needs a rule change.
+// Fog-of-war invariants: pathfinding and city spacing read the full state, so rejections only stay leak-free (and the client's
+// view-based previews, GameEngine.ReachableTiles/AttackTargets/CheckFoundCity over a PlayerView, only stay exact) while nothing
+// a unit can reach or be blocked by lies beyond what it sees. Changing a stat that breaks these needs a rule change.
 public class UnitCatalogTests
 {
     public static TheoryData<UnitType> AllUnitTypes => new(Enum.GetValues<UnitType>());

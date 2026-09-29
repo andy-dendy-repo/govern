@@ -11,19 +11,23 @@ namespace Govern.Core.Engine;
 /// </summary>
 internal static class CommandGuardRule
 {
-    public static RuleViolation? CheckTurn(GameState state, PlayerId actor, GameCommand command)
+    public static RuleViolation? CheckTurn(GameState state, PlayerId actor, GameCommand command) =>
+        CheckTurn(state.Status, state.FindPlayer(actor)?.Status, command is ResignCommand || state.CurrentPlayer == actor);
+
+    // Shared with the view-based previews (ViewPreviewCalculator), so both check the turn the same way.
+    public static RuleViolation? CheckTurn(GameStatus status, PlayerStatus? actorStatus, bool mayActNow)
     {
-        if (state.Status == GameStatus.Finished)
+        if (status == GameStatus.Finished)
         {
             return RuleViolations.GameFinished;
         }
 
-        if (state.FindPlayer(actor) is not { Status: PlayerStatus.Active })
+        if (actorStatus is not PlayerStatus.Active)
         {
             return RuleViolations.NotAPlayer;
         }
 
-        return command is not ResignCommand && state.CurrentPlayer != actor ? RuleViolations.NotYourTurn : null;
+        return mayActNow ? null : RuleViolations.NotYourTurn;
     }
 
     public static bool TryGetOwnedUnit(
