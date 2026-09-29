@@ -2,7 +2,7 @@
 title: Games feature (lobby, invite codes, leave, cancel, lobby expiry, start, commands, live updates, player views, game list, limits, quota)
 tags: [games, game, lobby, invite, invite-code, leave, cancel, expiry, quota, activity-at, start, commands, expected-version, live-updates, sse, server-sent-events, stream, heartbeat, rate-limit, player-view, fog-of-war, jsonb, concurrency, privacy]
 code: [src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Api/Models/GameCommandBody.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Infrastructure/Background/ExpiredLobbyCleanupService.cs, src/Govern.Domain/Entities/Game.cs, src/Govern.Domain/Entities/GamePlayer.cs, src/Govern.Domain/ValueObjects/InviteCode.cs, src/Govern.Infrastructure/Persistence/Configurations/GameConfiguration.cs]
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Games feature
@@ -71,6 +71,7 @@ The Core rule-violation codes (`move.unreachable`, `game.not_your_turn`, `game.f
 - The code is a bearer secret: anyone who has it can take the free seat. That is acceptable for 2 players, because the code is unguessable (128 bits) and the creator sees who joined.
 - The code is sent in the request **body** of `POST /api/games/join`, so it never appears in URLs, access logs or `Referer` headers. No log line contains it.
 - Only the creator can read the code again through `GET /api/games/{id}`, and only while in the lobby. The joined player never gets it back, and nobody sees it once the game starts.
+- **Invite link:** the client shares `https://<client>/join#<code>`. The code sits in the URL **fragment**, which browsers never send to a server (not to the Static Web App, not in `Referer`). The join page removes the fragment from the address bar and the Back history at once, fills in its form, and posts the code in the body only when the player clicks Join (a link alone never joins). The browser's global history still records the visited link. See [client game lobby](client.md#invite-link-policy-code-only-in-the-fragment-or-the-body).
 
 ## Sending commands
 

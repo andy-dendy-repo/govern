@@ -38,7 +38,8 @@ public partial class ClientContractTests
 
         var violations = pairs.SelectMany(static pair => Mismatches(pair.Client, pair.Server)).ToList();
 
-        pairs.ShouldNotBeEmpty("the client has DTOs named after Application contracts (e.g. SignInRequest)");
+        pairs.Select(static pair => pair.Client.Name).ShouldContain("SignInRequest", "the Users DTOs are checked");
+        pairs.Select(static pair => pair.Client.Name).ShouldContain("GetGameResponse", "the Games DTOs are checked");
         violations.ShouldBeEmpty("a client DTO must mirror the Application contract it is named after (drifted DTOs break silently at runtime)");
     }
 

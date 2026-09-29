@@ -12,4 +12,25 @@ public class HomePageTests : ClientTestContext
 
         cut.Find("h1").TextContent.ShouldBe("Govern");
     }
+
+    [Fact]
+    public void Render_Anonymous_LinksToSignInAndRegister()
+    {
+        var cut = Render<HomePage>();
+
+        Links(cut).ShouldBe(["login", "register"]);
+    }
+
+    [Fact]
+    public void Render_SignedIn_LinksToGamesAndJoin()
+    {
+        SignIn();
+
+        var cut = Render<HomePage>();
+
+        Links(cut).ShouldBe(["games", "join"]);
+    }
+
+    private static string?[] Links(IRenderedComponent<HomePage> cut) =>
+        [.. cut.FindAll(".home-links a").Select(static link => link.GetAttribute("href"))];
 }

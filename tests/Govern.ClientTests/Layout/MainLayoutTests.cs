@@ -43,7 +43,7 @@ public class MainLayoutTests : ClientTestContext
     }
 
     [Fact]
-    public void Render_SignedIn_ShowsTheUserSignOutAndProfile()
+    public void Render_SignedIn_ShowsTheUserSignOutGamesAndProfile()
     {
         SignIn("player@example.com");
 
@@ -51,7 +51,7 @@ public class MainLayoutTests : ClientTestContext
 
         cut.Find(".rz-header .user-name").TextContent.ShouldBe("player@example.com");
         cut.Find(".rz-header .sign-out").ShouldNotBeNull();
-        NavItems(cut).ShouldBe(["Home", "Profile"]);
+        NavItems(cut).ShouldBe(["Home", "Games", "Join game", "Profile"]);
     }
 
     private static string[] NavItems(IRenderedComponent<MainLayout> cut) =>

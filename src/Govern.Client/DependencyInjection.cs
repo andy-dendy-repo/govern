@@ -1,5 +1,8 @@
 using Govern.Client.Auth;
+using Govern.Client.Features.Games.Clients;
+using Govern.Client.Features.Games.Services;
 using Govern.Client.Features.Users.Clients;
+using Govern.Client.Services;
 using Govern.Client.Options;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -37,6 +40,9 @@ public static class DependencyInjection
             services.AddRadzenComponents();
             AddAuth(services, api);
             AddApiClient<UsersClient>(services, api);
+            AddApiClient<GamesClient>(services, api);
+            services.AddTransient<GameWatchService>();
+            services.AddScoped<ClipboardService>();
 
             // AddHttpClient also registers a plain HttpClient; components must use typed clients instead.
             services.RemoveAll<HttpClient>();

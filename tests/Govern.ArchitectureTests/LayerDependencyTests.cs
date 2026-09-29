@@ -102,11 +102,12 @@ public class LayerDependencyTests
     [Fact]
     public void Client_UsesHttpOnlyInApiClientsAndAuth()
     {
-        // The root DependencyInjection (and its compiler-generated closures) registers typed clients and handlers.
+        // The root DependencyInjection (and its compiler-generated closures) registers typed clients and handlers;
+        // Extensions/HttpClientExtensions sends the typed clients' requests. Reading server-sent events counts as HTTP.
         Types().That().ResideInNamespaceMatching(@"^Govern\.Client(?:\.(?!Auth(?:\.|$)|Features\.\w+\.Clients$).*)?$")
-            .And().DoNotHaveFullNameMatching(@"^Govern\.Client\.DependencyInjection(?:[+/].*)?$")
-            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^System\.Net\.Http(?:\..*)?$")
-            .Because("components never call HttpClient; Api calls go through typed Features/[Feature]/Clients (auth plumbing lives in Auth/, registration in DependencyInjection)")
+            .And().DoNotHaveFullNameMatching(@"^Govern\.Client\.(?:DependencyInjection|Extensions\.HttpClientExtensions)(?:[+/].*)?$")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^System\.Net\.(?:Http|ServerSentEvents)(?:\..*)?$")
+            .Because("components never call HttpClient; Api calls go through typed Features/[Feature]/Clients (auth plumbing lives in Auth/, registration in DependencyInjection, the shared send in Extensions/HttpClientExtensions)")
             .WithoutRequiringPositiveResults()
             .Check(GovernArchitecture.Instance);
     }

@@ -1,0 +1,14 @@
+@* A started game until the board exists: its phase as text. *@
+@using Govern.Client.Features.Games.Enums
+@using Govern.Client.Features.Games.Models
+
+<RadzenStack Gap="0.5rem" class="game-status">
+    <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="phase">
+        @(Game.Phase == GamePhase.Finished ? "The game is over." : "The game is in progress.")
+    </RadzenText>
+    <RadzenText TextStyle="TextStyle.Body2">The board is coming soon.</RadzenText>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired] public GetGameResponse Game { get; set; } = null!;
+}

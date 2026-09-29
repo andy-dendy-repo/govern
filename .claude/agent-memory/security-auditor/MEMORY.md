@@ -1,3 +1,3 @@
 - [Accepted risks and anonymous endpoints](project_accepted_risks.md) — anonymous routes, accepted gaps (sign-in lockout DoS, KV purge protection), 2026-09-27 audits (API, session, limiter, client CSP, health/host filtering)
 - [Game core engine](project_game_core.md) — Govern.Core fog-of-war oracle (Medium) and Low findings from 2026-09-27; invariants; 2026-09-28 High: ids from SplitMix64 leak seed
-- [Games audit](project_games_lobby.md) — /api/games lobby, 3a commands, 3b SSE (stream cap Medium), 3c leave/cancel/sweep/seat quota (Low only)
+- [Games audit](project_games_lobby.md) — /api/games lobby, 3a/3b (stream cap fixed), 3c, client lobby 2026-09-29 (forced-join Medium)

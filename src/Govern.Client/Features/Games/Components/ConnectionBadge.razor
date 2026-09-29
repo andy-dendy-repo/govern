@@ -1,0 +1,28 @@
+@* The live connection's state as a small badge. *@
+@using Govern.Client.Features.Games.Enums
+@using Govern.Client.Features.Games.Models
+
+<RadzenBadge BadgeStyle="@Style" Variant="Variant.Flat" Shade="Shade.Lighter" Text="@Text" class="connection"/>
+
+@code {
+    [Parameter, EditorRequired] public GameWatchUpdate Update { get; set; } = null!;
+
+    private BadgeStyle Style => Update.Status switch
+    {
+        GameWatchStatus.Live => BadgeStyle.Success,
+        GameWatchStatus.Reconnecting or GameWatchStatus.Connecting => BadgeStyle.Warning,
+        GameWatchStatus.Gone or GameWatchStatus.SignedOut => BadgeStyle.Danger,
+        _ => BadgeStyle.Info,
+    };
+
+    private string Text => Update.Status switch
+    {
+        GameWatchStatus.Connecting => "Connecting…",
+        GameWatchStatus.Live => "Live",
+        GameWatchStatus.Reconnecting when Update.RetryIn is { } retryIn => $"Reconnecting in {Math.Ceiling(retryIn.TotalSeconds):0} s",
+        GameWatchStatus.Reconnecting => "Reconnecting…",
+        GameWatchStatus.Gone => "Gone",
+        GameWatchStatus.SignedOut => "Signed out",
+        _ => "Finished",
+    };
+}
