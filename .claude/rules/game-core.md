@@ -6,7 +6,7 @@ paths:
 
 # Game Core (Govern.Core)
 
-`Govern.Core` is the pure, deterministic game engine. The server uses it to validate moves authoritatively, and the Blazor client will use it to preview them. Behaviour and rules are in `docs/features/game-core.md`; the reasoning is in `docs/decisions/0004-game-engine.md`.
+`Govern.Core` is the pure, deterministic game engine. The server uses it to validate moves authoritatively, and the Blazor client uses it to preview them from a `PlayerView`. Behaviour and rules are in `docs/features/game-core.md`; the reasoning is in `docs/decisions/0004-game-engine.md`.
 
 ## Purity (enforced)
 
@@ -26,6 +26,8 @@ paths:
 - **Clients only ever receive `GameEngine.ViewFor`** (`PlayerView`), never `GameState` or unfiltered events. Anything added to state that an opponent must not see must be filtered in `VisibilityCalculator.ViewFor`.
 - **`PlayerView.Version` is an opaque fingerprint** of the rest of the view (SHA-256 of its JSON). Everything in the view is hashed, so a new view field must hold only what the viewer may see; never put `GameState.Version` or another counter into the view.
 - **Rejections must not leak hidden information.** Another player's unit or city is `*.not_found`. A rule that inspects tiles or objects the actor cannot see must return the same error it would return if they were empty. Keep `UnitCatalogTests`' invariants (sight ≥ movement; settler sight ≥ city spacing − 1) or filter by visibility.
+- **View shape:** `TileView` has no coordinates (tiles are row-major; use `PlayerView.CoordAt`/`TileAt`), and cities in a view are `CityView`s built by `CityView.From`, with an enemy city's production null. Never add per-tile coordinates or an opponent's production back.
+- **View previews** (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a `PlayerView`, in `Visibility/ViewPreviewCalculator`) must give exactly what `Execute` gives. They share the rules' checks (`CommandGuardRule.CheckTurn`, `AttackRule.Check`, `FoundCityRule.Check`, `ReachabilityCalculator`) instead of copying them. A new action the client should preview gets a shared check and a case in `Engine/GameEnginePreviewTests` (parity with `Execute` for every tile near the unit). The previews are exact only while `UnitCatalogTests`' sight invariants hold, and the parity scenarios assume plains only: a new terrain type (cost above 1 or impassable) adds parity scenarios with it.
 - **Enum values from commands are untrusted:** check `Enum.IsDefined` in the rule before any catalog lookup, otherwise the catalog throws and the Api returns 500.
 
 ## Serialization
@@ -47,7 +49,7 @@ Whitelisted by `Templates.Core()` and checked by `FolderStructureTests`:
 | `Units/`, `Cities/` | The things on the map and the unit catalog |
 | `Actions/` | Flat; one `XxxAction.cs` per player action with exactly `XxxCommand` + `XxxRule` (`ActionFiles_DeclareExactlyThePrefixedCommandAndRule`) |
 | `Events/` | `GameEvent` + events; shared by several actions, so not per action. Types end with `Event` |
-| `Visibility/` | Fog of war: `VisibilityCalculator`, `PlayerView` and its parts |
+| `Visibility/` | Fog of war: `VisibilityCalculator`, `PlayerView` and its parts (`TileView`, `CityView`, `PlayerSummary`), and the view-based previews (`ViewPreviewCalculator`) |
 | `Serialization/` | `GameSerializer` |
 
 - There are no root files.

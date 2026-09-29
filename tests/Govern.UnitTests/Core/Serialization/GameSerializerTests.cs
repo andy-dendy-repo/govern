@@ -149,6 +149,24 @@ public class GameSerializerTests
     }
 
     [Fact]
+    public void Serialize_PlayerView_WritesNoTileCoordinatesAndNullEnemyProduction()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
+        builder.AddCity(P2, 6, 4);
+        var view = GameEngine.ViewFor(builder.Build(), P1);
+
+        var json = GameSerializer.Serialize(view);
+        var root = JsonDocument.Parse(json).RootElement;
+
+        root.GetProperty("tiles")[0].EnumerateObject().Select(static p => p.Name).ShouldBe(["visibility", "terrain"]);
+        var enemy = root.GetProperty("cities").EnumerateArray().Single(city => city.GetProperty("owner").GetProperty("value").GetGuid() == P2.Value);
+        enemy.GetProperty("producing").ValueKind.ShouldBe(JsonValueKind.Null);
+        enemy.GetProperty("productionProgress").ValueKind.ShouldBe(JsonValueKind.Null);
+        GameSerializer.Serialize(GameSerializer.Deserialize<Govern.Core.Visibility.PlayerView>(json)).ShouldBe(json);
+    }
+
+    [Fact]
     public void Deserialize_JsonNull_Throws()
     {
         Should.Throw<JsonException>(() => GameSerializer.Deserialize<GameCommand>("null"));

@@ -24,7 +24,7 @@ Govern is a 2-player, browser-based strategy game (a simplified Civilization). P
 - **Storage format:** one JSON format (`GameSerializer`) with stable discriminators and a schema version, used for Postgres jsonb, the Api and the client.
 
 ## Consequences
-- The rules are fully unit-testable without a database or HTTP. The client can preview legal moves with the same code once Plan 5 adds a `PlayerView`-based reachability overload; the client never holds a `GameState`.
+- The rules are fully unit-testable without a database or HTTP. The client previews legal moves with the same code through `PlayerView`-based overloads (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a view, added in Plan 5); the client never holds a `GameState`.
 - Hidden information stays on the server. Raw events must be filtered per player before they are sent, and rule rejections are written so they reveal nothing hidden (`*.not_found` for enemy ids, `move.unreachable` for hidden blockers).
 - The architecture tests (`Core_DependsOnlyOnBaseClassLibrary`, `Core_HasNoPackageReferences`) fail the build if a framework dependency creeps into Core.
 - Alternating turns avoid move conflicts; simultaneous turns would need conflict resolution later.

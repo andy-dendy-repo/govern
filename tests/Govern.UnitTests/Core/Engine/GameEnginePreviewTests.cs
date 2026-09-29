@@ -1,0 +1,205 @@
+using Govern.Core.Actions;
+using Govern.Core.Engine;
+using Govern.Core.Map;
+using Govern.Core.State;
+using Govern.Core.Units;
+using Govern.UnitTests.Core.Builders;
+using static Govern.UnitTests.Core.Builders.GameStateBuilder;
+
+namespace Govern.UnitTests.Core.Engine;
+
+// The view-based previews must give exactly the answer Execute gives on the full state, for every tile near the unit.
+public class GameEnginePreviewTests
+{
+    public static TheoryData<string> Scenarios => new(
+        "open field",
+        "own unit blocks",
+        "own city in reach",
+        "enemies just out of sight",
+        "enemies adjacent",
+        "defended enemy city",
+        "map edge",
+        "partial movement",
+        "no movement",
+        "settler without movement",
+        "settler far from cities",
+        "settler near own city",
+        "settler on a city",
+        "settler near enemy city",
+        "not your turn",
+        "enemy unit id",
+        "game finished");
+
+    [Theory]
+    [MemberData(nameof(Scenarios))]
+    public void ReachableTiles_View_MatchesMoveCommands(string scenario)
+    {
+        var (state, unitId, origin) = Build(scenario);
+
+        var reachable = GameEngine.ReachableTiles(GameEngine.ViewFor(state, P1), unitId);
+
+        foreach (var target in origin.WithinRadius(3))
+        {
+            var accepted = GameEngine.Execute(state, P1, new MoveUnitCommand(unitId, target)).IsSuccess;
+            reachable.Contains(target).ShouldBe(accepted, $"move to {target}");
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Scenarios))]
+    public void AttackTargets_View_MatchesAttackCommands(string scenario)
+    {
+        var (state, unitId, origin) = Build(scenario);
+
+        var targets = GameEngine.AttackTargets(GameEngine.ViewFor(state, P1), unitId);
+
+        foreach (var target in origin.WithinRadius(3))
+        {
+            var accepted = GameEngine.Execute(state, P1, new AttackCommand(unitId, target)).IsSuccess;
+            targets.Contains(target).ShouldBe(accepted, $"attack on {target}");
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Scenarios))]
+    public void CheckFoundCity_View_MatchesFoundCityCommand(string scenario)
+    {
+        var (state, unitId, _) = Build(scenario);
+
+        var preview = GameEngine.CheckFoundCity(GameEngine.ViewFor(state, P1), unitId);
+
+        preview.ShouldBe(GameEngine.Execute(state, P1, new FoundCityCommand(unitId)).Violation);
+    }
+
+    // The state overload doesn't check the turn, so compare only where the viewer may act.
+    public static TheoryData<string> ScenariosOnYourTurn =>
+        new(Scenarios.Select(static row => row.Data).Where(static name => name is not ("not your turn" or "game finished")));
+
+    [Theory]
+    [MemberData(nameof(ScenariosOnYourTurn))]
+    public void ReachableTiles_ViewOnYourTurn_EqualsTheStateResult(string scenario)
+    {
+        var (state, unitId, _) = Build(scenario);
+
+        var fromView = GameEngine.ReachableTiles(GameEngine.ViewFor(state, P1), unitId);
+
+        fromView.ShouldBe(GameEngine.ReachableTiles(state, P1, unitId));
+    }
+
+    [Fact]
+    public void AttackTargets_EnemyUnitAndCityAdjacent_ListsBothInRowOrder()
+    {
+        var (state, unitId, _) = Build("enemies adjacent");
+
+        var targets = GameEngine.AttackTargets(GameEngine.ViewFor(state, P1), unitId);
+
+        targets.ShouldBe([At(5, 4), At(6, 5)]);
+    }
+
+    [Fact]
+    public void ReachableTiles_OpenField_ListsEveryTileWithinFullMovement()
+    {
+        var (state, unitId, origin) = Build("open field");
+
+        var reachable = GameEngine.ReachableTiles(GameEngine.ViewFor(state, P1), unitId);
+
+        reachable.ShouldBe([.. origin.WithinRadius(2).Where(coord => coord != origin).OrderBy(static c => c.Row).ThenBy(static c => c.Column)]);
+    }
+
+    [Theory]
+    [InlineData("settler far from cities", null)]
+    [InlineData("settler near own city", "city.too_close")]
+    [InlineData("settler near enemy city", "city.too_close")]
+    [InlineData("settler on a city", "city.tile_taken")]
+    [InlineData("settler without movement", "unit.no_movement")]
+    [InlineData("open field", "unit.cannot_found_city")]
+    [InlineData("not your turn", "game.not_your_turn")]
+    [InlineData("enemy unit id", "unit.not_found")]
+    [InlineData("game finished", "game.finished")]
+    public void CheckFoundCity_Scenario_GivesTheExpectedCode(string scenario, string? code)
+    {
+        var (state, unitId, _) = Build(scenario);
+
+        (GameEngine.CheckFoundCity(GameEngine.ViewFor(state, P1), unitId)?.Code).ShouldBe(code);
+    }
+
+    [Fact]
+    public void Previews_OwnCityInReach_CanBeEnteredButNotAttacked()
+    {
+        var (state, unitId, _) = Build("own city in reach");
+        var view = GameEngine.ViewFor(state, P1);
+
+        GameEngine.ReachableTiles(view, unitId).ShouldContain(At(0, 0));
+        GameEngine.AttackTargets(view, unitId).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Previews_EnemiesJustOutOfSight_AreNotInTheView()
+    {
+        var (state, _, origin) = Build("enemies just out of sight");
+
+        var view = GameEngine.ViewFor(state, P1);
+
+        state.Units.Where(unit => unit.Owner == P2).ShouldAllBe(unit => unit.Position.DistanceTo(origin) == 3);
+        view.Units.ShouldNotContain(unit => unit.Owner == P2);
+        view.Cities.ShouldNotContain(city => city.Position == At(5, 2));
+    }
+
+    [Fact]
+    public void Previews_NullView_Throw()
+    {
+        Should.Throw<ArgumentNullException>(() => GameEngine.ReachableTiles(null!, new UnitId(1)));
+        Should.Throw<ArgumentNullException>(() => GameEngine.AttackTargets(null!, new UnitId(1)));
+        Should.Throw<ArgumentNullException>(() => GameEngine.CheckFoundCity(null!, new UnitId(1)));
+    }
+
+    private static (GameState State, UnitId Unit, HexCoord Origin) Build(string scenario)
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var (unit, origin) = scenario switch
+        {
+            "own unit blocks" => (Soldier(builder, 5, 5), Blocker(builder, P1, 6, 5)),
+            "enemies adjacent" => (Soldier(builder, 5, 5), EnemyCity(builder, 5, 4, Blocker(builder, P2, 6, 5))),
+            "defended enemy city" => (Soldier(builder, 5, 5), EnemyCity(builder, 6, 5, Blocker(builder, P2, 6, 5))),
+            // Next to the own capital at (0,0): it may pass through its own city and can't attack it.
+            "own city in reach" => (Soldier(builder, 0, 1), At(0, 1)),
+            // Distance 3 is outside sight 2 but inside the radius-3 probe, so the view and the state really differ there.
+            "enemies just out of sight" => (Soldier(builder, 5, 5), EnemyCity(builder, 5, 2, Blocker(builder, P2, 8, 5))),
+            "map edge" => (Soldier(builder, 0, 5), At(0, 5)),
+            "partial movement" => (builder.AddUnit(P1, UnitType.Soldier, 5, 5, movementLeft: 1), At(5, 5)),
+            "no movement" => (builder.AddUnit(P1, UnitType.Soldier, 5, 5, movementLeft: 0), At(5, 5)),
+            "settler far from cities" => (builder.AddUnit(P1, UnitType.Settler, 5, 5), At(5, 5)),
+            "settler without movement" => (builder.AddUnit(P1, UnitType.Settler, 5, 5, movementLeft: 0), At(5, 5)),
+            "settler near own city" => (builder.AddUnit(P1, UnitType.Settler, 1, 1), At(1, 1)),
+            "settler on a city" => (builder.AddUnit(P1, UnitType.Settler, 0, 0), At(0, 0)),
+            "settler near enemy city" => (builder.AddUnit(P1, UnitType.Settler, 5, 5), EnemyCity(builder, 7, 5, At(5, 5))),
+            "enemy unit id" => (Soldier(builder, 5, 5, P2), At(5, 5)),
+            _ => (Soldier(builder, 5, 5), At(5, 5)),
+        };
+
+        if (scenario == "enemy unit id")
+        {
+            Soldier(builder, 3, 5);
+        }
+
+        var state = (scenario == "not your turn" ? builder.WithCurrentPlayer(P2) : builder).Build();
+        state = scenario == "game finished" ? state with { Status = GameStatus.Finished, Winner = P1 } : state;
+        return (state, unit, origin);
+    }
+
+    private static UnitId Soldier(GameStateBuilder builder, int column, int row, PlayerId? owner = null) =>
+        builder.AddUnit(owner ?? P1, UnitType.Soldier, column, row);
+
+    // Adds a unit that only serves as an obstacle or target; returns the tested unit's origin for chaining.
+    private static HexCoord Blocker(GameStateBuilder builder, PlayerId owner, int column, int row)
+    {
+        builder.AddUnit(owner, UnitType.Soldier, column, row);
+        return At(5, 5);
+    }
+
+    private static HexCoord EnemyCity(GameStateBuilder builder, int column, int row, HexCoord origin)
+    {
+        builder.AddCity(P2, column, row);
+        return origin;
+    }
+}
