@@ -165,7 +165,7 @@ public class ListMyGamesEndpointTests(GovernApiFixture fixture) : ApiTestBase(fi
             var seat = game.FindPlayer(mover.UserId)!.PlayerId;
             return game.State!.Units
                 .Where(unit => unit.Owner == seat)
-                .SelectMany(unit => GameEngine.ReachableTiles(game.State, seat, unit.Id).Select(target => new MoveUnitCommand(unit.Id, target)))
+                .SelectMany(unit => GameEngine.ReachableTiles(TestRulesets.Default, game.State, seat, unit.Id).Select(target => new MoveUnitCommand(unit.Id, target)))
                 .First();
         }
     }

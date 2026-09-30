@@ -143,7 +143,7 @@ Every delay is at least 2 s, which keeps one tab under the 30-openings-per-minut
 
 ## Client game board (hex map, selection and commands)
 
-A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the board (`Components/Board/GameBoard`) and a side column with the turn, the selection and, once finished, the result. The client references `Govern.Core` for the view types (`PlayerView`, `UnitView`, `CityView`, commands) and for the view-based previews only (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a `PlayerView`, [game-core](game-core.md#view-previews-for-the-client)). It never holds a `GameState` or runs `Execute`; the server stays authoritative (`LayerDependencyTests.Client_UsesCoreOnlyForViewsAndPreviews`).
+A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the board (`Components/Board/GameBoard`) and a side column with the turn, the selection and, once finished, the result. The client references `Govern.Core` for the view types (`PlayerView`, `UnitView`, `CityView`, commands), for the view-based previews (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a `PlayerView`, [game-core](game-core.md#view-previews-for-the-client)) and for the game's `Ruleset`. `Features/Games/Services/RulesetService` embeds `rulesets/default/v1.json`, the same file the Api plays every game with, and parses it once; `GameTable` passes it to the previews and panels, which take unit names, stats and the build list from it ([game data](../game/game-data.md)). Fetching the ruleset each game is pinned to comes with Ruleset B ([ruleset plan](../plans/ruleset.md)). It never holds a `GameState` or runs `Execute`; the server stays authoritative (`LayerDependencyTests.Client_UsesCoreOnlyForViewsAndPreviews`).
 
 | Part | What it does |
 |---|---|
@@ -151,8 +151,8 @@ A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the
 | `Board/BoardTerrain` | One `<use>` per tile, classed by visibility (`unexplored`, `explored`, `visible`) and terrain, placed by `Helpers/HexLayout` (pointy-top, odd-r). Each tile has its own click handler, so picking is exact. It renders again only for a new view, so panning never re-diffs the tiles |
 | `Board/BoardPieces` | Reachable and attackable overlays, cities (name as SVG text, which Blazor encodes) and units, classed `own`/`enemy` and `selected`. `pointer-events: none`, so clicks reach the tile below |
 | `TurnPanel` | "Turn n: your turn" or "opponent's turn", End turn (your turn only), Resign with an inline confirm (allowed at any time) |
-| `UnitPanel` | The selected unit; for your settler, Found city, disabled with the rule's message from `CheckFoundCity` |
-| `CityPanel` | The selected city; for your own city, what it produces (progress of cost) and Build settler / Build soldier. An enemy city shows its name only (its production is hidden in the view) |
+| `UnitPanel` | The selected unit, named from the ruleset ("Your Settler"), with its movement left of the ruleset's movement; for a unit with the `found_city` ability, Found city, disabled with the rule's message from `CheckFoundCity` |
+| `CityPanel` | The selected city; for your own city, what it produces (progress of the ruleset's cost) and one Build button per ruleset unit, in the ruleset's order (Build Settler, Build Soldier). An enemy city shows its name only (its production is hidden in the view) |
 | `GameOverPanel` | "You won!", "You lost." or "Nobody won.", how each player ended (won, resigned, eliminated), and a link back to `/games` |
 
 ### Board interactions

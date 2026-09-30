@@ -15,7 +15,7 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 |---|---|---|---|
 | G1 | [UI design system and approaches](#g1-ui-design-system-and-approaches) | — | M |
 | G2 | [Game rules reference](#g2-game-rules-reference) | — | S, then ongoing |
-| G3 | [Data-driven catalogs and a new state schema](#g3-data-driven-catalogs-and-a-new-state-schema-suggested) *(suggested)* | — | M |
+| G3 | [Data-driven catalogs and a new state schema](#g3-data-driven-catalogs-and-a-new-state-schema-suggested) *(in progress: [ruleset plan](ruleset.md))* | — | M |
 | G4 | [Terrain: more tile types](#g4-terrain-more-tile-types) | G3 | M |
 | G5 | [Resources and tile yields](#g5-resources-and-tile-yields) | G4 | L |
 | G6 | [Rivers and bridges](#g6-rivers-and-bridges) | G4 | M |
@@ -72,19 +72,19 @@ These follow from how `Govern.Core` works today ([game-core](../features/game-co
 ## G2. Game rules reference
 
 - **Why:** the rules are spread over the code, [game-core](../features/game-core.md) and the plans. Players and developers need one place that says how the game works.
-- **Deliverable:** `docs/game/rules.md`: the complete, current rules, written for players. It covers the map and terrain, movement, cities, production, combat, victory, and later every G item. Tables of numbers (unit stats, terrain costs, yields) come from the catalogs.
+- **Deliverable:** `docs/game/rules.md`: the complete, current rules, written for players. It covers the map and terrain, movement, cities, production, combat, victory, and later every G item. Tables of numbers (unit stats, terrain costs, yields) come from the ruleset.
 - **Keeping it true:**
   - Every rules change updates it in the same PR (add this to the Definition of Done in `CLAUDE.md` and to `.claude/rules/game-core.md`).
-  - *(Suggested)* A test compares the documented tables with the catalogs, so the numbers can't drift.
-  - *(Suggested)* Later, the client shows the same reference in-game (a "Civilopedia" screen), fed from the catalogs.
+  - *(Suggested)* A test compares the documented tables with the ruleset, so the numbers can't drift.
+  - *(Suggested)* Later, the client shows the same reference in-game (a "Civilopedia" screen), fed from the ruleset.
 
 ## G3. Data-driven catalogs and a new state schema *(suggested)*
 
-- **Why:** `TerrainCatalog` and `UnitCatalog` are C# switches today. Dozens of terrains, resources, units, buildings and tech nodes are easier to balance as data.
-- **Approach:**
-  - Game data files embedded in `Govern.Core` (read at start-up, still base class library only), validated by unit tests: every reference resolves, costs are positive, and trees have no cycles.
-  - A catalog version stored in each game, so a running game keeps its rules after a balance change.
-  - A new state schema that the following items extend.
+- **Why:** dozens of terrains, resources, units, buildings and tech nodes are easier to balance as data than as C# switches.
+- **Status:** in progress, as the loadable ruleset ([ruleset plan](ruleset.md), format in [game data](../game/game-data.md)).
+  - **Done (Ruleset A):** Core reads every number, list and text from a ruleset document (`rulesets/default/v1.json`), validated at load time with JSON paths; the former `UnitCatalog`/`TerrainCatalog` and constants are gone.
+  - **Next (Ruleset B):** rulesets stored per version in the database and each game pinned to one, so a running game keeps its rules after a balance change.
+  - Each later item adds its section to the ruleset (and, where the state changes, to the state schema).
 
 ## G4. Terrain: more tile types
 
@@ -102,7 +102,7 @@ These follow from how `Govern.Core` works today ([game-core](../features/game-co
 - **Also:**
   - **Map generation:** seeded continents, climate bands (snow at the poles, desert near the equator) and coasts. Spawn spots should be fair.
   - **Naval movement:** land units cross water only aboard ships ([G15](#g15-ships-and-naval-movement)); water tiles are impassable for them otherwise.
-- **Tests:** view-preview parity scenarios for each cost and blocker; the sight invariants in `UnitCatalogTests`, rechecked with hills and forests.
+- **Tests:** view-preview parity scenarios for each cost and blocker; the sight invariants in `RulesetValidator`, rechecked with hills and forests.
 
 ## G5. Resources and tile yields
 

@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.Core.Units;
@@ -16,10 +15,6 @@ namespace Govern.Core.Visibility;
 /// <param name="MovementLeft">Movement points left this turn; <see langword="null"/> for an enemy unit.</param>
 public sealed record UnitView(UnitId Id, PlayerId Owner, UnitType Type, HexCoord Position, int? MovementLeft)
 {
-    /// <summary>Rules for this unit's type (not serialized).</summary>
-    [JsonIgnore]
-    public UnitDefinition Definition => UnitCatalog.Get(Type);
-
     /// <summary>Projects a unit for a viewer, hiding the movement of units the viewer doesn't own.</summary>
     /// <param name="unit">The unit.</param>
     /// <param name="viewer">The player the view is for.</param>

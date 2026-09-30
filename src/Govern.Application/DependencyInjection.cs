@@ -1,4 +1,5 @@
 using FluentValidation;
+using Govern.Application.Games.Services;
 using Govern.Application.Users.Services;
 using Govern.Utils.Mediator.Extensions;
 using Govern.Utils.Mediator.Pipelines;
@@ -33,6 +34,7 @@ public static class DependencyInjection
             services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
             services.AddScoped<UserTokenIssuingService>();
             services.AddScoped<RefreshTokenReuseService>();
+            services.AddSingleton<DefaultRulesetService>();
 
             return services;
         }

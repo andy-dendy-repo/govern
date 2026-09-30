@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Govern.Core.Rulesets;
 
 namespace Govern.Core.Map;
 
@@ -10,30 +11,23 @@ namespace Govern.Core.Map;
 /// <param name="Tiles">All tiles, row-major: index <c>row * Width + column</c>.</param>
 public sealed record GameMap(int Width, int Height, ImmutableArray<Tile> Tiles)
 {
-    /// <summary>Smallest allowed width and height.</summary>
-    public const int MinSize = 8;
-
-    /// <summary>Largest allowed width and height.</summary>
-    public const int MaxSize = 40;
-
-    /// <summary>Creates a map covered with plains.</summary>
-    /// <param name="width">Number of columns, <see cref="MinSize"/> to <see cref="MaxSize"/>.</param>
-    /// <param name="height">Number of rows, <see cref="MinSize"/> to <see cref="MaxSize"/>.</param>
+    /// <summary>Creates a map covered with one terrain. The ruleset's size limits are checked by <see cref="State.GameFactory"/>.</summary>
+    /// <param name="width">Number of columns, at least 1.</param>
+    /// <param name="height">Number of rows, at least 1.</param>
+    /// <param name="terrain">The terrain of every tile.</param>
     /// <returns>The new map.</returns>
-    /// <exception cref="ArgumentOutOfRangeException">A dimension is out of range.</exception>
-    public static GameMap Create(int width, int height)
+    /// <exception cref="ArgumentOutOfRangeException">A dimension is below 1.</exception>
+    public static GameMap Create(int width, int height, TerrainType terrain)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(width, MinSize);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(width, MaxSize);
-        ArgumentOutOfRangeException.ThrowIfLessThan(height, MinSize);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(height, MaxSize);
+        ArgumentOutOfRangeException.ThrowIfLessThan(width, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(height, 1);
 
         var tiles = ImmutableArray.CreateBuilder<Tile>(width * height);
         for (var row = 0; row < height; row++)
         {
             for (var column = 0; column < width; column++)
             {
-                tiles.Add(new Tile(HexCoord.FromOffset(column, row), TerrainType.Plains));
+                tiles.Add(new Tile(HexCoord.FromOffset(column, row), terrain));
             }
         }
 
@@ -61,7 +55,12 @@ public sealed record GameMap(int Width, int Height, ImmutableArray<Tile> Tiles)
     }
 
     /// <summary>Whether a land unit may enter the tile, ignoring units and cities.</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="coord">The coordinate to test.</param>
     /// <returns><see langword="true"/> when the tile exists and its terrain is passable.</returns>
-    public bool IsPassable(HexCoord coord) => Contains(coord) && TerrainCatalog.Get(TileAt(coord).Terrain).IsPassable;
+    public bool IsPassable(Ruleset ruleset, HexCoord coord)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        return Contains(coord) && ruleset.Terrain(TileAt(coord).Terrain).IsPassable;
+    }
 }

@@ -80,7 +80,7 @@ public class GetGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixtur
         await using (db)
         {
             var stored = await db.Games.AsNoTracking().Include(g => g.Players).SingleAsync(g => g.Id == game.Id, Ct);
-            var expected = GameEngine.ViewFor(stored.State!, stored.FindPlayer(creator.UserId)!.PlayerId);
+            var expected = GameEngine.ViewFor(TestRulesets.Default, stored.State!, stored.FindPlayer(creator.UserId)!.PlayerId);
             using var expectedJson = JsonDocument.Parse(GameSerializer.Serialize(expected));
 
             JsonElement.DeepEquals(document.RootElement.GetProperty("view"), expectedJson.RootElement).ShouldBeTrue();

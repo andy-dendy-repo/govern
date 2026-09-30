@@ -18,7 +18,7 @@ public class BoardClickResolverTests
     [Fact]
     public void Resolve_OwnUnit_SelectsIt()
     {
-        BoardClickResolver.Resolve(Start(), BoardSelection.None, At(2, 2)).ShouldBe(new BoardClick(BoardSelection.Of(YourSettler), null));
+        BoardClickResolver.Resolve(Ruleset, Start(), BoardSelection.None, At(2, 2)).ShouldBe(new BoardClick(BoardSelection.Of(YourSettler), null));
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public class BoardClickResolverTests
     {
         var selection = BoardSelection.Of(YourSettler);
 
-        var click = BoardClickResolver.Resolve(Start(), selection, At(1, 1));
+        var click = BoardClickResolver.Resolve(Ruleset, Start(), selection, At(1, 1));
 
         click.ShouldBe(new BoardClick(selection, new MoveUnitCommand(YourSettler, At(1, 1))));
     }
@@ -37,7 +37,7 @@ public class BoardClickResolverTests
         var view = Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
         var selection = BoardSelection.Of(YourSoldier);
 
-        var click = BoardClickResolver.Resolve(view, selection, At(4, 2));
+        var click = BoardClickResolver.Resolve(Ruleset, view, selection, At(4, 2));
 
         click.ShouldBe(new BoardClick(selection, new AttackCommand(YourSoldier, At(4, 2))));
     }
@@ -47,8 +47,8 @@ public class BoardClickResolverTests
     {
         var view = Start() with { CurrentPlayer = Opponent };
 
-        BoardClickResolver.Resolve(view, BoardSelection.Of(YourSettler), At(1, 1)).ShouldBe(new BoardClick(BoardSelection.None, null));
-        BoardClickResolver.Resolve(view, BoardSelection.None, At(3, 2)).ShouldBe(new BoardClick(BoardSelection.Of(YourSoldier), null));
+        BoardClickResolver.Resolve(Ruleset, view, BoardSelection.Of(YourSettler), At(1, 1)).ShouldBe(new BoardClick(BoardSelection.None, null));
+        BoardClickResolver.Resolve(Ruleset, view, BoardSelection.None, At(3, 2)).ShouldBe(new BoardClick(BoardSelection.Of(YourSoldier), null));
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class BoardClickResolverTests
     {
         var view = Finished(You);
 
-        BoardClickResolver.Resolve(view, BoardSelection.Of(YourSettler), At(1, 1)).Command.ShouldBeNull();
+        BoardClickResolver.Resolve(Ruleset, view, BoardSelection.Of(YourSettler), At(1, 1)).Command.ShouldBeNull();
     }
 
     [Fact]
@@ -64,8 +64,8 @@ public class BoardClickResolverTests
     {
         var view = Create([Settler(1, You, At(2, 2))], [City(7, You, At(2, 2))]);
 
-        var toCity = BoardClickResolver.Resolve(view, BoardSelection.Of(YourSettler), At(2, 2));
-        var toUnit = BoardClickResolver.Resolve(view, toCity.Next, At(2, 2));
+        var toCity = BoardClickResolver.Resolve(Ruleset, view, BoardSelection.Of(YourSettler), At(2, 2));
+        var toUnit = BoardClickResolver.Resolve(Ruleset, view, toCity.Next, At(2, 2));
 
         toCity.ShouldBe(new BoardClick(BoardSelection.Of(new CityId(7)), null));
         toUnit.ShouldBe(new BoardClick(BoardSelection.Of(YourSettler), null));
@@ -76,14 +76,14 @@ public class BoardClickResolverTests
     {
         var view = Create([Soldier(3, Opponent, At(5, 2))], [City(8, Opponent, At(5, 4))]);
 
-        BoardClickResolver.Resolve(view, BoardSelection.None, At(5, 2)).Next.ShouldBe(BoardSelection.Of(EnemySoldier));
-        BoardClickResolver.Resolve(view, BoardSelection.None, At(5, 4)).Next.ShouldBe(BoardSelection.Of(new CityId(8)));
+        BoardClickResolver.Resolve(Ruleset, view, BoardSelection.None, At(5, 2)).Next.ShouldBe(BoardSelection.Of(EnemySoldier));
+        BoardClickResolver.Resolve(Ruleset, view, BoardSelection.None, At(5, 4)).Next.ShouldBe(BoardSelection.Of(new CityId(8)));
     }
 
     [Fact]
     public void Resolve_EmptyUnreachableTile_Deselects()
     {
-        BoardClickResolver.Resolve(Start(), BoardSelection.Of(YourSettler), At(7, 5)).ShouldBe(new BoardClick(BoardSelection.None, null));
+        BoardClickResolver.Resolve(Ruleset, Start(), BoardSelection.Of(YourSettler), At(7, 5)).ShouldBe(new BoardClick(BoardSelection.None, null));
     }
 
     [Fact]
@@ -106,9 +106,9 @@ public class BoardClickResolverTests
     {
         var view = Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
 
-        var highlights = BoardClickResolver.Highlights(view, BoardSelection.Of(YourSoldier));
+        var highlights = BoardClickResolver.Highlights(Ruleset, view, BoardSelection.Of(YourSoldier));
 
-        highlights.Reachable.ShouldBe(GameEngine.ReachableTiles(view, YourSoldier), ignoreOrder: true);
+        highlights.Reachable.ShouldBe(GameEngine.ReachableTiles(Ruleset, view, YourSoldier), ignoreOrder: true);
         highlights.Reachable.ShouldNotBeEmpty();
         highlights.Attackable.ShouldBe([At(4, 2)]);
     }
@@ -120,7 +120,7 @@ public class BoardClickResolverTests
     {
         var selection = unit == 0 ? BoardSelection.None : BoardSelection.Of(new UnitId(unit));
 
-        var highlights = BoardClickResolver.Highlights(Start(), selection);
+        var highlights = BoardClickResolver.Highlights(Ruleset, Start(), selection);
 
         highlights.Reachable.ShouldBeEmpty();
         highlights.Attackable.ShouldBeEmpty();
@@ -129,7 +129,7 @@ public class BoardClickResolverTests
     [Fact]
     public void Highlights_OpponentsTurn_AreEmpty()
     {
-        var highlights = BoardClickResolver.Highlights(Start() with { CurrentPlayer = Opponent }, BoardSelection.Of(YourSettler));
+        var highlights = BoardClickResolver.Highlights(Ruleset, Start() with { CurrentPlayer = Opponent }, BoardSelection.Of(YourSettler));
 
         highlights.Reachable.ShouldBeEmpty();
         highlights.Attackable.ShouldBeEmpty();
@@ -140,6 +140,6 @@ public class BoardClickResolverTests
     {
         var view = Start() with { Status = GameStatus.Finished };
 
-        BoardClickResolver.Highlights(view, BoardSelection.Of(YourSettler)).Reachable.ShouldBeEmpty();
+        BoardClickResolver.Highlights(Ruleset, view, BoardSelection.Of(YourSettler)).Reachable.ShouldBeEmpty();
     }
 }

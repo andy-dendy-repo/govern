@@ -17,19 +17,20 @@ paths:
 
 - `GameState` and everything in it are immutable records. Change them with `with` and the `internal` `GameState.WithUnit`/`WithoutUnit`/`WithCity`/`WithPlayer`/`AllocateId` helpers. Collections are `ImmutableArray` so the JSON stays plain.
 - **Only `GameEngine.Execute` changes a game.** Adding an action means:
-  1. one `Actions/XxxAction.cs` holding the `XxxCommand` record and the `internal static class XxxRule` with `Apply(state, actor, command) → CommandResult`;
+  1. one `Actions/XxxAction.cs` holding the `XxxCommand` record and the `internal static class XxxRule` with `Apply(ruleset, state, actor, command) → CommandResult`;
   2. its `[JsonDerivedType]` on `Engine/GameCommand`;
   3. a case in `GameEngine.Dispatch`;
   4. new events in `Events/XxxEvent` plus `[JsonDerivedType]` on `GameEvent`, and new codes in `Engine/RuleViolations`.
 - **Rule violations are returned as `RuleViolations.Xxx`** (a stable snake_case code) and never thrown. Throw only for programming errors: an invalid `GameSetup`, an unknown command type, a missing entity inside a rule.
-- **New unit or terrain stats** go in `UnitCatalog` / `TerrainCatalog` as data, not in `if` chains inside rules.
+- **Every game number, list and text comes from the ruleset** (`Rulesets/Ruleset`, parsed from `rulesets/<key>/vN.json`), never a constant in Core. Every engine entry point and rule takes the game's `Ruleset` as its first parameter. A new stat is a field in the JSON, its record in `Rulesets/` (or `UnitDefinition`/`TerrainDefinition`), a `RulesetValidator` check with a `RulesetTests` case, and the docs in `docs/game/game-data.md`. Rules check **abilities** (`UnitDefinition.CanFoundCity`/`CanAttack`, from `UnitAbility`), never a unit id; a new ability is a `UnitAbility` value plus its rule.
+- **`UnitType`/`TerrainType` are ruleset ids** (`readonly record struct`s written to JSON as the plain id). There are no `UnitType.Settler`-style constants; tests use `Builders/TestRulesets` (the real default file, and variants via `TestRulesets.With`).
 - **Clients only ever receive `GameEngine.ViewFor`** (`PlayerView`), never `GameState` or unfiltered events. Anything added to state that an opponent must not see must be filtered in `VisibilityCalculator.ViewFor`.
 - **`PlayerView.Version` is an opaque fingerprint** of the rest of the view (SHA-256 of its JSON). Everything in the view is hashed, so a new view field must hold only what the viewer may see; never put `GameState.Version` or another counter into the view.
-- **Rejections must not leak hidden information.** Another player's unit or city is `*.not_found`. A rule that inspects tiles or objects the actor cannot see must return the same error it would return if they were empty. Keep `UnitCatalogTests`' invariants (sight ≥ movement; settler sight ≥ city spacing − 1) or filter by visibility.
+- **Rejections must not leak hidden information.** Another player's unit or city is `*.not_found`. A rule that inspects tiles or objects the actor cannot see must return the same error it would return if they were empty. Keep the fog invariants that `RulesetValidator` enforces (sight ≥ movement ÷ cheapest passable cost; `found_city` units' sight ≥ city spacing − 1) or filter by visibility.
 - **View shape:** `TileView` has no coordinates (tiles are row-major; use `PlayerView.CoordAt`/`TileAt`), cities in a view are `CityView`s built by `CityView.From`, with an enemy city's production null, and units are `UnitView`s built by `UnitView.From`, with an enemy unit's movement null. Never add per-tile coordinates, an opponent's production or an opponent's movement back. Any new per-object field in the view needs the same decision: everyone, owner only, or visible tiles only.
-- **View previews** (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a `PlayerView`, in `Visibility/ViewPreviewCalculator`) must give exactly what `Execute` gives. They share the rules' checks (`CommandGuardRule.CheckTurn`, `AttackRule.Check`, `FoundCityRule.Check`, `ReachabilityCalculator`) instead of copying them. A new action the client should preview gets a shared check and a case in `Engine/GameEnginePreviewTests` (parity with `Execute` for every tile near the unit). The previews are exact only while `UnitCatalogTests`' sight invariants hold, and the parity scenarios assume plains only: a new terrain type (cost above 1 or impassable) adds parity scenarios with it.
+- **View previews** (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a `PlayerView`, in `Visibility/ViewPreviewCalculator`) must give exactly what `Execute` gives. They share the rules' checks (`CommandGuardRule.CheckTurn`, `AttackRule.Check`, `FoundCityRule.Check`, `ReachabilityCalculator`) instead of copying them. A new action the client should preview gets a shared check and a case in `Engine/GameEnginePreviewTests` (parity with `Execute` for every tile near the unit). The previews are exact only while the validator's sight invariants hold, and the parity scenarios assume plains only: a new terrain type (cost above 1 or impassable) adds parity scenarios with it.
 - **The client** (`Govern.Client`) references Core for view types, command records and the view previews only; it never gets `GameState`, `Execute` or `GameSerializer` (`LayerDependencyTests.Client_UsesCoreOnlyForViewsAndPreviews`). Anything public added to Core may be used by the browser, so keep it pure and cheap.
-- **Enum values from commands are untrusted:** check `Enum.IsDefined` in the rule before any catalog lookup, otherwise the catalog throws and the Api returns 500.
+- **Ids and enum values from commands are untrusted:** look a unit type up with `ruleset.FindUnit` (null → `RuleViolations.UnknownUnitType`) and check `Enum.IsDefined` for enums before using them; `ruleset.Unit`/`Terrain` throw on an unknown id, which the Api would return as 500.
 
 ## Serialization
 
@@ -46,12 +47,13 @@ Whitelisted by `Templates.Core()` and checked by `FolderStructureTests`:
 |---|---|
 | `Engine/` | The pipeline: `GameEngine`, `CommandResult`, `GameUpdate`, `GameCommand` (base + discriminators), `RuleViolation`/`RuleViolations`, the cross-action `CommandGuardRule` and `VictoryRule`, `DeterministicRandom` |
 | `State/` | The snapshot: `GameState`, `GameStatus`, `GameSetup`, `GameFactory`, `Player`, `PlayerId`, `PlayerStatus` |
-| `Map/` | Geometry and movement: `HexCoord`, `GameMap`, `Tile`, terrain types and catalog, `ReachabilityCalculator` |
-| `Units/`, `Cities/` | The things on the map and the unit catalog |
+| `Map/` | Geometry and movement: `HexCoord`, `GameMap`, `Tile`, `TerrainType`/`TerrainDefinition`, `ReachabilityCalculator` |
+| `Units/`, `Cities/` | The things on the map, `UnitType`/`UnitDefinition`/`UnitAbility` |
 | `Actions/` | Flat; one `XxxAction.cs` per player action with exactly `XxxCommand` + `XxxRule` (`ActionFiles_DeclareExactlyThePrefixedCommandAndRule`) |
 | `Events/` | `GameEvent` + events; shared by several actions, so not per action. Types end with `Event` |
 | `Visibility/` | Fog of war: `VisibilityCalculator`, `PlayerView` and its parts (`TileView`, `UnitView`, `CityView`, `PlayerSummary`), and the view-based previews (`ViewPreviewCalculator`) |
 | `Serialization/` | `GameSerializer` |
+| `Rulesets/` | `Ruleset` (the parsed document and its lookups), its section records (`SetupRules`, `MapRules`, `SpawnRules`, `CityRules`), `RulesetParser` (strict JSON), `RulesetValidator`, `RulesetProblem`/`RulesetParseResult` |
 
 - There are no root files.
 - Concept folders may get sub-folders when they grow.

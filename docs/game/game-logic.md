@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Game logic: Core algorithms
 
-**Status: draft, under discussion.** This describes, as simple step-by-step algorithms, what `Govern.Core` does today. Every number comes from the ruleset and is written as its key in brackets, for example [`units.*.movement`]; the keys are described in [game data](game-data.md). Today those numbers are still constants in Core. The implementation details (classes, tests, JSON) are in [game-core](../features/game-core.md).
+**Status: draft, under discussion.** This describes, as simple step-by-step algorithms, what `Govern.Core` does today. Every number comes from the game's ruleset and is written as its key in brackets, for example [`units.*.movement`]; the keys are described in [game data](game-data.md). Core reads all of them from the ruleset (`Govern.Core/Rulesets`); none is a constant in code. The implementation details (classes, tests, JSON) are in [game-core](../features/game-core.md).
 
 ## Terms
 
@@ -26,14 +26,14 @@ updated: 2026-09-30
 
 Input: the players (in turn order) and a secret random seed.
 
-1. Check the players: exactly [`game.players`], all distinct.
+1. Check the players: exactly [`setup.players`], all distinct.
 2. Create the map: [`map.defaultWidth`] × [`map.defaultHeight`] (each within [`map.minSize`]–[`map.maxSize`]), every tile [`map.defaultTerrain`].
 3. Start the random generator from the seed.
 4. For each player, in order:
    1. Pick the spawn zone: the first player's zone is the left [`map.spawn.zoneColumnsPerMille`] of the columns, the second's the right one.
    2. Pick a random column in the zone and a random row, keeping [`map.spawn.edgeMargin`] tiles from the edges.
-   3. Place the [`game.startingUnits`]: a settler on the spawn tile, and a soldier on the neighbouring tile towards the map centre. Each unit starts with full movement and a new random id (see [Randomness and ids](#randomness-and-ids)).
-5. Set round [`game.firstTurn`], the current player to the first player, status "in progress".
+   3. Place the [`setup.startingUnits`] in order: the first on the spawn tile, the k-th k columns from it towards the map centre on the same row (by default a settler, with a soldier next to it). Each unit starts with full movement [`units.*.movement`] and a new random id (see [Randomness and ids](#randomness-and-ids)).
+5. Set round 1, the current player to the first player, status "in progress".
 6. Update what every player has explored (see [Fog of war](#fog-of-war)).
 
 ## Executing a command
@@ -64,21 +64,21 @@ Every player action is a command sent by one player (the actor). The engine runs
 ### Attack
 
 1. The unit must be the actor's → `unit.not_found`.
-2. Its type must be able to attack [`units.*.canAttack`] → `unit.cannot_attack`.
+2. Its type must have the `attack` ability [`units.*.abilities`] → `unit.cannot_attack`.
 3. It must have movement left → `unit.no_movement`.
 4. The target must be on the map and a neighbour → `attack.not_adjacent`.
 5. The target must hold a unit or a city → `attack.no_target`, and it must not be the actor's own → `attack.own_target`.
 6. **If a unit stands there:** that unit is destroyed. The attacker stays where it is, and its movement drops to 0.
-7. **Otherwise (an undefended city):** the city is captured: its owner becomes the actor, its production progress resets to 0 [`cities.captureResetsProduction`], and the attacker moves into it with movement 0.
+7. **Otherwise (an undefended city):** the city is captured: its owner becomes the actor, its production progress resets to 0 when [`cities.captureResetsProduction`] is true (it is by default), and the attacker moves into it with movement 0.
 
 ### Found a city
 
 1. The unit must be the actor's → `unit.not_found`.
-2. Its type must be able to found cities [`units.*.canFoundCity`] → `unit.cannot_found_city`.
+2. Its type must have the `found_city` ability [`units.*.abilities`] → `unit.cannot_found_city`.
 3. It must have movement left → `unit.no_movement`.
 4. No city may stand on its tile → `city.tile_taken`.
 5. No city of **any** player may be closer than [`cities.minimumSpacing`] → `city.too_close`.
-6. Create the city on the unit's tile: a new random id, the owner, the name [`cities.nameTemplate`] with `n` = the owner's city count + 1, producing [`cities.initialProduction`] with progress 0.
+6. Create the city on the unit's tile: a new random id, the owner, the name from the text [`cities.nameTemplate`] with `{n}` = the owner's city count + 1, producing [`cities.initialProduction`] with progress 0.
 7. The founding unit is removed.
 
 ### Set production
@@ -104,7 +104,7 @@ Every player action is a command sent by one player (the actor). The engine runs
 ## Elimination and victory
 
 After every successful command:
-1. **Eliminate** every active player who has no city and no unit able to found one [`units.*.canFoundCity`].
+1. **Eliminate** every active player who has no city and no unit with the `found_city` ability [`units.*.abilities`].
 2. **Remove** all units of players who are no longer active (eliminated or resigned).
 3. If at most one active player is left, the game is **finished**: the winner is that player, or nobody if none is left. There are no other victory conditions for now.
 

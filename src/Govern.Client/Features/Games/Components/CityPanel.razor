@@ -1,6 +1,7 @@
 @* The selected city: its name and, for the player's own city, what it produces and the buttons to change it. *@
 @using Govern.Core.Actions
 @using Govern.Core.Engine
+@using Govern.Core.Rulesets
 @using Govern.Core.State
 @using Govern.Core.Units
 @using Govern.Core.Visibility
@@ -15,13 +16,13 @@
     {
         <RadzenText TextStyle="TextStyle.Body2" class="production">@ProductionText</RadzenText>
         <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" Wrap="FlexWrap.Wrap">
-            @foreach (var type in Enum.GetValues<UnitType>())
+            @foreach (var type in Ruleset.Units.Select(static unit => unit.Id))
             {
-                <RadzenButton Text="@($"Build {Name(type)}")" Size="ButtonSize.Small"
+                <RadzenButton Text="@($"Build {Ruleset.UnitName(type)}")" Size="ButtonSize.Small"
                               ButtonStyle="@(City.Producing == type ? ButtonStyle.Primary : ButtonStyle.Light)"
                               Disabled="@(Busy || !CanAct || City.Producing == type)"
                               Click="@(() => Command.InvokeAsync(new SetProductionCommand(City.Id, type)))"
-                              class="@($"produce produce-{Name(type)}")"/>
+                              class="@($"produce produce-{type.Id}")"/>
             }
         </RadzenStack>
     }
@@ -32,6 +33,8 @@
 
     [Parameter, EditorRequired] public CityView City { get; set; } = null!;
 
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
     [Parameter] public bool Busy { get; set; }
 
     [Parameter] public EventCallback<GameCommand> Command { get; set; }
@@ -39,8 +42,6 @@
     private bool CanAct => View.Status == GameStatus.InProgress && View.CurrentPlayer == View.Viewer;
 
     private string ProductionText => City.Producing is { } type
-        ? $"Producing a {Name(type)}: {City.ProductionProgress ?? 0} of {UnitCatalog.Get(type).ProductionCost}"
+        ? $"Producing a {Ruleset.UnitName(type)}: {City.ProductionProgress ?? 0} of {Ruleset.Unit(type).ProductionCost}"
         : "Producing nothing";
-
-    private static string Name(UnitType type) => type == UnitType.Settler ? "settler" : "soldier";
 }

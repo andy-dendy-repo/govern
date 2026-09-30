@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Govern.Core.Actions;
 using Govern.Core.Engine;
 using Govern.Core.Events;
@@ -15,11 +16,11 @@ public class VictoryRuleTests
     {
         var builder = new GameStateBuilder();
         builder.AddCity(P1, 0, 0);
-        var attacker = builder.AddUnit(P1, UnitType.Soldier, 3, 3);
-        builder.AddUnit(P2, UnitType.Settler, 4, 3);
-        var escort = builder.AddUnit(P2, UnitType.Soldier, 9, 7);
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        builder.AddUnit(P2, TestRulesets.Settler, 4, 3);
+        var escort = builder.AddUnit(P2, TestRulesets.Soldier, 9, 7);
 
-        var update = GameEngine.Execute(builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
 
         update.State.Status.ShouldBe(GameStatus.Finished);
         update.State.Winner.ShouldBe(P1);
@@ -35,10 +36,10 @@ public class VictoryRuleTests
     {
         var builder = new GameStateBuilder();
         builder.AddCity(P1, 0, 0);
-        var attacker = builder.AddUnit(P1, UnitType.Soldier, 3, 3);
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
         builder.AddCity(P2, 4, 3);
 
-        var update = GameEngine.Execute(builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
 
         update.State.Winner.ShouldBe(P1);
         update.State.FindPlayer(P2)!.Status.ShouldBe(PlayerStatus.Eliminated);
@@ -49,7 +50,7 @@ public class VictoryRuleTests
     {
         var state = new GameStateBuilder().WithCapitals().Build();
 
-        var update = GameEngine.Execute(state, P1, new EndTurnCommand()).ShouldSucceed();
+        var update = GameEngine.Execute(TestRulesets.Default, state, P1, new EndTurnCommand()).ShouldSucceed();
 
         update.State.Status.ShouldBe(GameStatus.InProgress);
         update.State.Players.ShouldAllBe(player => player.Status == PlayerStatus.Active);
@@ -59,9 +60,9 @@ public class VictoryRuleTests
     public void Execute_ResignOutOfTurn_OpponentWinsAndResignedUnitsAreRemoved()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        var resigned = builder.AddUnit(P2, UnitType.Soldier, 8, 5);
+        var resigned = builder.AddUnit(P2, TestRulesets.Soldier, 8, 5);
 
-        var update = GameEngine.Execute(builder.Build(), P2, new ResignCommand()).ShouldSucceed();
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P2, new ResignCommand()).ShouldSucceed();
 
         update.State.FindPlayer(P2)!.Status.ShouldBe(PlayerStatus.Resigned);
         update.State.FindUnit(resigned).ShouldBeNull();
@@ -74,9 +75,25 @@ public class VictoryRuleTests
     public void Execute_AfterGameFinished_RejectsEveryCommand()
     {
         var state = new GameStateBuilder().WithCapitals().Build();
-        var finished = GameEngine.Execute(state, P2, new ResignCommand()).ShouldSucceed().State;
+        var finished = GameEngine.Execute(TestRulesets.Default, state, P2, new ResignCommand()).ShouldSucceed().State;
 
-        GameEngine.Execute(finished, P1, new EndTurnCommand()).ShouldFailWith(RuleViolations.GameFinished);
-        GameEngine.Execute(finished, P2, new ResignCommand()).ShouldFailWith(RuleViolations.GameFinished);
+        GameEngine.Execute(TestRulesets.Default, finished, P1, new EndTurnCommand()).ShouldFailWith(RuleViolations.GameFinished);
+        GameEngine.Execute(TestRulesets.Default, finished, P2, new ResignCommand()).ShouldFailWith(RuleViolations.GameFinished);
+    }
+
+    [Fact]
+    public void Execute_LastUnitCanFoundCitiesByRuleset_KeepsThePlayerInTheGame()
+    {
+        var ruleset = TestRulesets.With(json => json["units"]![1]!["abilities"] = new JsonArray("attack", "found_city"));
+        var builder = new GameStateBuilder();
+        builder.AddCity(P1, 0, 0);
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        builder.AddUnit(P2, TestRulesets.Settler, 4, 3);
+        builder.AddUnit(P2, TestRulesets.Soldier, 9, 7);
+
+        var update = GameEngine.Execute(ruleset, builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
+
+        update.State.Status.ShouldBe(GameStatus.InProgress);
+        update.State.FindPlayer(P2)!.Status.ShouldBe(PlayerStatus.Active);
     }
 }

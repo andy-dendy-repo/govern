@@ -1,9 +1,11 @@
 using Govern.Client.Features.Games.Clients;
 using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Models;
+using Govern.Client.Features.Games.Services;
 using Govern.Client.Models;
 using Govern.Core.Engine;
 using Govern.Core.Map;
+using Govern.Core.Rulesets;
 using Govern.Core.Visibility;
 using Microsoft.AspNetCore.Components;
 
@@ -37,6 +39,11 @@ public partial class GameTable : IDisposable
 
     [Inject]
     private GamesClient Games { get; set; } = null!;
+
+    [Inject]
+    private RulesetService Rulesets { get; set; } = null!;
+
+    private Ruleset Ruleset => Rulesets.Ruleset;
 
     private PlayerView View => Game.View ?? throw new InvalidOperationException("The game table needs a started game with a view.");
 
@@ -75,7 +82,7 @@ public partial class GameTable : IDisposable
             return;
         }
 
-        var click = BoardClickResolver.Resolve(View, _selection, coord);
+        var click = BoardClickResolver.Resolve(Ruleset, View, _selection, coord);
         Select(click.Next);
         if (click.Command is { } command)
         {
@@ -135,6 +142,6 @@ public partial class GameTable : IDisposable
     private void Select(BoardSelection selection)
     {
         _selection = selection;
-        _highlights = BoardClickResolver.Highlights(View, selection);
+        _highlights = BoardClickResolver.Highlights(Ruleset, View, selection);
     }
 }

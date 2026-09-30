@@ -16,4 +16,8 @@
         <ProjectReference Include="..\Govern.Core\Govern.Core.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <EmbeddedResource Include="..\..\rulesets\default\v1.json" LogicalName="Govern.Rulesets.default.v1.json" />
+    </ItemGroup>
+
 </Project>

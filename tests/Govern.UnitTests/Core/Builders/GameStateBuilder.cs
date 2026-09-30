@@ -30,14 +30,14 @@ internal sealed class GameStateBuilder
     public UnitId AddUnit(PlayerId owner, UnitType type, int column, int row, int? movementLeft = null)
     {
         var id = new UnitId(_nextId++);
-        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? UnitCatalog.Get(type).Movement));
+        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? TestRulesets.Default.Unit(type).Movement));
         return id;
     }
 
-    public CityId AddCity(PlayerId owner, int column, int row, UnitType producing = UnitType.Soldier, int progress = 0)
+    public CityId AddCity(PlayerId owner, int column, int row, UnitType? producing = null, int progress = 0)
     {
         var id = new CityId(_nextId++);
-        _cities.Add(new City(id, owner, $"City {id.Value}", At(column, row), producing, progress));
+        _cities.Add(new City(id, owner, $"City {id.Value}", At(column, row), producing ?? TestRulesets.Soldier, progress));
         return id;
     }
 
@@ -56,13 +56,13 @@ internal sealed class GameStateBuilder
         return this;
     }
 
-    public GameState Build() => VisibilityCalculator.UpdateExplored(new GameState
+    public GameState Build() => VisibilityCalculator.UpdateExplored(TestRulesets.Default, new GameState
     {
         Version = 0,
         Turn = _turn,
         CurrentPlayer = _currentPlayer,
         Status = GameStatus.InProgress,
-        Map = GameMap.Create(Width, Height),
+        Map = GameMap.Create(Width, Height, TestRulesets.Plains),
         Players = [new Player(P1, PlayerStatus.Active, []), new Player(P2, PlayerStatus.Active, [])],
         Units = [.. _units],
         Cities = [.. _cities],
