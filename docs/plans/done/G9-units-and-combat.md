@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Plan: G9 army units, health and counter-based combat
 
-**Status:** proposed 2026-09-30, waiting for the owner's OK.
+**Status:** done 2026-09-30, PR #30. Approved by Andrii 2026-09-30 as proposed; this was the last item of content slice C1.
 
 ## Context
 Combat today is one hit: any attack destroys the defender, so the only unit that fights (the soldier) always wins by moving first. G9 is the last item of content slice C1: units get health, a small roster with rock-paper-scissors counters, terrain defence (deferred here from G4) and a damage forecast before attacking that matches the engine exactly. Kept lean: only units and stats that a mechanic in this plan uses.
@@ -97,3 +97,11 @@ Combat today is one hit: any attack destroys the defender, so the only unit that
 - **Balance numbers** are a first guess; they are all in the ruleset, so tuning later is a new version file, not code.
 - **Two-step attack** (click target, then confirm) is one more click than today. Proposal: keep it, since a random outcome deserves a look first; the alternative is a hover-only forecast that doesn't work on touch.
 - **Stalemates:** with healing and no city defence, a defender can rest in a city and heal. Accepted for now; city defence comes with siege later.
+
+## Decisions made during implementation
+- **Capture stays one click.** Clicking an undefended enemy city with a melee unit captures it at once: there is no roll to forecast.
+- **Only the forecast's Attack button attacks.** The first design attacked on a second click on the target; the review pointed out that a double-click or double-tap would then attack before the forecast could be read, so a second click now keeps the forecast open.
+- **Damage is stored, not health.** `Unit.Damage` (left out of the JSON while 0) keeps saved games readable without a schema bump. Until games are pinned to a ruleset version (G3b), a new version must not lower `combat.maxHealth`.
+- **Combat numbers have upper bounds** (strengths, health and damage up to 1000, bonuses up to 100), so the integer maths can't overflow.
+- **Accepted leak:** a hurt unit heals only if it kept all its movement, so an opponent watching a hurt unit learns whether it moved that turn (one bit). Documented in `UnitView` and [game logic](../../game/game-logic.md#fog-of-war).
+- **Client split:** `CombatSideView` renders one side of the forecast, and the unit panel's logic moved to `UnitPanel.razor.cs` to stay within the size limits; `ProgressBar` now passes its label as `AriaLabel`.
