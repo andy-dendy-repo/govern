@@ -60,7 +60,7 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
    - client tests (bUnit) for client components and services
    - architecture tests (for new conventions)
 3. XML docs on every public member (the build fails otherwise).
-4. `docs/` updated (feature doc + index).
+4. `docs/` updated (feature doc + index). A game rules change also updates the player rules reference `docs/game/rules.md` (its tables are checked by `RulesReferenceTests`).
 5. `.claude` rules, skills and this file corrected if a convention changed. Rules and arch tests change together.
 6. **Build and ALL tests have been run in this session and are green, with the summary shown, BEFORE saying the feature is done.** Use `/verify`. A Stop hook blocks finishing while changed code has no green `dotnet test Govern.slnx` run.
 
