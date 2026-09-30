@@ -21,7 +21,7 @@ The approaches for every game screen, panel, number and icon. Full description, 
 
 ## Rules
 
-- **Colours only as tokens.** No hex, `rgb()`/`hsl()` or other colour values outside `wwwroot/css/tokens.css`, and none in Razor `fill`/`stroke`/`color`/`style` attributes. Use `var(--gv-…)` and classes: `seat-<n>` (from `Helpers/Seats`, the turn order) for players, `terrain terrain-<id>` for terrain.
+- **Colours only as tokens.** No hex, `rgb()`/`hsl()`, named or other colour values outside `wwwroot/css/tokens.css`, and none in Razor `fill`/`stroke`/`color`/`background`/`style` attributes. Use `var(--gv-…)` and classes: `seat-<n>` (from `Helpers/Seats`, the turn order) for players, `terrain terrain-<id>` for terrain.
 - **Every ruleset id has its UI.** A new unit or terrain needs its sprite symbol; a new terrain also needs `--gv-terrain-<id>` and `--gv-terrain-<id>-explored` in `tokens.css` and its `.terrain-<id>` rule in `board.css`.
 - **Icons only from the sprite.** Draw with `GameIcon` (panels) or `<use href="#id">` (board); no other inline SVG icons, image files or icon fonts for game things (Radzen's Material icons stay for generic buttons such as End turn). `GameIcon` is decorative unless `Label` is set.
 - **Select, then act.** Nothing happens on a single accidental click: a destructive action uses `ConfirmButton`; a disabled action shows the rule's reason next to it.

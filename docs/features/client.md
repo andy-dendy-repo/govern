@@ -149,7 +149,7 @@ A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the
 |---|---|
 | `Board/GameBoard` | An `<svg>` with the hex `<symbol>`, pieces drawn from the game's icon set (`Components/Game/GameSprite`), layers in `BoardLayer` order, and one `<g transform>` for pan and zoom (`Helpers/BoardViewport`: scale 0.4–3, zoom keeps the point under the cursor). It is fitted to the measured element on first render |
 | `Board/BoardTerrain` | One `<use>` per tile, classed by visibility (`unexplored`, `explored`, `visible`) and terrain, placed by `Helpers/HexLayout` (pointy-top, odd-r). Each tile has its own click handler, so picking is exact. It renders again only for a new view, so panning never re-diffs the tiles |
-| `Board/BoardPieces` | Reachable and attackable overlays, cities (name as SVG text, which Blazor encodes) and units, classed `own`/`enemy` and `selected`. `pointer-events: none`, so clicks reach the tile below |
+| `Board/BoardPieces` | Reachable and attackable overlays, cities (name as SVG text, which Blazor encodes) and units, classed by seat (`seat-1`, `seat-2`: turn order), `own`/`enemy` and `selected`, each in its `BoardLayer` group. `pointer-events: none`, so clicks reach the tile below |
 | `Screen/TopBar` | Your seat colour, "Turn n: your turn" or "opponent's turn" ("game over" once finished), End turn (your turn only), Resign with an inline confirm (`ConfirmButton`, allowed at any time) |
 | `Screen/ActionBar` | For your selected unit: a hint for board moves and, for a unit with the `found_city` ability, Found city, disabled with the rule's message from `CheckFoundCity` |
 | `Screen/SidePanel` | The stale notice and Api error, the result once finished, and the panel for the selection (or a hint) |

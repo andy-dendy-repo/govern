@@ -24,8 +24,10 @@ public partial class GameTable : IDisposable
     public const string StaleVersionCode = "game.stale_version";
 
     private readonly CancellationTokenSource _lifetime = new();
-    private PlayerView? _view;
     private readonly GameUiService _ui = new();
+    private ElementReference _screen;
+    private PlayerView? _view;
+    private bool _focusScreen = true;
     private ApiError? _error;
     private bool _sending;
     private bool _stale;
@@ -76,6 +78,17 @@ public partial class GameTable : IDisposable
         }
     }
 
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Keep keyboard focus in the screen so Esc works: on arrival, and after a command, whose disabled buttons drop focus.
+        if (_focusScreen)
+        {
+            _focusScreen = false;
+            await _screen.FocusAsync(preventScroll: true);
+        }
+    }
+
     private async Task OnTileClickedAsync(HexCoord coord)
     {
         if (_sending)
@@ -123,6 +136,7 @@ public partial class GameTable : IDisposable
         finally
         {
             _sending = false;
+            _focusScreen = true;
         }
     }
 

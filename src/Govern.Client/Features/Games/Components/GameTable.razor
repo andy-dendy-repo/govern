@@ -5,7 +5,7 @@
 
 <CascadingValue Value="@_ui" IsFixed="true">
     <GameSprite/>
-    <div class="game-screen" tabindex="-1" @onkeydown="@OnKeyDown">
+    <div @ref="_screen" class="game-screen" tabindex="-1" @onkeydown="@OnKeyDown">
         <div class="zone-top">
             <TopBar View="@View" Busy="@_sending" Command="@SendAsync"/>
         </div>

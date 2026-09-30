@@ -2,12 +2,12 @@
    (pointer-events: none in board.css). Pieces are coloured by seat (seat-1, seat-2: turn order) and marked own or enemy. *@
 @using Govern.Client.Features.Games.Helpers
 @using Govern.Client.Features.Games.Models
-@using Govern.Client.Helpers
+@using Govern.Client.Features.Games.Enums
 @using Govern.Core.Map
 @using Govern.Core.State
 @using Govern.Core.Visibility
 
-<g class="layer-highlights" data-layer="highlights">
+<g class="layer-highlights" data-layer="@BoardLayers.Name(BoardLayer.Highlights)">
     @foreach (var coord in Highlights.Reachable)
     {
         <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay reachable"/>
@@ -17,7 +17,7 @@
         <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay attackable"/>
     }
 </g>
-<g class="layer-cities" data-layer="cities">
+<g class="layer-cities" data-layer="@BoardLayers.Name(BoardLayer.Cities)">
     @foreach (var city in View.Cities)
     {
         <g class="@PieceClass("city", city.Owner, Selection.City == city.Id)" transform="translate(@X(city.Position) @Y(city.Position))">
@@ -26,7 +26,7 @@
         </g>
     }
 </g>
-<g class="layer-units" data-layer="units">
+<g class="layer-units" data-layer="@BoardLayers.Name(BoardLayer.Units)">
     @foreach (var unit in View.Units)
     {
         <use href="@($"#{Icons.Unit(unit.Type)}")" x="@X(unit.Position)" y="@Y(unit.Position)"
