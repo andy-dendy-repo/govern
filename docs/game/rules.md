@@ -1,13 +1,13 @@
 ---
 title: Game rules reference (for players)
-tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, map-generation, units, movement, attack, cities, production, fog-of-war, victory, resign]
-code: [rulesets/default/v2.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
+tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, map-generation, units, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
+code: [rulesets/default/v3.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
 updated: 2026-09-30
 ---
 
 # Game rules reference
 
-How Govern is played today, written for players. Every number on this page comes from the game's ruleset ([`rulesets/default/v2.json`](../../rulesets/default/v2.json)); the step-by-step algorithms behind each rule, with the ruleset keys, are in [game logic](game-logic.md).
+How Govern is played today, written for players. Every number on this page comes from the game's ruleset ([`rulesets/default/v3.json`](../../rulesets/default/v3.json)); the step-by-step algorithms behind each rule, with the ruleset keys, are in [game logic](game-logic.md).
 
 ## Goal and victory
 
@@ -26,18 +26,18 @@ Govern is a turn-based strategy game for the number of players under "Game numbe
 
 ## Terrain types
 
-A tile's terrain decides how many movement points it costs to enter, whether land units can enter it at all, and whether a unit or city standing on it sees further.
+A tile's terrain decides how many movement points it costs to enter, whether land units can enter it at all, whether a unit or city standing on it sees further, and how much it helps a unit defending on it.
 
-| Terrain | Movement cost | Passable | Sight bonus |
-|---|---|---|---|
-| Plains | 1 | Yes | — |
-| Forest | 2 | Yes | — |
-| Hills | 2 | Yes | +1 |
-| Mountains | — | No | — |
-| Lake | — | No | — |
+| Terrain | Movement cost | Passable | Sight bonus | Defence bonus |
+|---|---|---|---|---|
+| Plains | 1 | Yes | — | — |
+| Forest | 2 | Yes | — | +3 |
+| Hills | 2 | Yes | +1 | +3 |
+| Mountains | — | No | — | — |
+| Lake | — | No | — | — |
 
 - **Sight bonus:** a unit or city standing on the tile sees this many tiles further than its own sight.
-- Forest and hills don't give defence yet; defence comes with health and combat (G9).
+- **Defence bonus:** a unit attacked on the tile fights with this much extra strength (see "Combat"). Attacking from it gives nothing.
 - The board's **Movement cost** lens (the toolbar at the top left of the map) writes each known tile's cost on it, and ✕ where land units can't go.
 
 ## Turns and rounds
@@ -49,16 +49,23 @@ A tile's terrain decides how many movement points it costs to enter, whether lan
 
 ## Unit types
 
-| Unit | Movement | Sight | Production cost | Abilities |
-|---|---|---|---|---|
-| Settler | 2 | 2 | 6 | Found city |
-| Soldier | 2 | 2 | 4 | Attack |
+| Unit | Class | Strength | Ranged strength | Movement | Sight | Production cost | Abilities |
+|---|---|---|---|---|---|---|---|
+| Settler | Civilian | — | — | 2 | 2 | 6 | Found city |
+| Soldier | Melee | 20 | — | 2 | 2 | 4 | Attack |
+| Spearman | Anti-cavalry | 18 | — | 2 | 2 | 4 | Attack |
+| Horseman | Cavalry | 20 | — | 3 | 3 | 6 | Attack |
+| Archer | Ranged | 10 | 22 (range 2) | 2 | 2 | 5 | Ranged attack |
 
+- **Class:** what the unit is strong or weak against (see "Class counters").
+- **Strength:** how hard the unit fights in melee and when it is attacked. A unit with no strength (a civilian) can't fight: any attack destroys it.
+- **Ranged strength:** how hard the unit shoots, and the farthest tile it can shoot at.
 - **Movement:** movement points per turn. Entering a tile costs its terrain's movement cost.
 - **Sight:** how many tiles away the unit can see, plus the sight bonus of the terrain it stands on.
 - **Production cost:** production points a city needs to build the unit.
 - **Found city:** the unit can turn into a city (see "Founding a city").
-- **Attack:** the unit can attack an adjacent enemy unit or city (see "Attacking").
+- **Attack:** the unit can attack an enemy unit or city on a neighbouring tile (see "Attacking").
+- **Ranged attack:** the unit can shoot an enemy unit within its range (see "Attacking").
 
 ## Moving a unit
 
@@ -70,10 +77,33 @@ A tile's terrain decides how many movement points it costs to enter, whether lan
 
 ## Attacking
 
-- A unit with the Attack ability that still has movement left can attack an enemy unit or city on a neighbouring tile.
-- **Attacking a unit** destroys it. The attacker stays where it is, and its movement drops to 0. (Health and counters come with G9.)
-- **Attacking a city with no unit on it** captures the city. The attacker moves into it with 0 movement, the city becomes yours, and its production progress resets when "Capturing a city resets its production" is Yes under "Game numbers".
-- A city with a unit on it is defended: attack the unit first.
+- A unit with Attack or Ranged attack that still has movement left can attack. Attacking uses up all its movement for the turn, and it stays where it is.
+- **Attack (melee):** an enemy unit or city on a neighbouring tile. Both units fight and both take damage (see "Combat").
+- **Ranged attack:** an enemy unit up to the unit's range away. Only the target takes damage: it can't hit back. A ranged unit can't attack a city with no unit on it.
+- **Attacking a city with no unit on it** (melee only) captures the city. The attacker moves into it with 0 movement, the city becomes yours, and its production progress resets when "Capturing a city resets its production" is Yes under "Game numbers".
+- A city with a unit on it is defended: fight the unit first.
+- Before you attack a unit, the game shows the forecast: both units' strength in this fight, what changes it, and how much damage each side can take. Click the target (or the forecast's Attack button) again to attack, or Cancel (Esc). The damage always lands within the forecast.
+
+## Combat
+
+- Every unit has full health (under "Game numbers") when built. A unit that drops to 0 health is destroyed. When both units drop to 0, both are destroyed.
+- **Strength in a fight** starts from the unit's strength (its ranged strength when it shoots) and changes with:
+  - **Health:** a hurt unit fights weaker, down to half its strength near 0 health (strength × (full health + health) ÷ (2 × full health), rounded down).
+  - **Class counters:** the bonus in the table below, whether the unit attacks or defends.
+  - **Terrain:** the defender gets the defence bonus of its tile.
+- **Damage** each side takes: the damage between equal units, plus the extra damage per point by which the other side is stronger (less when it is weaker), kept between the least and the most damage under "Game numbers". A random roll then moves it up or down by up to the random spread, but never below 1, and never more than the health left.
+- **Civilians** (the settler) are destroyed by any attack and do no damage back.
+- **Healing:** at the end of your turn, each of your hurt units that neither moved nor attacked this turn heals, more in one of your cities (under "Game numbers"), up to full health.
+
+## Class counters
+
+| Class | Strong against | Bonus |
+|---|---|---|
+| Melee | Anti-cavalry | +5 |
+| Anti-cavalry | Cavalry | +10 |
+| Cavalry | Ranged | +5 |
+
+- Ranged units counter melee in their own way: they shoot from two tiles away and take no damage back.
 
 ## Founding a city
 
@@ -92,6 +122,7 @@ A tile's terrain decides how many movement points it costs to enter, whether lan
 
 - You see every tile within sight of your units and cities. Tiles you have seen before stay explored: you see their terrain, but not what is on them now.
 - You see enemy units and cities only on tiles you can see right now.
+- You see the health of every enemy unit you can see.
 - You never see an enemy unit's movement left, or what an enemy city is producing.
 - The order in which units and cities are listed, and their ids, reveal nothing about when they were created.
 
@@ -108,7 +139,15 @@ A tile's terrain decides how many movement points it costs to enter, whether lan
 | Production per turn | 1 |
 | First unit a new city produces | Soldier |
 | Capturing a city resets its production | Yes |
+| Full health | 100 |
+| Damage between equal units | 30 |
+| Extra damage per point of strength difference | 2 |
+| Least damage | 5 |
+| Most damage | 100 |
+| Random spread of damage | ±20% |
+| Healing per turn of rest | 10 |
+| Healing per turn of rest in your city | 20 |
 
 ## Maintaining this page
 
-For maintainers: every change to the game's rules updates this page in the same PR. The tables under "Terrain types", "Unit types" and "Game numbers" are checked against the default ruleset by `RulesReferenceTests` (`tests/Govern.ArchitectureTests`). The first column is the name from the ruleset's `texts`, or the row label listed in the test; a ruleset terrain or unit without its row, or a new ability without its label in the test, fails it.
+For maintainers: every change to the game's rules updates this page in the same PR. The tables under "Terrain types", "Unit types", "Class counters" and "Game numbers" are checked against the default ruleset by `RulesReferenceTests` (`tests/Govern.ArchitectureTests`). The first column is the name from the ruleset's `texts`, or the row label listed in the test; a ruleset terrain, unit or counter without its row, or a new ability without its label in the test, fails it.

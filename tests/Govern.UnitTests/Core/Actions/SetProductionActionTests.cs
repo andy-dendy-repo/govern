@@ -62,13 +62,13 @@ public class SetProductionActionTests
     [Fact]
     public void Execute_UnitAddedByTheRuleset_IsAccepted()
     {
-        var archer = new UnitType("archer");
-        var ruleset = TestRulesets.With(json => TestRulesets.AddUnit(json, "archer", movement: 1, sight: 2, cost: 5, "attack"));
+        var slinger = new UnitType("slinger");
+        var ruleset = TestRulesets.With(json => TestRulesets.AddUnit(json, "slinger", movement: 1, sight: 2, cost: 5, "attack"));
         var builder = new GameStateBuilder().WithCapitals();
         var city = builder.AddCity(P1, 5, 5);
 
-        var update = GameEngine.Execute(ruleset, builder.Build(), P1, new SetProductionCommand(city, archer)).ShouldSucceed();
+        var update = GameEngine.Execute(ruleset, builder.Build(), P1, new SetProductionCommand(city, slinger)).ShouldSucceed();
 
-        update.State.FindCity(city)!.Producing.ShouldBe(archer);
+        update.State.FindCity(city)!.Producing.ShouldBe(slinger);
     }
 }

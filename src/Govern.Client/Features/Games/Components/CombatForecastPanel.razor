@@ -1,0 +1,41 @@
+@* The forecast of a pending attack (BoardSelection.Target): both units with their health, their strength in this fight
+   (each modifier in its tooltip) and the damage each can take, then Attack and Cancel. The numbers come from
+   GameEngine.CombatForecast, which the server's roll always respects. *@
+@using Govern.Core.Rulesets
+@using Govern.Core.Visibility
+
+<RadzenStack Gap="0.5rem" class="combat-forecast">
+    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3" class="combat-title rz-m-0">
+        @(Forecast.IsRanged ? "Shoot at" : "Attack") the enemy @Ruleset.UnitName(Defender.Type)?
+    </RadzenText>
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap">
+        <CombatSideView View="@View" Ruleset="@Ruleset" Whose="Your" Unit="@Attacker" Side="@Forecast.Attacker" Class="combat-attacker"/>
+        <CombatSideView View="@View" Ruleset="@Ruleset" Whose="Enemy" Unit="@Defender" Side="@Forecast.Defender" Class="combat-defender"/>
+    </RadzenStack>
+    @if (Forecast.IsRanged)
+    {
+        <RadzenText TextStyle="TextStyle.Caption" class="combat-note">A ranged attack: the enemy can't hit back.</RadzenText>
+    }
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+        <RadzenButton Text="Attack" Icon="gps_fixed" ButtonStyle="ButtonStyle.Danger" Disabled="@Busy" Click="@Attack" class="combat-attack"/>
+        <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Disabled="@Busy" Click="@Cancel" class="combat-cancel"/>
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
+    [Parameter, EditorRequired] public UnitView Attacker { get; set; } = null!;
+
+    [Parameter, EditorRequired] public UnitView Defender { get; set; } = null!;
+
+    [Parameter, EditorRequired] public CombatForecast Forecast { get; set; } = null!;
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback Attack { get; set; }
+
+    [Parameter] public EventCallback Cancel { get; set; }
+}

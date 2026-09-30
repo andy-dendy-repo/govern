@@ -1,0 +1,17 @@
+@* A unit's health as a bar with "n of max" (unit panel, combat forecast). At a third or less the bar turns to the danger style. *@
+
+<div class="@(IsLow ? "health-bar low" : "health-bar")">
+    <RadzenProgressBar Value="@Math.Clamp(Health, 0, Max)" Max="@Math.Max(Max, 1)" ShowValue="false" AriaLabel="@Label"
+                       ProgressBarStyle="@(IsLow ? ProgressBarStyle.Danger : ProgressBarStyle.Success)"/>
+    <span class="health-text">@Health of @Max</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int Health { get; set; }
+
+    [Parameter, EditorRequired] public int Max { get; set; }
+
+    [Parameter] public string Label { get; set; } = "Health";
+
+    private bool IsLow => Health * 3 <= Max;
+}

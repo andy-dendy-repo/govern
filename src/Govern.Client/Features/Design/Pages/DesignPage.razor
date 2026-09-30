@@ -50,6 +50,10 @@ else
         <ProgressBar Value="2" Max="6" PerTurn="1" Label="Production"/>
         <CostLabel Amount="4"/>
 
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2">HealthBar</RadzenText>
+        <HealthBar Health="100" Max="100"/>
+        <HealthBar Health="30" Max="100"/>
+
         <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2">ConfirmButton</RadzenText>
         <ConfirmButton Text="Disband" Icon="delete" Question="Disband this unit?" ConfirmText="Yes, disband" Class="disband"/>
     </RadzenStack>
@@ -57,7 +61,7 @@ else
 
 @code {
     private static readonly (string Id, string Name)[] Glyphs =
-        [(Icons.City, "City"), (Icons.Movement, "Movement"), (Icons.Sight, "Sight"), (Icons.Production, "Production"), (Icons.Turns, "Turns")];
+        [(Icons.City, "City"), (Icons.Movement, "Movement"), (Icons.Sight, "Sight"), (Icons.Production, "Production"), (Icons.Health, "Health"), (Icons.Strength, "Strength"), (Icons.Turns, "Turns")];
 
     private static readonly StatRow[] SampleStats =
     [

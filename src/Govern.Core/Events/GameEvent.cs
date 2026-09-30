@@ -10,6 +10,7 @@ namespace Govern.Core.Events;
 [JsonDerivedType(typeof(UnitMovedEvent), "unit_moved")]
 [JsonDerivedType(typeof(UnitCreatedEvent), "unit_created")]
 [JsonDerivedType(typeof(UnitDestroyedEvent), "unit_destroyed")]
+[JsonDerivedType(typeof(UnitAttackedEvent), "unit_attacked")]
 [JsonDerivedType(typeof(CityFoundedEvent), "city_founded")]
 [JsonDerivedType(typeof(CityCapturedEvent), "city_captured")]
 [JsonDerivedType(typeof(ProductionChangedEvent), "production_changed")]

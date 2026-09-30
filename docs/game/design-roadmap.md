@@ -91,7 +91,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G4. Terrain: more tile types
 
-- **Status:** done 2026-09-30, PR #28 ([plan](../plans/done/G4-terrain.md)). First set: plains, forest (cost 2), hills (cost 2, +1 sight), mountains and lake (impassable); seeded, mirrored map generation; the movement-cost lens with the lens registry and toolbar. Still open from the list below: more base terrains (with G5 yields), terrain layers such as forested hills (G5), defence modifiers (G9), forests blocking sight (needs a line-of-sight design that keeps the previews exact), climate bands, continents and coasts, seas (G15).
+- **Status:** done 2026-09-30, PR #28 ([plan](../plans/done/G4-terrain.md)). First set: plains, forest (cost 2), hills (cost 2, +1 sight), mountains and lake (impassable); seeded, mirrored map generation; the movement-cost lens with the lens registry and toolbar. Still open from the list below: more base terrains (with G5 yields), terrain layers such as forested hills (G5), forests blocking sight (needs a line-of-sight design that keeps the previews exact), climate bands, continents and coasts, seas (G15).
 - **Requested:** forest, jungle, desert, mountain, meadow, sea, ocean, lake.
 - **Suggested additions:** plains, tundra, snow/ice, hills, marsh/swamp, savanna/steppe, taiga, coast/beach, floodplains, oasis, reef, volcano, canyon.
 - **Suggested model (as in Civ):** three layers per tile instead of one big list:
@@ -163,6 +163,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G9. Army units and combat
 
+- **Status:** done 2026-09-30 ([plan](../plans/done/G9-units-and-combat.md)). Shipped: health (100), five units (settler, soldier, spearman, horseman, archer) with classes and a counter table (melee > anti-cavalry > cavalry > ranged, ranged shoots from range 2 without damage back), strength scaled by health, integer damage with a hashed ±20 % roll, terrain defence (forest and hills +3), healing for resting units, a combat forecast that `Execute` always respects, health bars and a two-step attack in the client. Still open from the list below: attacks per turn and moving after attacking (until a unit differs), siege and city defence, recon, later eras, resource costs (G5), river defence (G6).
 - **Unit parameters (requested):** type, health, moves per turn, attacks per turn, production cost, resource cost (G5). Defence is **computed from the attacker's type and the defender's health**.
 - **Suggested roster (by era):**
 

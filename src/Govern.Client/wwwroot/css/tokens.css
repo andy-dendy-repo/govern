@@ -24,6 +24,10 @@
     --gv-overlay-reachable-stroke: #ffffff;
     --gv-overlay-attackable: rgba(214, 69, 69, 0.35);
     --gv-overlay-attackable-stroke: #d64545;
+    --gv-overlay-target: rgba(214, 69, 69, 0.6);
+    --gv-health-track: #14171c;
+    --gv-health-good: #4caf50;
+    --gv-health-low: #e53935;
 
     /* Terrain palette: visible and explored (remembered) shades per ruleset terrain id. */
     --gv-terrain-plains: #9cc47f;

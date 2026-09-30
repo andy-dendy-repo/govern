@@ -1,6 +1,6 @@
 ---
 title: Game logic (Core algorithms)
-tags: [game, core, rules, algorithms, engine, turns, movement, pathfinding, combat, cities, production, victory, fog-of-war, visibility, determinism]
+tags: [game, core, rules, algorithms, engine, turns, movement, pathfinding, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, determinism]
 code: [src/Govern.Core]
 updated: 2026-09-30
 ---
@@ -18,7 +18,7 @@ updated: 2026-09-30
 | Player | A seat in the game: active, eliminated or resigned |
 | Current player | The one player who may act now (turns alternate) |
 | Round (turn number) | Increases by 1 each time play wraps around to the first player |
-| Unit | Belongs to a player, stands on one tile, has a type and movement left this turn |
+| Unit | Belongs to a player, stands on one tile, has a type, movement left this turn and damage taken (health = [`combat.maxHealth`] − damage) |
 | City | Belongs to a player, stands on one tile, produces one unit type at a time |
 | Explored / visible | A tile a player has ever seen / sees right now |
 
@@ -76,12 +76,25 @@ Every player action is a command sent by one player (the actor). The engine runs
 ### Attack
 
 1. The unit must be the actor's → `unit.not_found`.
-2. Its type must have the `attack` ability [`units.*.abilities`] → `unit.cannot_attack`.
+2. Its type must have the `attack` or `ranged_attack` ability [`units.*.abilities`] → `unit.cannot_attack`.
 3. It must have movement left → `unit.no_movement`.
-4. The target must be on the map and a neighbour → `attack.not_adjacent`.
-5. The target must hold a unit or a city → `attack.no_target`, and it must not be the actor's own → `attack.own_target`.
-6. **If a unit stands there:** that unit is destroyed. The attacker stays where it is, and its movement drops to 0.
-7. **Otherwise (an undefended city):** the city is captured: its owner becomes the actor, its production progress resets to 0 when [`cities.captureResetsProduction`] is true (it is by default), and the attacker moves into it with movement 0.
+4. The target must be on the map and within the unit's range: 1 for `attack`, [`units.*.ranged.range`] for `ranged_attack` → `attack.not_adjacent` (melee) or `attack.out_of_range` (ranged).
+5. The target must hold a unit or a city → `attack.no_target`, and it must not be the actor's own → `attack.own_target`. A ranged unit's target must hold a unit → `attack.no_target`.
+6. **If a unit stands there:** they fight (see [Combat](#combat)). The attacker stays where it is, and its movement drops to 0.
+7. **Otherwise (an undefended city, melee only):** the city is captured: its owner becomes the actor, its production progress resets to 0 when [`cities.captureResetsProduction`] is true (it is by default), and the attacker moves into it with movement 0.
+
+### Combat
+
+All integer maths, so the server and the browser get identical numbers.
+1. **Base strength:** the attacker's [`units.*.strength`], or its [`units.*.ranged.strength`] when it shoots; the defender's [`units.*.strength`]. A defender with no strength (a civilian) skips to step 6.
+2. **Health:** each side fights at `strength × (maxHealth + health) ÷ (2 × maxHealth)` (rounded down) [`combat.maxHealth`]; the loss is the "health" modifier.
+3. **Counters:** each side adds the `bonus` of every [`combat.counters`] entry whose `class` is its own class and `against` the opponent's [`units.*.class`], attacking or defending.
+4. **Terrain:** the defender adds the [`terrains.*.defenceBonus`] of its tile. Strength never goes below 0.
+5. **Damage before the roll** a side takes: `base + (dealer's strength − receiver's strength) × perStrengthPoint`, kept within `[min, max]` [`combat.damage.*`]. A ranged attacker takes none.
+6. **Roll:** for each side that can take a varying amount, draw a percentage in `100 ± spreadPercent` from the game's generator (hashed draws, `NextHashed`: damage is shown to both players, and raw draws would expose the generator's state), defender first. Damage = `max(1, raw × percent ÷ 100)`, at most the receiver's health. A civilian defender takes its whole health and deals none.
+7. **Apply:** each side's damage is added; a unit at 0 health is removed (`unit_destroyed`); both can be removed. The event `unit_attacked` carries both amounts.
+
+The **forecast** (see [View previews](#view-previews-what-the-client-can-check)) runs steps 1 to 5 and gives each side's damage for the lowest and the highest percent, so a rolled damage always lies within it.
 
 ### Found a city
 
@@ -101,12 +114,13 @@ Every player action is a command sent by one player (the actor). The engine runs
 
 ### End turn
 
-1. **Produce**, for each of the actor's cities:
+1. **Heal:** each of the actor's hurt units whose movement left is still full (it neither moved nor attacked this turn) loses [`combat.healing.perTurn`] damage, or [`combat.healing.inOwnCity`] on one of the actor's cities, down to 0.
+2. **Produce**, for each of the actor's cities:
    1. Add [`cities.productionPerTurn`] to its progress, capped at the unit's [`units.*.productionCost`].
    2. If the progress has reached the cost, find a spawn tile: the city's tile if free, otherwise the first free neighbour (in fixed direction order) that is passable and has no unit and no enemy city.
    3. If a spawn tile exists, create the unit there with a new random id and **0 movement**, and reset the progress to 0. If none exists (the city is surrounded), the progress stays full and the unit appears in a later turn.
-2. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
-3. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
+3. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
+4. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
 
 ### Resign
 
@@ -127,7 +141,7 @@ After every successful command:
 3. **The view** a player receives:
    - every tile, as unexplored (no terrain), explored (terrain, as last seen) or visible;
    - their own units and cities, plus enemy units and cities on currently visible tiles;
-   - enemy cities without their production, and enemy units without their movement left;
+   - enemy cities without their production, and enemy units without their movement left (their health is shown);
    - units and cities ordered by id, so the order reveals nothing about when they were created;
    - the round, the current player, the status, the winner and each player's status.
 4. **The view version** is a fingerprint (SHA-256) of everything in the view. It changes only when something the player can see changes, so it can't be used to count the opponent's hidden actions. A command must quote the version it was based on (the server rejects it with `game.stale_version` if the view changed since).
@@ -136,10 +150,11 @@ After every successful command:
 
 The client never has the full game state, only its view. From the view alone, Core answers, for one of the player's units:
 - **Reachable tiles:** the same Dijkstra as [Move a unit](#move-a-unit), where only visible tiles can be entered.
-- **Attack targets:** neighbours holding an enemy unit or city, with the same checks as [Attack](#attack).
+- **Attack targets:** tiles in range holding an enemy unit (or, for melee, an enemy city), with the same checks as [Attack](#attack).
+- **Combat forecast:** for a target holding an enemy unit, both strengths with their modifiers and the damage range each side takes, from the same calculation as [Combat](#combat).
 - **Can found a city here:** the same checks as [Found a city](#found-a-city).
 
-These answers are **exactly** what the engine would decide, because they share the rules' own checks and because of two fog invariants: every unit sees at least as far as it moves [`units.*.sight` ≥ `units.*.movement`], and a founding unit sees every city closer than the spacing [`sight` ≥ `cities.minimumSpacing` − 1]. The ruleset validator enforces both.
+These answers are **exactly** what the engine would decide, because they share the rules' own checks and because of three fog invariants: every unit sees at least as far as it moves [`units.*.sight` ≥ `units.*.movement`], a founding unit sees every city closer than the spacing [`sight` ≥ `cities.minimumSpacing` − 1], and a ranged unit sees every tile in its range [`units.*.ranged.range` ≤ `sight`]. The ruleset validator enforces all three.
 
 ## Randomness and ids
 
@@ -150,12 +165,13 @@ These answers are **exactly** what the engine would decide, because they share t
 
 - At most one unit stands on a tile; at most one city stands on a tile.
 - A unit's movement left is between 0 and its type's movement.
+- A unit on the map has health between 1 and [`combat.maxHealth`].
 - A city's progress is between 0 and the cost of what it produces.
 - Explored tiles only grow; a finished game accepts no command.
 
 ## Future mechanics
 
-Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), yields and resources (G5), river crossing (G6), territory growth (G7), city growth, loyalty and the production queue (G8), combat with health and the counter matrix (G9), builders and building upgrades (G10), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
+Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), yields and resources (G5), river crossing (G6), territory growth (G7), city growth, loyalty and the production queue (G8), builders and building upgrades (G10), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
 
 ## Open questions
 

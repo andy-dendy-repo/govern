@@ -149,3 +149,30 @@
     align-items: center;
     gap: var(--gv-space-2);
 }
+
+.health-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--gv-space-2);
+}
+
+.health-bar .rz-progressbar {
+    flex: 1;
+    min-width: 5rem;
+}
+
+.health-text {
+    white-space: nowrap;
+    color: var(--gv-text);
+}
+
+.combat-forecast .combat-side {
+    flex: 1;
+    min-width: 10rem;
+}
+
+.combat-forecast .combat-modifiers {
+    margin: 0;
+    padding-inline-start: var(--gv-space-3);
+    color: var(--gv-text-muted);
+}
