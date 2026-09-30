@@ -73,8 +73,8 @@ public class LayerDependencyTests
     {
         Types().That().ResideInNamespaceMatching(Layers.NamespacePattern("Govern.Client"))
             .Should().NotDependOnAnyTypesThat().HaveFullNameMatching(
-                @"^Govern\.Core\.(?:State\.(?:GameState|GameFactory|GameSetup)|Engine\.(?:CommandResult|GameUpdate|DeterministicRandom)|Serialization\.GameSerializer)$")
-            .Because("the server is authoritative: the client reads its PlayerView and the view-based previews, never the full state, GameEngine.Execute or the storage format")
+                @"^Govern\.Core\.(?:State\.(?:GameState|GameFactory|GameSetup)|Units\.Unit|Cities\.City|Engine\.(?:CommandResult|GameUpdate|DeterministicRandom)|Serialization\.GameSerializer)$")
+            .Because("the server is authoritative: the client reads its PlayerView (UnitView, CityView) and the view-based previews, never the full state or its objects, GameEngine.Execute or the storage format")
             .WithoutRequiringPositiveResults()
             .Check(GovernArchitecture.Instance);
     }

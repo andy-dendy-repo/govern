@@ -43,4 +43,6 @@ Plan 5a review (2026-09-29, feature/core-player-view: TileView without coord, Ci
 Checks worth repeating:
 - **Vacuous Shouldly chains:** `x?.Code.ShouldBe(expected)` skips the assertion when `x` is null. Ask for `(x?.Code).ShouldBe(expected)`. Found in GameEnginePreviewTests and GameEventsReader.
 - Parity theories need scenarios on each branch where state and view differ or the shared check branches: own city inside reach, attack on own city (`cityOwner` branch), a hidden enemy at sight + 1, settler with 0 movement. New terrain (cost > 1 or impassable) must add parity scenarios.
-- Remaining view leaks (pre-existing, not filtered by CityView): enemy `Unit.MovementLeft`, and city names `City N` = founder's city count at founding (reveals hidden enemy cities).
+- Remaining view leaks: city names `City N` = founder's city count at founding (reveals hidden enemy cities). Enemy `MovementLeft` was closed by `UnitView` (2026-09-30).
+
+UnitView review (2026-09-30, feature/unit-view). No critical. Verified, don't re-derive: `Unit` has no field besides Id/Owner/Type/Position/MovementLeft, so `UnitView` hides everything owner-only; clients never receive `GameEvent`s (SSE sends view snapshots only); the only view-side reader of `MovementLeft` is `ViewPreviewCalculator.OwnUnit` (own units only) and `UnitPanel` (own-only branch). Check on later view changes: `Client_UsesCoreOnlyForViewsAndPreviews` is a deny-list, so state types the client stopped using (`Units.Unit`, `Cities.City`) are not locked out unless added to its regex.

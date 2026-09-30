@@ -2,7 +2,7 @@
 title: Game Core engine
 tags: [game, core, engine, hex, rules, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Game Core engine
@@ -94,10 +94,11 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - `PlayerView.Tiles` marks each tile as `Unexplored` (terrain hidden), `Explored` (terrain known) or `Visible`. A `TileView` carries no coordinates: tiles are row-major (index `row * Width + column`), so `PlayerView.CoordAt(index)` gives a tile's position and `TileAt(coord)` the tile at a position. That keeps every snapshot about a third smaller.
 - `PlayerView.Units` and `PlayerView.Cities` contain the viewer's own objects and enemy objects **on visible tiles only**.
 - **Enemy production is hidden:** cities are `CityView`s, and an enemy city's `Producing` and `ProductionProgress` are null. Its progress would tell the viewer when the next enemy unit appears. A change in enemy production therefore never changes the viewer's `Version`.
+- **Enemy movement is hidden:** units are `UnitView`s (`UnitView.From`), and a visible enemy unit's `MovementLeft` is null. It would show how far the unit moved through fog this turn, or that it attacked. A change in enemy movement alone therefore never changes the viewer's `Version`. `PlayerView.UnitAt` and `FindOwnUnit` return `UnitView`s; the view previews rebuild the viewer's own `Unit` (whose movement is always present) for the rules' shared checks.
 - `PlayerView.Players` lists ids and statuses without the opponents' exploration.
 - **Rejections leak nothing:** a hidden unit on a move target gives `move.unreachable`, not `move.occupied`. Another player's unit or city id gives `*.not_found`.
 - **Invariants that keep rejections leak-free:** unit sight ≥ movement / cheapest step, and settler sight ≥ `City.MinimumSpacing - 1`. `UnitCatalogTests` enforces both, so changing a stat that breaks them fails the build until the rules filter by visibility.
-- **Known residual leaks** (deferred, [game delivery plan](../plans/done-game-delivery.md#deferred-ideas)): a visible enemy unit's `MovementLeft` shows how far it moved or whether it attacked this turn, and a city's name (`City N`, counting the founder's cities at founding) shows how many cities its founder had then, hidden ones included.
+- **Known residual leaks** (deferred, [game delivery plan](../plans/done-game-delivery.md#deferred-ideas)): a city's name (`City N`, counting the founder's cities at founding) shows how many cities its founder had then, hidden ones included.
 - `PlayerId` values are chosen by the host. Govern uses the per-game seat id (`GamePlayer.Id`), never a user id, so the view reveals no account ids ([games](games.md)).
 - Hosts must send clients `PlayerView`, never `GameState`.
 - Nothing in a view counts the opponent's activity: `PlayerView.Version` is a fingerprint of the view itself, unit and city ids are hashed random draws (see below), and `Units`/`Cities` are ordered by id rather than creation. Raw `GameEvent`s describe the full state and must be filtered by visibility before being sent to a player.

@@ -25,4 +25,4 @@ Govern is being turned into a 2-player, turn-based hex strategy game. Work is sp
 
 ## Deferred ideas
 
-Moved to [next follow-ups](next-follow-ups.md) (items 6 and 8), where they are tracked from now on.
+Moved to [next follow-ups](next-follow-ups.md) (item 8; the `UnitView` idea, item 6 there, is done), where they are tracked from now on.
