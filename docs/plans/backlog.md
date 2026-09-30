@@ -44,7 +44,8 @@ Agreed 2026-09-30. The ruleset stays as it is today: one embedded file, no datab
 |---|---|---|---|---|---|
 | 1 | F11 | Game log and animations from engine events filtered by visibility (`VisibilityCalculator.EventsFor`) | core, client | M–L | Core first, then client UI |
 | 2 | F12 | Player-chosen city names | core, client | S–M | Also closes a small leak: `City N` counts the founder's cities at founding, hidden ones included ([game-core](../features/game-core.md)) |
-| 3 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance |
+| 3 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
+| 4 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
 
 ## Deferred
 
