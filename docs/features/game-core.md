@@ -7,7 +7,7 @@ updated: 2026-09-29
 
 # Game Core engine
 
-`Govern.Core` is the rules engine of Govern's 2-player, turn-based hex strategy game, a much-simplified Civilization. It is a pure library: the base class library only, no I/O, no clock, no `System.Random` and no project or package references. The Api uses it to validate every move authoritatively, and the Blazor client uses the same code to preview moves from its `PlayerView` ([view previews](#view-previews-for-the-client)). Why it is built this way: [ADR 0004](../decisions/0004-game-engine.md). Delivery status: [game delivery plan](../plans/game-delivery.md).
+`Govern.Core` is the rules engine of Govern's 2-player, turn-based hex strategy game, a much-simplified Civilization. It is a pure library: the base class library only, no I/O, no clock, no `System.Random` and no project or package references. The Api uses it to validate every move authoritatively, and the Blazor client uses the same code to preview moves from its `PlayerView` ([view previews](#view-previews-for-the-client)). Why it is built this way: [ADR 0004](../decisions/0004-game-engine.md). Delivery status: [game delivery plan](../plans/done-game-delivery.md).
 
 ## Engine entry points (GameEngine)
 
@@ -97,7 +97,7 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - `PlayerView.Players` lists ids and statuses without the opponents' exploration.
 - **Rejections leak nothing:** a hidden unit on a move target gives `move.unreachable`, not `move.occupied`. Another player's unit or city id gives `*.not_found`.
 - **Invariants that keep rejections leak-free:** unit sight ≥ movement / cheapest step, and settler sight ≥ `City.MinimumSpacing - 1`. `UnitCatalogTests` enforces both, so changing a stat that breaks them fails the build until the rules filter by visibility.
-- **Known residual leaks** (deferred, [game delivery plan](../plans/game-delivery.md#deferred-ideas)): a visible enemy unit's `MovementLeft` shows how far it moved or whether it attacked this turn, and a city's name (`City N`, counting the founder's cities at founding) shows how many cities its founder had then, hidden ones included.
+- **Known residual leaks** (deferred, [game delivery plan](../plans/done-game-delivery.md#deferred-ideas)): a visible enemy unit's `MovementLeft` shows how far it moved or whether it attacked this turn, and a city's name (`City N`, counting the founder's cities at founding) shows how many cities its founder had then, hidden ones included.
 - `PlayerId` values are chosen by the host. Govern uses the per-game seat id (`GamePlayer.Id`), never a user id, so the view reveals no account ids ([games](games.md)).
 - Hosts must send clients `PlayerView`, never `GameState`.
 - Nothing in a view counts the opponent's activity: `PlayerView.Version` is a fingerprint of the view itself, unit and city ids are hashed random draws (see below), and `Units`/`Cities` are ordered by id rather than creation. Raw `GameEvent`s describe the full state and must be filtered by visibility before being sent to a player.

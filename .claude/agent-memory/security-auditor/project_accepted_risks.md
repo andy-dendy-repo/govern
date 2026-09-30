@@ -21,7 +21,7 @@ Accepted/documented risks (don't re-report unless changed or cheaper fix appears
 
 Findings from the 2026-09-27 audit (verdict RELEASE OK):
 - Fixed the same day (review-fix commit): release jobs restricted to refs/heads/main (+ environment deployment branches documented); actions pinned to SHAs + Dependabot; Ssl Mode=VerifyFull; SCM/FTP basic auth disabled; concurrent refresh race (RevokedAt concurrency token); users.md enumeration wording corrected.
-- Still open, tracked in docs/plans/follow-ups.md (as of 2026-09-27, after feature/health-host-filtering): least-privilege DB (#2), monitoring/alerts (#5), client auth pages (#10b). Done: per-account limiter, AllowedHosts (HostAllowListMiddleware, see health/host-filtering audit below), Key Vault purge protection (enabled), SWA CSP gate.
+- Still open, tracked in docs/plans/done-follow-ups.md (as of 2026-09-27, after feature/health-host-filtering): least-privilege DB (#2), monitoring/alerts (#5), client auth pages (#10b). Done: per-account limiter, AllowedHosts (HostAllowListMiddleware, see health/host-filtering audit below), Key Vault purge protection (enabled), SWA CSP gate.
 - Sign-out, sign-out everywhere, a per-user session cap and on-request refresh_tokens cleanup were added on feature/session-lifecycle (2026-09-27). Reuse detection now fires only for rotated tokens (ReplacedByTokenId set).
 
 Session-lifecycle audit (2026-09-27, uncommitted feature/session-lifecycle): no Critical/High.

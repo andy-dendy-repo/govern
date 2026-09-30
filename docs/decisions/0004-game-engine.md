@@ -19,7 +19,7 @@ Govern is a 2-player, browser-based strategy game (a simplified Civilization). P
 - **Purity:** Core references no project and no package; it uses the base class library only. It does no I/O, reads no clock and never uses `System.Random`. That keeps it safe to ship to the Blazor WASM client. Core also avoids `Govern.Utils`, which carries FluentValidation and the mediator. Instead it has its own small `RuleViolation`/`CommandResult`, which Application will map to `Error` in one place.
 - **Determinism:** seeded SplitMix64 stored in the state; ids drawn from the same generator (a counter until [ADR 0005](0005-live-updates.md)). Replaying a command log rebuilds the game exactly.
 - **Game model:** hex map with axial coordinates (pointy-top, odd-r rectangular maps), alternating turns, settler and soldier units, fog of war from the start.
-- **Player ids:** the host chooses each `PlayerId`. Govern uses the per-game seat id (`GamePlayer.Id`), never the user id, so a `PlayerView` carries no account ids (decided in [Plan 2](../plans/game-lobby.md)).
+- **Player ids:** the host chooses each `PlayerId`. Govern uses the per-game seat id (`GamePlayer.Id`), never the user id, so a `PlayerView` carries no account ids (decided in [Plan 2](../plans/done-game-lobby.md)).
 - **Fog of war:** clients only ever receive `PlayerView`, which hides unexplored terrain and enemy objects outside sight. The transport is SSE pushing each player's snapshot when their view changes ([ADR 0005](0005-live-updates.md)).
 - **Storage format:** one JSON format (`GameSerializer`) with stable discriminators and a schema version, used for Postgres jsonb, the Api and the client.
 

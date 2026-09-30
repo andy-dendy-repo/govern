@@ -9,7 +9,7 @@ updated: 2026-09-29
 
 **Status: done (closed 2026-09-29).** Plans 1–3, 6 and 7 are delivered. Plans 4 (#2) and 5 (#5) moved to [next follow-ups](next-follow-ups.md) (items 2 and 3); their sections below stay as the detailed design for those items.
 
-Delivery plans for the items in [follow-ups](follow-ups.md). Each increment gets its own branch from `stage`, goes through `/develop-feature`, and is merged before the next one starts. When a plan merges, it removes its section here and its row and section in `follow-ups.md`. The last one deletes both files and their index lines.
+Delivery plans for the items in [follow-ups](done-follow-ups.md). Each increment gets its own branch from `stage`, goes through `/develop-feature`, and is merged before the next one starts. When a plan merges, it removes its section here and its row and section in `done-follow-ups.md`. The last one deletes both files and their index lines.
 
 ## Decisions taken
 
@@ -30,7 +30,7 @@ Delivery plans for the items in [follow-ups](follow-ups.md). Each increment gets
 6. ~~#10a Blazor client foundation and CSP gate~~ (done, see [client](../features/client.md)).
 7. ~~#10b Blazor client authentication and pages~~ (done through `gamecore`, ahead of game Plan 4; see [client](../features/client.md#client-authentication-sign-in-and-token-refresh)).
 
-Plans 2 and 3 of [session-and-email-verification](session-and-email-verification.md) are separate. #10b shipped first, so Plan 3 adds the client's confirm-email page itself.
+Plans 2 and 3 of [session-and-email-verification](done-session-and-email-verification.md) are separate. #10b shipped first, so Plan 3 adds the client's confirm-email page itself.
 
 ## Plan 4: Least-privilege database access via Entra managed identity (#2)
 
