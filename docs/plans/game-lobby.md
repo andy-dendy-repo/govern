@@ -9,7 +9,7 @@ updated: 2026-09-29
 
 Part of the [game delivery plan](game-delivery.md). Branch `feature/game-lobby` from `gamecore` after PR #8 (Core engine) is merged, and open the PR to `gamecore`. Run it through `/develop-feature`.
 
-**Status: implemented** on `feature/game-lobby`. The feature is documented in [games](../features/games.md). The decisions and changes made during implementation are listed under "Decisions made during implementation" at the end.
+**Status: done** (merged into `gamecore`). The feature is documented in [games](../features/games.md). The decisions and changes made during implementation are listed under "Decisions made during implementation" at the end.
 
 ## Context
 The Core engine can play a game in memory, but there is no way to create a game, invite a friend or store a game. This plan adds the `Game` aggregate:
@@ -199,6 +199,9 @@ Players can then create a game, send the link, see who joined, start the game an
 - **Deterministic race tests:** `Support/GameRowLock` holds the `games` row lock until every concurrent request has read the game and is blocked on its write. Start's revision-conflict branch is therefore covered. Join's losers always fail on the unique seat index, because EF inserts the seat before updating `games`; the revision catch stays as a defensive path.
 
 ## Follow-ups from the code review and security audit (before stage → main)
+
+The items still open below (cheap accounts and email verification, invite code rotation, the soft lobby cap) moved to [next follow-ups](next-follow-ups.md) (items 5 and 7).
+
 - **Medium, bounded per account in Plan 3c:** a rolling quota of 30 seats per user per 24 hours (`GameSeatLimitService`, finished games included) and a database storage alert (`infra/modules/alerts.bicep`). What remains depends on how cheap accounts are (no email verification, sign-up limited only per IP), so many accounts could still fill storage over days; the alert catches it, and the lasting fix is email verification or a daily sign-up cap (Low, Plan 3c audit). Before that: per-user `games`/`game-commands` rate limits and a cap of 20 unfinished games ([games limits](../features/games.md#games-limits)) slow the growth, but finished games are neither capped nor deleted, and `resign` finishes a game at once. Two accounts looping create → join → start → resign still add ~10–13 games (~13 KB state each) per minute, indefinitely (Plan 3a security audit). Remaining fix before stage → main: a rolling per-user quota on create/join (e.g. games created or joined in the last 24 h, finished included), plus a storage alert (follow-ups #5) or storage auto-grow. **Original finding:** the lobby cap counts only `lobby` games, and starting a game frees a slot. A create → join → start loop can therefore write ~20 KB `jsonb` rows without limit, and the Postgres storage (32 GB, auto-grow off) would fill. Fix: a `games` rate-limit policy partitioned by user id on create, join and start (and on the Plan 3 command endpoint), plus a cap on games that are not finished.
 - **Low:** the lobby cap is a soft cap, because simultaneous creates can overshoot it.
 - **Medium, resolved in Plan 3c:** a joiner can leave a lobby, the creator can cancel (delete) it, and lobbies are deleted after 7 days without activity (`ExpiredLobbyCleanupService`). The finding: lobbies never expired and couldn't be left or cancelled. With the unfinished-games cap (20, which counts joined lobbies), a user who joins 20 lobbies that are never started is locked out of create and join. Add lobby leave/cancel and expiry of stale lobbies before stage → main.

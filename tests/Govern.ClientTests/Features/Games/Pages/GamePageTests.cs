@@ -53,7 +53,7 @@ public class GamePageTests : ClientTestContext
     }
 
     [Fact]
-    public async Task Stream_GameStarted_ShowsTheStatusPanel()
+    public async Task Stream_GameStarted_ShowsTheBoard()
     {
         var stream = await ServeAsync(TestGames.CreatorLobby(players: 2));
         var cut = RenderGame();
@@ -61,9 +61,48 @@ public class GamePageTests : ClientTestContext
 
         await stream.WriteGameAsync(TestGames.Started());
 
-        cut.WaitForAssertion(() => cut.Find(".game-status").TextContent.ShouldContain("The board is coming soon."));
+        cut.WaitForAssertion(() => cut.FindAll("use.tile").Count.ShouldBe(TestViews.Width * TestViews.Height));
         cut.Find("h1").TextContent.ShouldBe("Game in progress");
+        cut.Find(".turn").TextContent.ShouldContain("your turn");
         cut.FindAll(".lobby-actions, .invite-share").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Stream_NewSnapshot_UpdatesTheBoard()
+    {
+        var stream = await ServeAsync(TestGames.Started());
+        var cut = RenderGame();
+        cut.WaitForAssertion(() => cut.FindAll("use.unit").Count.ShouldBe(3));
+
+        await stream.WriteGameAsync(TestGames.Started(view: TestViews.Start() with { CurrentPlayer = TestViews.Opponent, Units = [] }));
+
+        cut.WaitForAssertion(() => cut.FindAll("use.unit").ShouldBeEmpty());
+        cut.Find(".turn").TextContent.ShouldContain("opponent's turn");
+    }
+
+    [Fact]
+    public async Task Command_Applied_ShowsTheAnsweredView()
+    {
+        await ServeAsync(TestGames.Started());
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () =>
+            FakeApiHandler.Json(TestGames.Started(view: TestViews.Start() with { CurrentPlayer = TestViews.Opponent })));
+        var cut = RenderGame();
+        cut.WaitForAssertion(() => cut.Find("button.end-turn"));
+
+        cut.Find("button.end-turn").Click();
+
+        cut.WaitForAssertion(() => cut.Find(".turn").TextContent.ShouldContain("opponent's turn"));
+    }
+
+    [Fact]
+    public async Task Render_Finished_ShowsGameOver()
+    {
+        await ServeAsync(TestGames.Started(GamePhase.Finished));
+
+        var cut = RenderGame();
+
+        cut.WaitForAssertion(() => cut.Find(".game-over .result").TextContent.ShouldBe("You won!"));
+        cut.Find("h1").TextContent.ShouldBe("Game over");
     }
 
     [Fact]
@@ -118,6 +157,27 @@ public class GamePageTests : ClientTestContext
         first.Complete();
         Time.Advance(TimeSpan.FromMinutes(1));
         await Eventually.NeverAsync(() => Api.RequestsTo(TestGames.StreamPath()).Count > 1, "the old game's watch was stopped");
+    }
+
+    [Fact]
+    public async Task GameId_ChangedWhileACommandIsInFlight_ShowsOnlyTheNewGame()
+    {
+        var otherId = Guid.CreateVersion7();
+        var response = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await ServeAsync(TestGames.Started());
+        await ServeAsync(TestGames.Started(view: TestViews.Create()) with { Id = otherId }, otherId);
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), _ => response.Task);
+        var cut = RenderGame();
+        cut.WaitForAssertion(() => cut.Find("button.end-turn"));
+        cut.Find("button.end-turn").Click();
+        await Eventually.HoldsAsync(() => Api.RequestsTo(TestGames.CommandsPath()).Count == 1, "the command is sent");
+
+        cut.Render(parameters => parameters.Add(static page => page.GameId, otherId));
+        cut.WaitForAssertion(() => cut.FindAll("use.unit").ShouldBeEmpty());
+        response.SetResult(FakeApiHandler.Json(TestGames.Started()));
+
+        await Eventually.NeverAsync(() => cut.FindAll("use.unit").Count > 0, "the old game's answer must not replace the new game");
+        cut.Find("button.end-turn").HasAttribute("disabled").ShouldBeFalse();
     }
 
     [Fact]

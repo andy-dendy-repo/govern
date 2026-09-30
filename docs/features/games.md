@@ -81,6 +81,7 @@ The Core rule-violation codes (`move.unreachable`, `game.not_your_turn`, `game.f
 - **Checks in order:** membership (404) → lobby (`game.not_started`) → version (`game.stale_version`) → the engine (`GameEngine.Execute` through `Game.Execute`), whose violations become 409 with their own code.
 - **Result:** an accepted command replaces `games.state`, copies the player to move into `games.current_player_id`, bumps `revision`, and sets `phase` to `finished` once the engine reports a winner. The response is the caller's new `GetGameResponse`. Engine events aren't sent to clients; they would need visibility filtering (deferred to the game-log UI).
 - Resigning is allowed out of turn. A command for a finished game returns `game.finished`.
+- **The web client** sends one command at a time with `expectedVersion` = the `view.version` on screen, offers only moves and attacks the Core previews accept, and on `game.stale_version` reads the game again and tells the player nothing was applied ([client game board](client.md#sending-commands-one-at-a-time-stale-handling)).
 
 ## Games limits
 

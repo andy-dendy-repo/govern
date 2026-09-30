@@ -42,6 +42,7 @@ public static class DependencyInjection
             AddApiClient<UsersClient>(services, api);
             AddApiClient<GamesClient>(services, api);
             services.AddTransient<GameWatchService>();
+            services.AddScoped<BoardInteropService>();
             services.AddScoped<ClipboardService>();
 
             // AddHttpClient also registers a plain HttpClient; components must use typed clients instead.

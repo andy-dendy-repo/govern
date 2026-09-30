@@ -1,13 +1,13 @@
 ---
 title: Blazor client
-tags: [client, blazor, webassembly, radzen, csp, static-web-apps, security-headers, bunit, configuration, auth, jwt, refresh-token, web-locks, login, games, lobby, invite-link, sse, server-sent-events, reconnect, backoff]
-code: [src/Govern.Client, src/Govern.Client/Auth, src/Govern.Client/Features/Games, tests/Govern.ClientTests, tests/Govern.ArchitectureTests/ClientSecurityTests.cs, tests/Govern.ArchitectureTests/ClientContractTests.cs, .github/scripts/configure-client.sh, .github/workflows/release.yml]
+tags: [client, blazor, webassembly, radzen, csp, static-web-apps, security-headers, bunit, configuration, auth, jwt, refresh-token, web-locks, login, games, lobby, invite-link, sse, server-sent-events, reconnect, backoff, board, hex, svg, pan, zoom, commands, stale-version]
+code: [src/Govern.Client, src/Govern.Client/Auth, src/Govern.Client/Features/Games, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/wwwroot/js/board.js, tests/Govern.ClientTests, tests/Govern.ArchitectureTests/ClientSecurityTests.cs, tests/Govern.ArchitectureTests/ClientContractTests.cs, .github/scripts/configure-client.sh, .github/workflows/release.yml]
 updated: 2026-09-29
 ---
 
 # Blazor client
 
-`Govern.Client` is a standalone Blazor WebAssembly app built with Radzen components and hosted on Azure Static Web Apps. It calls the Govern Api over HTTPS with a JWT bearer header and references no server project. This document covers the client's architecture, configuration, authentication (sign-in, token refresh, user pages), the game lobby (my games, invite links, live updates), Content Security Policy and tests. The game board comes in [game delivery](../plans/game-delivery.md) Plan 5.
+`Govern.Client` is a standalone Blazor WebAssembly app built with Radzen components and hosted on Azure Static Web Apps. It calls the Govern Api over HTTPS with a JWT bearer header and references no server project. This document covers the client's architecture, configuration, authentication (sign-in, token refresh, user pages), the game lobby (my games, invite links, live updates), the game board (hex map, selection, commands), Content Security Policy and tests.
 
 ## Client architecture (CFT folder template)
 
@@ -98,13 +98,13 @@ The client signs in against the Api's `/api/users` endpoints ([users](users.md))
 
 ## Client game lobby (games, invite links, live updates)
 
-The game pages live in `Features/Games` and call the [games API](games.md) through `Features/Games/Clients/GamesClient`. Every page is `[Authorize]`. The Api sends the caller's board (`view`) with each game; the client DTO has no `View` yet and ignores it until the board is built (Plan 5).
+The game pages live in `Features/Games` and call the [games API](games.md) through `Features/Games/Clients/GamesClient`. Every page is `[Authorize]`. The Api sends the caller's board (`view`, Core's `PlayerView`) with each started game; the page draws it (see [Client game board](#client-game-board-hex-map-selection-and-commands)).
 
 | Route | Page | Behaviour |
 |---|---|---|
 | `/games` | `GamesPage` | The caller's games, newest activity first, in a server-paged `RadzenDataGrid` (20 per page, `GET /api/games?page&pageSize`): phase, players ("n/2"), role (created or joined), "Your turn", last activity in local time. "New game" creates a lobby and opens it; caps, the daily quota and 429 show in `ApiErrorAlert`. "Join with a code" opens `/join` |
 | `/join` | `JoinPage` | An invite link (`/join#<code>`) fills in the form ("You were invited…"); a pasted link or code works too (`InviteLink.TryParse`: a bare code, or a link to the join page with the code in its fragment; 22 base64url characters). Joining always takes a click on Join. On success it opens the game, replacing the history entry |
-| `/games/{id}` | `GamePage` | Reads the game (404 shows "does not exist"), then follows it live. In the lobby: `PlayerList`, `InviteShare` (creator only: the link and the code, each with a copy button through `Services/ClipboardService`), `LobbyPanel` (Start once both seats are taken; Cancel for the creator, Leave for the joiner, each confirmed inline first). Once started: `GameStatusPanel`. A `ConnectionBadge` shows Live, Reconnecting in n s, Gone, Signed out or Finished |
+| `/games/{id}` | `GamePage` | Reads the game (404 shows "does not exist"), then follows it live. In the lobby: `PlayerList`, `InviteShare` (creator only: the link and the code, each with a copy button through `Services/ClipboardService`), `LobbyPanel` (Start once both seats are taken; Cancel for the creator, Leave for the joiner, each confirmed inline first). Once started: `GameTable` (the board and its panels). A `ConnectionBadge` shows Live, Reconnecting in n s, Gone, Signed out or Finished |
 
 ### Invite link policy (code only in the fragment or the body)
 
@@ -141,6 +141,44 @@ The game pages live in `Features/Games` and call the [games API](games.md) throu
 
 Every delay is at least 2 s, which keeps one tab under the 30-openings-per-minute limit; with several tabs failing together, the growing delays keep the user under it. The random spread keeps clients cut off at once (an Api restart) from reconnecting in waves. Each connection starts with the current snapshot, so a reconnect is a full resync and there is no gap detection. `GamePage` restarts the watch when the route's game id changes and cancels it when disposed.
 
+## Client game board (hex map, selection and commands)
+
+A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the board (`Components/Board/GameBoard`) and a side column with the turn, the selection and, once finished, the result. The client references `Govern.Core` for the view types (`PlayerView`, `Unit`, `CityView`, commands) and for the view-based previews only (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a `PlayerView`, [game-core](game-core.md#view-previews-for-the-client)). It never holds a `GameState` or runs `Execute`; the server stays authoritative (`LayerDependencyTests.Client_UsesCoreOnlyForViewsAndPreviews`).
+
+| Part | What it does |
+|---|---|
+| `Board/GameBoard` | An `<svg>` with `<symbol>`s for the hex, city, settler and soldier, and one `<g transform>` for pan and zoom (`Helpers/BoardViewport`: scale 0.4–3, zoom keeps the point under the cursor). It is fitted to the measured element on first render |
+| `Board/BoardTerrain` | One `<use>` per tile, classed by visibility (`unexplored`, `explored`, `visible`) and terrain, placed by `Helpers/HexLayout` (pointy-top, odd-r). Each tile has its own click handler, so picking is exact. It renders again only for a new view, so panning never re-diffs the tiles |
+| `Board/BoardPieces` | Reachable and attackable overlays, cities (name as SVG text, which Blazor encodes) and units, classed `own`/`enemy` and `selected`. `pointer-events: none`, so clicks reach the tile below |
+| `TurnPanel` | "Turn n: your turn" or "opponent's turn", End turn (your turn only), Resign with an inline confirm (allowed at any time) |
+| `UnitPanel` | The selected unit; for your settler, Found city, disabled with the rule's message from `CheckFoundCity` |
+| `CityPanel` | The selected city; for your own city, what it produces (progress of cost) and Build settler / Build soldier. An enemy city shows its name only (its production is hidden in the view) |
+| `GameOverPanel` | "You won!", "You lost." or "Nobody won.", how each player ended (won, resigned, eliminated), and a link back to `/games` |
+
+### Board interactions
+
+| Input | Result |
+|---|---|
+| Click a tile | `Helpers/BoardClickResolver.Resolve`: with your unit selected, a reachable tile sends `move_unit` and an attackable one sends `attack` (both from the Core previews, so only moves the server accepts are offered); otherwise the click selects the unit on the tile (clicking your selected unit again selects your city under it), else the city, else nothing. Enemy units and cities can be selected to inspect them. No command is built while it isn't your turn or the game is over |
+| Drag (press and move more than 4 px) | Pans; the click that follows the drag is ignored. Only the primary pointer pans (a second finger is ignored). No pointer capture, so a drag that leaves the board ends there |
+| Wheel over the board | Zooms at the pointer by 1.2 per mouse notch (100 px or 3 lines; a trackpad's small deltas zoom proportionally, at most 3 notches per event); the page does not scroll |
+| +, −, Fit buttons | Zoom at the centre, or fit the whole map again (re-measuring the element) |
+
+`wwwroot/js/board.js` exists for two things Blazor can't do: a **non-passive** `wheel` listener that calls `preventDefault` (Blazor's may be passive, and a passive listener can't stop the page scrolling), and `getBoundingClientRect` to fit the map and anchor the wheel zoom. It is imported lazily by `Features/Games/Services/BoardInteropService` (scoped); if the module fails, the board keeps working at a default size.
+
+### Sending commands (one at a time, stale handling)
+
+- `GamesClient.SendCommandAsync` posts `{"expectedVersion": <view.version>, "command": {"type": …}}` to `POST /api/games/{id}/commands` ([games](games.md#sending-commands)). The command's `type` comes from Core's `[JsonPolymorphic]` `GameCommand`.
+- `GameTable` sends **one command at a time**: while one is in flight the board ignores clicks and the buttons are disabled.
+- 200: the answered game goes up to `GamePage` (`GameChanged`), which also keeps taking stream snapshots; whichever arrives last is shown, and both carry the full view.
+- 409 `game.stale_version` (the view changed first, e.g. another tab acted): nothing was applied, so the table reads the game again (`GET`) and shows "The game changed before your move arrived, so nothing was applied. The board is up to date now."
+- Any other error (a rule code such as `game.not_your_turn`, 404, 429, network) shows in `ApiErrorAlert` with the Api's message.
+- A new view keeps the selection when the unit or city is still in it (`BoardClickResolver.Prune`), so a unit can move again at once; highlights are recomputed from the new view. A view that arrives from the stream (not the table's own command) clears the last error or stale notice.
+- `GamePage` keys the table by game id, so moving to another game disposes the old table (cancelling its command), and it drops any answer for a game it has left.
+- The stale notice can also follow a late stream push: if an older snapshot lands after a command's answer, the next command is based on it and gets `game.stale_version`. That costs one round trip and applies nothing.
+
+Styles are in `wwwroot/css/app.css` (the client has no scoped `.razor.css`): the board and side column share a row and wrap on narrow screens, the board has `touch-action: none`, and the SVG uses no inline `style` attributes.
+
 ## Content Security Policy and security headers
 
 The client stores tokens in `localStorage` ([ADR 0002](../decisions/0002-auth-tokens.md)), so an XSS would leak them. `wwwroot/staticwebapp.config.json` makes the Static Web App send these `globalHeaders`:
@@ -176,8 +214,8 @@ CI runs the same script on every PR against a dummy origin, so a change that add
 
 | Project | What it covers |
 |---|---|
-| `tests/Govern.ClientTests` (bUnit) | layout (body, navigation, sidebar toggle, signed-in and anonymous header and nav), `HomePage`/`NotFoundPage`, `App` with the real auth state (redirect to login, signed-in page), `AddClient` (URL validation, no bare `HttpClient`, resolvable services), `Auth/` (token store, JWT payload, auth state, refresh single flight, outcomes, backoff, compare-and-set and completion after the caller gave up, `RenewAt`, cross-tab user changes, the handler's bearer, origin check, retry and 503, the Web Lock module, `ReturnUrl`), sign-out with a due token sending the rotated tokens, `ApiError`, `UsersClient`, the login, register and profile pages (including `replace` after sign-in), `RedirectToLogin`, `SignOutButton`, `ApiErrorAlert`; games: `InviteLink`, `ReconnectBackoff`, `GamesClient` (every endpoint, the code only in the join body, problem mapping, the stream's events and end reasons, a refresh before opening), `GameWatchService` (delays, reset only after a real connection, rate limit, silence, heartbeats, final states, cancellation), the games, join (the fragment dropped at once and only filling the form, no join without a click, history, paste, validation) and game pages (lobby roles, live snapshots, start, cancel, gone, not found, id change dropping the old stream, dispose, dispose while loading), the lobby components and `ClipboardService`. `Support/` fakes the Api (`FakeApiHandler`, `SseResponse` for event streams), browser storage (`FakeBrowserStorage`) and time (`FakeTimeProvider`, with `Eventually` to wait for background work) |
-| `tests/Govern.ArchitectureTests` | CFT folders, page/component/client naming, `System.Net.Http`/`System.Net.ServerSentEvents` and `Microsoft.JSInterop` confinement, `.razor` size limits, and `ClientSecurityTests` (CSP directives, no unsafe script sources, headers, no route header overrides, `/.auth/*` blocked, `index.html` without external assets or inline scripts, no raw HTML or eval in `.cs`, `.razor` or `wwwroot` JavaScript, no HTML or code sinks in `wwwroot` JavaScript, `localStorage` only in `Auth/TokenStore.cs`, no secrets in appsettings), and `ClientContractTests` (a client DTO named like an Application contract has only that contract's properties, with the same shapes; `TokenPair` and the refresh body are paired explicitly with the sign-in and refresh contracts) |
+| `tests/Govern.ClientTests` (bUnit) | layout (body, navigation, sidebar toggle, signed-in and anonymous header and nav), `HomePage`/`NotFoundPage`, `App` with the real auth state (redirect to login, signed-in page), `AddClient` (URL validation, no bare `HttpClient`, resolvable services), `Auth/` (token store, JWT payload, auth state, refresh single flight, outcomes, backoff, compare-and-set and completion after the caller gave up, `RenewAt`, cross-tab user changes, the handler's bearer, origin check, retry and 503, the Web Lock module, `ReturnUrl`), sign-out with a due token sending the rotated tokens, `ApiError`, `UsersClient`, the login, register and profile pages (including `replace` after sign-in), `RedirectToLogin`, `SignOutButton`, `ApiErrorAlert`; games: `InviteLink`, `ReconnectBackoff`, `GamesClient` (every endpoint, the code only in the join body, problem mapping, the stream's events and end reasons, a refresh before opening), `GameWatchService` (delays, reset only after a real connection, rate limit, silence, heartbeats, final states, cancellation), the games, join (the fragment dropped at once and only filling the form, no join without a click, history, paste, validation) and game pages (lobby roles, live snapshots, start, cancel, gone, not found, id change dropping the old stream, dispose, dispose while loading, the board once started, snapshots and command answers updating it, game over), the lobby components and `ClipboardService`; the board: `HexLayout`, `BoardViewport` (fit, pan, zoom anchor and clamps, invariant culture), `BoardClickResolver` (move, attack, selection toggle, inspection, no commands off-turn or finished, pruning, highlights equal to the Core previews), `GamesClient.SendCommandAsync` (the body in the game format, every command read back by `GameSerializer`, a `GameSerializer` view read with `ApiJson.Options`, problems, 429, network), `BoardInteropService` (one import, failures), `GameBoard` (tiles by visibility, pieces, encoded city names, highlights, click, drag swallowing the click, wheel, buttons, disabled) and `GameTable` (move with the view version, stale reload and notice, rule errors, one command at a time, end turn, resign confirm, found city reason, production, enemy city and unit, selection pruning, game over). `Support/` fakes the Api (`FakeApiHandler`, `SseResponse` for event streams), browser storage (`FakeBrowserStorage`) and time (`FakeTimeProvider`, with `Eventually` to wait for background work), and builds views by hand (`TestViews`) |
+| `tests/Govern.ArchitectureTests` | CFT folders, page/component/client naming, `System.Net.Http`/`System.Net.ServerSentEvents` and `Microsoft.JSInterop` confinement, Core used for views and previews only, `.razor` size limits, and `ClientSecurityTests` (CSP directives, no unsafe script sources, headers, no route header overrides, `/.auth/*` blocked, `index.html` without external assets or inline scripts, no raw HTML or eval in `.cs`, `.razor` or `wwwroot` JavaScript, no HTML or code sinks in `wwwroot` JavaScript, `localStorage` only in `Auth/TokenStore.cs`, no secrets in appsettings), and `ClientContractTests` (a client DTO named like an Application contract has only that contract's properties, with the same shapes; `GetGameResponse` and `SendGameCommandRequest` must be found; `TokenPair` and the refresh body are paired explicitly with the sign-in and refresh contracts) |
 
 ## Running the client locally
 

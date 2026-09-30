@@ -1,5 +1,6 @@
 using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
+using Govern.Core.Visibility;
 
 namespace Govern.ClientTests.Support;
 
@@ -14,15 +15,23 @@ public static class TestGames
 
     /// <summary>A lobby as its creator sees it, with 1 or 2 seats taken.</summary>
     public static GetGameResponse CreatorLobby(int players = 1, Guid? id = null) =>
-        new(id ?? Id, GamePhase.Lobby, IsCreator: true, InviteCode, Seats(players, callerSeat: 0), CreatedAt);
+        new(id ?? Id, GamePhase.Lobby, IsCreator: true, InviteCode, Seats(players, callerSeat: 0), null, CreatedAt);
 
     /// <summary>A lobby as the joiner sees it (no invite code).</summary>
     public static GetGameResponse JoinerLobby() =>
-        new(Id, GamePhase.Lobby, IsCreator: false, null, Seats(2, callerSeat: 1), CreatedAt);
+        new(Id, GamePhase.Lobby, IsCreator: false, null, Seats(2, callerSeat: 1), null, CreatedAt);
 
-    /// <summary>A started or finished game as its creator sees it.</summary>
-    public static GetGameResponse Started(GamePhase phase = GamePhase.InProgress) =>
-        new(Id, phase, IsCreator: true, null, Seats(2, callerSeat: 0), CreatedAt);
+    /// <summary>
+    /// A started game as its creator (<see cref="TestViews.You"/>) sees it, with <paramref name="view"/> or
+    /// <see cref="TestViews.Start"/>; a finished phase without a view gets <see cref="TestViews.Finished"/> (the opponent resigned).
+    /// </summary>
+    public static GetGameResponse Started(GamePhase phase = GamePhase.InProgress, PlayerView? view = null) =>
+        new(Id, phase, IsCreator: true, null,
+            [new GamePlayerSummary(TestViews.You.Value, 0, true, true), new GamePlayerSummary(TestViews.Opponent.Value, 1, false, false)],
+            view ?? (phase == GamePhase.Finished ? TestViews.Finished(TestViews.You) : TestViews.Start()),
+            CreatedAt);
+
+    public static string CommandsPath(Guid? id = null) => $"/api/games/{id ?? Id}/commands";
 
     public static string StreamPath(Guid? id = null) => $"/api/games/{id ?? Id}/stream";
 
