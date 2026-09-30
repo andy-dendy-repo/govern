@@ -27,29 +27,17 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 | # | Id | Item | Area | Status | Detail |
 |---|---|---|---|---|---|
 | 1 | G1 | UI design system: an expandable system that grows with every new mechanic. UI only for now | client | needs plan | [G1](../game/design-roadmap.md#g1-ui-design-system-and-approaches) |
-| 2 | C1 | Richer ruleset and Core: add content and mechanics to the embedded ruleset (`rulesets/default/v1.json`) and Core. Agree which roadmap items go in this slice; the rest is deferred | core, ruleset | needs decision | [Content slice C1](#content-slice-c1-to-agree) |
+| 2 | C1 | Richer ruleset and Core: add content and mechanics to the embedded ruleset (`rulesets/default/v1.json`) and Core. C1 = G2, G4, G9 (agreed 2026-09-30) | core, ruleset | needs plan | [Content slice C1](#content-slice-c1-g2-g4-g9) |
 
-### Content slice C1 (to agree)
+### Content slice C1: G2, G4, G9
 
-The ruleset stays as it is today: one embedded file, no database (see G3b under Deferred). New content goes into that file, the Core rules that read it, the [game data](../game/game-data.md) and [game logic](../game/game-logic.md) docs, and the client panels that show it.
+Agreed 2026-09-30. The ruleset stays as it is today: one embedded file, no database (see G3b under Deferred). New content goes into that file, the Core rules that read it, the [game data](../game/game-data.md) and [game logic](../game/game-logic.md) docs, and the client panels that show it. Each item gets its own plan in `docs/plans/active/`, in this order:
 
-Proposal, ordered by design dependencies: the items marked **now** form C1; the others move to Deferred once C1 is agreed.
-
-| Id | Item | Proposed | Why |
+| # | Id | Item | Why now |
 |---|---|---|---|
-| G2 | [Game rules reference](../game/design-roadmap.md#g2-game-rules-reference) | now | Small, and every content item updates it, so it should exist first |
-| G4 | [Terrain: more tile types](../game/design-roadmap.md#g4-terrain-more-tile-types) | now | The map is the base for everything else; a first set of base terrain, hills and forest changes play without new systems |
-| G9 | [Army units and combat](../game/design-roadmap.md#g9-army-units-and-combat) | now | Health and a small roster with counters make fights interesting with today's cities; builds on G4's defence modifiers |
-| G5 | [Resources and tile yields](../game/design-roadmap.md#g5-resources-and-tile-yields) | defer | Needs G7/G8 (territory, city stats) to matter |
-| G6 | [Rivers and bridges](../game/design-roadmap.md#g6-rivers-and-bridges) | defer | Edge-based pathfinding is a big change; bridges need G10 |
-| G7 | [City territory and growth](../game/design-roadmap.md#g7-city-territory-and-growth) | defer | Needs G5 |
-| G8 | [City stats and the production queue](../game/design-roadmap.md#g8-city-stats-and-the-production-queue) | defer | Needs G7 |
-| G10 | [Builders and buildings](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) | defer | Needs G7, G8 |
-| G11 | [Science and culture trees](../game/design-roadmap.md#g11-science-and-culture-trees) | defer | Needs G8 |
-| G12 | [Civilizations and governors](../game/design-roadmap.md#g12-civilizations-and-governors) | defer | Needs G8, G11 |
-| G13 | [Colonies founded by governors](../game/design-roadmap.md#g13-colonies-founded-by-governors-settlers-removed) | defer | Needs G12 |
-| G14 | [Seasons](../game/design-roadmap.md#g14-seasons) | defer | Modifies almost everything; last |
-| G15 | [Ships and naval movement](../game/design-roadmap.md#g15-ships-and-naval-movement) | defer | Needs G6, G10 |
+| 1 | G2 | [Game rules reference](../game/design-roadmap.md#g2-game-rules-reference) | Small, and every content item updates it, so it should exist first |
+| 2 | G4 | [Terrain: more tile types](../game/design-roadmap.md#g4-terrain-more-tile-types) | The map is the base for everything else; a first set of base terrain, hills and forest changes play without new systems |
+| 3 | G9 | [Army units and combat](../game/design-roadmap.md#g9-army-units-and-combat) | Health and a small roster with counters make fights interesting with today's cities; builds on G4's defence modifiers |
 
 ## Next
 
@@ -73,6 +61,16 @@ Proposal, ordered by design dependencies: the items marked **now** form C1; the 
 | F8 | Turn timers and absent players | 2026-09-30 | Prerequisite of F9 and F10, which are deferred | With F9 or F10 | [F8](deferred/follow-ups.md#f8-turn-timers-and-absent-players) |
 | F9 | Simultaneous turns (Civ 6 style) | 2026-09-30 | Content and UI first | Alternating turns become the main complaint in play | [F9](deferred/follow-ups.md#f9-simultaneous-turns-civ-6-style) |
 | F10 | More than two players | 2026-09-30 | Content and UI first | 1-vs-1 play is solid; after F8 and F9 | [F10](deferred/follow-ups.md#f10-more-than-two-players) |
+| G5 | Resources and tile yields | 2026-09-30 | Not in content slice C1; needs G7/G8 (territory, city stats) to matter | C1 is done; then pick the next slice | [G5](../game/design-roadmap.md#g5-resources-and-tile-yields) |
+| G6 | Rivers and bridges | 2026-09-30 | Not in content slice C1; edge-based pathfinding is a big change; bridges need G10 | C1 is done; then pick the next slice | [G6](../game/design-roadmap.md#g6-rivers-and-bridges) |
+| G7 | City territory and growth | 2026-09-30 | Not in content slice C1; needs G5 | C1 is done; then pick the next slice | [G7](../game/design-roadmap.md#g7-city-territory-and-growth) |
+| G8 | City stats and the production queue | 2026-09-30 | Not in content slice C1; needs G7 | C1 is done; then pick the next slice | [G8](../game/design-roadmap.md#g8-city-stats-and-the-production-queue) |
+| G10 | Builders and buildings (with upgrades) | 2026-09-30 | Not in content slice C1; needs G7, G8 | C1 is done; then pick the next slice | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
+| G11 | Science and culture trees | 2026-09-30 | Not in content slice C1; needs G8 | C1 is done; then pick the next slice | [G11](../game/design-roadmap.md#g11-science-and-culture-trees) |
+| G12 | Civilizations and governors | 2026-09-30 | Not in content slice C1; needs G8, G11 | C1 is done; then pick the next slice | [G12](../game/design-roadmap.md#g12-civilizations-and-governors) |
+| G13 | Colonies founded by governors | 2026-09-30 | Not in content slice C1; needs G12 | C1 is done; then pick the next slice | [G13](../game/design-roadmap.md#g13-colonies-founded-by-governors-settlers-removed) |
+| G14 | Seasons | 2026-09-30 | Not in content slice C1; modifies almost everything; last | C1 is done; then pick the next slice | [G14](../game/design-roadmap.md#g14-seasons) |
+| G15 | Ships and naval movement | 2026-09-30 | Not in content slice C1; needs G6, G10 | C1 is done; then pick the next slice | [G15](../game/design-roadmap.md#g15-ships-and-naval-movement) |
 | G16 | Diplomacy (war and peace, trade, alliances, diplomacy points) | 2026-09-30 | Not needed for 1-vs-1 | F10, or resource trading (G5) is wanted | [open question 1](../game/design-roadmap.md#open-questions) |
 
 ## Ideas
