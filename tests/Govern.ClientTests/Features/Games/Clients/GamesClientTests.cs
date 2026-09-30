@@ -1,8 +1,15 @@
 using System.Net;
+using System.Text.Json.Nodes;
 using Govern.Client.Features.Games.Clients;
 using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
 using Govern.ClientTests.Support;
+using Govern.Core.Actions;
+using Govern.Core.Cities;
+using Govern.Core.Engine;
+using Govern.Core.Map;
+using Govern.Core.Serialization;
+using Govern.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Govern.ClientTests.Features.Games.Clients;
@@ -82,12 +89,13 @@ public class GamesClientTests : ClientTestContext
     }
 
     [Fact]
-    public async Task GetAsync_Found_ReadsThePhaseAsCamelCaseAndIgnoresTheView()
+    public async Task GetAsync_Found_ReadsTheGameAndTheViewInTheGameFormat()
     {
+        var view = TestViews.Create([TestViews.Settler(1, TestViews.You, TestViews.At(2, 2))], [TestViews.City(8, TestViews.Opponent, TestViews.At(5, 4))]);
         Api.On(HttpMethod.Get, TestGames.GamePath(), () => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(
-                $$"""{"id":"{{TestGames.Id}}","phase":"inProgress","isCreator":false,"inviteCode":null,"players":[{"playerId":"{{Guid.Empty}}","seat":1,"isYou":true,"isCreator":false}],"view":{"version":"x","tiles":[]},"createdAt":"2026-09-28T11:00:00+00:00"}""",
+                $$"""{"id":"{{TestGames.Id}}","phase":"inProgress","isCreator":false,"inviteCode":null,"players":[{"playerId":"{{Guid.Empty}}","seat":1,"isYou":true,"isCreator":false}],"view":{{GameSerializer.Serialize(view)}},"createdAt":"2026-09-28T11:00:00+00:00"}""",
                 System.Text.Encoding.UTF8, "application/json"),
         });
 
@@ -96,6 +104,80 @@ public class GamesClientTests : ClientTestContext
         var game = result.Value.ShouldNotBeNull();
         game.Phase.ShouldBe(GamePhase.InProgress);
         game.Players.Single().IsYou.ShouldBeTrue();
+        GameSerializer.Serialize(game.View.ShouldNotBeNull()).ShouldBe(GameSerializer.Serialize(view));
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_Move_PostsTheVersionAndTheCommandInTheGameFormat()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
+
+        var result = await Games.SendCommandAsync(TestGames.Id, 4242, new MoveUnitCommand(new UnitId(1), new HexCoord(4, 1)), Ct);
+
+        GameSerializer.Serialize(result.Value.ShouldNotBeNull().View).ShouldBe(GameSerializer.Serialize(TestViews.Start()));
+        var request = Api.Requests.Single();
+        request.Authorization.ShouldStartWith("Bearer ");
+        JsonNode.DeepEquals(
+                JsonNode.Parse(request.Body!),
+                JsonNode.Parse("""{"expectedVersion":4242,"command":{"type":"move_unit","unitId":{"value":1},"target":{"q":4,"r":1}}}"""))
+            .ShouldBeTrue(request.Body);
+    }
+
+    [Theory]
+    [MemberData(nameof(Commands))]
+    public async Task SendCommandAsync_AnyCommand_TheGameFormatReadsItBack(GameCommand command)
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
+
+        await Games.SendCommandAsync(TestGames.Id, 1, command, Ct);
+
+        var body = JsonNode.Parse(Api.Requests.Single().Body!)!;
+        GameSerializer.Deserialize<GameCommand>(body["command"]!.ToJsonString()).ShouldBe(command);
+    }
+
+    public static TheoryData<GameCommand> Commands => new()
+    {
+        new MoveUnitCommand(new UnitId(1), new HexCoord(4, 1)),
+        new AttackCommand(new UnitId(2), new HexCoord(-1, 3)),
+        new FoundCityCommand(new UnitId(1)),
+        new SetProductionCommand(new CityId(5), UnitType.Soldier),
+        new EndTurnCommand(),
+        new ResignCommand(),
+    };
+
+    [Theory]
+    [InlineData(HttpStatusCode.Conflict, "game.stale_version", "The game changed since you last saw it.")]
+    [InlineData(HttpStatusCode.Conflict, "move.unreachable", "The unit cannot reach that tile this turn.")]
+    [InlineData(HttpStatusCode.Conflict, "game.not_your_turn", "It is not your turn.")]
+    [InlineData(HttpStatusCode.NotFound, "game.not_found", "The game was not found.")]
+    public async Task SendCommandAsync_Problem_ReturnsTheCodeAndTitle(HttpStatusCode status, string code, string title)
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Problem(status, code, title));
+
+        var result = await Games.SendCommandAsync(TestGames.Id, 1, new EndTurnCommand(), Ct);
+
+        result.Error.ShouldNotBeNull().Code.ShouldBe(code);
+        result.Error.Message.ShouldBe(title);
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_RateLimited_ReturnsTheGenericMessage()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Empty(HttpStatusCode.TooManyRequests));
+
+        var result = await Games.SendCommandAsync(TestGames.Id, 1, new EndTurnCommand(), Ct);
+
+        result.Error.ShouldNotBeNull().Status.ShouldBe(429);
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_NetworkFailure_ReturnsTheNetworkError()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => throw new HttpRequestException("offline"));
+
+        var result = await Games.SendCommandAsync(TestGames.Id, 1, new EndTurnCommand(), Ct);
+
+        result.Error.ShouldNotBeNull().IsNetwork.ShouldBeTrue();
     }
 
     [Fact]

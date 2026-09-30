@@ -9,7 +9,8 @@ namespace Govern.Client.Features.Games.Pages;
 
 /// <summary>
 /// One game, kept live: reads it, then follows its stream (<see cref="GameWatchService"/>) until the page is left. Shows the
-/// lobby (players, invite, start/cancel/leave) or, once started, the game's status.
+/// lobby (players, invite, start/cancel/leave) or, once started, the board (<see cref="Components.GameTable"/>). The game
+/// is replaced by every stream snapshot and by the answer to each of the player's commands, whichever arrives last.
 /// </summary>
 public partial class GamePage : IAsyncDisposable
 {
@@ -129,7 +130,16 @@ public partial class GamePage : IAsyncDisposable
         cancellation.Dispose();
     }
 
-    private void OnStarted(GetGameResponse game) => _game = game;
+    private void OnStarted(GetGameResponse game) => OnGameChanged(game);
+
+    // An answer for a game the page has since left (the route changed while a command was in flight) is dropped.
+    private void OnGameChanged(GetGameResponse game)
+    {
+        if (game.Id == _loadedId)
+        {
+            _game = game;
+        }
+    }
 
     private void OnClosed() => Navigation.NavigateTo("games");
 }

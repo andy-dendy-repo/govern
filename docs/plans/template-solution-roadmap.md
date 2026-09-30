@@ -2,12 +2,14 @@
 title: Template solution roadmap (one User entity)
 tags: [plan, roadmap, template, users, auth, persistence, infra, ci]
 code: [src, tests, infra, .github/workflows]
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Plan: grow the empty template into a working solution with one `User` entity
 
-## Status (2026-09-27)
+## Status (2026-09-29)
+
+**Done.** Every step is delivered. The first deployment (Bicep and the workflows) is part of shipping the game, item 1 of [next follow-ups](next-follow-ups.md).
 
 | Step | State |
 |---|---|
@@ -32,7 +34,7 @@ Extra work added along the way:
 
 ### Follow-ups
 
-Open work from the first review and security audit, and the deferred Blazor client: [follow-ups.md](follow-ups.md).
+All open work is now in [next follow-ups](next-follow-ups.md). The first backlog, [follow-ups.md](follow-ups.md), is closed.
 
 The rest of this document is the original plan, kept for reference.
 

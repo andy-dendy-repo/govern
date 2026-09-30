@@ -81,6 +81,20 @@ public class DependencyInjectionTests
         provider.GetRequiredService<ICrossTabLock>().ShouldBeOfType<WebLocksCrossTabLock>();
     }
 
+    [Fact]
+    public async Task AddClient_ResolvesTheBoardInteropPerScope()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IJSRuntime, UnusedJsRuntime>();
+        services.AddClient(ClientTestContext.Configuration(("Api:BaseUrl", ClientTestContext.ApiBaseUrl)));
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+
+        await using var scope = provider.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<BoardInteropService>()
+            .ShouldBeSameAs(scope.ServiceProvider.GetRequiredService<BoardInteropService>());
+    }
+
     private sealed class UnusedJsRuntime : IJSRuntime
     {
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) => throw new NotSupportedException();

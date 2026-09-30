@@ -36,9 +36,9 @@ else if (_game is not null)
             }
             <LobbyPanel Game="@_game" Started="@OnStarted" Closed="@OnClosed"/>
         }
-        else
+        else if (_game.View is not null)
         {
-            <GameStatusPanel Game="@_game"/>
+            <GameTable @key="_game.Id" Game="@_game" GameChanged="@OnGameChanged"/>
         }
     </RadzenStack>
 }

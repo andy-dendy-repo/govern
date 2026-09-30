@@ -1,0 +1,53 @@
+@* Highlights, cities and units over the terrain. Clicks pass through to the tiles (pointer-events: none in app.css). *@
+@using Govern.Client.Features.Games.Helpers
+@using Govern.Client.Features.Games.Models
+@using Govern.Core.Map
+@using Govern.Core.State
+@using Govern.Core.Units
+@using Govern.Core.Visibility
+
+<g class="pieces">
+    @foreach (var coord in Highlights.Reachable)
+    {
+        <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay reachable"/>
+    }
+    @foreach (var coord in Highlights.Attackable)
+    {
+        <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay attackable"/>
+    }
+    @foreach (var city in View.Cities)
+    {
+        <g class="@PieceClass("city", city.Owner, Selection.City == city.Id)" transform="translate(@X(city.Position) @Y(city.Position))">
+            <use href="#city"/>
+            <text y="26" class="city-name">@city.Name</text>
+        </g>
+    }
+    @foreach (var unit in View.Units)
+    {
+        <use href="@(unit.Type == UnitType.Settler ? "#settler" : "#soldier")" x="@X(unit.Position)" y="@Y(unit.Position)"
+             class="@PieceClass($"unit {(unit.Type == UnitType.Settler ? "settler" : "soldier")}", unit.Owner, Selection.Unit == unit.Id)"/>
+    }
+</g>
+
+@code {
+    private (PlayerView View, BoardSelection Selection, BoardHighlights Highlights)? _rendered;
+
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter, EditorRequired] public BoardSelection Selection { get; set; } = null!;
+
+    [Parameter, EditorRequired] public BoardHighlights Highlights { get; set; } = null!;
+
+    protected override bool ShouldRender() =>
+        _rendered is not { } rendered
+        || !ReferenceEquals(rendered.View, View) || rendered.Selection != Selection || !ReferenceEquals(rendered.Highlights, Highlights);
+
+    protected override void OnAfterRender(bool firstRender) => _rendered = (View, Selection, Highlights);
+
+    private static string X(HexCoord coord) => HexLayout.Format(HexLayout.Center(coord).X);
+
+    private static string Y(HexCoord coord) => HexLayout.Format(HexLayout.Center(coord).Y);
+
+    private string PieceClass(string kind, PlayerId owner, bool selected) =>
+        $"piece {kind} {(owner == View.Viewer ? "own" : "enemy")}{(selected ? " selected" : null)}";
+}
