@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Govern.Api.Extensions;
 using Govern.Api.Helpers;
 using Govern.Api.Middlewares;
 using Govern.Api.Models;
@@ -19,9 +20,9 @@ using Microsoft.IdentityModel.Tokens;
 namespace Govern.Api;
 
 /// <summary>
-/// Registers the HTTP layer: ProblemDetails, OpenAPI, JSON (enums as camelCase strings, matching <c>GameSerializer</c>), JWT
-/// authentication with a deny-by-default authorization fallback, rate limiting, the game stream settings, CORS and the
-/// current-user accessor.
+/// Registers the HTTP layer: ProblemDetails, OpenAPI (with the Bearer security scheme), JSON (enums as camelCase strings, matching
+/// <c>GameSerializer</c>), JWT authentication with a deny-by-default authorization fallback, rate limiting, the game stream settings,
+/// CORS and the current-user accessor.
 /// </summary>
 public static class DependencyInjection
 {
@@ -43,7 +44,7 @@ public static class DependencyInjection
             ArgumentNullException.ThrowIfNull(configuration);
 
             services.AddProblemDetails();
-            services.AddOpenApi();
+            services.AddOpenApi(static options => options.AddBearerSecurity());
             services.ConfigureHttpJsonOptions(static json => json.SerializerOptions.Converters.Add(
                 new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
             services.AddHttpContextAccessor();
