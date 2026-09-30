@@ -28,10 +28,10 @@ internal sealed class GameStateBuilder
 
     public static HexCoord At(int column, int row) => HexCoord.FromOffset(column, row);
 
-    public UnitId AddUnit(PlayerId owner, UnitType type, int column, int row, int? movementLeft = null)
+    public UnitId AddUnit(PlayerId owner, UnitType type, int column, int row, int? movementLeft = null, int damage = 0)
     {
         var id = new UnitId(_nextId++);
-        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? TestRulesets.Default.Unit(type).Movement));
+        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? TestRulesets.Default.Unit(type).Movement, damage));
         return id;
     }
 

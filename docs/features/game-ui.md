@@ -1,6 +1,6 @@
 ---
 title: Game UI design system
-tags: [client, game-ui, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, components, accessibility, keyboard, lenses]
+tags: [client, game-ui, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
 code: [src/Govern.Client/Components/Game, src/Govern.Client/Features/Games/Components/Screen, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/Features/Games/Services/GameUiService.cs, src/Govern.Client/Features/Design/Pages/DesignPage.razor, src/Govern.Client/Helpers, src/Govern.Client/wwwroot/css, tests/Govern.ArchitectureTests/GameUiTests.cs]
 updated: 2026-09-30
 ---
@@ -20,7 +20,7 @@ A started game (`Features/Games/Components/GameTable`) is a CSS grid with fixed 
 | Top bar | `Screen/TopBar` | Your seat colour, "Turn n: your turn", End turn, Resign (inline confirm) | treasury (G8), science and culture (G11), season (G14): one element each, before the actions |
 | Map | `Board/GameBoard` | The hex board, pan and zoom, zoom buttons | map lenses (toolbar in this zone), new board layers |
 | Action bar | `Screen/ActionBar`, floating over the bottom of the map | The selected own unit's actions (Found city, with the rule's reason when disabled) and a hint for board moves | one button per new ability |
-| Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel`) or a hint | one panel per new selection kind (tile, building) |
+| Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel`), the combat forecast of a pending attack (`CombatForecastPanel`) or a hint | one panel per new selection kind (tile, building) |
 | Full-screen view | (added with its first user) | Large content: tech and culture trees (G11), the city screen, governors (G12) | |
 
 The action bar floats over the bottom-left of the map, so a unit's actions sit next to the board without scrolling; it covers a few tiles in that corner, which the player reaches by panning. On screens narrower than 60rem the zones stack: top bar, map (with its action bar), side panel (map first, panels below).
@@ -29,15 +29,15 @@ The action bar floats over the bottom-left of the map, so a unit's actions sit n
 
 | Rule | How |
 |---|---|
-| Select, then act | A click selects a unit or city; moves and attacks are clicks on highlighted tiles; other actions are buttons in the action bar or side panel |
+| Select, then act | A click selects a unit or city; moves are clicks on highlighted tiles. An attack on a unit takes two steps: the first click on the target marks it and shows the combat forecast, a second click (or the forecast's Attack button) attacks, Cancel or Esc backs out. Capturing an undefended city is one click (nothing to forecast). Other actions are buttons in the action bar or side panel |
 | Exact numbers on demand | `NumberTooltip`: hover shows the title; the info button shows it on click, Enter, Space or tap (no long press); Esc closes it |
 | Destructive actions confirm inline | `ConfirmButton`: the first click asks, a second click on the confirm button acts, Cancel or Esc backs out (Resign today) |
 | No accidental actions | A drag on the board is never a click; commands are sent one at a time; a link never acts on its own |
-| Keyboard | Every action is a button (Tab reaches it); Esc clears the selection (`GameUiService.Escape`). The screen takes keyboard focus on arrival and after each command (whose disabled buttons would drop it); an Esc handled by an open `ConfirmButton` or `NumberTooltip` stops there |
+| Keyboard | Every action is a button (Tab reaches it); Esc cancels a pending attack, else clears the selection (`GameUiService.Escape`). The screen takes keyboard focus on arrival and after each command (whose disabled buttons would drop it); an Esc handled by an open `ConfirmButton` or `NumberTooltip` stops there |
 
 ## UI state (GameUiService)
 
-`Features/Games/Services/GameUiService` holds the UI state of one game screen: the selection (`BoardSelection`) and its highlights (`BoardHighlights`, from the Core previews). `GameTable` creates one per game and cascades it (`CascadingValue IsFixed`), so `SidePanel` and `ActionBar` read the selection instead of receiving it through parameter chains. It holds no game state: the view stays the server's. A new view calls `Refresh`, which drops a selection that is no longer visible. It also holds the active map lens ([map lenses](#map-lenses)); later UI state (an open full-screen view) is added here.
+`Features/Games/Services/GameUiService` holds the UI state of one game screen: the selection (`BoardSelection`) and its highlights (`BoardHighlights`, from the Core previews). `GameTable` creates one per game and cascades it (`CascadingValue IsFixed`), so `SidePanel` and `ActionBar` read the selection instead of receiving it through parameter chains. It holds no game state: the view stays the server's. A new view calls `Refresh`, which drops a selection that is no longer visible, and a pending attack target (`BoardSelection.Target`) the unit can no longer fight. It also holds the active map lens ([map lenses](#map-lenses)); later UI state (an open full-screen view) is added here.
 
 ## Design tokens, themes and colours
 
@@ -47,7 +47,7 @@ All colours are CSS custom properties in `wwwroot/css/tokens.css` (`--gv-<group>
 |---|---|
 | `--gv-seat-1` … `--gv-seat-4` | One colour per seat in turn order (`PlayerView.Players`); classes `seat-1`… set `fill` and `color` (`Helpers/Seats`). More than four seats (F10) needs more tokens |
 | `--gv-terrain-<id>`, `--gv-terrain-<id>-explored` | Visible and remembered shade per ruleset terrain. `board.css` maps each id with one `.terrain-<id>` rule (tiles and terrain icons) |
-| `--gv-board-*`, `--gv-tile-*`, `--gv-overlay-*`, `--gv-selected`, `--gv-label*`, `--gv-icon-mark` | The board |
+| `--gv-board-*`, `--gv-tile-*`, `--gv-overlay-*`, `--gv-selected`, `--gv-label*`, `--gv-icon-mark`, `--gv-health-*` | The board (`--gv-overlay-target` marks a pending attack target, `--gv-health-*` the health bar under a hurt unit) |
 | `--gv-text`, `--gv-surface*`, `--gv-border`, `--gv-accent`, `--gv-danger` | Panels and components, built on Radzen's `--rz-*` theme variables |
 | `--gv-space-1..3`, `--gv-radius`, `--gv-icon-size` | Spacing and shape |
 
@@ -64,7 +64,7 @@ All colours are CSS custom properties in `wwwroot/css/tokens.css` (`--gv-<group>
 | `unit-<id>` | Each ruleset unit (`Icons.Unit`) |
 | `terrain-<id>` | Each ruleset terrain (`Icons.Terrain`): a hex swatch filled with the terrain colour plus a `.terrain-mark` drawing (trees, humps, peaks, waves; none for plains). The board draws it on every known tile that isn't the default terrain, where the hex blends into the tile and only the drawing shows, so terrain is never told by colour alone |
 | `city` | Cities |
-| `ui-movement`, `ui-sight`, `ui-production`, `ui-turns` | UI glyphs (`Icons` constants) |
+| `ui-movement`, `ui-sight`, `ui-production`, `ui-health`, `ui-strength`, `ui-turns` | UI glyphs (`Icons` constants) |
 
 Shapes sit in a 26×26 box centred on 0,0. The main shape takes its fill from the `<use>` (a seat or terrain class); `.icon-mark` draws the white mark inside unit symbols and `.icon-line` draws outlined glyphs in the text colour. `GameIcon` draws one icon at text size; it is decorative unless `Label` is set (then `role="img"` with that name). `GameSpriteTests` checks every ruleset unit and terrain and every `Icons` constant has a symbol.
 
@@ -79,11 +79,13 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | Component | Status | Use |
 |---|---|---|
 | `GameSprite`, `GameIcon` | built | The icon set and one icon |
-| `StatTable` | built | Icon, label and value rows (`Models/StatRow`), with an optional detail tooltip; `UnitPanel` shows movement left, sight and cost |
+| `StatTable` | built | Icon, label and value rows (`Models/StatRow`), with an optional detail tooltip; `UnitPanel` shows strength (and ranged strength) for any unit, and movement left, sight and cost for your own |
 | `NumberTooltip` | built | A number with its exact value and origin (hover, focus, tap) |
 | `ProgressBar` | built | Progress towards a cost with "n turns left" at the current rate ("Complete" once reached, "Never at this rate" without income); `CityPanel` shows production |
 | `CostLabel` | built | Icon and amount; each Build button shows the unit's production cost |
 | `ConfirmButton` | built | Inline confirm for destructive actions (Resign) |
+| `HealthBar` | built (G9) | A unit's health as a bar with "n of max", the danger style at a third or less; `UnitPanel` and the combat forecast. The board draws its own small SVG bar under each hurt unit (`BoardPieces`) |
+| `CombatForecastPanel`, `CombatSideView` | built (G9), feature panel | The forecast of a pending attack from `GameEngine.CombatForecast`: each side's health, strength (modifiers in the tooltip) and damage range, then Attack and Cancel |
 | `YieldList`, `ResourceBadge` | planned by G5/G8 | Yield and resource rows and badges |
 | `QueueList` | planned by G8/G10 | A reorderable build queue |
 | `TreeView` | planned by G11/G12 | Tech, culture and governor skill trees in a full-screen view |

@@ -10,13 +10,13 @@ namespace Govern.Core.Visibility;
 /// <summary>
 /// What the viewer may do next, worked out from their <see cref="PlayerView"/> alone, for the client to preview. Each answer
 /// equals what <see cref="GameEngine.Execute"/> would decide on the full state, because the rules share their checks with it
-/// and the ruleset validator keeps sight at least movement and city spacing (<c>GameEnginePreviewTests</c> checks the parity).
+/// and the ruleset validator keeps sight at least movement, attack range and city spacing (<c>GameEnginePreviewTests</c> checks the parity).
 /// </summary>
 internal static class ViewPreviewCalculator
 {
     public static ImmutableArray<HexCoord> ReachableTiles(Ruleset ruleset, PlayerView view, UnitId unitId)
     {
-        if (ActingUnit(view, unitId) is not { MovementLeft: > 0 } unit)
+        if (ActingUnit(ruleset, view, unitId) is not { MovementLeft: > 0 } unit)
         {
             return [];
         }
@@ -28,16 +28,36 @@ internal static class ViewPreviewCalculator
 
     public static ImmutableArray<HexCoord> AttackTargets(Ruleset ruleset, PlayerView view, UnitId unitId)
     {
-        if (ActingUnit(view, unitId) is not { } unit)
+        if (ActingUnit(ruleset, view, unitId) is not { } unit)
         {
             return [];
         }
 
-        return [.. unit.Position.Neighbors()
-            .Where(target => AttackRule.Check(
-                ruleset, unit, target, view.Contains(target), view.UnitAt(target)?.Owner ?? view.CityAt(target)?.Owner) is null)
+        return [.. unit.Position.WithinRadius(ruleset.Unit(unit.Type).AttackRange)
+            .Where(target => AttackRule.Check(ruleset, unit, target, TargetOf(view, target)) is null)
             .OrderBy(static coord => coord.Row)
             .ThenBy(static coord => coord.Column)];
+    }
+
+    public static CombatForecast? CombatForecast(Ruleset ruleset, PlayerView view, UnitId unitId, HexCoord target)
+    {
+        if (ActingUnit(ruleset, view, unitId) is not { } unit
+            || AttackRule.Check(ruleset, unit, target, TargetOf(view, target)) is not null
+            || view.UnitAt(target) is not { } defender)
+        {
+            return null;
+        }
+
+        // Both tiles are in sight (see AttackRule.Check), so their terrain is known.
+        var attacker = new Combatant(unit.Type, unit.Health(ruleset), view.TileAt(unit.Position).Terrain!.Value);
+        return CombatCalculator.Forecast(ruleset, attacker, new Combatant(defender.Type, defender.Health, view.TileAt(target).Terrain!.Value));
+    }
+
+    private static AttackTarget TargetOf(PlayerView view, HexCoord target)
+    {
+        var defender = view.Contains(target) ? view.UnitAt(target) : null;
+        var owner = defender?.Owner ?? (view.Contains(target) ? view.CityAt(target)?.Owner : null);
+        return new AttackTarget(view.Contains(target), owner, defender is not null);
     }
 
     public static RuleViolation? CheckFoundCity(Ruleset ruleset, PlayerView view, UnitId unitId)
@@ -47,7 +67,7 @@ internal static class ViewPreviewCalculator
             return violation;
         }
 
-        return OwnUnit(view, unitId) is { } settler
+        return OwnUnit(ruleset, view, unitId) is { } settler
             ? FoundCityRule.Check(ruleset, settler, view.Cities.Select(static city => city.Position))
             : RuleViolations.UnitNotFound;
     }
@@ -65,13 +85,13 @@ internal static class ViewPreviewCalculator
         ruleset.Terrain(view.TileAt(coord).Terrain!.Value).MovementCost;
 
     // The viewer's unit when they may act with it now; otherwise null.
-    private static Unit? ActingUnit(PlayerView view, UnitId unitId) =>
-        CheckTurn(view) is null ? OwnUnit(view, unitId) : null;
+    private static Unit? ActingUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
+        CheckTurn(view) is null ? OwnUnit(ruleset, view, unitId) : null;
 
     // The viewer's own unit as the rules' checks take it. Its movement is always in the view: only enemy movement is hidden.
-    private static Unit? OwnUnit(PlayerView view, UnitId unitId) =>
+    private static Unit? OwnUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
         view.FindOwnUnit(unitId) is { MovementLeft: { } movementLeft } own
-            ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft)
+            ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft, ruleset.Combat.MaxHealth - own.Health)
             : null;
 
     private static RuleViolation? CheckTurn(PlayerView view) => CommandGuardRule.CheckTurn(

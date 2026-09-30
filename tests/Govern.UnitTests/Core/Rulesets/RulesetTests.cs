@@ -56,6 +56,28 @@ public class RulesetTests
         ["empty patch"] = json => json["map"]!["generation"]!["patches"]![0]!["patchSize"] = 0,
         ["patches cover over half"] = json => json["map"]!["generation"]!["patches"]![0]!["sharePerMille"] = 400,
         ["too much impassable terrain"] = json => json["map"]!["generation"]!["patches"]![3]!["sharePerMille"] = 120,
+        ["negative defence bonus"] = json => json["terrains"]![1]!["defenceBonus"] = -1,
+        ["class not snake_case"] = json => json["units"]![1]!["class"] = "Melee",
+        ["zero strength"] = json => json["units"]![1]!["strength"] = 0,
+        ["attacker without strength"] = json => json["units"]![1]!.AsObject().Remove("strength"),
+        ["melee and ranged"] = json => json["units"]![4]!["abilities"] = new JsonArray("attack", "ranged_attack"),
+        ["ranged ability without ranged stats"] = json => json["units"]![4]!.AsObject().Remove("ranged"),
+        ["ranged stats without the ability"] = json => json["units"]![1]!["ranged"] = new JsonObject { ["strength"] = 5, ["range"] = 1 },
+        ["zero ranged strength"] = json => json["units"]![4]!["ranged"]!["strength"] = 0,
+        ["range beyond sight"] = json => json["units"]![4]!["ranged"]!["range"] = 3,
+        ["no health"] = json => json["combat"]!["maxHealth"] = 0,
+        ["zero minimum damage"] = json => json["combat"]!["damage"]!["min"] = 0,
+        ["maximum below minimum damage"] = json => json["combat"]!["damage"]!["max"] = 4,
+        ["base damage above the maximum"] = json => json["combat"]!["damage"]!["base"] = 101,
+        ["negative damage per strength point"] = json => json["combat"]!["damage"]!["perStrengthPoint"] = -1,
+        ["spread of 100 percent"] = json => json["combat"]!["damage"]!["spreadPercent"] = 100,
+        ["negative healing"] = json => json["combat"]!["healing"]!["perTurn"] = -1,
+        ["negative healing in cities"] = json => json["combat"]!["healing"]!["inOwnCity"] = -1,
+        ["counter for an unused class"] = json => json["combat"]!["counters"]![0]!["class"] = "siege",
+        ["counter against an unused class"] = json => json["combat"]!["counters"]![0]!["against"] = "siege",
+        ["counter without a bonus"] = json => json["combat"]!["counters"]![0]!["bonus"] = 0,
+        ["counter listed twice"] = json => json["combat"]!["counters"]![1] = json["combat"]!["counters"]![0]!.DeepClone(),
+        ["missing class name"] = json => json["texts"]!.AsObject().Remove("class.cavalry.name"),
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -105,6 +127,28 @@ public class RulesetTests
         { "empty patch", "$.map.generation.patches[0].patchSize" },
         { "patches cover over half", "$.map.generation.patches" },
         { "too much impassable terrain", "$.map.generation.patches" },
+        { "negative defence bonus", "$.terrains[1].defenceBonus" },
+        { "class not snake_case", "$.units[1].class" },
+        { "zero strength", "$.units[1].strength" },
+        { "attacker without strength", "$.units[1].strength" },
+        { "melee and ranged", "$.units[4].abilities" },
+        { "ranged ability without ranged stats", "$.units[4].ranged" },
+        { "ranged stats without the ability", "$.units[1].ranged" },
+        { "zero ranged strength", "$.units[4].ranged.strength" },
+        { "range beyond sight", "$.units[4].ranged.range" },
+        { "no health", "$.combat.maxHealth" },
+        { "zero minimum damage", "$.combat.damage.min" },
+        { "maximum below minimum damage", "$.combat.damage.max" },
+        { "base damage above the maximum", "$.combat.damage.base" },
+        { "negative damage per strength point", "$.combat.damage.perStrengthPoint" },
+        { "spread of 100 percent", "$.combat.damage.spreadPercent" },
+        { "negative healing", "$.combat.healing.perTurn" },
+        { "negative healing in cities", "$.combat.healing.inOwnCity" },
+        { "counter for an unused class", "$.combat.counters[0].class" },
+        { "counter against an unused class", "$.combat.counters[0].against" },
+        { "counter without a bonus", "$.combat.counters[0].bonus" },
+        { "counter listed twice", "$.combat.counters[1]" },
+        { "missing class name", "$.texts" },
     };
 
     [Fact]
@@ -117,14 +161,14 @@ public class RulesetTests
         var ruleset = result.Ruleset;
         ruleset.Setup.Players.ShouldBe(2);
         ruleset.Setup.StartingUnits.ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
-        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
+        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer]);
         ruleset.Unit(TestRulesets.Settler).CanFoundCity.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Settler).CanAttack.ShouldBeFalse();
         ruleset.Unit(TestRulesets.Soldier).CanAttack.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Soldier).ProductionCost.ShouldBe(4);
-        ruleset.Terrain(TestRulesets.Plains).ShouldBe(new TerrainDefinition(TestRulesets.Plains, 1, true, 0));
-        ruleset.Terrain(TestRulesets.Forest).ShouldBe(new TerrainDefinition(TestRulesets.Forest, 2, true, 0));
-        ruleset.Terrain(TestRulesets.Hills).ShouldBe(new TerrainDefinition(TestRulesets.Hills, 2, true, 1));
+        ruleset.Terrain(TestRulesets.Plains).ShouldBe(new TerrainDefinition(TestRulesets.Plains, 1, true, 0, 0));
+        ruleset.Terrain(TestRulesets.Forest).ShouldBe(new TerrainDefinition(TestRulesets.Forest, 2, true, 0, 3));
+        ruleset.Terrain(TestRulesets.Hills).ShouldBe(new TerrainDefinition(TestRulesets.Hills, 2, true, 1, 3));
         ruleset.Terrain(TestRulesets.Mountains).IsPassable.ShouldBeFalse();
         ruleset.Terrain(TestRulesets.Lake).IsPassable.ShouldBeFalse();
         ruleset.Map.Generation.Patches.Select(static patch => patch.Terrain)
@@ -132,6 +176,14 @@ public class RulesetTests
         ruleset.Map.DefaultWidth.ShouldBe(20);
         ruleset.Map.DefaultHeight.ShouldBe(14);
         ruleset.Cities.MinimumSpacing.ShouldBe(3);
+        ruleset.Unit(TestRulesets.Settler).Strength.ShouldBeNull();
+        ruleset.Unit(TestRulesets.Archer).CanRangedAttack.ShouldBeTrue();
+        ruleset.Unit(TestRulesets.Archer).AttackRange.ShouldBe(2);
+        ruleset.Unit(TestRulesets.Soldier).AttackRange.ShouldBe(1);
+        ruleset.Unit(TestRulesets.Settler).AttackRange.ShouldBe(0);
+        ruleset.Combat.MaxHealth.ShouldBe(100);
+        ruleset.Combat.Counters.Length.ShouldBe(3);
+        ruleset.ClassName("anti_cavalry").ShouldBe("Anti-cavalry");
         ruleset.Hash.ShouldBe(Ruleset.ComputeHash(TestRulesets.DefaultJson));
     }
 

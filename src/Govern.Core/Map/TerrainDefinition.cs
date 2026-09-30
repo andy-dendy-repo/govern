@@ -7,4 +7,5 @@ namespace Govern.Core.Map;
 /// <param name="MovementCost">Movement points a unit spends to enter the tile (at least 1).</param>
 /// <param name="IsPassable">Whether land units may enter the tile at all.</param>
 /// <param name="SightBonus">Extra sight, in tiles, for a unit or city standing on the tile (0 for none).</param>
-public sealed record TerrainDefinition(TerrainType Id, int MovementCost, bool IsPassable, int SightBonus);
+/// <param name="DefenceBonus">Extra strength for a unit defending on the tile (0 for none).</param>
+public sealed record TerrainDefinition(TerrainType Id, int MovementCost, bool IsPassable, int SightBonus, int DefenceBonus);

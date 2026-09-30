@@ -1,0 +1,84 @@
+{
+  "setup": {
+    "players": 2,
+    "startingUnits": ["settler", "soldier"]
+  },
+  "map": {
+    "defaultWidth": 20,
+    "defaultHeight": 14,
+    "minSize": 8,
+    "maxSize": 40,
+    "defaultTerrain": "plains",
+    "spawn": {
+      "zoneColumnsPerMille": 250,
+      "edgeMargin": 1
+    },
+    "generation": {
+      "patches": [
+        { "terrain": "forest", "sharePerMille": 150, "patchSize": 4 },
+        { "terrain": "hills", "sharePerMille": 100, "patchSize": 3 },
+        { "terrain": "mountains", "sharePerMille": 40, "patchSize": 2 },
+        { "terrain": "lake", "sharePerMille": 40, "patchSize": 3 }
+      ]
+    }
+  },
+  "terrains": [
+    { "id": "plains", "movementCost": 1, "isPassable": true, "sightBonus": 0, "defenceBonus": 0 },
+    { "id": "forest", "movementCost": 2, "isPassable": true, "sightBonus": 0, "defenceBonus": 3 },
+    { "id": "hills", "movementCost": 2, "isPassable": true, "sightBonus": 1, "defenceBonus": 3 },
+    { "id": "mountains", "movementCost": 1, "isPassable": false, "sightBonus": 0, "defenceBonus": 0 },
+    { "id": "lake", "movementCost": 1, "isPassable": false, "sightBonus": 0, "defenceBonus": 0 }
+  ],
+  "units": [
+    { "id": "settler", "class": "civilian", "movement": 2, "sight": 2, "productionCost": 6, "abilities": ["found_city"] },
+    { "id": "soldier", "class": "melee", "movement": 2, "sight": 2, "productionCost": 4, "strength": 20, "abilities": ["attack"] },
+    { "id": "spearman", "class": "anti_cavalry", "movement": 2, "sight": 2, "productionCost": 4, "strength": 18, "abilities": ["attack"] },
+    { "id": "horseman", "class": "cavalry", "movement": 3, "sight": 3, "productionCost": 6, "strength": 20, "abilities": ["attack"] },
+    { "id": "archer", "class": "ranged", "movement": 2, "sight": 2, "productionCost": 5, "strength": 10, "ranged": { "strength": 22, "range": 2 }, "abilities": ["ranged_attack"] }
+  ],
+  "cities": {
+    "sight": 2,
+    "minimumSpacing": 3,
+    "productionPerTurn": 1,
+    "initialProduction": "soldier",
+    "nameTemplate": "city.default_name",
+    "captureResetsProduction": true
+  },
+  "combat": {
+    "maxHealth": 100,
+    "damage": {
+      "base": 30,
+      "perStrengthPoint": 2,
+      "min": 5,
+      "max": 100,
+      "spreadPercent": 20
+    },
+    "healing": {
+      "perTurn": 10,
+      "inOwnCity": 20
+    },
+    "counters": [
+      { "class": "melee", "against": "anti_cavalry", "bonus": 5 },
+      { "class": "anti_cavalry", "against": "cavalry", "bonus": 10 },
+      { "class": "cavalry", "against": "ranged", "bonus": 5 }
+    ]
+  },
+  "texts": {
+    "unit.settler.name": "Settler",
+    "unit.soldier.name": "Soldier",
+    "unit.spearman.name": "Spearman",
+    "unit.horseman.name": "Horseman",
+    "unit.archer.name": "Archer",
+    "class.civilian.name": "Civilian",
+    "class.melee.name": "Melee",
+    "class.anti_cavalry.name": "Anti-cavalry",
+    "class.cavalry.name": "Cavalry",
+    "class.ranged.name": "Ranged",
+    "terrain.plains.name": "Plains",
+    "terrain.forest.name": "Forest",
+    "terrain.hills.name": "Hills",
+    "terrain.mountains.name": "Mountains",
+    "terrain.lake.name": "Lake",
+    "city.default_name": "City {n}"
+  }
+}

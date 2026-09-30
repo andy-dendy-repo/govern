@@ -1,5 +1,6 @@
 @* The right zone of the game screen: notices, the result of a finished game, and the panel for the selection. Each
-   selection kind has one panel (unit, city; later tile, building); a new kind adds its branch here. *@
+   selection kind has one panel (unit, city; later tile, building); a new kind adds its branch here. A pending attack adds
+   its combat forecast under the unit. *@
 @using Govern.Client.Features.Games.Services
 @using Govern.Core.Actions
 @using Govern.Core.Engine
@@ -16,6 +17,13 @@
     @if (Ui.Selection.Unit is { } unitId && View.Units.FirstOrDefault(unit => unit.Id == unitId) is { } unit)
     {
         <UnitPanel View="@View" Unit="@unit" Ruleset="@Ruleset"/>
+        @if (Ui.Selection.Target is { } target && View.UnitAt(target) is { } defender
+             && GameEngine.CombatForecast(Ruleset, View, unitId, target) is { } forecast)
+        {
+            <CombatForecastPanel View="@View" Ruleset="@Ruleset" Attacker="@unit" Defender="@defender" Forecast="@forecast" Busy="@Busy"
+                                 Attack="@(() => Command.InvokeAsync(new AttackCommand(unitId, target)))"
+                                 Cancel="@(() => Ui.CancelAttack())"/>
+        }
     }
     else if (Ui.Selection.City is { } cityId && View.Cities.FirstOrDefault(city => city.Id == cityId) is { } city)
     {
