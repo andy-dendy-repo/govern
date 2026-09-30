@@ -7,7 +7,7 @@ metadata:
 
 Govern.Core = pure game engine (BCL only), shipped to the WASM client and used by the Api to validate commands. First audit 2026-09-27 on uncommitted feature/game-core-engine: no Critical/High (no endpoint yet); arch guardrails strengthened (Layers.Ignored removed, Core checks added).
 
-Security model (docs/decisions/0004-game-engine.md, .claude/rules/game-core.md): clients receive only PlayerView (ViewFor); raw GameEvents must be filtered per player; actor comes from the server (the caller's per-game GamePlayer.Id, never a user id), commands carry no player field. Planned (docs/plans/game-delivery.md step 3): command endpoint with ExpectedVersion -> 409, SSE pushing PlayerView.
+Security model (docs/decisions/0004-game-engine.md, .claude/rules/game-core.md): clients receive only PlayerView (ViewFor); raw GameEvents must be filtered per player; actor comes from the server (the caller's per-game GamePlayer.Id, never a user id), commands carry no player field. Planned (docs/plans/done-game-delivery.md step 3): command endpoint with ExpectedVersion -> 409, SSE pushing PlayerView.
 
 Open at that audit (verified empirically with a scratch probe):
 - Medium: MoveUnitRule checks state.UnitAt(target) before reachability -> `move.occupied` vs `move.unreachable` for ANY map tile = fog-of-war oracle (one sweep of rejected moves found every hidden enemy unit). Becomes High once the command endpoint returns RuleViolation codes (renamed from GameError in Plan 2).

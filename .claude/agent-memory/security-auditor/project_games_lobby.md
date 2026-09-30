@@ -17,7 +17,7 @@ Verified facts (re-check if handlers change):
 - State size is bounded per game (map 20x14 fixed, one unit per tile, explored <= tiles); ~13 KB JSON at start.
 
 Open after the Plan 3a audit:
-- Medium (API4), NOT fully closed although docs/plans/game-lobby.md says "resolved": finished games are uncapped and never deleted; resign is allowed any time, so a two-account create->join->start->resign loop still adds ~10-13 games/min per account pair forever (sign-up only IP-limited, no email verification); Postgres 32 GB autoGrow Disabled. Fix proposed: rolling 24h per-user game quota (count created/joined in last 24h incl. finished) and/or storage alert (follow-ups #5).
+- Medium (API4), NOT fully closed although docs/plans/done-game-lobby.md says "resolved": finished games are uncapped and never deleted; resign is allowed any time, so a two-account create->join->start->resign loop still adds ~10-13 games/min per account pair forever (sign-up only IP-limited, no email verification); Postgres 32 GB autoGrow Disabled. Fix proposed: rolling 24h per-user game quota (count created/joined in last 24h incl. finished) and/or storage alert (follow-ups #5).
 - Low: caps are soft; a parallel burst within one rate window can overshoot by up to ~limit-1.
 - Low (carried): Version / shared NextId reveal opponent activity, enemy Producing/ProductionProgress/MovementLeft visible (moved to Plan 3b). Event filtering still needed before events are returned (3b SSE).
 - Note for the client plan: invite code in URL fragment (#code).

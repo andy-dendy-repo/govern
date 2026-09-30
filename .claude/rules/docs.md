@@ -16,7 +16,8 @@ paths:
 | `docs/features/<feature>.md` | One per Application feature: purpose, use cases (contracts), endpoints (method, route, auth, status codes), entities, events, business rules |
 | `docs/decisions/NNNN-<slug>.md` | Architecture decision records: context, decision, consequences |
 | `docs/operations/<topic>.md` | Infra, deployment, configuration, runbooks |
-| `docs/plans/<slug>.md` | Plans and roadmaps (see `planning.md`) |
+| `docs/plans/<slug>.md` | Plans and roadmaps (see `planning.md`). A plan that is fully implemented is renamed `done-<slug>.md` (`git mv`, then update every link to it), so open plans stand out |
+| `docs/game/*.md` | The game's design: `game-data.md` (the loadable ruleset: every configurable number, list and text, its format and examples) and `game-logic.md` (Core's algorithms, step by step, with the ruleset keys they use). A game rule change updates both |
 
 ## Writing rules
 

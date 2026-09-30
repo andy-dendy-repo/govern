@@ -94,7 +94,7 @@ The client signs in against the Api's `/api/users` endpoints ([users](users.md))
 - **Sign out** (`SignOutButton`, header and profile) runs `AuthSession.SignOutAsync` under the lock: if the access token is due it refreshes first, then sends `POST /api/users/sign-out` with the **current** access and refresh tokens, and always clears the local session, even when the Api call fails. Sending a refresh token that a refresh had already rotated would count as reuse and sign the user out on every device.
 - **Sign out everywhere** (profile) clears the local session only when `POST /api/users/sign-out-everywhere` succeeded (or the Api no longer accepts this session); otherwise it shows the error and stays signed in, so the user can retry, since this is the control used after losing a device.
 - The header shows the email and Sign out, or a Sign in link; the nav shows Games, Join game and Profile, or Sign in and Register. The home page links to My games and Join a game, or to Sign in and Register.
-- Not built yet: password reset and email confirmation (see [session plans](../plans/session-and-email-verification.md)). A sign-out or sign-in in another tab updates this tab's UI on its next Api call, not immediately (no `storage` event listener yet).
+- Not built yet: password reset and email confirmation (see [session plans](../plans/done-session-and-email-verification.md)). A sign-out or sign-in in another tab updates this tab's UI on its next Api call, not immediately (no `storage` event listener yet).
 
 ## Client game lobby (games, invite links, live updates)
 
