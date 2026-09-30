@@ -1,13 +1,13 @@
 ---
 title: Game design roadmap (future mechanics)
-tags: [plan, roadmap, game, design, ui, rules, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
+tags: [game, design, roadmap, game, design, ui, rules, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
 code: [src/Govern.Core, src/Govern.Client/Features/Games]
 updated: 2026-09-30
 ---
 
 # Game design roadmap
 
-Where the game goes after the 1-vs-1 prototype (game Plans 1–5, [game delivery](done-game-delivery.md)): a much richer, Civilization-like game. This is a list of future plans, not a schedule. Each item becomes its own plan in `.claude/rules/planning.md` format when it is picked up, runs through `/develop-feature`, and branches from and PRs to `gamecore`. Smaller and operational work is in [next follow-ups](next-follow-ups.md).
+Where the game goes after the 1-vs-1 prototype (game Plans 1–5, [game delivery](../plans/done/game-delivery.md)): a much richer, Civilization-like game. This document describes **what** each mechanic is. **When** it is built (priority, status, what is deferred) is decided only in the [backlog](../plans/backlog.md). Each item becomes its own plan in `.claude/rules/planning.md` format when it is picked up, runs through `/develop-feature`, and branches from and PRs to `gamecore`.
 
 Items are numbered **G1–G15** so they don't clash with the follow-up numbers. Suggestions added to the original wish list are marked *(suggested)*.
 
@@ -15,7 +15,7 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 |---|---|---|---|
 | G1 | [UI design system and approaches](#g1-ui-design-system-and-approaches) | — | M |
 | G2 | [Game rules reference](#g2-game-rules-reference) | — | S, then ongoing |
-| G3 | [Data-driven catalogs and a new state schema](#g3-data-driven-catalogs-and-a-new-state-schema-suggested) *(in progress: [ruleset plan](ruleset.md))* | — | M |
+| G3 | [Data-driven catalogs and a new state schema](#g3-data-driven-catalogs-and-a-new-state-schema-suggested) *(part A done; part B deferred)* | — | M |
 | G4 | [Terrain: more tile types](#g4-terrain-more-tile-types) | G3 | M |
 | G5 | [Resources and tile yields](#g5-resources-and-tile-yields) | G4 | L |
 | G6 | [Rivers and bridges](#g6-rivers-and-bridges) | G4 | M |
@@ -29,7 +29,7 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 | G14 | [Seasons](#g14-seasons) | G5, G6 | M |
 | G15 | [Ships and naval movement](#g15-ships-and-naval-movement) | G4, G6, G9, G10 | L |
 
-**Suggested order:** G1 and G2 first, because every later item adds UI and rules. Then G3 as the foundation for the data. Then the map (G4 → G5 → G6), cities (G7 → G8), units (G9), builders (G10), ships (G15, which need harbours from G10), the trees (G11), civilizations and governors (G12 → G13), and seasons last (G14), since they modify almost everything before them.
+**Suggested order** (design dependencies; the [backlog](../plans/backlog.md) decides the actual order): G1 and G2 first, because every later item adds UI and rules. Then G3 as the foundation for the data. Then the map (G4 → G5 → G6), cities (G7 → G8), units (G9), builders (G10), ships (G15, which need harbours from G10), the trees (G11), civilizations and governors (G12 → G13), and seasons last (G14), since they modify almost everything before them.
 
 ## Decisions taken (2026-09-30)
 
@@ -38,7 +38,7 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 | Science and culture upkeep (G11) | Owning an unlocked node costs points every turn. When the player loses science or culture points (upkeep above income), the **latest unlocked nodes become disabled** |
 | Naval play | Ships are in scope: [G15](#g15-ships-and-naval-movement). They are built in harbours and can sail rivers in state 2 and 3 |
 | Victory conditions | Last player standing only, for now |
-| Order | The suggested order stands; turn timers, simultaneous turns and more players don't move ahead of it for now |
+| Order | Superseded: priorities are kept in the [backlog](../plans/backlog.md) |
 
 ## Rules for every item (cross-cutting)
 
@@ -81,9 +81,9 @@ These follow from how `Govern.Core` works today ([game-core](../features/game-co
 ## G3. Data-driven catalogs and a new state schema *(suggested)*
 
 - **Why:** dozens of terrains, resources, units, buildings and tech nodes are easier to balance as data than as C# switches.
-- **Status:** in progress, as the loadable ruleset ([ruleset plan](ruleset.md), format in [game data](../game/game-data.md)).
-  - **Done (Ruleset A):** Core reads every number, list and text from a ruleset document (`rulesets/default/v1.json`), validated at load time with JSON paths; the former `UnitCatalog`/`TerrainCatalog` and constants are gone.
-  - **Next (Ruleset B):** rulesets stored per version in the database and each game pinned to one, so a running game keeps its rules after a balance change.
+- **Status:** part A done, part B deferred (format in [game data](game-data.md)).
+  - **Done (Ruleset A, [plan](../plans/done/ruleset-a-core.md)):** Core reads every number, list and text from a ruleset document (`rulesets/default/v1.json`), validated at load time with JSON paths; the former `UnitCatalog`/`TerrainCatalog` and constants are gone.
+  - **Deferred (Ruleset B, [plan](../plans/deferred/ruleset-b-store-and-pin.md)):** rulesets stored per version in the database, each game pinned to one, and a ruleset choice in the lobby. New content goes into the embedded `rulesets/default/v1.json` until then.
   - Each later item adds its section to the ruleset (and, where the state changes, to the state schema).
 
 ## G4. Terrain: more tile types
@@ -176,7 +176,7 @@ These follow from how `Govern.Core` works today ([game-core](../features/game-co
   - Terrain (G4) and rivers (G6) modify the defence.
   - A unit can't both move after attacking and attack twice, unless its stats allow it.
 - **Ships** follow the same combat model, see [G15](#g15-ships-and-naval-movement).
-- **Replaces** the current one-hit combat (an attack destroys the defender) and the "strength/HP combat" idea in the next follow-ups.
+- **Replaces** the current one-hit combat (an attack destroys the defender).
 - **Previews:** the client shows the expected damage range before attacking. That preview must match the engine (a parity test over the damage range).
 
 ## G10. Builders and buildings (with upgrades)
@@ -266,5 +266,10 @@ These follow from how `Govern.Core` works today ([game-core](../features/game-co
 
 ## Open questions
 
-Answer before planning the item it affects:
-1. **Diplomacy:** cities produce diplomacy points (G8), but there's no diplomacy system yet. Is diplomacy (war and peace, trade, alliances) a separate plan, or should diplomacy points be left out for now?
+Answer before planning the item each one affects. Questions 2–6 came from the former ruleset open questions (7–11 there); its questions 1–6 moved to the [ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md#decisions-and-questions-for-part-b).
+1. **Diplomacy:** cities produce diplomacy points (G8), but there's no diplomacy system yet. Diplomacy is deferred ([backlog](../plans/backlog.md)); leave diplomacy points out until it is picked up.
+2. **Where texts live:** in the ruleset (proposed, so names and rules change together), or in a separate language pack?
+3. **Which languages first?**
+4. **The Api's error messages:** translated by the Api (from the `Accept-Language` header), or the Api sends the code and English, and the client translates by code?
+5. **Level of detail of [game logic](game-logic.md):** rules only, as the draft is now (what a player could read), or also naming the Core classes that implement each step?
+6. **Relation to the rules reference (G2):** is [game logic](game-logic.md) itself the player-facing rules reference, or the source a separate player-facing version is written from?

@@ -2,7 +2,7 @@
 title: Govern knowledge base index
 tags: [index, docs]
 code: [docs]
-updated: 2026-09-28
+updated: 2026-09-30
 ---
 
 # Govern knowledge base
@@ -27,8 +27,9 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 
 ## Game design
 
-- [game/game-data.md](game/game-data.md): the loadable ruleset (`rulesets/default/v1.json`, read by `Govern.Core/Rulesets`): the boundary between data and Core logic, lifecycle (JSON in the repo, stored per version, pinned per game, served to the client), the database record, reading it in code (`Ruleset.Parse`, strict JSON, the hash), format conventions, every section with its fields, defaults and examples (setup, map, terrains, units and abilities, cities, texts), validation rules with JSON paths; open questions in plans/ruleset-open-questions.md.
+- [game/game-data.md](game/game-data.md): the loadable ruleset (`rulesets/default/v1.json`, read by `Govern.Core/Rulesets`): the boundary between data and Core logic, lifecycle (JSON in the repo, stored per version, pinned per game, served to the client; storing and pinning deferred), the database record, reading it in code (`Ruleset.Parse`, strict JSON, the hash), format conventions, every section with its fields, defaults and examples (setup, map, terrains, units and abilities, cities, texts), validation rules with JSON paths.
 - [game/game-logic.md](game/game-logic.md): draft: Core's algorithms as simple steps: creating a game, executing a command (guard, apply, victory, explore), move, attack, found city, set production, end turn, resign, elimination and victory, fog of war and the view version, view previews, randomness and ids, invariants, with the ruleset key for every number.
+- [game/design-roadmap.md](game/design-roadmap.md): future game mechanics (G1–G15), what each one is (priorities are in the backlog): the UI design system, a game rules reference, data-driven catalogs (ruleset A done, B deferred), terrain layers, resources and tile yields, rivers and bridges, city territory, stats and production queue, unit roster and combat, builders and buildings with upgrades, science and culture trees with upkeep, civilizations and governors, colonies founded by governors, seasons, ships and river navigation; the decisions taken and open questions (diplomacy, texts and languages, the game logic doc).
 
 ## Operations
 - [operations/local-development.md](operations/local-development.md): prerequisites, local Postgres, user-secrets, running the Api, tests and the container.
@@ -38,13 +39,14 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [operations/branching.md](operations/branching.md): branches, PR flow, release and protection.
 
 ## Plans
-- [plans/ruleset.md](plans/ruleset.md): the ruleset delivery plan: A (Core reads a ruleset; the Api and client embed the default; done) and B (the `rulesets` table and seed migration, pinning games, a cached repository, `GET /api/rulesets/{key}/{version}`, the client fetching the pinned ruleset).
-- [plans/ruleset-open-questions.md](plans/ruleset-open-questions.md): open questions (to discuss) before the loadable ruleset and the game logic docs become a plan: who reads the database, where rulesets are authored and published, pinning per game, serving it to the client, one or several rulesets, texts and languages, error message translation, and the logic doc's level of detail.
-- [plans/game-design-roadmap.md](plans/game-design-roadmap.md): future game mechanics (G1–G15): the UI design system, a game rules reference, data-driven catalogs, terrain layers, resources and tile yields, rivers and bridges, city territory, stats and production queue, unit roster and combat, builders and buildings with upgrades, science and culture trees with upkeep, civilizations and governors, colonies founded by governors, seasons, ships and river navigation; the decisions taken and open questions.
-- [plans/next-follow-ups.md](plans/next-follow-ups.md): **all open work**, prioritised: ship the game, least-privilege DB access, monitoring, the sign-up email in the transaction, email verification, invite code rotation, and the deferred game ideas, simultaneous turns, and more than two players.
-- [plans/done-game-delivery.md](plans/done-game-delivery.md): the game plans (Core engine, lobby, commands + SSE + lobby lifecycle, client lobby, client board), all done, and the `gamecore` branching flow.
-- [plans/done-game-lobby.md](plans/done-game-lobby.md): game plan 2 (done): `Game` aggregate, lobby with invite codes, creator-only start, `jsonb` state, five `/api/games` endpoints.
-- [plans/done-template-solution-roadmap.md](plans/done-template-solution-roadmap.md): how the template was built, step by step (done).
-- [plans/done-follow-ups.md](plans/done-follow-ups.md): the first backlog (done; open items moved to next follow-ups).
-- [plans/done-follow-ups-delivery.md](plans/done-follow-ups-delivery.md): delivery plans for the first backlog (done); its Entra and monitoring sections are the detailed design for next follow-ups items 2 and 3.
-- [plans/done-session-and-email-verification.md](plans/done-session-and-email-verification.md): session lifecycle (done); its sign-up email and email verification sections are the detailed design for next follow-ups items 4 and 5.
+Priorities live only in the backlog. Plans sit in `active/`, `deferred/` or `done/` by state.
+- [plans/backlog.md](plans/backlog.md): **all open work**, prioritised in buckets (Now, Next, Deferred, Ideas) with stable ids: now the UI design system (G1) and a richer ruleset and Core (content slice C1: rules reference G2, terrain G4, units and combat G9); next the game log and animations, player-chosen city names and the scale-out backplane; deferred rulesets in the database (G3b), the other game mechanics (G5–G8, G10–G15), shipping the game and the release follow-ups, simultaneous turns, more players and diplomacy.
+- [plans/deferred/ruleset-b-store-and-pin.md](plans/deferred/ruleset-b-store-and-pin.md): deferred plan for Ruleset B: the `rulesets` table and seed migration, pinning games, a cached repository, `GET /api/rulesets/{key}/{version}`, the client fetching the pinned ruleset, lobby setups; its decided and open questions.
+- [plans/deferred/follow-ups.md](plans/deferred/follow-ups.md): details of the deferred follow-ups F1–F10: ship the game, least-privilege DB access, monitoring, the sign-up email in the transaction, email verification, invite code rotation, turn timers, simultaneous turns, more than two players.
+- [plans/done/ruleset-a-core.md](plans/done/ruleset-a-core.md): Ruleset A (done): Core reads every number from `rulesets/default/v1.json`; the Api and the client embed it.
+- [plans/done/game-delivery.md](plans/done/game-delivery.md): the game plans (Core engine, lobby, commands + SSE + lobby lifecycle, client lobby, client board), all done, and the `gamecore` branching flow.
+- [plans/done/game-lobby.md](plans/done/game-lobby.md): game plan 2 (done): `Game` aggregate, lobby with invite codes, creator-only start, `jsonb` state, five `/api/games` endpoints.
+- [plans/done/template-solution-roadmap.md](plans/done/template-solution-roadmap.md): how the template was built, step by step (done).
+- [plans/done/follow-ups.md](plans/done/follow-ups.md): the first backlog (done; open items moved on, now deferred follow-ups).
+- [plans/done/follow-ups-delivery.md](plans/done/follow-ups-delivery.md): delivery plans for the first backlog (done); its Entra and monitoring sections are the detailed design for F2 and F3.
+- [plans/done/session-and-email-verification.md](plans/done/session-and-email-verification.md): session lifecycle (done); its sign-up email and email verification sections are the detailed design for F4 and F5.

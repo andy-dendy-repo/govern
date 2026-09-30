@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are next.** The document below is [`rulesets/default/v1.json`](../../rulesets/default/v1.json). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/ruleset.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v1.json`](../../rulesets/default/v1.json). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -23,7 +23,7 @@ updated: 2026-09-30
 
 ## Lifecycle
 
-*Steps 1–4 decided (2026-09-30); 5–6 still a proposal. Step 1 and Core's part of step 4 are implemented; the rest comes with Ruleset B.*
+*Steps 1–4 decided (2026-09-30); 5–6 still a proposal. Step 1 and Core's part of step 4 are implemented; the rest comes with Ruleset B, which is deferred: until then new content goes into the embedded file.*
 
 1. **Authoring:** the ruleset is a set of JSON files in the repository (for example `rulesets/default/*.json`), reviewed in PRs like code. Editing in the database (an admin page) may come later.
 2. **Storing and publishing:** a migration writes each ruleset version into a `rulesets` table, one row per version (see [The database record](#the-database-record)). An admin role can also publish a version at run time (the role doesn't exist yet). A version is **immutable** once stored and must pass Core's validation; a balance change is a new version.
@@ -49,7 +49,7 @@ updated: 2026-09-30
 
 - **The document holds only game content.** `key`, `version` and `name` live only in the row; the migration (or the admin) supplies them, and a repository file's path names them (`rulesets/default/v1.json`).
 - **Core and the rulesets are always consistent.** A started game is pinned to one version for good. There's no `schemaVersion` and no upgrading of old rulesets: when a Core change needs new fields, the rulesets are updated with it. Handling older rulesets is deferred until it matters.
-- **New games** use the highest `version` of the ruleset. Retiring a version and a lobby description are deferred to [open question 6](../plans/ruleset-open-questions.md) (one ruleset or several).
+- **New games** use the highest `version` of the ruleset. Retiring a version and a lobby description are deferred with Ruleset B ([question 6 there](../plans/deferred/ruleset-b-store-and-pin.md#decisions-and-questions-for-part-b): one ruleset or several).
 
 ## Format conventions
 
@@ -92,7 +92,7 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 
 | Field | Default | Meaning |
 |---|---|---|
-| `players` | 2 | Exactly this many seats in a game; must be 2 for now (later a range, see next follow-ups item 10) |
+| `players` | 2 | Exactly this many seats in a game; must be 2 for now (later a range, see [F10](../plans/deferred/follow-ups.md#f10-more-than-two-players)) |
 | `startingUnits` | settler, soldier | Unit ids each player starts with, in placement order |
 
 ```json
@@ -191,7 +191,7 @@ The order of `units` is the order the client lists them in (the city's Build but
 
 ## Texts and languages
 
-Everything a player reads about the game's content comes from here: unit and terrain names and the city name template. Rule-violation messages stay in Core (`Engine/RuleViolations.cs`) for now; moving them here needs the Api to render them per ruleset ([open question 9](../plans/ruleset-open-questions.md)).
+Everything a player reads about the game's content comes from here: unit and terrain names and the city name template. Rule-violation messages stay in Core (`Engine/RuleViolations.cs`) for now; moving them here needs the Api to render them per ruleset ([open question 4](design-roadmap.md#open-questions)).
 
 ```json
 "texts": {
@@ -229,7 +229,7 @@ Everything a player reads about the game's content comes from here: unit and ter
 
 ## Future sections (from the game design roadmap)
 
-Each [roadmap](../plans/game-design-roadmap.md) item adds a section here, with fields, examples and validation rules, before it is implemented:
+Each [roadmap](design-roadmap.md) item adds a section here, with fields, examples and validation rules, before it is implemented:
 
 | Section | Roadmap item |
 |---|---|
@@ -246,4 +246,4 @@ Each [roadmap](../plans/game-design-roadmap.md) item adds a section here, with f
 
 ## Open questions
 
-Tracked in [ruleset open questions](../plans/ruleset-open-questions.md) (questions 1–9 there concern this document), to discuss later.
+Storing, publishing and serving the ruleset: [ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md#decisions-and-questions-for-part-b) (deferred). Texts, languages and error messages: [design roadmap open questions](design-roadmap.md#open-questions) 2–4.
