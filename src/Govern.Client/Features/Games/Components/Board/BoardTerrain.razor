@@ -1,9 +1,10 @@
 @* The map's tiles, one clickable hex each. It renders again only for a new view, so panning and zooming never re-diff them. *@
+@using Govern.Client.Features.Games.Enums
 @using Govern.Client.Features.Games.Helpers
 @using Govern.Core.Map
 @using Govern.Core.Visibility
 
-<g class="terrain">
+<g class="layer-terrain" data-layer="@BoardLayers.Name(BoardLayer.Terrain)">
     @for (var index = 0; index < View.Tiles.Length; index++)
     {
         var coord = View.CoordAt(index);

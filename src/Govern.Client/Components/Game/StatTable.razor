@@ -1,0 +1,28 @@
+@* Label and number rows with an icon each (unit stats today; buildings and governors later). *@
+@using Govern.Client.Models
+
+<table class="stat-table">
+    <tbody>
+        @foreach (var row in Rows)
+        {
+            <tr class="@row.Class">
+                <td class="stat-icon"><GameIcon Id="@row.Icon"/></td>
+                <th scope="row" class="stat-label">@row.Label</th>
+                <td class="stat-value">
+                    @if (row.Detail is null)
+                    {
+                        @row.Value
+                    }
+                    else
+                    {
+                        <NumberTooltip Text="@row.Detail">@row.Value</NumberTooltip>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<StatRow> Rows { get; set; } = [];
+}

@@ -1,0 +1,45 @@
+@* The bottom zone of the game screen: what the selected own unit can do. Each action is a button (keyboard-reachable), disabled
+   with the reason when the rules forbid it. A new ability adds its button here. Moves and attacks are board clicks. *@
+@using Govern.Client.Features.Games.Services
+@using Govern.Core.Actions
+@using Govern.Core.Engine
+@using Govern.Core.Rulesets
+@using Govern.Core.State
+@using Govern.Core.Units
+@using Govern.Core.Visibility
+
+@if (Unit is { } unit)
+{
+    var definition = Ruleset.Unit(unit.Type);
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap" class="action-bar">
+        <GameIcon Id="@Icons.Unit(unit.Type)" Class="@Seats.Class(View, unit.Owner)"/>
+        <RadzenText TextStyle="TextStyle.Body2" TagName="TagName.Span" class="action-hint rz-m-0">@Hint(definition)</RadzenText>
+        @if (definition.CanFoundCity)
+        {
+            var problem = GameEngine.CheckFoundCity(Ruleset, View, unit.Id);
+            <RadzenButton Text="Found city" Icon="location_city" Disabled="@(Busy || problem is not null)"
+                          Click="@(() => Command.InvokeAsync(new FoundCityCommand(unit.Id)))" class="found-city"/>
+            @if (problem is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="found-city-reason">@problem.Message</RadzenText>
+            }
+        }
+    </RadzenStack>
+}
+
+@code {
+    [CascadingParameter] public GameUiService Ui { get; set; } = null!;
+
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback<GameCommand> Command { get; set; }
+
+    private UnitView? Unit => View.Status == GameStatus.InProgress && Ui.Selection.Unit is { } id ? View.FindOwnUnit(id) : null;
+
+    private static string Hint(UnitDefinition definition) =>
+        definition.CanAttack ? "Click a highlighted tile to move or attack." : "Click a highlighted tile to move.";
+}

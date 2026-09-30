@@ -1,0 +1,43 @@
+@* The right zone of the game screen: notices, the result of a finished game, and the panel for the selection. Each
+   selection kind has one panel (unit, city; later tile, building); a new kind adds its branch here. *@
+@using Govern.Client.Features.Games.Services
+@using Govern.Core.Actions
+@using Govern.Core.Engine
+@using Govern.Core.Rulesets
+@using Govern.Core.State
+@using Govern.Core.Visibility
+
+<RadzenStack Gap="1rem" class="side-panel">
+    @ChildContent
+    @if (View.Status == GameStatus.Finished)
+    {
+        <GameOverPanel View="@View"/>
+    }
+    @if (Ui.Selection.Unit is { } unitId && View.Units.FirstOrDefault(unit => unit.Id == unitId) is { } unit)
+    {
+        <UnitPanel View="@View" Unit="@unit" Ruleset="@Ruleset"/>
+    }
+    else if (Ui.Selection.City is { } cityId && View.Cities.FirstOrDefault(city => city.Id == cityId) is { } city)
+    {
+        <CityPanel View="@View" City="@city" Ruleset="@Ruleset" Busy="@Busy" Command="@Command"/>
+    }
+    else if (View.Status == GameStatus.InProgress)
+    {
+        <RadzenText TextStyle="TextStyle.Body2" class="selection-hint">Select a unit or a city on the map. Esc clears the selection.</RadzenText>
+    }
+</RadzenStack>
+
+@code {
+    [CascadingParameter] public GameUiService Ui { get; set; } = null!;
+
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback<GameCommand> Command { get; set; }
+
+    /// <summary>Notices shown above the panels (a stale command, an error).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

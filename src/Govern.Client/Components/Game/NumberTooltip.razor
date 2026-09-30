@@ -1,0 +1,30 @@
+@* A number with its exact value and origin: shown on hover (title), and through the info button (click, Enter, Space or tap),
+   so it works with a keyboard and on touch screens without a long press. Esc closes it. *@
+
+<span class="number-tooltip" title="@Text" @onkeydown="@OnKeyDown" @onkeydown:stopPropagation="@_open">
+    <span class="number">@ChildContent</span>
+    <RadzenButton Icon="info" Variant="Variant.Text" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                  aria-label="@($"Details: {Text}")" aria-expanded="@(_open ? "true" : "false")" aria-controls="@_id"
+                  Click="@(() => _open = !_open)" class="tooltip-toggle"/>
+    @if (_open)
+    {
+        <span id="@_id" class="tooltip-text">@Text</span>
+    }
+</span>
+
+@code {
+    private readonly string _id = $"detail-{Guid.NewGuid():N}";
+    private bool _open;
+
+    [Parameter, EditorRequired] public string Text { get; set; } = null!;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            _open = false;
+        }
+    }
+}

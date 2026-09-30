@@ -1,6 +1,6 @@
 ---
 name: client-checks
-description: Govern Blazor client review checks - arch-rule namespace exemptions, configure-client.sh behaviour, NotFoundPage layout, facts already verified
+description: Govern Blazor client review checks - arch-rule namespace exemptions, configure-client.sh behaviour, NotFoundPage layout, board/page traps, G1 game-UI (cascade IsFixed, Esc focus, seat CSS) traps
 metadata:
   type: project
 ---
@@ -25,3 +25,9 @@ Review 8 (2026-09-29, feature/client-board, Game Plan 5b). Traps for later board
 - Board ShouldRender guards are load-bearing: EventCallback params always count as changed, so every parent render calls SetParametersAsync on BoardTerrain/BoardPieces.
 - Client tests compare records holding ImmutableHashSet/ImmutableArray by reference; passes only via `.Empty` singletons.
 - Verified: Core previews (ViewPreviewCalculator) return empty off-turn/finished/non-own unit and exclude the unit's own tile; arch rule Client_UsesCoreOnlyForViewsAndPreviews names real types.
+
+Review 9 (2026-09-30, G1 game UI design system, phases 1-4). Traps for later game-UI work:
+- `GameUiService` is cascaded with `IsFixed=true`: children (SidePanel, ActionBar) update only because GameTable re-renders them (View/EventCallback params always count as changed). A future child with only primitive params, or one that calls `Ui.Select` itself, needs the parent's `Changed -> StateHasChanged` path; check it.
+- Esc is a `@onkeydown` on `div.game-screen tabindex=-1`: works only while focus is inside it (not on load, not after a focused button becomes disabled); every keydown re-renders GameTable; Esc inside ConfirmButton/NumberTooltip bubbles and clears the selection instead.
+- `.game-icon { fill: currentColor }` (game-ui.css, loaded after board.css) beats `.seat-N { fill }` at equal specificity; it works only because `.seat-N` also sets `color`. Seat 0 (unknown) and seat >4 have no colour.
+- `GameUiTests` colour regexes catch hex and functional colours only, not named colours (`white`, `red`).

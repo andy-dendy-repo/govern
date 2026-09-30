@@ -1,0 +1,14 @@
+@* A cost: icon and amount (production today; resources later, one label each). *@
+
+<span class="cost-label" title="@($"{Amount} {Label}")">
+    <GameIcon Id="@Icon" Label="@Label"/>
+    <span class="cost-amount">@Amount</span>
+</span>
+
+@code {
+    [Parameter, EditorRequired] public int Amount { get; set; }
+
+    [Parameter] public string Icon { get; set; } = Icons.Production;
+
+    [Parameter] public string Label { get; set; } = "production";
+}
