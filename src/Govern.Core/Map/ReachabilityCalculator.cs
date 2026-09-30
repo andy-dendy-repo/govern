@@ -1,3 +1,4 @@
+using Govern.Core.Rulesets;
 using Govern.Core.State;
 using Govern.Core.Units;
 
@@ -8,12 +9,12 @@ namespace Govern.Core.Map;
 /// </summary>
 internal static class ReachabilityCalculator
 {
-    public static Reachability Compute(GameState state, Unit unit) => Compute(
+    public static Reachability Compute(Ruleset ruleset, GameState state, Unit unit) => Compute(
         unit,
-        coord => state.Map.IsPassable(coord)
+        coord => state.Map.IsPassable(ruleset, coord)
             && state.UnitAt(coord) is null
             && (state.CityAt(coord) is not { } city || city.Owner == unit.Owner),
-        coord => TerrainCatalog.Get(state.Map.TileAt(coord).Terrain).MovementCost);
+        coord => ruleset.Terrain(state.Map.TileAt(coord).Terrain).MovementCost);
 
     // The search itself; the callers say which tiles the unit may enter and what each costs.
     public static Reachability Compute(Unit unit, Func<HexCoord, bool> canEnter, Func<HexCoord, int> costOf)

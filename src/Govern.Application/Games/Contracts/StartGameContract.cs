@@ -1,6 +1,7 @@
 using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Games.Models;
+using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
@@ -33,7 +34,8 @@ public sealed class StartGameValidator : AbstractValidator<StartGameRequest>
 internal sealed class StartGameHandler(
     IApplicationDbContextFactory dbContextFactory,
     ICurrentUserService currentUser,
-    TimeProvider timeProvider) : IRequestHandler<StartGameRequest, GetGameResponse>
+    TimeProvider timeProvider,
+    DefaultRulesetService rulesets) : IRequestHandler<StartGameRequest, GetGameResponse>
 {
     /// <inheritdoc />
     public async ValueTask<Result<GetGameResponse>> HandleAsync(StartGameRequest request, CancellationToken cancellationToken)
@@ -56,7 +58,7 @@ internal sealed class StartGameHandler(
             return error;
         }
 
-        game.Start(userId, timeProvider.GetUtcNow());
+        game.Start(userId, rulesets.Ruleset, timeProvider.GetUtcNow());
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -66,7 +68,7 @@ internal sealed class StartGameHandler(
             return await ReevaluateAsync(request.GameId, userId, cancellationToken);
         }
 
-        return GetGameResponse.From(game, caller);
+        return GetGameResponse.From(game, caller, rulesets.Ruleset);
     }
 
     // Membership is checked in SQL, so an outsider never makes the server load a game's state.

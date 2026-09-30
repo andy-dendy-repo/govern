@@ -14,14 +14,14 @@ public class SetProductionActionTests
     public void Execute_OwnCity_ChangesProductionAndKeepsProgress()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        var city = builder.AddCity(P1, 5, 5, UnitType.Soldier, progress: 2);
+        var city = builder.AddCity(P1, 5, 5, TestRulesets.Soldier, progress: 2);
 
-        var update = GameEngine.Execute(builder.Build(), P1, new SetProductionCommand(city, UnitType.Settler)).ShouldSucceed();
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new SetProductionCommand(city, TestRulesets.Settler)).ShouldSucceed();
 
         var changed = update.State.FindCity(city)!;
-        changed.Producing.ShouldBe(UnitType.Settler);
+        changed.Producing.ShouldBe(TestRulesets.Settler);
         changed.ProductionProgress.ShouldBe(2);
-        update.Events.ShouldHaveSingleItem().ShouldBe(new ProductionChangedEvent(city, UnitType.Settler));
+        update.Events.ShouldHaveSingleItem().ShouldBe(new ProductionChangedEvent(city, TestRulesets.Settler));
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class SetProductionActionTests
     {
         var state = new GameStateBuilder().WithCapitals().Build();
 
-        var result = GameEngine.Execute(state, P1, new SetProductionCommand(new CityId(999), UnitType.Settler));
+        var result = GameEngine.Execute(TestRulesets.Default, state, P1, new SetProductionCommand(new CityId(999), TestRulesets.Settler));
 
         result.ShouldFailWith(RuleViolations.CityNotFound);
     }
@@ -40,19 +40,35 @@ public class SetProductionActionTests
         var builder = new GameStateBuilder().WithCapitals();
         var city = builder.AddCity(P2, 5, 5);
 
-        var result = GameEngine.Execute(builder.Build(), P1, new SetProductionCommand(city, UnitType.Settler));
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new SetProductionCommand(city, TestRulesets.Settler));
 
         result.ShouldFailWith(RuleViolations.CityNotFound);
     }
 
-    [Fact]
-    public void Execute_UndefinedUnitType_ReturnsUnknownUnitType()
+    [Theory]
+    [InlineData("knight")]
+    [InlineData("")]
+    [InlineData("Settler")]
+    public void Execute_UnitTypeNotInTheRuleset_ReturnsUnknownUnitType(string unitType)
     {
         var builder = new GameStateBuilder().WithCapitals();
         var city = builder.AddCity(P1, 5, 5);
 
-        var result = GameEngine.Execute(builder.Build(), P1, new SetProductionCommand(city, (UnitType)99));
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new SetProductionCommand(city, new UnitType(unitType)));
 
         result.ShouldFailWith(RuleViolations.UnknownUnitType);
+    }
+
+    [Fact]
+    public void Execute_UnitAddedByTheRuleset_IsAccepted()
+    {
+        var archer = new UnitType("archer");
+        var ruleset = TestRulesets.With(json => TestRulesets.AddUnit(json, "archer", movement: 1, sight: 2, cost: 5, "attack"));
+        var builder = new GameStateBuilder().WithCapitals();
+        var city = builder.AddCity(P1, 5, 5);
+
+        var update = GameEngine.Execute(ruleset, builder.Build(), P1, new SetProductionCommand(city, archer)).ShouldSucceed();
+
+        update.State.FindCity(city)!.Producing.ShouldBe(archer);
     }
 }

@@ -39,7 +39,7 @@ public partial class GameBoardTests : ClientTestContext
         cut.FindAll("use.tile").Count.ShouldBe(Width * Height);
         cut.FindAll("use.tile.unexplored").Count.ShouldBe(Width);
         cut.FindAll("use.tile.explored").Count.ShouldBe(Width);
-        cut.FindAll("use.tile.visible.terrain-Plains").Count.ShouldBe(Width * (Height - 2));
+        cut.FindAll("use.tile.visible.terrain-plains").Count.ShouldBe(Width * (Height - 2));
     }
 
     [Fact]

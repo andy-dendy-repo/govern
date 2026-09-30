@@ -1,8 +1,10 @@
 using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Games.Models;
+using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
 using Govern.Core.Engine;
+using Govern.Core.Rulesets;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
 using Govern.Utils.Mediator.Abstractions;
@@ -45,7 +47,8 @@ public sealed class SendGameCommandValidator : AbstractValidator<SendGameCommand
 internal sealed class SendGameCommandHandler(
     IApplicationDbContextFactory dbContextFactory,
     ICurrentUserService currentUser,
-    TimeProvider timeProvider) : IRequestHandler<SendGameCommandRequest, GetGameResponse>
+    TimeProvider timeProvider,
+    DefaultRulesetService rulesets) : IRequestHandler<SendGameCommandRequest, GetGameResponse>
 {
     /// <inheritdoc />
     public async ValueTask<Result<GetGameResponse>> HandleAsync(SendGameCommandRequest request, CancellationToken cancellationToken)
@@ -67,12 +70,12 @@ internal sealed class SendGameCommandHandler(
             return GameErrors.NotFound;
         }
 
-        if (Check(game, caller, request.ExpectedVersion) is { } error)
+        if (Check(rulesets.Ruleset, game, caller, request.ExpectedVersion) is { } error)
         {
             return error;
         }
 
-        var result = game.Execute(userId, request.Command, timeProvider.GetUtcNow());
+        var result = game.Execute(userId, rulesets.Ruleset, request.Command, timeProvider.GetUtcNow());
         if (!result.IsSuccess)
         {
             return GameErrors.FromViolation(result.Violation);
@@ -87,14 +90,14 @@ internal sealed class SendGameCommandHandler(
             return GameErrors.StaleVersion;
         }
 
-        return GetGameResponse.From(game, caller);
+        return GetGameResponse.From(game, caller, rulesets.Ruleset);
     }
 
     // Why the command cannot reach the engine, or null when it can (a finished game is left to the engine: game.finished).
-    private static Error? Check(Game game, GamePlayer caller, long expectedVersion) => game switch
+    private static Error? Check(Ruleset ruleset, Game game, GamePlayer caller, long expectedVersion) => game switch
     {
         { Phase: GamePhase.Lobby } or { State: null } => GameErrors.NotStarted,
-        { State: var state } when GameEngine.ViewFor(state, caller.PlayerId).Version != expectedVersion => GameErrors.StaleVersion,
+        { State: var state } when GameEngine.ViewFor(ruleset, state, caller.PlayerId).Version != expectedVersion => GameErrors.StaleVersion,
         _ => null,
     };
 }

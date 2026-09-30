@@ -2,8 +2,8 @@ using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text.Json;
-using Govern.Core.Cities;
 using Govern.Core.Map;
+using Govern.Core.Rulesets;
 using Govern.Core.Serialization;
 using Govern.Core.State;
 
@@ -14,28 +14,31 @@ namespace Govern.Core.Visibility;
 /// </summary>
 public static class VisibilityCalculator
 {
-    /// <summary>Tiles currently in sight of the player's units (their type's sight) and cities (<see cref="City.Sight"/>).</summary>
+    /// <summary>Tiles currently in sight of the player's units (their type's sight) and cities (<see cref="CityRules.Sight"/>).</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="state">The game.</param>
     /// <param name="player">The player.</param>
     /// <returns>Visible tiles on the map.</returns>
-    public static IReadOnlySet<HexCoord> VisibleTiles(GameState state, PlayerId player)
+    public static IReadOnlySet<HexCoord> VisibleTiles(Ruleset ruleset, GameState state, PlayerId player)
     {
+        ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(state);
 
         var unitSight = state.Units
             .Where(unit => unit.Owner == player)
-            .SelectMany(static unit => unit.Position.WithinRadius(unit.Definition.Sight));
+            .SelectMany(unit => unit.Position.WithinRadius(ruleset.Unit(unit.Type).Sight));
         var citySight = state.Cities
             .Where(city => city.Owner == player)
-            .SelectMany(static city => city.Position.WithinRadius(City.Sight));
+            .SelectMany(city => city.Position.WithinRadius(ruleset.Cities.Sight));
 
         return unitSight.Concat(citySight).Where(state.Map.Contains).ToHashSet();
     }
 
     /// <summary>Adds every currently visible tile to each active player's <see cref="Player.Explored"/> list.</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="state">The game.</param>
     /// <returns>The state with updated exploration; newly seen tiles are appended in row-then-column order.</returns>
-    public static GameState UpdateExplored(GameState state)
+    public static GameState UpdateExplored(Ruleset ruleset, GameState state)
     {
         ArgumentNullException.ThrowIfNull(state);
 
@@ -47,7 +50,7 @@ public static class VisibilityCalculator
             }
 
             var known = player.Explored.ToHashSet();
-            var discovered = VisibleTiles(state, player.Id)
+            var discovered = VisibleTiles(ruleset, state, player.Id)
                 .Where(coord => !known.Contains(coord))
                 .OrderBy(static coord => coord.Row)
                 .ThenBy(static coord => coord.Column);
@@ -58,16 +61,17 @@ public static class VisibilityCalculator
     }
 
     /// <summary>Builds what one participant may see of the game.</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="state">The game.</param>
     /// <param name="viewer">A participant (active or not).</param>
     /// <returns>The filtered view; its <see cref="PlayerView.Version"/> is a fingerprint of the rest of the view.</returns>
     /// <exception cref="ArgumentException"><paramref name="viewer"/> is not part of the game.</exception>
-    public static PlayerView ViewFor(GameState state, PlayerId viewer)
+    public static PlayerView ViewFor(Ruleset ruleset, GameState state, PlayerId viewer)
     {
         ArgumentNullException.ThrowIfNull(state);
         var player = state.FindPlayer(viewer) ?? throw new ArgumentException("The viewer is not part of the game.", nameof(viewer));
 
-        var visible = VisibleTiles(state, viewer);
+        var visible = VisibleTiles(ruleset, state, viewer);
         var explored = player.Explored.ToHashSet();
         var tiles = state.Map.Tiles.Select(tile => ToView(tile, visible, explored));
 

@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Games.Models;
+using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
 using Govern.Domain.Enums;
 using Govern.Utils.Mediator.Abstractions;
@@ -42,7 +43,8 @@ public sealed class WatchGameValidator : AbstractValidator<WatchGameRequest>
 internal sealed class WatchGameHandler(
     IApplicationDbContextFactory dbContextFactory,
     ICurrentUserService currentUser,
-    IGameChangeService gameChanges) : IRequestHandler<WatchGameRequest, WatchGameResponse>
+    IGameChangeService gameChanges,
+    DefaultRulesetService rulesets) : IRequestHandler<WatchGameRequest, WatchGameResponse>
 {
     /// <inheritdoc />
     public async ValueTask<Result<WatchGameResponse>> HandleAsync(WatchGameRequest request, CancellationToken cancellationToken)
@@ -101,6 +103,6 @@ internal sealed class WatchGameHandler(
             .Where(candidate => candidate.Id == gameId && candidate.Players.Any(player => player.UserId == userId))
             .FirstOrDefaultAsync(cancellationToken);
 
-        return game?.FindPlayer(userId) is { } caller ? GetGameResponse.From(game, caller) : null;
+        return game?.FindPlayer(userId) is { } caller ? GetGameResponse.From(game, caller, rulesets.Ruleset) : null;
     }
 }

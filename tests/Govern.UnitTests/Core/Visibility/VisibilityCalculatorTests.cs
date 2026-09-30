@@ -15,10 +15,10 @@ public class VisibilityCalculatorTests
     public void ViewFor_EnemyOutOfSight_HidesTheirUnitsAndCities()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        var own = builder.AddUnit(P1, UnitType.Soldier, 2, 2);
-        builder.AddUnit(P2, UnitType.Soldier, 9, 7);
+        var own = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+        builder.AddUnit(P2, TestRulesets.Soldier, 9, 7);
 
-        var view = GameEngine.ViewFor(builder.Build(), P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, builder.Build(), P1);
 
         view.Units.ShouldHaveSingleItem().Id.ShouldBe(own);
         view.Cities.ShouldAllBe(city => city.Owner == P1);
@@ -29,8 +29,8 @@ public class VisibilityCalculatorTests
     {
         var state = new GameStateBuilder().WithCapitals().Build();
 
-        var first = GameEngine.ViewFor(state, P1);
-        var second = GameEngine.ViewFor(state, P1);
+        var first = GameEngine.ViewFor(TestRulesets.Default, state, P1);
+        var second = GameEngine.ViewFor(TestRulesets.Default, state, P1);
 
         first.Version.ShouldBe(second.Version);
         first.Version.ShouldBeGreaterThanOrEqualTo(0);
@@ -40,52 +40,52 @@ public class VisibilityCalculatorTests
     public void ViewFor_ChangeTheViewerSees_ChangesTheVersion()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        var own = builder.AddUnit(P1, UnitType.Soldier, 2, 2);
+        var own = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
         var state = builder.Build();
 
-        var moved = GameEngine.Execute(state, P1, new MoveUnitCommand(own, At(3, 2))).ShouldSucceed().State;
+        var moved = GameEngine.Execute(TestRulesets.Default, state, P1, new MoveUnitCommand(own, At(3, 2))).ShouldSucceed().State;
 
-        GameEngine.ViewFor(moved, P1).Version.ShouldNotBe(GameEngine.ViewFor(state, P1).Version);
+        GameEngine.ViewFor(TestRulesets.Default, moved, P1).Version.ShouldNotBe(GameEngine.ViewFor(TestRulesets.Default, state, P1).Version);
     }
 
     [Fact]
     public void ViewFor_EnemyMoveOutOfSight_KeepsTheVersion()
     {
         var builder = new GameStateBuilder().WithCapitals().WithCurrentPlayer(P2);
-        builder.AddUnit(P1, UnitType.Soldier, 2, 2);
-        var enemy = builder.AddUnit(P2, UnitType.Soldier, 9, 7);
+        builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+        var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 9, 7);
         var state = builder.Build();
 
-        var moved = GameEngine.Execute(state, P2, new MoveUnitCommand(enemy, At(8, 7))).ShouldSucceed().State;
+        var moved = GameEngine.Execute(TestRulesets.Default, state, P2, new MoveUnitCommand(enemy, At(8, 7))).ShouldSucceed().State;
 
         moved.Version.ShouldBe(state.Version + 1);
-        GameEngine.ViewFor(moved, P1).Version.ShouldBe(GameEngine.ViewFor(state, P1).Version);
+        GameEngine.ViewFor(TestRulesets.Default, moved, P1).Version.ShouldBe(GameEngine.ViewFor(TestRulesets.Default, state, P1).Version);
     }
 
     [Fact]
     public void ViewFor_UnitsAndCities_AreOrderedByIdNotByCreation()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        builder.AddUnit(P1, UnitType.Soldier, 2, 2);
-        builder.AddUnit(P1, UnitType.Settler, 3, 3);
+        builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+        builder.AddUnit(P1, TestRulesets.Settler, 3, 3);
         var state = builder.Build();
         var reversed = state with { Units = [.. state.Units.Reverse()], Cities = [.. state.Cities.Reverse()] };
 
-        var view = GameEngine.ViewFor(reversed, P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, reversed, P1);
 
         view.Units.Select(static unit => unit.Id.Value).ShouldBeInOrder();
         view.Cities.Select(static city => city.Id.Value).ShouldBeInOrder();
-        view.Version.ShouldBe(GameEngine.ViewFor(state, P1).Version);
+        view.Version.ShouldBe(GameEngine.ViewFor(TestRulesets.Default, state, P1).Version);
     }
 
     [Fact]
     public void ViewFor_EnemyInSight_ShowsTheirUnit()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        builder.AddUnit(P1, UnitType.Soldier, 2, 2);
-        var enemy = builder.AddUnit(P2, UnitType.Soldier, 4, 2);
+        builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+        var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 4, 2);
 
-        var view = GameEngine.ViewFor(builder.Build(), P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, builder.Build(), P1);
 
         view.Units.ShouldContain(unit => unit.Id == enemy);
     }
@@ -94,12 +94,12 @@ public class VisibilityCalculatorTests
     public void ViewFor_Tiles_RevealTerrainOnlyForSeenTiles()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        builder.AddUnit(P1, UnitType.Soldier, 2, 2);
+        builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
 
-        var view = GameEngine.ViewFor(builder.Build(), P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, builder.Build(), P1);
 
         view.Tiles.Length.ShouldBe(Width * Height);
-        view.TileAt(At(2, 2)).ShouldBe(new TileView(TileVisibility.Visible, TerrainType.Plains));
+        view.TileAt(At(2, 2)).ShouldBe(new TileView(TileVisibility.Visible, TestRulesets.Plains));
         view.TileAt(At(9, 5)).ShouldBe(new TileView(TileVisibility.Unexplored, null));
     }
 
@@ -107,13 +107,13 @@ public class VisibilityCalculatorTests
     public void ViewFor_UnitMovedAway_KeepsLeftTilesAsExplored()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        var soldier = builder.AddUnit(P1, UnitType.Soldier, 4, 4);
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4);
         var behind = At(2, 4);
 
-        var moved = GameEngine.Execute(builder.Build(), P1, new MoveUnitCommand(soldier, At(6, 4))).ShouldSucceed().State;
-        var view = GameEngine.ViewFor(moved, P1);
+        var moved = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(6, 4))).ShouldSucceed().State;
+        var view = GameEngine.ViewFor(TestRulesets.Default, moved, P1);
 
-        view.TileAt(behind).ShouldBe(new TileView(TileVisibility.Explored, TerrainType.Plains));
+        view.TileAt(behind).ShouldBe(new TileView(TileVisibility.Explored, TestRulesets.Plains));
         moved.FindPlayer(P1)!.Explored.ShouldContain(behind);
     }
 
@@ -122,7 +122,7 @@ public class VisibilityCalculatorTests
     {
         var state = new GameStateBuilder().WithCapitals().Build();
 
-        var view = GameEngine.ViewFor(state, P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
 
         for (var index = 0; index < view.Tiles.Length; index++)
         {
@@ -137,7 +137,7 @@ public class VisibilityCalculatorTests
     [InlineData(Width * Height)]
     public void CoordAt_IndexOutsideTheMap_Throws(int index)
     {
-        var view = GameEngine.ViewFor(new GameStateBuilder().WithCapitals().Build(), P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, new GameStateBuilder().WithCapitals().Build(), P1);
 
         Should.Throw<ArgumentOutOfRangeException>(() => view.CoordAt(index));
     }
@@ -145,7 +145,7 @@ public class VisibilityCalculatorTests
     [Fact]
     public void TileAt_CoordOutsideTheMap_Throws()
     {
-        var view = GameEngine.ViewFor(new GameStateBuilder().WithCapitals().Build(), P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, new GameStateBuilder().WithCapitals().Build(), P1);
 
         view.Contains(At(Width, 0)).ShouldBeFalse();
         Should.Throw<ArgumentOutOfRangeException>(() => view.TileAt(At(Width, 0)));
@@ -155,15 +155,15 @@ public class VisibilityCalculatorTests
     public void ViewFor_EnemyCityInSight_HidesItsProductionButShowsTheOwnersOwn()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
-        var enemyCity = builder.AddCity(P2, 6, 4, UnitType.Settler, progress: 3);
+        builder.AddUnit(P1, TestRulesets.Soldier, 4, 4);
+        var enemyCity = builder.AddCity(P2, 6, 4, TestRulesets.Settler, progress: 3);
         var state = builder.Build();
 
-        var seenByP1 = GameEngine.ViewFor(state, P1).Cities.Single(city => city.Id == enemyCity);
-        var seenByP2 = GameEngine.ViewFor(state, P2).Cities.Single(city => city.Id == enemyCity);
+        var seenByP1 = GameEngine.ViewFor(TestRulesets.Default, state, P1).Cities.Single(city => city.Id == enemyCity);
+        var seenByP2 = GameEngine.ViewFor(TestRulesets.Default, state, P2).Cities.Single(city => city.Id == enemyCity);
 
         seenByP1.ShouldBe(new CityView(enemyCity, P2, $"City {enemyCity.Value}", At(6, 4), Producing: null, ProductionProgress: null));
-        seenByP2.Producing.ShouldBe(UnitType.Settler);
+        seenByP2.Producing.ShouldBe(TestRulesets.Settler);
         seenByP2.ProductionProgress.ShouldBe(3);
     }
 
@@ -171,32 +171,32 @@ public class VisibilityCalculatorTests
     public void ViewFor_EnemyProductionChangesInSight_KeepsTheVersion()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
+        builder.AddUnit(P1, TestRulesets.Soldier, 4, 4);
         var enemyCity = builder.AddCity(P2, 6, 4);
         var state = builder.Build();
         var city = state.FindCity(enemyCity)!;
         var progressed = state with
         {
-            Cities = [.. state.Cities.Select(c => c.Id == enemyCity ? city with { Producing = UnitType.Settler, ProductionProgress = 5 } : c)],
+            Cities = [.. state.Cities.Select(c => c.Id == enemyCity ? city with { Producing = TestRulesets.Settler, ProductionProgress = 5 } : c)],
         };
-        GameEngine.ViewFor(state, P1).Cities.ShouldContain(c => c.Id == enemyCity, "the enemy city must be in sight for this test to mean anything");
+        GameEngine.ViewFor(TestRulesets.Default, state, P1).Cities.ShouldContain(c => c.Id == enemyCity, "the enemy city must be in sight for this test to mean anything");
 
-        GameEngine.ViewFor(progressed, P1).Version.ShouldBe(GameEngine.ViewFor(state, P1).Version);
-        GameEngine.ViewFor(progressed, P2).Version.ShouldNotBe(GameEngine.ViewFor(state, P2).Version);
+        GameEngine.ViewFor(TestRulesets.Default, progressed, P1).Version.ShouldBe(GameEngine.ViewFor(TestRulesets.Default, state, P1).Version);
+        GameEngine.ViewFor(TestRulesets.Default, progressed, P2).Version.ShouldNotBe(GameEngine.ViewFor(TestRulesets.Default, state, P2).Version);
     }
 
     [Fact]
     public void ViewFor_EnemyUnitInSight_HidesItsMovementButShowsTheOwnersOwn()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        var own = builder.AddUnit(P1, UnitType.Soldier, 4, 4, movementLeft: 1);
-        var enemy = builder.AddUnit(P2, UnitType.Soldier, 5, 4, movementLeft: 1);
+        var own = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4, movementLeft: 1);
+        var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 5, 4, movementLeft: 1);
         var state = builder.Build();
 
-        var p1View = GameEngine.ViewFor(state, P1);
-        var p2View = GameEngine.ViewFor(state, P2);
+        var p1View = GameEngine.ViewFor(TestRulesets.Default, state, P1);
+        var p2View = GameEngine.ViewFor(TestRulesets.Default, state, P2);
 
-        p1View.Units.Single(unit => unit.Id == enemy).ShouldBe(new UnitView(enemy, P2, UnitType.Soldier, At(5, 4), MovementLeft: null));
+        p1View.Units.Single(unit => unit.Id == enemy).ShouldBe(new UnitView(enemy, P2, TestRulesets.Soldier, At(5, 4), MovementLeft: null));
         p1View.Units.Single(unit => unit.Id == own).MovementLeft.ShouldBe(1);
         p2View.Units.Single(unit => unit.Id == enemy).MovementLeft.ShouldBe(1);
         p2View.Units.Single(unit => unit.Id == own).MovementLeft.ShouldBeNull();
@@ -206,20 +206,20 @@ public class VisibilityCalculatorTests
     public void ViewFor_EnemyMovementChangesInSight_KeepsTheVersion()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
-        var enemy = builder.AddUnit(P2, UnitType.Soldier, 6, 4, movementLeft: 2);
+        builder.AddUnit(P1, TestRulesets.Soldier, 4, 4);
+        var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 6, 4, movementLeft: 2);
         var state = builder.Build();
         var spent = state with { Units = [.. state.Units.Select(unit => unit.Id == enemy ? unit with { MovementLeft = 0 } : unit)] };
-        GameEngine.ViewFor(state, P1).Units.ShouldContain(unit => unit.Id == enemy, "the enemy unit must be in sight for this test to mean anything");
+        GameEngine.ViewFor(TestRulesets.Default, state, P1).Units.ShouldContain(unit => unit.Id == enemy, "the enemy unit must be in sight for this test to mean anything");
 
-        GameEngine.ViewFor(spent, P1).Version.ShouldBe(GameEngine.ViewFor(state, P1).Version);
-        GameEngine.ViewFor(spent, P2).Version.ShouldNotBe(GameEngine.ViewFor(state, P2).Version);
+        GameEngine.ViewFor(TestRulesets.Default, spent, P1).Version.ShouldBe(GameEngine.ViewFor(TestRulesets.Default, state, P1).Version);
+        GameEngine.ViewFor(TestRulesets.Default, spent, P2).Version.ShouldNotBe(GameEngine.ViewFor(TestRulesets.Default, state, P2).Version);
     }
 
     [Fact]
     public void ViewFor_Always_ListsPlayersWithoutTheirExploration()
     {
-        var view = GameEngine.ViewFor(new GameStateBuilder().WithCapitals().Build(), P2);
+        var view = GameEngine.ViewFor(TestRulesets.Default, new GameStateBuilder().WithCapitals().Build(), P2);
 
         view.Viewer.ShouldBe(P2);
         view.Players.ShouldBe([new PlayerSummary(P1, PlayerStatus.Active), new PlayerSummary(P2, PlayerStatus.Active)]);
@@ -230,7 +230,7 @@ public class VisibilityCalculatorTests
     {
         var state = new GameStateBuilder().WithCapitals().Build();
 
-        Should.Throw<ArgumentException>(() => GameEngine.ViewFor(state, new PlayerId(Guid.NewGuid())));
+        Should.Throw<ArgumentException>(() => GameEngine.ViewFor(TestRulesets.Default, state, new PlayerId(Guid.NewGuid())));
     }
 
     [Fact]
@@ -243,6 +243,6 @@ public class VisibilityCalculatorTests
             Players = [state.Players[0], state.Players[1] with { Status = PlayerStatus.Resigned, Explored = [] }],
         };
 
-        VisibilityCalculator.UpdateExplored(resigned).Players[1].Explored.ShouldBeEmpty();
+        VisibilityCalculator.UpdateExplored(TestRulesets.Default, resigned).Players[1].Explored.ShouldBeEmpty();
     }
 }

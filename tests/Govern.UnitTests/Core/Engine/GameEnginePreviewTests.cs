@@ -36,11 +36,11 @@ public class GameEnginePreviewTests
     {
         var (state, unitId, origin) = Build(scenario);
 
-        var reachable = GameEngine.ReachableTiles(GameEngine.ViewFor(state, P1), unitId);
+        var reachable = GameEngine.ReachableTiles(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
 
         foreach (var target in origin.WithinRadius(3))
         {
-            var accepted = GameEngine.Execute(state, P1, new MoveUnitCommand(unitId, target)).IsSuccess;
+            var accepted = GameEngine.Execute(TestRulesets.Default, state, P1, new MoveUnitCommand(unitId, target)).IsSuccess;
             reachable.Contains(target).ShouldBe(accepted, $"move to {target}");
         }
     }
@@ -51,11 +51,11 @@ public class GameEnginePreviewTests
     {
         var (state, unitId, origin) = Build(scenario);
 
-        var targets = GameEngine.AttackTargets(GameEngine.ViewFor(state, P1), unitId);
+        var targets = GameEngine.AttackTargets(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
 
         foreach (var target in origin.WithinRadius(3))
         {
-            var accepted = GameEngine.Execute(state, P1, new AttackCommand(unitId, target)).IsSuccess;
+            var accepted = GameEngine.Execute(TestRulesets.Default, state, P1, new AttackCommand(unitId, target)).IsSuccess;
             targets.Contains(target).ShouldBe(accepted, $"attack on {target}");
         }
     }
@@ -66,9 +66,9 @@ public class GameEnginePreviewTests
     {
         var (state, unitId, _) = Build(scenario);
 
-        var preview = GameEngine.CheckFoundCity(GameEngine.ViewFor(state, P1), unitId);
+        var preview = GameEngine.CheckFoundCity(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
 
-        preview.ShouldBe(GameEngine.Execute(state, P1, new FoundCityCommand(unitId)).Violation);
+        preview.ShouldBe(GameEngine.Execute(TestRulesets.Default, state, P1, new FoundCityCommand(unitId)).Violation);
     }
 
     // The state overload doesn't check the turn, so compare only where the viewer may act.
@@ -81,9 +81,9 @@ public class GameEnginePreviewTests
     {
         var (state, unitId, _) = Build(scenario);
 
-        var fromView = GameEngine.ReachableTiles(GameEngine.ViewFor(state, P1), unitId);
+        var fromView = GameEngine.ReachableTiles(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
 
-        fromView.ShouldBe(GameEngine.ReachableTiles(state, P1, unitId));
+        fromView.ShouldBe(GameEngine.ReachableTiles(TestRulesets.Default, state, P1, unitId));
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class GameEnginePreviewTests
     {
         var (state, unitId, _) = Build("enemies adjacent");
 
-        var targets = GameEngine.AttackTargets(GameEngine.ViewFor(state, P1), unitId);
+        var targets = GameEngine.AttackTargets(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
 
         targets.ShouldBe([At(5, 4), At(6, 5)]);
     }
@@ -101,7 +101,7 @@ public class GameEnginePreviewTests
     {
         var (state, unitId, origin) = Build("open field");
 
-        var reachable = GameEngine.ReachableTiles(GameEngine.ViewFor(state, P1), unitId);
+        var reachable = GameEngine.ReachableTiles(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
 
         reachable.ShouldBe([.. origin.WithinRadius(2).Where(coord => coord != origin).OrderBy(static c => c.Row).ThenBy(static c => c.Column)]);
     }
@@ -120,17 +120,17 @@ public class GameEnginePreviewTests
     {
         var (state, unitId, _) = Build(scenario);
 
-        (GameEngine.CheckFoundCity(GameEngine.ViewFor(state, P1), unitId)?.Code).ShouldBe(code);
+        (GameEngine.CheckFoundCity(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId)?.Code).ShouldBe(code);
     }
 
     [Fact]
     public void Previews_OwnCityInReach_CanBeEnteredButNotAttacked()
     {
         var (state, unitId, _) = Build("own city in reach");
-        var view = GameEngine.ViewFor(state, P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
 
-        GameEngine.ReachableTiles(view, unitId).ShouldContain(At(0, 0));
-        GameEngine.AttackTargets(view, unitId).ShouldBeEmpty();
+        GameEngine.ReachableTiles(TestRulesets.Default, view, unitId).ShouldContain(At(0, 0));
+        GameEngine.AttackTargets(TestRulesets.Default, view, unitId).ShouldBeEmpty();
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class GameEnginePreviewTests
     {
         var (state, _, origin) = Build("enemies just out of sight");
 
-        var view = GameEngine.ViewFor(state, P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
 
         state.Units.Where(unit => unit.Owner == P2).ShouldAllBe(unit => unit.Position.DistanceTo(origin) == 3);
         view.Units.ShouldNotContain(unit => unit.Owner == P2);
@@ -148,9 +148,9 @@ public class GameEnginePreviewTests
     [Fact]
     public void Previews_NullView_Throw()
     {
-        Should.Throw<ArgumentNullException>(() => GameEngine.ReachableTiles(null!, new UnitId(1)));
-        Should.Throw<ArgumentNullException>(() => GameEngine.AttackTargets(null!, new UnitId(1)));
-        Should.Throw<ArgumentNullException>(() => GameEngine.CheckFoundCity(null!, new UnitId(1)));
+        Should.Throw<ArgumentNullException>(() => GameEngine.ReachableTiles(TestRulesets.Default, null!, new UnitId(1)));
+        Should.Throw<ArgumentNullException>(() => GameEngine.AttackTargets(TestRulesets.Default, null!, new UnitId(1)));
+        Should.Throw<ArgumentNullException>(() => GameEngine.CheckFoundCity(TestRulesets.Default, null!, new UnitId(1)));
     }
 
     private static (GameState State, UnitId Unit, HexCoord Origin) Build(string scenario)
@@ -166,13 +166,13 @@ public class GameEnginePreviewTests
             // Distance 3 is outside sight 2 but inside the radius-3 probe, so the view and the state really differ there.
             "enemies just out of sight" => (Soldier(builder, 5, 5), EnemyCity(builder, 5, 2, Blocker(builder, P2, 8, 5))),
             "map edge" => (Soldier(builder, 0, 5), At(0, 5)),
-            "partial movement" => (builder.AddUnit(P1, UnitType.Soldier, 5, 5, movementLeft: 1), At(5, 5)),
-            "no movement" => (builder.AddUnit(P1, UnitType.Soldier, 5, 5, movementLeft: 0), At(5, 5)),
-            "settler far from cities" => (builder.AddUnit(P1, UnitType.Settler, 5, 5), At(5, 5)),
-            "settler without movement" => (builder.AddUnit(P1, UnitType.Settler, 5, 5, movementLeft: 0), At(5, 5)),
-            "settler near own city" => (builder.AddUnit(P1, UnitType.Settler, 1, 1), At(1, 1)),
-            "settler on a city" => (builder.AddUnit(P1, UnitType.Settler, 0, 0), At(0, 0)),
-            "settler near enemy city" => (builder.AddUnit(P1, UnitType.Settler, 5, 5), EnemyCity(builder, 7, 5, At(5, 5))),
+            "partial movement" => (builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, movementLeft: 1), At(5, 5)),
+            "no movement" => (builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, movementLeft: 0), At(5, 5)),
+            "settler far from cities" => (builder.AddUnit(P1, TestRulesets.Settler, 5, 5), At(5, 5)),
+            "settler without movement" => (builder.AddUnit(P1, TestRulesets.Settler, 5, 5, movementLeft: 0), At(5, 5)),
+            "settler near own city" => (builder.AddUnit(P1, TestRulesets.Settler, 1, 1), At(1, 1)),
+            "settler on a city" => (builder.AddUnit(P1, TestRulesets.Settler, 0, 0), At(0, 0)),
+            "settler near enemy city" => (builder.AddUnit(P1, TestRulesets.Settler, 5, 5), EnemyCity(builder, 7, 5, At(5, 5))),
             "enemy unit id" => (Soldier(builder, 5, 5, P2), At(5, 5)),
             _ => (Soldier(builder, 5, 5), At(5, 5)),
         };
@@ -188,12 +188,12 @@ public class GameEnginePreviewTests
     }
 
     private static UnitId Soldier(GameStateBuilder builder, int column, int row, PlayerId? owner = null) =>
-        builder.AddUnit(owner ?? P1, UnitType.Soldier, column, row);
+        builder.AddUnit(owner ?? P1, TestRulesets.Soldier, column, row);
 
     // Adds a unit that only serves as an obstacle or target; returns the tested unit's origin for chaining.
     private static HexCoord Blocker(GameStateBuilder builder, PlayerId owner, int column, int row)
     {
-        builder.AddUnit(owner, UnitType.Soldier, column, row);
+        builder.AddUnit(owner, TestRulesets.Soldier, column, row);
         return At(5, 5);
     }
 

@@ -30,7 +30,7 @@ public class ExpiredLobbyCleanupServiceTests(GovernApiFixture fixture) : ApiTest
         joinedRecently.Join(joiner.UserId, time.GetUtcNow().AddDays(-1));
         var startedLongAgo = Game.Create(creator.UserId, longAgo);
         startedLongAgo.Join(joiner.UserId, longAgo);
-        startedLongAgo.Start(creator.UserId, longAgo);
+        startedLongAgo.Start(creator.UserId, TestRulesets.Default, longAgo);
         await SeedAsync(stale, joinedRecently, startedLongAgo);
         await using var stream = await GameEventsReader.OpenAsync(client, creator.AccessToken, stale.Id, Ct);
         await stream.NextGameAsync();
@@ -56,8 +56,8 @@ public class ExpiredLobbyCleanupServiceTests(GovernApiFixture fixture) : ApiTest
         var longAgo = time.GetUtcNow() - Game.LobbyLifetime - TimeSpan.FromHours(1);
         var finished = Game.Create(creator.UserId, longAgo);
         finished.Join(joiner.UserId, longAgo);
-        finished.Start(creator.UserId, longAgo);
-        finished.Execute(joiner.UserId, new ResignCommand(), longAgo);
+        finished.Start(creator.UserId, TestRulesets.Default, longAgo);
+        finished.Execute(joiner.UserId, TestRulesets.Default, new ResignCommand(), longAgo);
         var stale = Game.Create(creator.UserId, longAgo);
         await SeedAsync(finished, stale);
 

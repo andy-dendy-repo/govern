@@ -1,21 +1,22 @@
 @* The selected unit: its type and movement and, for the player's settler, Found city (disabled with the reason). *@
 @using Govern.Core.Actions
 @using Govern.Core.Engine
+@using Govern.Core.Rulesets
 @using Govern.Core.Units
 @using Govern.Core.Visibility
 
 <RadzenStack Gap="0.5rem" class="unit-panel">
     <RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.H3" class="unit-name">
-        @(IsOwn ? "Your" : "Enemy") @(Unit.Type == UnitType.Settler ? "settler" : "soldier")
+        @(IsOwn ? "Your" : "Enemy") @Ruleset.UnitName(Unit.Type)
     </RadzenText>
     @if (IsOwn)
     {
         <RadzenText TextStyle="TextStyle.Body2" class="movement">
-            Movement left: @Unit.MovementLeft of @Unit.Definition.Movement
+            Movement left: @Unit.MovementLeft of @Definition.Movement
         </RadzenText>
-        @if (Unit.Definition.CanFoundCity)
+        @if (Definition.CanFoundCity)
         {
-            var problem = GameEngine.CheckFoundCity(View, Unit.Id);
+            var problem = GameEngine.CheckFoundCity(Ruleset, View, Unit.Id);
             <RadzenButton Text="Found city" Icon="location_city" Disabled="@(Busy || problem is not null)"
                           Click="@(() => Command.InvokeAsync(new FoundCityCommand(Unit.Id)))" class="found-city"/>
             @if (problem is not null)
@@ -31,9 +32,13 @@
 
     [Parameter, EditorRequired] public UnitView Unit { get; set; } = null!;
 
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
     [Parameter] public bool Busy { get; set; }
 
     [Parameter] public EventCallback<GameCommand> Command { get; set; }
 
     private bool IsOwn => Unit.Owner == View.Viewer;
+
+    private UnitDefinition Definition => Ruleset.Unit(Unit.Type);
 }

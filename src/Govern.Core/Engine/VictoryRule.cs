@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Govern.Core.Events;
+using Govern.Core.Rulesets;
 using Govern.Core.State;
 
 namespace Govern.Core.Engine;
@@ -10,10 +11,10 @@ namespace Govern.Core.Engine;
 /// </summary>
 internal static class VictoryRule
 {
-    public static GameUpdate Apply(GameUpdate update)
+    public static GameUpdate Apply(Ruleset ruleset, GameUpdate update)
     {
         var events = update.Events.ToBuilder();
-        var state = RemoveDepartedUnits(Eliminate(update.State, events), events);
+        var state = RemoveDepartedUnits(Eliminate(ruleset, update.State, events), events);
         var active = state.Players.Where(static player => player.Status == PlayerStatus.Active).ToList();
 
         if (active.Count <= 1)
@@ -30,9 +31,9 @@ internal static class VictoryRule
         return new GameUpdate(state, events.ToImmutable());
     }
 
-    private static GameState Eliminate(GameState state, ImmutableArray<GameEvent>.Builder events)
+    private static GameState Eliminate(Ruleset ruleset, GameState state, ImmutableArray<GameEvent>.Builder events)
     {
-        foreach (var player in state.Players.Where(player => player.Status == PlayerStatus.Active && !CanStillPlay(state, player.Id)))
+        foreach (var player in state.Players.Where(player => player.Status == PlayerStatus.Active && !CanStillPlay(ruleset, state, player.Id)))
         {
             state = state.WithPlayer(player with { Status = PlayerStatus.Eliminated });
             events.Add(new PlayerEliminatedEvent(player.Id));
@@ -41,9 +42,9 @@ internal static class VictoryRule
         return state;
     }
 
-    private static bool CanStillPlay(GameState state, PlayerId player) =>
+    private static bool CanStillPlay(Ruleset ruleset, GameState state, PlayerId player) =>
         state.Cities.Any(city => city.Owner == player)
-        || state.Units.Any(unit => unit.Owner == player && unit.Definition.CanFoundCity);
+        || state.Units.Any(unit => unit.Owner == player && ruleset.Unit(unit.Type).CanFoundCity);
 
     private static GameState RemoveDepartedUnits(GameState state, ImmutableArray<GameEvent>.Builder events)
     {
