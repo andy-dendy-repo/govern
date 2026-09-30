@@ -37,7 +37,7 @@ The action bar floats over the bottom-left of the map, so a unit's actions sit n
 
 ## UI state (GameUiService)
 
-`Features/Games/Services/GameUiService` holds the UI state of one game screen: the selection (`BoardSelection`) and its highlights (`BoardHighlights`, from the Core previews). `GameTable` creates one per game and cascades it (`CascadingValue IsFixed`), so `SidePanel` and `ActionBar` read the selection instead of receiving it through parameter chains. It holds no game state: the view stays the server's. A new view calls `Refresh`, which drops a selection that is no longer visible. Later UI state (the active lens, an open full-screen view) is added here.
+`Features/Games/Services/GameUiService` holds the UI state of one game screen: the selection (`BoardSelection`) and its highlights (`BoardHighlights`, from the Core previews). `GameTable` creates one per game and cascades it (`CascadingValue IsFixed`), so `SidePanel` and `ActionBar` read the selection instead of receiving it through parameter chains. It holds no game state: the view stays the server's. A new view calls `Refresh`, which drops a selection that is no longer visible. It also holds the active map lens ([map lenses](#map-lenses)); later UI state (an open full-screen view) is added here.
 
 ## Design tokens, themes and colours
 
@@ -62,7 +62,7 @@ All colours are CSS custom properties in `wwwroot/css/tokens.css` (`--gv-<group>
 | Symbol id | For |
 |---|---|
 | `unit-<id>` | Each ruleset unit (`Icons.Unit`) |
-| `terrain-<id>` | Each ruleset terrain (`Icons.Terrain`), a hex swatch filled with the terrain colour |
+| `terrain-<id>` | Each ruleset terrain (`Icons.Terrain`): a hex swatch filled with the terrain colour plus a `.terrain-mark` drawing (trees, humps, peaks, waves; none for plains). The board draws it on every known tile that isn't the default terrain, where the hex blends into the tile and only the drawing shows, so terrain is never told by colour alone |
 | `city` | Cities |
 | `ui-movement`, `ui-sight`, `ui-production`, `ui-turns` | UI glyphs (`Icons` constants) |
 
@@ -87,7 +87,16 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | `YieldList`, `ResourceBadge` | planned by G5/G8 | Yield and resource rows and badges |
 | `QueueList` | planned by G8/G10 | A reorderable build queue |
 | `TreeView` | planned by G11/G12 | Tech, culture and governor skill trees in a full-screen view |
-| Lens toolbar and `IMapLens` | planned by G4 | Toggleable map overlays, one at a time, drawn in the `BoardLayer.Lens` slot; G4 builds them with the first lens, movement cost. Later lenses: resources (G5), rivers (G6), territory (G7), yields and loyalty (G8), seasons (G14) |
+| `LensToolbar`, `BoardLens` and `IMapLens` | built (G4) | Toggleable map overlays, one at a time ([map lenses](#map-lenses)); the first is movement cost. Later lenses: resources (G5), rivers (G6), territory (G7), yields and loyalty (G8), seasons (G14) |
+
+## Map lenses
+
+A lens marks every known tile with one kind of information, instead of cluttering the base map.
+- **A lens** is a sealed `Features/Games/Lenses/XxxLens` implementing `IMapLens` (id, name, toolbar icon, and `MarkFor(TileView)` → a `Models/LensMark` with a label, a tint class and a sentence), registered in `DependencyInjection` as `IMapLens`. `NamingConventionTests.ClientMapLenses_AreSealedLensesImplementingIMapLens` and `FolderStructureTests` (`*Lens.cs` only) keep the folder to that.
+- **State:** `GameUiService.ActiveLens`, changed by `ToggleLens` (one on at a time; toggling the active one turns it off). Escape clears the selection, not the lens.
+- **Toolbar:** `Components/Board/LensToolbar` in the map zone's top-left corner, one toggle button per registered lens (`aria-pressed`, keyboard reachable). It reads the cascaded `GameUiService`, so it renders nothing outside a game screen.
+- **Drawing:** `Components/Board/BoardLens` draws the active lens in the `BoardLayer.Lens` slot: per marked tile a tinted hex (`.lens-mark.<class>` in `board.css`, colours from `--gv-lens-*` tokens), a label and a `<title>` with the sentence. Unexplored tiles are never marked.
+- **Movement cost** (`MovementCostLens`): each explored or visible tile shows its terrain's movement cost (tint `cheap` for 1, `costly` above), and ✕ (`blocked`) where land units can't go.
 
 ## Design gallery (/design)
 
@@ -103,5 +112,5 @@ The terrain renders once per view (`BoardTerrain.ShouldRender`) and pieces only 
 2. A new number or list on a panel: use `StatTable`, `ProgressBar`, `CostLabel`; add a planned component (`YieldList`, `QueueList`, `TreeView`) to `Components/Game` when its G item needs it, with tests and a gallery entry.
 3. A new action: a button in `ActionBar` (unit) or the panel (city), disabled with the rule's reason; a destructive one uses `ConfirmButton`.
 4. A new selection kind: its panel in `SidePanel`, reading `GameUiService`.
-5. New map content: its `BoardLayer` slot.
+5. New map content: its `BoardLayer` slot. Information a player toggles on and off: a new `IMapLens` ([map lenses](#map-lenses)).
 6. Update this document's catalog.

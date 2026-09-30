@@ -1,0 +1,51 @@
+{
+  "setup": {
+    "players": 2,
+    "startingUnits": ["settler", "soldier"]
+  },
+  "map": {
+    "defaultWidth": 20,
+    "defaultHeight": 14,
+    "minSize": 8,
+    "maxSize": 40,
+    "defaultTerrain": "plains",
+    "spawn": { "zoneColumnsPerMille": 250, "edgeMargin": 1 },
+    "generation": {
+      "patches": [
+        { "terrain": "forest", "sharePerMille": 150, "patchSize": 4 },
+        { "terrain": "hills", "sharePerMille": 100, "patchSize": 3 },
+        { "terrain": "mountains", "sharePerMille": 40, "patchSize": 2 },
+        { "terrain": "lake", "sharePerMille": 40, "patchSize": 3 }
+      ]
+    }
+  },
+  "terrains": [
+    { "id": "plains", "movementCost": 1, "isPassable": true, "sightBonus": 0 },
+    { "id": "forest", "movementCost": 2, "isPassable": true, "sightBonus": 0 },
+    { "id": "hills", "movementCost": 2, "isPassable": true, "sightBonus": 1 },
+    { "id": "mountains", "movementCost": 1, "isPassable": false, "sightBonus": 0 },
+    { "id": "lake", "movementCost": 1, "isPassable": false, "sightBonus": 0 }
+  ],
+  "units": [
+    { "id": "settler", "movement": 2, "sight": 2, "productionCost": 6, "abilities": ["found_city"] },
+    { "id": "soldier", "movement": 2, "sight": 2, "productionCost": 4, "abilities": ["attack"] }
+  ],
+  "cities": {
+    "sight": 2,
+    "minimumSpacing": 3,
+    "productionPerTurn": 1,
+    "initialProduction": "soldier",
+    "nameTemplate": "city.default_name",
+    "captureResetsProduction": true
+  },
+  "texts": {
+    "unit.settler.name": "Settler",
+    "unit.soldier.name": "Soldier",
+    "terrain.plains.name": "Plains",
+    "terrain.forest.name": "Forest",
+    "terrain.hills.name": "Hills",
+    "terrain.mountains.name": "Mountains",
+    "terrain.lake.name": "Lake",
+    "city.default_name": "City {n}"
+  }
+}

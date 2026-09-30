@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+using System.Security.Cryptography;
 using Govern.Core.State;
 
 namespace Govern.Core.Engine;
@@ -23,6 +25,26 @@ public sealed class DeterministicRandom(ulong state)
 
         var range = (ulong)((long)maxExclusive - minInclusive);
         return (int)((long)minInclusive + (long)(NextUInt64() % range));
+    }
+
+    /// <summary>
+    /// Returns the next number in <c>[minInclusive, maxExclusive)</c>, taken from the SHA-256 of a raw draw. Use it for
+    /// anything a client sees in bulk (such as the generated map): many <see cref="Next"/> results could let a player
+    /// rebuild <see cref="State"/>, because <see cref="Next"/> exposes the raw output's low bits.
+    /// </summary>
+    /// <param name="minInclusive">Lower bound, inclusive.</param>
+    /// <param name="maxExclusive">Upper bound, exclusive; greater than <paramref name="minInclusive"/>.</param>
+    /// <returns>A number in the range.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The range is empty.</exception>
+    public int NextHashed(int minInclusive, int maxExclusive)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxExclusive, minInclusive);
+
+        Span<byte> draw = stackalloc byte[sizeof(ulong)];
+        BinaryPrimitives.WriteUInt64LittleEndian(draw, NextUInt64());
+        var hashed = BinaryPrimitives.ReadUInt64LittleEndian(SHA256.HashData(draw));
+        var range = (ulong)((long)maxExclusive - minInclusive);
+        return (int)((long)minInclusive + (long)(hashed % range));
     }
 
     /// <summary>

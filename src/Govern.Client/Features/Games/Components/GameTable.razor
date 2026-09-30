@@ -10,7 +10,7 @@
             <TopBar View="@View" Busy="@_sending" Command="@SendAsync"/>
         </div>
         <div class="zone-map">
-            <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+            <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
         </div>
         <div class="zone-actions">
             <ActionBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>

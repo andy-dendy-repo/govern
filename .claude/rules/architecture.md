@@ -25,7 +25,7 @@ Every rule here is enforced by `tests/Govern.ArchitectureTests`. The folder spec
 | Api | UF | `Middlewares/`, `Filters/` (endpoint filters), `HealthChecks/`, `Features/[Feature]/XxxEndpoint.cs`. Root: `DependencyInjection.cs`, `GlobalUsings.cs`, `Program.cs` |
 | Utils | free-form | naming rules still apply |
 | Core | Core template | `Engine/` (GameEngine, CommandResult, GameCommand, RuleViolation(s), guard and victory rules, DeterministicRandom), `State/` (GameState, setup, players), `Map/` (hexes, terrain, pathfinding), `Units/`, `Cities/`, `Events/`, `Visibility/`, `Serialization/`, `Rulesets/` (the ruleset model, parser and validator) (free-form inside), and flat `Actions/XxxAction.cs`, each holding exactly `XxxCommand` + `XxxRule`. No root files. Details: `game-core.md` |
-| Client | CFT (UF) | `Layout/`, `Components/`, `Auth/`, `Features/[Feature]/` = UF + `Pages/` (`XxxPage.razor`), `Components/`, `Clients/` (`XxxClient.cs`). Root: `App.razor`, `_Imports.razor`, `DependencyInjection.cs`, `GlobalUsings.cs`, `Program.cs`. Details: `blazor-client.md` |
+| Client | CFT (UF) | `Layout/`, `Components/`, `Auth/`, `Features/[Feature]/` = UF + `Pages/` (`XxxPage.razor`), `Components/`, `Clients/` (`XxxClient.cs`), `Lenses/` (`XxxLens.cs`). Root: `App.razor`, `_Imports.razor`, `DependencyInjection.cs`, `GlobalUsings.cs`, `Program.cs`. Details: `blazor-client.md` |
 
 Content inside UF/AGFT folders and Core concept folders may be organised in sub-folders freely. `Contracts/`, `Features/[Feature]/` and Core `Actions/` are flat.
 
@@ -52,6 +52,7 @@ Content inside UF/AGFT folders and Core concept folders may be organised in sub-
 | `Client/Features/[Feature]/Pages` | be components named `XxxPage` |
 | `Client/Layout`, `Client/**/Components` | be Razor components |
 | `Client/Features/[Feature]/Clients` | be `sealed` classes ending with `Client` |
+| `Client/Features/[Feature]/Lenses` | be `sealed` classes ending with `Lens` implementing `IMapLens` |
 
 Also:
 - Interfaces start with `I`.

@@ -374,6 +374,44 @@ public class GameTableTests : ClientTestContext
         Api.Requests.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void Render_OwnUnitOnHills_ShowsSightWithTheHillsBonus()
+    {
+        var view = Create([Settler(1, You, At(2, 2))], terrain: static coord => coord == At(2, 2) ? Hills : Plains);
+        var cut = RenderTable(TestGames.Started(view: view));
+
+        Tile(cut, At(2, 2)).Click();
+
+        var sight = Ruleset.Unit(SettlerType).Sight;
+        cut.Find(".unit-panel .sight .stat-value .number").TextContent.ShouldBe($"{sight + 1}");
+        cut.Find(".unit-panel .sight .number-tooltip").GetAttribute("title").ShouldBe($"Sees {sight + 1} tiles around it: {sight}, plus 1 for standing on Hills.");
+    }
+
+    [Fact]
+    public void LensToolbar_Toggle_DrawsTheLensAndPressesTheButton()
+    {
+        var cut = RenderTable(TestGames.Started());
+        var button = cut.Find(".lens-toolbar button[data-lens=movement-cost]");
+        button.GetAttribute("aria-pressed").ShouldBe("false");
+
+        button.Click();
+
+        cut.Find(".lens-toolbar button[data-lens=movement-cost]").GetAttribute("aria-pressed").ShouldBe("true");
+        cut.FindAll("g[data-layer=lens] g.lens-mark").Count.ShouldBe(Width * Height);
+    }
+
+    [Fact]
+    public void LensToolbar_ToggleTwice_RemovesTheLens()
+    {
+        var cut = RenderTable(TestGames.Started());
+        cut.Find(".lens-toolbar button[data-lens=movement-cost]").Click();
+
+        cut.Find(".lens-toolbar button[data-lens=movement-cost]").Click();
+
+        cut.FindAll("g[data-layer=lens]").ShouldBeEmpty();
+        cut.Find(".lens-toolbar button[data-lens=movement-cost]").GetAttribute("aria-pressed").ShouldBe("false");
+    }
+
     private IRenderedComponent<GameTable> RenderTable(GetGameResponse game) =>
         Render<GameTable>(parameters => parameters
             .Add(static table => table.Game, game)

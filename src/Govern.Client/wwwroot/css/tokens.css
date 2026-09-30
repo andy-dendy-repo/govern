@@ -28,6 +28,23 @@
     /* Terrain palette: visible and explored (remembered) shades per ruleset terrain id. */
     --gv-terrain-plains: #9cc47f;
     --gv-terrain-plains-explored: #6f8a60;
+    --gv-terrain-forest: #4f8a4a;
+    --gv-terrain-forest-explored: #3d5e3a;
+    --gv-terrain-hills: #b9a36a;
+    --gv-terrain-hills-explored: #857756;
+    --gv-terrain-mountains: #8a8580;
+    --gv-terrain-mountains-explored: #625f5c;
+    --gv-terrain-lake: #4f8fc4;
+    --gv-terrain-lake-explored: #3f6384;
+    --gv-terrain-mark: rgba(20, 23, 28, 0.6);
+    --gv-terrain-mark-explored: rgba(255, 255, 255, 0.5);
+
+    /* Map lenses: tints over the tiles and the label on each (Features/Games/Lenses). */
+    --gv-lens-cheap: rgba(255, 255, 255, 0.12);
+    --gv-lens-costly: rgba(255, 196, 0, 0.4);
+    --gv-lens-blocked: rgba(20, 23, 28, 0.6);
+    --gv-lens-label: #ffffff;
+    --gv-lens-label-outline: #14171c;
 
     /* Panels and components (built on the Radzen theme, which follows the system light or dark setting). */
     --gv-text: var(--rz-text-color);
@@ -62,6 +79,16 @@
         --gv-tile-unexplored: #22262d;
         --gv-terrain-plains: #86ad6a;
         --gv-terrain-plains-explored: #56704a;
+        --gv-terrain-forest: #3f7440;
+        --gv-terrain-forest-explored: #2e4a2e;
+        --gv-terrain-hills: #a08c58;
+        --gv-terrain-hills-explored: #6a5f45;
+        --gv-terrain-mountains: #77726d;
+        --gv-terrain-mountains-explored: #4f4c49;
+        --gv-terrain-lake: #3e7aad;
+        --gv-terrain-lake-explored: #30506c;
+        --gv-terrain-mark: rgba(255, 255, 255, 0.6);
+        --gv-terrain-mark-explored: rgba(255, 255, 255, 0.45);
         --gv-boot-track: #3a3f47;
         --gv-shadow: rgba(0, 0, 0, 0.7);
     }

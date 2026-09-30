@@ -14,7 +14,10 @@ namespace Govern.Core.Visibility;
 /// </summary>
 public static class VisibilityCalculator
 {
-    /// <summary>Tiles currently in sight of the player's units (their type's sight) and cities (<see cref="CityRules.Sight"/>).</summary>
+    /// <summary>
+    /// Tiles currently in sight of the player's units (their type's sight) and cities (<see cref="CityRules.Sight"/>), each
+    /// plus the <see cref="TerrainDefinition.SightBonus"/> of the tile it stands on.
+    /// </summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="state">The game.</param>
     /// <param name="player">The player.</param>
@@ -26,10 +29,10 @@ public static class VisibilityCalculator
 
         var unitSight = state.Units
             .Where(unit => unit.Owner == player)
-            .SelectMany(unit => unit.Position.WithinRadius(ruleset.Unit(unit.Type).Sight));
+            .SelectMany(unit => unit.Position.WithinRadius(ruleset.Unit(unit.Type).Sight + SightBonus(ruleset, state, unit.Position)));
         var citySight = state.Cities
             .Where(city => city.Owner == player)
-            .SelectMany(city => city.Position.WithinRadius(ruleset.Cities.Sight));
+            .SelectMany(city => city.Position.WithinRadius(ruleset.Cities.Sight + SightBonus(ruleset, state, city.Position)));
 
         return unitSight.Concat(citySight).Where(state.Map.Contains).ToHashSet();
     }
@@ -106,6 +109,9 @@ public static class VisibilityCalculator
         var hash = SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(view, GameSerializer.Options));
         return BinaryPrimitives.ReadInt64LittleEndian(hash) & long.MaxValue;
     }
+
+    private static int SightBonus(Ruleset ruleset, GameState state, HexCoord position) =>
+        ruleset.Terrain(state.Map.TileAt(position).Terrain).SightBonus;
 
     private static TileView ToView(Tile tile, IReadOnlySet<HexCoord> visible, HashSet<HexCoord> explored) => tile.Coord switch
     {

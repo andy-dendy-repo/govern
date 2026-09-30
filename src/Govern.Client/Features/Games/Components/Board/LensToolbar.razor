@@ -1,0 +1,48 @@
+@* The map lenses, one toggle button each, in the map zone. One lens is on at a time; the state is GameUiService.ActiveLens.
+   Renders nothing outside a game screen (no GameUiService cascaded) or when no lens is registered. *@
+@using Govern.Client.Features.Games.Lenses
+@using Govern.Client.Features.Games.Services
+@implements IDisposable
+
+@if (Ui is not null && _lenses.Length > 0)
+{
+    <div class="lens-toolbar" role="toolbar" aria-label="Map lenses">
+        @foreach (var lens in _lenses)
+        {
+            var active = Ui.ActiveLens?.Id == lens.Id;
+            <button type="button" class="@($"lens-toggle {(active ? "active" : null)}".TrimEnd())" data-lens="@lens.Id"
+                    aria-pressed="@(active ? "true" : "false")" title="@lens.Name" @onclick="@(() => Ui.ToggleLens(lens))">
+                <GameIcon Id="@lens.Icon"/>
+                <span>@lens.Name</span>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private IMapLens[] _lenses = [];
+
+    [CascadingParameter] public GameUiService? Ui { get; set; }
+
+    [Inject] private IEnumerable<IMapLens> Lenses { get; set; } = null!;
+
+    protected override void OnInitialized()
+    {
+        _lenses = [.. Lenses];
+        if (Ui is not null)
+        {
+            Ui.Changed += OnUiChanged;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (Ui is not null)
+        {
+            Ui.Changed -= OnUiChanged;
+        }
+    }
+
+    // The lens can change outside this toolbar (the service is shared by the game screen), so follow it.
+    private void OnUiChanged() => InvokeAsync(StateHasChanged);
+}
