@@ -18,7 +18,6 @@ Run each item through `/develop-feature`. It gets its own plan in `.claude/rules
 | 3 | Medium | [Monitoring and alerts](#3-monitoring-and-alerts) | infra | M |
 | 4 | Medium | [Sign-up email inside the database transaction](#4-sign-up-email-inside-the-database-transaction) | users | S |
 | 5 | Medium | [Email verification](#5-email-verification) | users, client | M |
-| 6 | Low | [Hide a visible enemy unit's movement](#6-hide-a-visible-enemy-units-movement-unitview) | game | S |
 | 7 | Low | [Invite code rotation (kick)](#7-invite-code-rotation-kick) | game | S |
 | 8 | — | [Game ideas](#8-game-ideas) | game | S–L each |
 | 9 | — | [Simultaneous turns (Civ 6 style)](#9-simultaneous-turns-civ-6-style) | game | M–L |
@@ -58,11 +57,6 @@ Run each item through `/develop-feature`. It gets its own plan in `.claude/rules
 - **Why:** accounts are cheap today: there's no email verification, and sign-up is limited only per IP. That makes the game storage abuse (many accounts looping create → join → start → resign) possible over days. The seat quota and the storage alert bound it, and verification (or a daily sign-up cap) is the lasting fix (Medium, [game plan 2 follow-ups](done-game-lobby.md#follow-ups-from-the-code-review-and-security-audit-before-stage--main)).
 - **Scope:** the Api side, plus the client's confirm-email page (the client shipped first).
 - **Detailed plan:** [session and email verification, Plan 3](done-session-and-email-verification.md#plan-3-email-verification).
-
-## 6. Hide a visible enemy unit's movement (UnitView)
-
-- **Why:** enemy units on visible tiles are sent as Core's `Unit`, so the view JSON includes their `MovementLeft`. The board hides it, but devtools show how far the unit moved through fog, or that it attacked (Low, client board security audit).
-- **Approach:** project a `UnitView` in `VisibilityCalculator.ViewFor` with `MovementLeft` null for enemy units, as `CityView` hides enemy production. Keep the view previews' parity tests green, and update the client's `UnitPanel` and `TestViews`.
 
 ## 7. Invite code rotation (kick)
 

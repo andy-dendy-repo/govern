@@ -167,6 +167,27 @@ public class GameSerializerTests
     }
 
     [Fact]
+    public void Serialize_PlayerView_WritesNullEnemyMovement()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
+        builder.AddUnit(P2, UnitType.Soldier, 5, 4);
+        var view = GameEngine.ViewFor(builder.Build(), P1);
+
+        var json = GameSerializer.Serialize(view);
+        var units = JsonDocument.Parse(json).RootElement.GetProperty("units").EnumerateArray().ToList();
+
+        units.Select(static unit => string.Join(',', unit.EnumerateObject().Select(static p => p.Name)))
+            .ShouldAllBe(names => names == "id,owner,type,position,movementLeft");
+        units.Single(IsOwnedBy(P2)).GetProperty("movementLeft").ValueKind.ShouldBe(JsonValueKind.Null);
+        units.Single(IsOwnedBy(P1)).GetProperty("movementLeft").GetInt32().ShouldBe(2);
+        GameSerializer.Serialize(GameSerializer.Deserialize<Govern.Core.Visibility.PlayerView>(json)).ShouldBe(json);
+    }
+
+    private static Func<JsonElement, bool> IsOwnedBy(PlayerId player) =>
+        unit => unit.GetProperty("owner").GetProperty("value").GetGuid() == player.Value;
+
+    [Fact]
     public void Deserialize_JsonNull_Throws()
     {
         Should.Throw<JsonException>(() => GameSerializer.Deserialize<GameCommand>("null"));
