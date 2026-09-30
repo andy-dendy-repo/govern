@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Next follow-ups
 
-Future game mechanics are listed separately in the [game design roadmap](game-design-roadmap.md). All earlier plans are done: the [template roadmap](template-solution-roadmap.md), the [follow-ups backlog](follow-ups.md) and its [delivery plans](follow-ups-delivery.md), [session and email verification](session-and-email-verification.md) Plan 1, and game Plans 1–5 ([game delivery](game-delivery.md), [game plan 2](game-lobby.md)). This file holds everything still open, collected from those plans.
+Future game mechanics are listed separately in the [game design roadmap](game-design-roadmap.md). All earlier plans are done: the [template roadmap](done-template-solution-roadmap.md), the [follow-ups backlog](done-follow-ups.md) and its [delivery plans](done-follow-ups-delivery.md), [session and email verification](done-session-and-email-verification.md) Plan 1, and game Plans 1–5 ([game delivery](done-game-delivery.md), [game plan 2](done-game-lobby.md)). This file holds everything still open, collected from those plans.
 
 Run each item through `/develop-feature`. It gets its own plan in `.claude/rules/planning.md` format, a branch, and a PR. Game work branches from and PRs to `gamecore` until the game ships; everything else branches from `stage`. When an item is done, remove it here and update the related docs.
 
@@ -31,7 +31,7 @@ Run each item through `/develop-feature`. It gets its own plan in `.claude/rules
   1. Merge PR #17 (client board) into `gamecore`.
   2. Open a PR from `gamecore` to `stage`.
   3. Run the `security-auditor` agent before the `stage` → `main` release PR. Critical or High findings block the release.
-  4. Release. If this is the first deployment, follow [deployment](../operations/deployment.md): the [template roadmap](template-solution-roadmap.md) recorded Bicep and the workflows as written but not yet run.
+  4. Release. If this is the first deployment, follow [deployment](../operations/deployment.md): the [template roadmap](done-template-solution-roadmap.md) recorded Bicep and the workflows as written but not yet run.
 - **Check after deploy (not covered locally):**
   - Play a game in the published Release build (Blazor trimming; `Govern.Core` is kept whole by `TrimMode` partial).
   - Confirm the board works under the Static Web App CSP with no violations in the console. The dev server doesn't send the CSP.
@@ -40,24 +40,24 @@ Run each item through `/develop-feature`. It gets its own plan in `.claude/rules
 
 - **Why:** the Api connects with the PostgreSQL administrator login, and the firewall allows all Azure services. The admin password is the only barrier ([deployment known gaps](../operations/deployment.md#known-gaps-follow-ups)). Formerly follow-up #2.
 - **Approach:** Microsoft Entra authentication with the Web App's system-assigned managed identity. A database role mapped to that identity owns only the `govern` objects, and the connection string holds no password. The admin password stays as break-glass only.
-- **Detailed plan:** [follow-ups delivery, Plan 4](follow-ups-delivery.md#plan-4-least-privilege-database-access-via-entra-managed-identity-2).
+- **Detailed plan:** [follow-ups delivery, Plan 4](done-follow-ups-delivery.md#plan-4-least-privilege-database-access-via-entra-managed-identity-2).
 
 ## 3. Monitoring and alerts
 
 - **Why:** refresh-token theft (EventId 1001), brute force (401/429 spikes) and 5xx responses are only visible in container stdout. Formerly follow-up #5.
 - **Approach:** one Log Analytics workspace, workspace-based Application Insights, and the Azure Monitor OpenTelemetry distro exporting Warning+ logs. Add alerts on EventId 1001, on 5xx rate and on 401/429 spikes, reusing the action group of the storage alert (`infra/modules/alerts.bicep`).
-- **Detailed plan:** [follow-ups delivery, Plan 5](follow-ups-delivery.md#plan-5-monitoring-and-alerts-5).
+- **Detailed plan:** [follow-ups delivery, Plan 5](done-follow-ups-delivery.md#plan-5-monitoring-and-alerts-5).
 
 ## 4. Sign-up email inside the database transaction
 
 - **Why:** the sign-up email should be sent only when the user row commits, with no outbox or hosted job.
-- **Detailed plan:** [session and email verification, Plan 2](session-and-email-verification.md#plan-2-send-the-sign-up-email-inside-the-database-transaction).
+- **Detailed plan:** [session and email verification, Plan 2](done-session-and-email-verification.md#plan-2-send-the-sign-up-email-inside-the-database-transaction).
 
 ## 5. Email verification
 
-- **Why:** accounts are cheap today: there's no email verification, and sign-up is limited only per IP. That makes the game storage abuse (many accounts looping create → join → start → resign) possible over days. The seat quota and the storage alert bound it, and verification (or a daily sign-up cap) is the lasting fix (Medium, [game plan 2 follow-ups](game-lobby.md#follow-ups-from-the-code-review-and-security-audit-before-stage--main)).
+- **Why:** accounts are cheap today: there's no email verification, and sign-up is limited only per IP. That makes the game storage abuse (many accounts looping create → join → start → resign) possible over days. The seat quota and the storage alert bound it, and verification (or a daily sign-up cap) is the lasting fix (Medium, [game plan 2 follow-ups](done-game-lobby.md#follow-ups-from-the-code-review-and-security-audit-before-stage--main)).
 - **Scope:** the Api side, plus the client's confirm-email page (the client shipped first).
-- **Detailed plan:** [session and email verification, Plan 3](session-and-email-verification.md#plan-3-email-verification).
+- **Detailed plan:** [session and email verification, Plan 3](done-session-and-email-verification.md#plan-3-email-verification).
 
 ## 6. Hide a visible enemy unit's movement (UnitView)
 
@@ -72,7 +72,7 @@ Run each item through `/develop-feature`. It gets its own plan in `.claude/rules
 
 ## 8. Game ideas
 
-Deferred from the [game delivery plan](game-delivery.md). None is scheduled. Bigger game mechanics (terrain, resources, rivers, city territory and stats, governors, unit roster and HP combat, builders and buildings, science and culture trees, seasons), plus the UI design system and the game rules reference, are in the [game design roadmap](game-design-roadmap.md).
+Deferred from the [game delivery plan](done-game-delivery.md). None is scheduled. Bigger game mechanics (terrain, resources, rivers, city territory and stats, governors, unit roster and HP combat, builders and buildings, science and culture trees, seasons), plus the UI design system and the game rules reference, are in the [game design roadmap](game-design-roadmap.md).
 
 | Idea | Size | Notes |
 |---|---|---|
