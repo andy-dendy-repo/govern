@@ -8,7 +8,7 @@
 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween"
              Gap="1rem" Wrap="FlexWrap.Wrap" class="top-bar">
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-        <span class="@($"seat-swatch {Seats.Class(View, View.Viewer)}")" title="Your colour"></span>
+        <span class="@($"seat-swatch {Seats.Class(View, View.Viewer)}")" role="img" aria-label="@($"Your colour: seat {Seats.Number(View, View.Viewer)}")"></span>
         <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="turn rz-m-0">@TurnText</RadzenText>
     </RadzenStack>
     @if (View.Status == GameStatus.InProgress)

@@ -28,6 +28,8 @@ public sealed class GameUiService
     /// <param name="selection">The new selection.</param>
     public void Select(Ruleset ruleset, PlayerView view, BoardSelection selection)
     {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
         ArgumentNullException.ThrowIfNull(selection);
         Selection = selection;
         Highlights = BoardClickResolver.Highlights(ruleset, view, selection);

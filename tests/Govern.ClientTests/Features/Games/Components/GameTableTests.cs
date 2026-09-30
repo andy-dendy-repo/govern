@@ -6,6 +6,7 @@ using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
 using Govern.ClientTests.Support;
 using Govern.Core.Map;
+using Govern.Core.State;
 using Govern.Core.Visibility;
 using Microsoft.AspNetCore.Components.Web;
 using static Govern.ClientTests.Support.TestViews;
@@ -305,9 +306,10 @@ public class GameTableTests : ClientTestContext
 
         Tile(cut, At(2, 2)).Click();
 
-        cut.Find(".unit-panel .movement .stat-value").TextContent.ShouldContain("2 of 2");
-        cut.Find(".unit-panel .sight .stat-value").TextContent.ShouldContain("2");
-        cut.Find(".unit-panel .cost .stat-value").TextContent.ShouldContain("6");
+        var settler = Ruleset.Unit(SettlerType);
+        cut.Find(".unit-panel .movement .stat-value").TextContent.ShouldContain($"{settler.Movement} of {settler.Movement}");
+        cut.Find(".unit-panel .sight .stat-value .number").TextContent.ShouldBe($"{settler.Sight}");
+        cut.Find(".unit-panel .cost .stat-value .number").TextContent.ShouldBe($"{settler.ProductionCost}");
         cut.FindAll(".action-bar button.found-city").Count.ShouldBe(1);
     }
 
@@ -328,8 +330,48 @@ public class GameTableTests : ClientTestContext
 
         Tile(cut, At(2, 2)).Click();
 
-        cut.Find(".city-panel .progress-turns").TextContent.ShouldBe("4 turns left");
-        cut.Find("button.produce-soldier .cost-amount").TextContent.ShouldBe("4");
+        // TestViews: your city produces a settler with 2 production so far.
+        var left = (Ruleset.Unit(SettlerType).ProductionCost - 2 + Ruleset.Cities.ProductionPerTurn - 1) / Ruleset.Cities.ProductionPerTurn;
+        cut.Find(".city-panel .progress-turns").TextContent.ShouldBe(left == 1 ? "1 turn left" : $"{left} turns left");
+        cut.Find("button.produce-soldier .cost-amount").TextContent.ShouldBe($"{Ruleset.Unit(SoldierType).ProductionCost}");
+    }
+
+    [Fact]
+    public void Render_EnemyUnitSelected_ShowsNoStatsAndNoActionBar()
+    {
+        var cut = RenderTable(TestGames.Started());
+
+        Tile(cut, At(5, 2)).Click();
+
+        cut.FindAll(".unit-panel").Count.ShouldBe(1);
+        cut.Find(".unit-panel use").GetAttribute("href").ShouldBe("#unit-soldier");
+        cut.FindAll(".unit-panel .stat-table, .action-bar").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_FinishedWithOwnUnitSelected_ShowsNoActionBar()
+    {
+        var cut = RenderTable(TestGames.Started());
+        Tile(cut, At(2, 2)).Click();
+        cut.FindAll(".action-bar").Count.ShouldBe(1);
+
+        cut.Render(parameters => parameters.Add(static table => table.Game, TestGames.Started(view: Start() with { Status = GameStatus.Finished })));
+
+        cut.FindAll(".action-bar").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Escape_WhileConfirmingResign_BacksOutAndKeepsTheSelection()
+    {
+        var cut = RenderTable(TestGames.Started());
+        Tile(cut, At(2, 2)).Click();
+        cut.Find("button.resign").Click();
+
+        cut.Find(".confirm-button").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        cut.FindAll("button.resign").Count.ShouldBe(1);
+        cut.FindAll(".unit-panel").Count.ShouldBe(1);
+        Api.Requests.ShouldBeEmpty();
     }
 
     private IRenderedComponent<GameTable> RenderTable(GetGameResponse game) =>

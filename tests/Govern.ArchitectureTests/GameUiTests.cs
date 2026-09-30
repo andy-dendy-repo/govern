@@ -84,11 +84,12 @@ public partial class GameUiTests
             .ToList();
     }
 
-    // A hex colour, or a functional colour (rgb, rgba, hsl, hsla, hwb, lab, lch, oklab, oklch, color).
-    [GeneratedRegex(@"#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(", RegexOptions.CultureInvariant)]
+    // A hex colour, a functional colour (rgb, rgba, hsl, hsla, hwb, lab, lch, oklab, oklch, color), or a common named colour
+    // as a property value.
+    [GeneratedRegex(@"#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(|:\s*[^;{]*\b(white|black|red|green|blue|yellow|orange|purple|gray|grey|silver|lightyellow|navy|teal|maroon)\b", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex ColourValueRegex();
 
-    // fill, stroke, color, background or style attributes carrying a colour value.
-    [GeneratedRegex(@"\b(fill|stroke|color|background|style)\s*=\s*""[^""]*(#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?)\()", RegexOptions.CultureInvariant)]
+    // fill, stroke, color, background or style attributes carrying a colour value (hex, functional or a common name).
+    [GeneratedRegex(@"\b(fill|stroke|color|background|style)\s*=\s*""[^""]*(#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?)\(|\b(white|black|red|green|blue|yellow|orange|purple|gray|grey)\b)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex RazorColourAttributeRegex();
 }

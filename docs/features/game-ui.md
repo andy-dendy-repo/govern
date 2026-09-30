@@ -23,17 +23,17 @@ A started game (`Features/Games/Components/GameTable`) is a CSS grid with fixed 
 | Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel`) or a hint | one panel per new selection kind (tile, building) |
 | Full-screen view | (added with its first user) | Large content: tech and culture trees (G11), the city screen, governors (G12) | |
 
-The action bar floats over the bottom-left of the map, so a unit's actions sit next to the board without scrolling. On screens narrower than 60rem the zones stack: top bar, map (with its action bar), side panel (map first, panels below).
+The action bar floats over the bottom-left of the map, so a unit's actions sit next to the board without scrolling; it covers a few tiles in that corner, which the player reaches by panning. On screens narrower than 60rem the zones stack: top bar, map (with its action bar), side panel (map first, panels below).
 
 ## Interaction rules
 
 | Rule | How |
 |---|---|
 | Select, then act | A click selects a unit or city; moves and attacks are clicks on highlighted tiles; other actions are buttons in the action bar or side panel |
-| Exact numbers on demand | `NumberTooltip`: hover shows the title; the info button shows it on focus or tap (no long press) |
-| Destructive actions confirm inline | `ConfirmButton`: the first click asks, a second click on the confirm button acts, Cancel does nothing (Resign today) |
+| Exact numbers on demand | `NumberTooltip`: hover shows the title; the info button shows it on click, Enter, Space or tap (no long press); Esc closes it |
+| Destructive actions confirm inline | `ConfirmButton`: the first click asks, a second click on the confirm button acts, Cancel or Esc backs out (Resign today) |
 | No accidental actions | A drag on the board is never a click; commands are sent one at a time; a link never acts on its own |
-| Keyboard | Every action is a button (Tab reaches it); Esc clears the selection (`GameUiService.Escape`) |
+| Keyboard | Every action is a button (Tab reaches it); Esc clears the selection (`GameUiService.Escape`). The screen takes keyboard focus on arrival and after each command (whose disabled buttons would drop it); an Esc handled by an open `ConfirmButton` or `NumberTooltip` stops there |
 
 ## UI state (GameUiService)
 
@@ -45,7 +45,7 @@ All colours are CSS custom properties in `wwwroot/css/tokens.css` (`--gv-<group>
 
 | Tokens | Use |
 |---|---|
-| `--gv-seat-1` … `--gv-seat-4` | One colour per seat in turn order (`PlayerView.Players`); classes `seat-1`… set `fill` and `color` (`Helpers/Seats`) |
+| `--gv-seat-1` … `--gv-seat-4` | One colour per seat in turn order (`PlayerView.Players`); classes `seat-1`… set `fill` and `color` (`Helpers/Seats`). More than four seats (F10) needs more tokens |
 | `--gv-terrain-<id>`, `--gv-terrain-<id>-explored` | Visible and remembered shade per ruleset terrain. `board.css` maps each id with one `.terrain-<id>` rule (tiles and terrain icons) |
 | `--gv-board-*`, `--gv-tile-*`, `--gv-overlay-*`, `--gv-selected`, `--gv-label*`, `--gv-icon-mark` | The board |
 | `--gv-text`, `--gv-surface*`, `--gv-border`, `--gv-accent`, `--gv-danger` | Panels and components, built on Radzen's `--rz-*` theme variables |
@@ -81,7 +81,7 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | `GameSprite`, `GameIcon` | built | The icon set and one icon |
 | `StatTable` | built | Icon, label and value rows (`Models/StatRow`), with an optional detail tooltip; `UnitPanel` shows movement left, sight and cost |
 | `NumberTooltip` | built | A number with its exact value and origin (hover, focus, tap) |
-| `ProgressBar` | built | Progress towards a cost with "n turns left" at the current rate; `CityPanel` shows production |
+| `ProgressBar` | built | Progress towards a cost with "n turns left" at the current rate ("Complete" once reached, "Never at this rate" without income); `CityPanel` shows production |
 | `CostLabel` | built | Icon and amount; each Build button shows the unit's production cost |
 | `ConfirmButton` | built | Inline confirm for destructive actions (Resign) |
 | `YieldList`, `ResourceBadge` | planned by G5/G8 | Yield and resource rows and badges |

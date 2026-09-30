@@ -23,7 +23,7 @@ The agreed format and database record are in `docs/game/game-data.md`. This is r
 - **Ruleset A — Core reads a ruleset.** The engine takes a `Ruleset` everywhere. The Api and the client load the default from the repository file. No database change, and no change in behaviour: the file holds today's values.
 - **Ruleset B — store and pin.** The `rulesets` table and its seeding migration. Games are pinned at start through a cached repository. A `GET` endpoint serves a version, and the client fetches the ruleset of the game it shows.
 
-Both branch from `origin/gamecore` (A after PR #19, UnitView, is merged, since both touch the view types) and PR to `gamecore`, through `/develop-feature`.
+Both branch from `origin/stage` and PR to `stage` (`gamecore` is retired since 2026-09-30), through `/develop-feature`.
 
 ## The agreed document (v1, today's values)
 ```json

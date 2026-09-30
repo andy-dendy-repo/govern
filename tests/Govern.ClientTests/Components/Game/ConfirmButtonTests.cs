@@ -1,5 +1,6 @@
 using Govern.Client.Components.Game;
 using Govern.ClientTests.Support;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Govern.ClientTests.Components.Game;
 
@@ -38,6 +39,18 @@ public class ConfirmButtonTests : ClientTestContext
 
         cut.Find("button.disband").Click();
         cut.Find("button.dismiss").Click();
+
+        _confirmed.ShouldBe(0);
+        cut.FindAll("button.disband").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Escape_WhileAsking_BacksOut()
+    {
+        var cut = RenderButton();
+        cut.Find("button.disband").Click();
+
+        cut.Find(".confirm-button").KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
         _confirmed.ShouldBe(0);
         cut.FindAll("button.disband").Count.ShouldBe(1);

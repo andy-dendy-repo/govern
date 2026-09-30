@@ -10,8 +10,8 @@ public class ProgressBarTests : ClientTestContext
     [InlineData(5, 6, 1, "1 turn left")]
     [InlineData(1, 6, 2, "3 turns left")]
     [InlineData(2, 7, 2, "3 turns left")]
-    [InlineData(6, 6, 1, "Done this turn")]
-    [InlineData(8, 6, 1, "Done this turn")]
+    [InlineData(6, 6, 1, "Complete")]
+    [InlineData(8, 6, 1, "Complete")]
     [InlineData(2, 6, 0, "Never at this rate")]
     public void Render_Progress_ShowsTheTurnsLeft(int value, int max, int perTurn, string expected)
     {

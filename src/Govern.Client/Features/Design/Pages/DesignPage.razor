@@ -3,17 +3,18 @@
    the icon set and the seat and terrain colours. Development only: elsewhere it shows the not-found text. Look here before
    building a new component, and add each new one here. *@
 @using Govern.Client.Features.Games.Services
+@using Govern.Core.Rulesets
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting
-
-<PageTitle>Design system - Govern</PageTitle>
 
 @if (!Environment.IsDevelopment())
 {
+    <PageTitle>Not found - Govern</PageTitle>
     <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">Not found</RadzenText>
     <RadzenText TextStyle="TextStyle.Body1" class="not-found">Sorry, the page you requested does not exist.</RadzenText>
 }
 else
 {
+    <PageTitle>Design system - Govern</PageTitle>
     <GameSprite/>
     <RadzenStack Gap="1.5rem" class="design-page">
         <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">Design system</RadzenText>
@@ -68,5 +69,5 @@ else
 
     [Inject] private RulesetService Rulesets { get; set; } = null!;
 
-    private Govern.Core.Rulesets.Ruleset Ruleset => Rulesets.Ruleset;
+    private Ruleset Ruleset => Rulesets.Ruleset;
 }

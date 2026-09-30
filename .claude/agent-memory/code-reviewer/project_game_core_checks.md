@@ -10,7 +10,7 @@ Recurring risks found in the first Govern.Core review (2026-09-27, Plan 1 on fea
 - **Sight vs reach invariant:** pathfinding blocked by units and `City.MinimumSpacing` checks read full state; they are only leak-free while Movement (at min terrain cost) <= Sight and MinimumSpacing - 1 <= settler Sight. Flag new units/terrain that break it.
 - **Client preview gap:** `GameEngine.ReachableTiles` takes `GameState`, but the client only gets `PlayerView` (Plan 5 relies on it).
 - **STJ:** missing `type` discriminator on an abstract polymorphic base throws `NotSupportedException`, not `JsonException` (500 in minimal-API binding). File-based `dotnet run` apps default to AOT with reflection JSON disabled; add `#:property PublishAot=false` when probing.
-- **Branch flow:** game work PRs target `gamecore`; ci.yml and bash-guard only know stage/main.
+- **Branch flow:** `gamecore` was retired 2026-09-30; game work branches from and PRs to `stage`. Stale `gamecore` mentions remained in ci.yml triggers and docs/plans/deferred (follow-ups.md, ruleset-b-store-and-pin.md).
 
 Fixed in the same PR: both oracles, ReachableTiles viewer scoping, JsonException wrapping, schema pre-check, PQ tie-break, CI trigger for gamecore, purity arch tests. Still open: PlayerView-based preview overload (Plan 5), bash-guard does not protect gamecore.
 

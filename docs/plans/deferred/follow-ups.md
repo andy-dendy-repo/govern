@@ -11,7 +11,7 @@ updated: 2026-09-30
 
 The items were collected from the earlier plans (all [done](../done/)). Ids `F1`–`F10` keep the numbers of the former "next follow-ups" list (`F6`, the `UnitView` change, is done). Game ideas that were item 8 there are split: game log and animations, player-chosen city names and the scale-out backplane are now `F11`–`F13` in the backlog's Next list; turn timers stay here as `F8`.
 
-When an item is picked up, it runs through `/develop-feature`: its own plan in `.claude/rules/planning.md` format under `docs/plans/active/`, a branch, and a PR. Game work branches from and PRs to `gamecore` until the game ships; everything else branches from `stage`.
+When an item is picked up, it runs through `/develop-feature`: its own plan in `.claude/rules/planning.md` format under `docs/plans/active/`, a branch, and a PR. Everything, game work included, branches from and PRs to `stage` (`gamecore` was merged into `stage` and retired on 2026-09-30).
 
 | Id | Item | Area | Size |
 |---|---|---|---|
@@ -27,11 +27,10 @@ When an item is picked up, it runs through `/develop-feature`: its own plan in `
 
 ## F1. Ship the game
 
-- **Why:** the game (Plans 1–5) lives on `gamecore`. Players can't reach it until it is released.
+- **Why:** the game (Plans 1–5) is on `stage` (merged from the retired `gamecore` on 2026-09-30). Players can't reach it until it is released.
 - **Steps:**
-  1. Open a PR from `gamecore` to `stage`.
-  2. Run the `security-auditor` agent before the `stage` → `main` release PR. Critical or High findings block the release.
-  3. Release. If this is the first deployment, follow [deployment](../../operations/deployment.md): the [template roadmap](../done/template-solution-roadmap.md) recorded Bicep and the workflows as written but not yet run.
+  1. Run the `security-auditor` agent before the `stage` → `main` release PR. Critical or High findings block the release.
+  2. Release. If this is the first deployment, follow [deployment](../../operations/deployment.md): the [template roadmap](../done/template-solution-roadmap.md) recorded Bicep and the workflows as written but not yet run.
 - **Check after deploy (not covered locally):**
   - Play a game in the published Release build (Blazor trimming; `Govern.Core` is kept whole by `TrimMode` partial).
   - Confirm the board works under the Static Web App CSP with no violations in the console. The dev server doesn't send the CSP.

@@ -69,6 +69,7 @@
     overflow: hidden;
 }
 
+/* Icons take the text colour; a seat class (board.css) colours one by setting both fill and color, so keep both there. */
 .game-icon {
     width: var(--gv-icon-size);
     height: var(--gv-icon-size);

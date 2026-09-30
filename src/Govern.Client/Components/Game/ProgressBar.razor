@@ -21,7 +21,7 @@
     private string TurnsText => TurnsLeft switch
     {
         null => "Never at this rate",
-        0 => "Done this turn",
+        0 => "Complete",
         1 => "1 turn left",
         var turns => $"{turns} turns left",
     };
