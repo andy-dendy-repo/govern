@@ -53,7 +53,7 @@ updated: 2026-09-30
 
 ## Versions in the repository
 
-*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) and `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9); they are kept as the record of what was published.
+*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) and `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
 
 ## Format conventions
 
@@ -165,7 +165,7 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 | `movementCost` | int ≥ 1 | Movement points to enter the tile (not used while `isPassable` is false, but still required) |
 | `isPassable` | bool | Whether land units can enter it |
 | `sightBonus` | int ≥ 0 | Extra sight, in tiles, for a unit or city standing on the tile |
-| `defenceBonus` | int ≥ 0 | Extra strength for a unit defending on the tile (G9) |
+| `defenceBonus` | int 0..100 | Extra strength for a unit defending on the tile (G9) |
 
 ```json
 "terrains": [
@@ -191,8 +191,8 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 | `movement` | int ≥ 1 | Movement points per turn | 2 |
 | `sight` | int ≥ 1 | Sight radius | 2 |
 | `productionCost` | int ≥ 1 | Production a city needs to build it | 4 |
-| `strength` | int ≥ 1, optional | Strength in melee and when attacked; left out for a civilian, which any attack destroys | 20 |
-| `ranged` | object, optional | `{ "strength": int ≥ 1, "range": 1..sight }`; set exactly when the unit has `ranged_attack` | — |
+| `strength` | int 1..1000, optional | Strength in melee and when attacked; left out for a civilian, which any attack destroys | 20 |
+| `ranged` | object, optional | `{ "strength": 1..1000, "range": 1..sight }`; set exactly when the unit has `ranged_attack` | — |
 | `abilities` | list of abilities | What it can do | `attack` |
 
 ```json
@@ -267,7 +267,7 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 }
 ```
 
-- **Validation:** `maxHealth` ≥ 1; `1 ≤ min ≤ base ≤ max`; `perStrengthPoint` ≥ 0; `spreadPercent` 0..99; healing ≥ 0; each counter names classes some unit has, a bonus ≥ 1, and no class pair twice.
+- **Validation:** `maxHealth` 1..1000; `1 ≤ min ≤ base ≤ max ≤ 1000`; `perStrengthPoint` 0..100; `spreadPercent` 0..99; healing 0..1000; each counter names classes some unit has, a bonus 1..100, and no class pair twice. Unit strengths are 1..1000 and terrain `defenceBonus` 0..100. The upper bounds keep the integer combat maths far from overflowing.
 
 ## Texts and languages
 
@@ -305,7 +305,7 @@ Everything a player reads about the game's content comes from here: unit, class 
 - Ids are lower snake_case (a letter, then letters, digits or `_`, at most 32 characters) and unique per list; `units` and `terrains` are not empty.
 - Every reference resolves: `startingUnits`, `initialProduction`, `defaultTerrain`, `map.generation.patches[].terrain`, `nameTemplate`.
 - Map generation: a patch terrain is not `defaultTerrain` and not listed twice; `sharePerMille` and `patchSize` ≥ 1; shares add up to at most 500, impassable ones to at most 150.
-- `sightBonus` and `defenceBonus` ≥ 0.
+- `sightBonus` ≥ 0; `defenceBonus` 0..100.
 - Units and combat: see [Units](#units-units) and [Combat](#combat-combat).
 - Numbers are in range: movement, sight, costs, city sight, spacing and production ≥ 1; `8 ≤ minSize ≤ maxSize ≤ 40`; the default size within them; `players` = 2.
 - Spawn: `zoneColumnsPerMille` 1–250; `edgeMargin` ≥ 1 and less than the zone on the smallest map; `startingUnits` no more than that zone.

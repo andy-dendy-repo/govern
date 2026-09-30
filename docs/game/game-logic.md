@@ -141,7 +141,7 @@ After every successful command:
 3. **The view** a player receives:
    - every tile, as unexplored (no terrain), explored (terrain, as last seen) or visible;
    - their own units and cities, plus enemy units and cities on currently visible tiles;
-   - enemy cities without their production, and enemy units without their movement left (their health is shown);
+   - enemy cities without their production, and enemy units without their movement left (their health is shown). A known, accepted leak: a hurt unit heals only when it kept all its movement, so an opponent who sees a hurt unit on the same tile before and after its owner's turn learns whether it moved (one bit per hurt, visible unit per turn);
    - units and cities ordered by id, so the order reveals nothing about when they were created;
    - the round, the current player, the status, the winner and each player's status.
 4. **The view version** is a fingerprint (SHA-256) of everything in the view. It changes only when something the player can see changes, so it can't be used to count the opponent's hidden actions. A command must quote the version it was based on (the server rejects it with `game.stale_version` if the view changed since).

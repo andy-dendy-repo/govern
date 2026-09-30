@@ -170,9 +170,3 @@
     flex: 1;
     min-width: 10rem;
 }
-
-.combat-forecast .combat-modifiers {
-    margin: 0;
-    padding-inline-start: var(--gv-space-3);
-    color: var(--gv-text-muted);
-}

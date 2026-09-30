@@ -32,6 +32,34 @@ public class AttackActionTests
     }
 
     [Fact]
+    public void Execute_DamageRolls_AreHashedNotRawGeneratorDraws()
+    {
+        // Damage is shown to both players, and raw SplitMix64 draws are invertible: a raw roll would let a player rebuild the
+        // generator state. Strength 20 against 20 deals 30 × roll percent (80-120), defender first, then the attacker.
+        var builder = new GameStateBuilder().WithCapitals();
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        builder.AddUnit(P2, TestRulesets.Soldier, 4, 3);
+        var rawDiffers = false;
+
+        foreach (var rngState in new ulong[] { 1, 42, 7_777, 123_456_789 })
+        {
+            var hashed = new DeterministicRandom(rngState);
+            var raw = new DeterministicRandom(rngState);
+            (int Dealt, int Taken) expected = (30 * hashed.NextHashed(80, 121) / 100, 30 * hashed.NextHashed(80, 121) / 100);
+            (int Dealt, int Taken) rawRolls = (30 * raw.Next(80, 121) / 100, 30 * raw.Next(80, 121) / 100);
+
+            var state = builder.Build() with { RngState = rngState };
+            var hit = GameEngine.Execute(TestRulesets.Default, state, P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed()
+                .Events.OfType<UnitAttackedEvent>().Single();
+
+            (hit.DamageDealt, hit.DamageTaken).ShouldBe(expected);
+            rawDiffers |= rawRolls != expected;
+        }
+
+        rawDiffers.ShouldBeTrue("the seeds must tell hashed and raw rolls apart");
+    }
+
+    [Fact]
     public void Execute_DefenderAtLowHealth_IsDestroyed()
     {
         var builder = new GameStateBuilder().WithCapitals();

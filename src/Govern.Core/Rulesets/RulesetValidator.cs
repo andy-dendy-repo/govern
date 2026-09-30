@@ -22,6 +22,9 @@ internal static class RulesetValidator
     private const int MaxGeneratedSharePerMille = 500;
     private const int MaxImpassableSharePerMille = 150;
 
+    // Keeps the integer combat maths far from overflowing (see CombatRulesValidator).
+    private const int MaxDefenceBonus = 100;
+
     public static ImmutableArray<RulesetProblem> Validate(RulesetDocument document)
     {
         var problems = new List<RulesetProblem>();
@@ -95,7 +98,7 @@ internal static class RulesetValidator
         {
             AtLeast(terrains[index].MovementCost, 1, $"$.terrains[{index}].movementCost", problems);
             AtLeast(terrains[index].SightBonus, 0, $"$.terrains[{index}].sightBonus", problems);
-            AtLeast(terrains[index].DefenceBonus, 0, $"$.terrains[{index}].defenceBonus", problems);
+            InRange(terrains[index].DefenceBonus, 0, MaxDefenceBonus, $"$.terrains[{index}].defenceBonus", problems);
         }
 
         if (!terrains.IsEmpty && !terrains.Any(static terrain => terrain.IsPassable))

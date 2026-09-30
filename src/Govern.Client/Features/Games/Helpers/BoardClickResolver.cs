@@ -20,8 +20,9 @@ public static class BoardClickResolver
     /// <param name="coord">The clicked tile.</param>
     /// <returns>
     /// A move by the selected own unit when the tile allows it (never while it is not the player's turn or the game is over).
-    /// On an enemy unit it can attack, the first click selects it as the <see cref="BoardSelection.Target"/> (the forecast is
-    /// shown) and a second click attacks; an undefended enemy city is captured at once. Otherwise the new selection: the unit on
+    /// On an enemy unit it can attack, a click selects it as the <see cref="BoardSelection.Target"/> (the forecast is shown);
+    /// only the forecast's Attack button attacks, so a double-click never attacks unseen. An undefended enemy city is captured
+    /// at once. Otherwise the new selection: the unit on
     /// the tile (clicking a selected unit again selects the player's city under it), else the city on the tile, else nothing.
     /// </returns>
     public static BoardClick Resolve(Ruleset ruleset, PlayerView view, BoardSelection selection, HexCoord coord)
@@ -39,7 +40,7 @@ public static class BoardClickResolver
 
             if (GameEngine.AttackTargets(ruleset, view, unitId).Contains(coord))
             {
-                return view.UnitAt(coord) is null || selection.Target == coord
+                return view.UnitAt(coord) is null
                     ? new BoardClick(selection with { Target = null }, new AttackCommand(unitId, coord))
                     : new BoardClick(selection with { Target = coord }, null);
             }

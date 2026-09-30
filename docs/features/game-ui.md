@@ -29,7 +29,7 @@ The action bar floats over the bottom-left of the map, so a unit's actions sit n
 
 | Rule | How |
 |---|---|
-| Select, then act | A click selects a unit or city; moves are clicks on highlighted tiles. An attack on a unit takes two steps: the first click on the target marks it and shows the combat forecast, a second click (or the forecast's Attack button) attacks, Cancel or Esc backs out. Capturing an undefended city is one click (nothing to forecast). Other actions are buttons in the action bar or side panel |
+| Select, then act | A click selects a unit or city; moves are clicks on highlighted tiles. An attack on a unit takes two steps: a click on the target marks it and shows the combat forecast, only the forecast's Attack button attacks (so a double-click or double-tap never attacks unseen), Cancel or Esc backs out. Capturing an undefended city is one click (nothing to forecast). Other actions are buttons in the action bar or side panel |
 | Exact numbers on demand | `NumberTooltip`: hover shows the title; the info button shows it on click, Enter, Space or tap (no long press); Esc closes it |
 | Destructive actions confirm inline | `ConfirmButton`: the first click asks, a second click on the confirm button acts, Cancel or Esc backs out (Resign today) |
 | No accidental actions | A drag on the board is never a click; commands are sent one at a time; a link never acts on its own |
