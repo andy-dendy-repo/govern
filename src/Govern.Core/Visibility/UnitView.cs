@@ -7,7 +7,9 @@ namespace Govern.Core.Visibility;
 
 /// <summary>
 /// A unit as a player sees it. Movement left is shown only for the viewer's own units: an enemy's would reveal how far the
-/// unit moved through fog this turn, or that it attacked. Health is shown for every unit the viewer sees, as on the board.
+/// unit moved through fog this turn, or that it attacked. Health is shown for every unit the viewer sees, as on the board; since a
+/// hurt unit heals only when it kept all its movement, a hurt unit seen before and after its owner's turn reveals whether it
+/// moved (an accepted leak, see docs/game/game-logic.md).
 /// </summary>
 /// <param name="Id">Unit identifier.</param>
 /// <param name="Owner">Player who controls the unit.</param>

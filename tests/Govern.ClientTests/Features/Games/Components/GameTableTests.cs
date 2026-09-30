@@ -414,17 +414,16 @@ public class GameTableTests : ClientTestContext
     }
 
     [Fact]
-    public void Attack_SecondClickOnTheTarget_SendsTheAttack()
+    public void Attack_SecondClickOnTheTarget_KeepsTheForecastAndSendsNothing()
     {
-        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started(view: AdjacentSoldiers())));
         var cut = RenderTable(TestGames.Started(view: AdjacentSoldiers()));
         Tile(cut, At(3, 2)).Click();
         Tile(cut, At(4, 2)).Click();
 
         Tile(cut, At(4, 2)).Click();
 
-        cut.WaitForAssertion(() => _changed.Count.ShouldBe(1));
-        Command(0)["command"]!["type"]!.GetValue<string>().ShouldBe("attack");
+        cut.FindAll(".combat-forecast").Count.ShouldBe(1);
+        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
     }
 
     [Fact]

@@ -32,7 +32,7 @@ public class BoardClickResolverTests
     }
 
     [Fact]
-    public void Resolve_SelectedSoldierAndAdjacentEnemy_FirstShowsTheForecastThenAttacks()
+    public void Resolve_SelectedSoldierAndAdjacentEnemy_ShowsTheForecastAndNeverAttacksOnAClick()
     {
         var view = Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
         var selection = BoardSelection.Of(YourSoldier);
@@ -41,7 +41,7 @@ public class BoardClickResolverTests
         var second = BoardClickResolver.Resolve(Ruleset, view, first.Next, At(4, 2));
 
         first.ShouldBe(new BoardClick(selection with { Target = At(4, 2) }, null));
-        second.ShouldBe(new BoardClick(selection, new AttackCommand(YourSoldier, At(4, 2))));
+        second.ShouldBe(first);
     }
 
     [Fact]

@@ -82,7 +82,7 @@ A tile's terrain decides how many movement points it costs to enter, whether lan
 - **Ranged attack:** an enemy unit up to the unit's range away. Only the target takes damage: it can't hit back. A ranged unit can't attack a city with no unit on it.
 - **Attacking a city with no unit on it** (melee only) captures the city. The attacker moves into it with 0 movement, the city becomes yours, and its production progress resets when "Capturing a city resets its production" is Yes under "Game numbers".
 - A city with a unit on it is defended: fight the unit first.
-- Before you attack a unit, the game shows the forecast: both units' strength in this fight, what changes it, and how much damage each side can take. Click the target (or the forecast's Attack button) again to attack, or Cancel (Esc). The damage always lands within the forecast.
+- Before you attack a unit, the game shows the forecast: both units' strength in this fight, what changes it, and how much damage each side can take. Click the forecast's Attack button to attack, or Cancel (Esc). The damage always lands within the forecast.
 
 ## Combat
 

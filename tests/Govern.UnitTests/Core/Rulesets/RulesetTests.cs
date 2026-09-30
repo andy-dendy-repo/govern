@@ -78,6 +78,14 @@ public class RulesetTests
         ["counter without a bonus"] = json => json["combat"]!["counters"]![0]!["bonus"] = 0,
         ["counter listed twice"] = json => json["combat"]!["counters"]![1] = json["combat"]!["counters"]![0]!.DeepClone(),
         ["missing class name"] = json => json["texts"]!.AsObject().Remove("class.cavalry.name"),
+        ["defence bonus too big"] = json => json["terrains"]![1]!["defenceBonus"] = 101,
+        ["strength too big"] = json => json["units"]![1]!["strength"] = 1001,
+        ["ranged strength too big"] = json => json["units"]![4]!["ranged"]!["strength"] = 1001,
+        ["health too big"] = json => json["combat"]!["maxHealth"] = 1001,
+        ["maximum damage too big"] = json => json["combat"]!["damage"]!["max"] = 1001,
+        ["damage per strength point too big"] = json => json["combat"]!["damage"]!["perStrengthPoint"] = 101,
+        ["healing too big"] = json => json["combat"]!["healing"]!["perTurn"] = 1001,
+        ["counter bonus too big"] = json => json["combat"]!["counters"]![0]!["bonus"] = 101,
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -149,6 +157,14 @@ public class RulesetTests
         { "counter without a bonus", "$.combat.counters[0].bonus" },
         { "counter listed twice", "$.combat.counters[1]" },
         { "missing class name", "$.texts" },
+        { "defence bonus too big", "$.terrains[1].defenceBonus" },
+        { "strength too big", "$.units[1].strength" },
+        { "ranged strength too big", "$.units[4].ranged.strength" },
+        { "health too big", "$.combat.maxHealth" },
+        { "maximum damage too big", "$.combat.damage.max" },
+        { "damage per strength point too big", "$.combat.damage.perStrengthPoint" },
+        { "healing too big", "$.combat.healing.perTurn" },
+        { "counter bonus too big", "$.combat.counters[0].bonus" },
     };
 
     [Fact]
