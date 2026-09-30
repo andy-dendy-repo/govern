@@ -1,4 +1,5 @@
 using Govern.Client.Features.Games.Helpers;
+using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
 using Govern.Core.Rulesets;
 using Govern.Core.Visibility;
@@ -6,9 +7,9 @@ using Govern.Core.Visibility;
 namespace Govern.Client.Features.Games.Services;
 
 /// <summary>
-/// The UI state of one game screen: what is selected and which tiles are highlighted for it. <c>GameTable</c> creates one
-/// per game and passes it down as a cascading value, so the panels read the selection instead of receiving it through
-/// parameter chains. Later mechanics add their UI state here (the active lens, an open full-screen view).
+/// The UI state of one game screen: what is selected, which tiles are highlighted for it, and which map lens is on.
+/// <c>GameTable</c> creates one per game and passes it down as a cascading value, so the panels read the selection instead of
+/// receiving it through parameter chains. Later mechanics add their UI state here (an open full-screen view).
 /// It holds no game state: the view stays the server's, and every method takes the view it applies to.
 /// </summary>
 public sealed class GameUiService
@@ -18,6 +19,9 @@ public sealed class GameUiService
 
     /// <summary>The tiles marked for the selection.</summary>
     public BoardHighlights Highlights { get; private set; } = BoardHighlights.None;
+
+    /// <summary>The map lens drawn over the board, or <see langword="null"/> when none is on.</summary>
+    public IMapLens? ActiveLens { get; private set; }
 
     /// <summary>Raised after the state changed.</summary>
     public event Action? Changed;
@@ -53,5 +57,14 @@ public sealed class GameUiService
         (Selection, Highlights) = (BoardSelection.None, BoardHighlights.None);
         Changed?.Invoke();
         return true;
+    }
+
+    /// <summary>Turns a lens on, or off when it is the active one. One lens is on at a time.</summary>
+    /// <param name="lens">The lens the player toggled.</param>
+    public void ToggleLens(IMapLens lens)
+    {
+        ArgumentNullException.ThrowIfNull(lens);
+        ActiveLens = ActiveLens?.Id == lens.Id ? null : lens;
+        Changed?.Invoke();
     }
 }

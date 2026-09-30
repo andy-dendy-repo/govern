@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Govern.Client.Features.Games.Components.Board;
 using Govern.Client.Features.Games.Enums;
+using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.ClientTests.Support;
@@ -81,6 +82,54 @@ public partial class GameBoardTests : ClientTestContext
         var order = Enum.GetNames<BoardLayer>().Select(static name => name.ToLowerInvariant()).ToList();
         rendered.ShouldAllBe(layer => order.Contains(layer));
         rendered.Select(layer => order.IndexOf(layer)).ShouldBeInOrder(SortDirection.Ascending);
+    }
+
+    [Fact]
+    public void Render_KnownTerrain_DrawsItsSymbolExceptForTheDefaultTerrain()
+    {
+        var view = Create(
+            visibility: static coord => coord.R == 0 ? TileVisibility.Unexplored : coord.R == 1 ? TileVisibility.Explored : TileVisibility.Visible,
+            terrain: static coord => coord.Column == 3 ? Forest : coord.Column == 4 ? Mountains : Plains);
+
+        var cut = RenderBoard(view);
+
+        var symbols = cut.FindAll("use.terrain-symbol");
+        symbols.Count.ShouldBe(2 * (Height - 1));
+        cut.FindAll("use.terrain-symbol.terrain-forest.explored").Count.ShouldBe(1);
+        cut.FindAll("use.terrain-symbol.terrain-mountains.visible").Count.ShouldBe(Height - 2);
+        cut.Find("use.terrain-symbol.terrain-forest").GetAttribute("href").ShouldBe("#terrain-forest");
+    }
+
+    [Fact]
+    public void Render_NoLens_DrawsNoLensLayer()
+    {
+        var cut = RenderBoard(Start());
+
+        cut.FindAll("g[data-layer=lens]").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_MovementCostLens_MarksEveryKnownTileWithItsCost()
+    {
+        var view = Create(
+            visibility: static coord => coord.R == 0 ? TileVisibility.Unexplored : TileVisibility.Visible,
+            terrain: static coord => coord.Column == 3 ? Forest : coord.Column == 4 ? Mountains : Plains);
+
+        var cut = RenderBoard(view, lens: new MovementCostLens(new RulesetService()));
+
+        cut.Find("g[data-layer=lens]").ClassList.ShouldContain("lens-movement-cost");
+        cut.FindAll("g.lens-mark").Count.ShouldBe(Width * (Height - 1));
+        cut.FindAll("g.lens-mark.costly text").Select(static text => text.TextContent).ShouldAllBe(label => label == "2");
+        cut.FindAll("g.lens-mark.blocked").Count.ShouldBe(Height - 1);
+        cut.Find("g.lens-mark.blocked title").TextContent.ShouldBe("Mountains: land units can't enter");
+    }
+
+    [Fact]
+    public void Render_Lens_SitsBetweenTheTerrainAndTheHighlights()
+    {
+        var cut = RenderBoard(Start(), highlights: new BoardHighlights([At(1, 1)], []), lens: new MovementCostLens(new RulesetService()));
+
+        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "lens", "highlights", "cities", "units"]);
     }
 
     [Fact]
@@ -266,10 +315,11 @@ public partial class GameBoardTests : ClientTestContext
     }
 
     private IRenderedComponent<GameBoard> RenderBoard(
-        PlayerView view, BoardSelection? selection = null, BoardHighlights? highlights = null, bool disabled = false)
+        PlayerView view, BoardSelection? selection = null, BoardHighlights? highlights = null, bool disabled = false, IMapLens? lens = null)
     {
         var cut = Render<GameBoard>(parameters => parameters
             .Add(static board => board.View, view)
+            .Add(static board => board.Lens, lens)
             .Add(static board => board.Selection, selection ?? BoardSelection.None)
             .Add(static board => board.Highlights, highlights ?? BoardHighlights.None)
             .Add(static board => board.Disabled, disabled)

@@ -150,7 +150,7 @@ public static class Templates
         };
     }
 
-    // CFT: UF + Layout, Components, Auth, Features/[Feature]/ (UF + Pages, Components, Clients).
+    // CFT: UF + Layout, Components, Auth, Features/[Feature]/ (UF + Pages, Components, Clients, Lenses).
     private static FolderSpec Client()
     {
         string[] rootFiles = ["App.razor", "DependencyInjection.cs", "GlobalUsings.cs", "Program.cs", "_Imports.razor"];
@@ -186,6 +186,11 @@ public static class Templates
                             {
                                 IsAllowedFile = static file => file.EndsWith("Client.cs", StringComparison.Ordinal),
                                 AllowedFilesDescription = "*Client.cs (typed Api clients)",
+                            },
+                            ["Lenses"] = new FolderSpec
+                            {
+                                IsAllowedFile = static file => file.EndsWith("Lens.cs", StringComparison.Ordinal),
+                                AllowedFilesDescription = "*Lens.cs (IMapLens and the map lenses)",
                             },
                         },
                     },

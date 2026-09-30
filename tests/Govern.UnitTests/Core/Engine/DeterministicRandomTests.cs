@@ -45,4 +45,37 @@ public class DeterministicRandomTests
     {
         Should.Throw<ArgumentOutOfRangeException>(() => new DeterministicRandom(1).Next(min, max));
     }
+
+    [Fact]
+    public void NextHashed_SameSeed_ProducesSameSequenceInRange()
+    {
+        var first = new DeterministicRandom(123);
+        var second = new DeterministicRandom(123);
+
+        var a = Enumerable.Range(0, 1000).Select(_ => first.NextHashed(-3, 4)).ToList();
+        var b = Enumerable.Range(0, 1000).Select(_ => second.NextHashed(-3, 4)).ToList();
+
+        a.ShouldBe(b);
+        a.ShouldAllBe(value => value >= -3 && value < 4);
+        a.Distinct().Count().ShouldBe(7);
+    }
+
+    [Fact]
+    public void NextHashed_SameState_DoesNotExposeTheRawDrawsLowBits()
+    {
+        var hashed = new DeterministicRandom(99);
+        var raw = new DeterministicRandom(99);
+
+        var hashedDraws = Enumerable.Range(0, 64).Select(_ => hashed.NextHashed(0, 1 << 16)).ToList();
+        var rawDraws = Enumerable.Range(0, 64).Select(_ => raw.Next(0, 1 << 16)).ToList();
+
+        hashedDraws.Zip(rawDraws).Count(pair => pair.First == pair.Second).ShouldBeLessThan(2);
+        hashed.State.ShouldBe(raw.State);
+    }
+
+    [Fact]
+    public void NextHashed_EmptyRange_Throws()
+    {
+        Should.Throw<ArgumentOutOfRangeException>(() => new DeterministicRandom(1).NextHashed(5, 5));
+    }
 }

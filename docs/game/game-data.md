@@ -1,13 +1,13 @@
 ---
 title: Game data (the loadable ruleset)
-tags: [game, core, ruleset, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
+tags: [game, core, ruleset, map-generation, terrain, sight-bonus, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
 code: [rulesets, src/Govern.Core/Rulesets, src/Govern.Application/Games/Services/DefaultRulesetService.cs, src/Govern.Client/Features/Games/Services/RulesetService.cs]
 updated: 2026-09-30
 ---
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v1.json`](../../rulesets/default/v1.json). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v2.json`](../../rulesets/default/v2.json) (G4 added terrain and map generation; [`v1.json`](../../rulesets/default/v1.json) stays in the repository unchanged as the published first version, but today's Core no longer reads it, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -47,9 +47,13 @@ updated: 2026-09-30
 | `created_at` | `timestamptz` | When it was published; no `updated_at`, because a version is immutable |
 | `created_by` | `uuid`, nullable | The admin who published it; null when a migration did |
 
-- **The document holds only game content.** `key`, `version` and `name` live only in the row; the migration (or the admin) supplies them, and a repository file's path names them (`rulesets/default/v1.json`).
+- **The document holds only game content.** `key`, `version` and `name` live only in the row; the migration (or the admin) supplies them, and a repository file's path names them (`rulesets/default/v2.json`).
 - **Core and the rulesets are always consistent.** A started game is pinned to one version for good. There's no `schemaVersion` and no upgrading of old rulesets: when a Core change needs new fields, the rulesets are updated with it. Handling older rulesets is deferred until it matters.
 - **New games** use the highest `version` of the ruleset. Retiring a version and a lobby description are deferred with Ruleset B ([question 6 there](../plans/deferred/ruleset-b-store-and-pin.md#decisions-and-questions-for-part-b): one ruleset or several).
+
+## Versions in the repository
+
+*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived; it is kept as the record of what was published.
 
 ## Format conventions
 
@@ -112,7 +116,7 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 |---|---|---|
 | `defaultWidth`, `defaultHeight` | 20 × 14 | The size of a new map (`GameSetup.Width`/`Height` may override it within the limits) |
 | `minSize`, `maxSize` | 8, 40 | Allowed width and height; the engine's own bounds are 8–40, which keep a stored game's size bounded |
-| `defaultTerrain` | `plains` | Terrain of every tile (until map generation, G4); must be passable |
+| `defaultTerrain` | `plains` | Terrain of every tile the generator leaves alone, and of every starting tile; must be passable |
 | `spawn.zoneColumnsPerMille` | 250 (a quarter of the width) | Each player spawns in their own zone at the left or right edge; at most 250, so the two zones never meet |
 | `spawn.edgeMargin` | 1 tile | Spawns never touch the map edge; at least 1 and less than the zone on the smallest map |
 
@@ -123,23 +127,57 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
   "minSize": 8,
   "maxSize": 40,
   "defaultTerrain": "plains",
-  "spawn": { "zoneColumnsPerMille": 250, "edgeMargin": 1 }
+  "spawn": { "zoneColumnsPerMille": 250, "edgeMargin": 1 },
+  "generation": { "patches": [ … ] }
 }
 ```
+
+### Map generation (`map.generation`)
+
+*Decided 2026-09-30 (G4).* The map starts as `defaultTerrain`; each entry of `patches` then lays its terrain down in patches, in the listed order. Every tile is written with its mirror through the map's centre, so both halves of a map are the same. The algorithm is in [game logic](game-logic.md#map-generation).
+
+| Field | Type | Meaning |
+|---|---|---|
+| `patches[].terrain` | terrain id | The terrain to lay down; not `defaultTerrain`, and each terrain at most once |
+| `patches[].sharePerMille` | int ≥ 1 | The share of the map's tiles it aims to cover, in thousandths |
+| `patches[].patchSize` | int ≥ 1 | How many tiles each patch grows to when there is room (bigger = fewer, larger patches) |
+
+```json
+"generation": {
+  "patches": [
+    { "terrain": "forest", "sharePerMille": 150, "patchSize": 4 },
+    { "terrain": "hills", "sharePerMille": 100, "patchSize": 3 },
+    { "terrain": "mountains", "sharePerMille": 40, "patchSize": 2 },
+    { "terrain": "lake", "sharePerMille": 40, "patchSize": 3 }
+  ]
+}
+```
+
+- **Limits:** the shares add up to at most 500 (at least half of every map stays default terrain), and the shares of impassable terrains to at most 150, so the generator can always keep the passable tiles connected.
+- An empty `patches` list gives an all-default-terrain map, as before G4.
 
 ## Terrains (`terrains`)
 
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | id | `plains` |
-| `movementCost` | int ≥ 1 | Movement points to enter the tile |
+| `movementCost` | int ≥ 1 | Movement points to enter the tile (not used while `isPassable` is false, but still required) |
 | `isPassable` | bool | Whether land units can enter it |
+| `sightBonus` | int ≥ 0 | Extra sight, in tiles, for a unit or city standing on the tile |
 
 ```json
 "terrains": [
-  { "id": "plains", "movementCost": 1, "isPassable": true }
+  { "id": "plains", "movementCost": 1, "isPassable": true, "sightBonus": 0 },
+  { "id": "forest", "movementCost": 2, "isPassable": true, "sightBonus": 0 },
+  { "id": "hills", "movementCost": 2, "isPassable": true, "sightBonus": 1 },
+  { "id": "mountains", "movementCost": 1, "isPassable": false, "sightBonus": 0 },
+  { "id": "lake", "movementCost": 1, "isPassable": false, "sightBonus": 0 }
 ]
 ```
+
+- One flat list for now: a tile has exactly one terrain, so there are no forested hills. Layers (base terrain, elevation, feature) wait until a mechanic needs combinations, likely G5 yields.
+- A `sightBonus` only adds sight, so it keeps the fog invariants below. Terrain that blocks sight (forests) is deferred: it would break them.
+- The client needs a sprite symbol, two colour tokens and a CSS rule per terrain ([game UI](../features/game-ui.md)).
 
 ## Units (`units`)
 
@@ -198,6 +236,10 @@ Everything a player reads about the game's content comes from here: unit and ter
   "unit.settler.name": "Settler",
   "unit.soldier.name": "Soldier",
   "terrain.plains.name": "Plains",
+  "terrain.forest.name": "Forest",
+  "terrain.hills.name": "Hills",
+  "terrain.mountains.name": "Mountains",
+  "terrain.lake.name": "Lake",
   "city.default_name": "City {n}"
 }
 ```
@@ -211,7 +253,9 @@ Everything a player reads about the game's content comes from here: unit and ter
 `RulesetValidator` rejects a ruleset that breaks any of these and reports every problem with its JSON path (`$.units[1].sight: Must be at least 2, …`); `RulesetTests` has one case per rule:
 - The JSON reads strictly (see [Reading a ruleset in code](#reading-a-ruleset-in-code)).
 - Ids are lower snake_case (a letter, then letters, digits or `_`, at most 32 characters) and unique per list; `units` and `terrains` are not empty.
-- Every reference resolves: `startingUnits`, `initialProduction`, `defaultTerrain`, `nameTemplate`.
+- Every reference resolves: `startingUnits`, `initialProduction`, `defaultTerrain`, `map.generation.patches[].terrain`, `nameTemplate`.
+- Map generation: a patch terrain is not `defaultTerrain` and not listed twice; `sharePerMille` and `patchSize` ≥ 1; shares add up to at most 500, impassable ones to at most 150.
+- `sightBonus` ≥ 0.
 - Numbers are in range: movement, sight, costs, city sight, spacing and production ≥ 1; `8 ≤ minSize ≤ maxSize ≤ 40`; the default size within them; `players` = 2.
 - Spawn: `zoneColumnsPerMille` 1–250; `edgeMargin` ≥ 1 and less than the zone on the smallest map; `startingUnits` no more than that zone.
 - At least one terrain is passable, and `defaultTerrain` is.
@@ -233,7 +277,8 @@ Each [roadmap](design-roadmap.md) item adds a section here, with fields, example
 
 | Section | Roadmap item |
 |---|---|
-| `terrains` gains elevation, features, yields, sight and defence modifiers | G4 |
+| `terrains` gains a defence modifier | G9 |
+| `terrains` gains elevation and features (layers), yields | G5 |
 | `resources` (groups, yields, reserves, reveal tech) | G5 |
 | `rivers` (states, crossing costs, ship navigation) | G6, G15 |
 | `cities` gains territory, growth, housing, loyalty, yields | G7, G8 |

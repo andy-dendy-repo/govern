@@ -9,9 +9,10 @@ using Govern.Core.Visibility;
 namespace Govern.Core.State;
 
 /// <summary>
-/// Creates the initial <see cref="GameState"/> from the game's ruleset: a map covered with its default terrain, and for each
-/// player its starting units. The first player spawns in a zone at the left edge of the map, the second at the right edge; the
-/// seed picks the exact spawn tile, and the other starting units stand in a row from it towards the centre.
+/// Creates the initial <see cref="GameState"/> from the game's ruleset: a generated map (forests, hills and so on), and for
+/// each player its starting units. The first player spawns in a zone at the left edge of the map, the second at the right
+/// edge; the seed picks the exact spawn tile, and the other starting units stand in a row from it towards the centre. The
+/// map's two halves are mirrors of each other, but the spawns are not, so the map barely hints where the opponent started.
 /// </summary>
 public static class GameFactory
 {
@@ -29,20 +30,22 @@ public static class GameFactory
         ArgumentNullException.ThrowIfNull(setup);
         ValidatePlayers(ruleset.Setup.Players, setup.Players);
 
-        var map = CreateMap(ruleset.Map, setup);
+        var blank = CreateMap(ruleset.Map, setup);
         var random = new DeterministicRandom(setup.Seed);
         var ids = new HashSet<int>();
         var units = ImmutableArray.CreateBuilder<Unit>();
 
         for (var index = 0; index < setup.Players.Length; index++)
         {
-            var tiles = SpawnTiles(ruleset, map, random, isLeftSide: index == 0);
+            var tiles = SpawnTiles(ruleset, blank, random, isLeftSide: index == 0);
             for (var slot = 0; slot < tiles.Length; slot++)
             {
                 var definition = ruleset.Unit(ruleset.Setup.StartingUnits[slot]);
                 units.Add(NewUnit(random, ids, setup.Players[index], definition, tiles[slot]));
             }
         }
+
+        var map = MapGenerator.Generate(ruleset, blank, random, [.. units.Select(static unit => unit.Position)]);
 
         var state = new GameState
         {

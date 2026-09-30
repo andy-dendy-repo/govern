@@ -245,4 +245,38 @@ public class VisibilityCalculatorTests
 
         VisibilityCalculator.UpdateExplored(TestRulesets.Default, resigned).Players[1].Explored.ShouldBeEmpty();
     }
+
+    [Fact]
+    public void VisibleTiles_UnitOnHills_SeesOneTileFurther()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Hills, (5, 5));
+        builder.AddUnit(P1, TestRulesets.Soldier, 5, 5);
+
+        var visible = VisibilityCalculator.VisibleTiles(TestRulesets.Default, builder.Build(), P1);
+
+        visible.ShouldContain(At(8, 5));
+        visible.ShouldNotContain(At(9, 5));
+    }
+
+    [Fact]
+    public void VisibleTiles_CityOnHills_SeesOneTileFurther()
+    {
+        var builder = new GameStateBuilder().WithTerrain(TestRulesets.Hills, (5, 5));
+        builder.AddCity(P1, 5, 5);
+        builder.AddCity(P2, Width - 1, Height - 1);
+
+        var visible = VisibilityCalculator.VisibleTiles(TestRulesets.Default, builder.Build(), P1);
+
+        visible.ShouldContain(At(8, 5));
+        visible.ShouldNotContain(At(9, 5));
+    }
+
+    [Fact]
+    public void VisibleTiles_UnitNextToHills_KeepsItsOwnSight()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Hills, (6, 5));
+        builder.AddUnit(P1, TestRulesets.Soldier, 5, 5);
+
+        VisibilityCalculator.VisibleTiles(TestRulesets.Default, builder.Build(), P1).ShouldNotContain(At(8, 5));
+    }
 }

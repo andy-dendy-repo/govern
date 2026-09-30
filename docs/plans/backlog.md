@@ -26,7 +26,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 | # | Id | Item | Area | Status | Detail |
 |---|---|---|---|---|---|
-| 1 | C1 | Richer ruleset and Core: add content and mechanics to the embedded ruleset (`rulesets/default/v1.json`) and Core. C1 = G2, G4, G9 (agreed 2026-09-30) | core, ruleset | G2 done; G4 needs plan | [Content slice C1](#content-slice-c1-g2-g4-g9) |
+| 1 | C1 | Richer ruleset and Core: add content and mechanics to the embedded default ruleset (a new version file per change, `rulesets/default/v2.json` since G4) and Core. C1 = G2, G4, G9 (agreed 2026-09-30) | core, ruleset | G2 done; G4 in progress (branch `claude/project-thread-ajx0tr`) | [Content slice C1](#content-slice-c1-g2-g4-g9) |
 
 ### Content slice C1: G2, G4, G9
 
@@ -35,7 +35,7 @@ Agreed 2026-09-30. The ruleset stays as it is today: one embedded file, no datab
 | # | Id | Item | Why now |
 |---|---|---|---|
 | 1 | G2 | [Game rules reference](../game/design-roadmap.md#g2-game-rules-reference): done 2026-09-30, PR #26, [plan](done/G2-rules-reference.md) | Small, and every content item updates it, so it should exist first |
-| 2 | G4 | [Terrain: more tile types](../game/design-roadmap.md#g4-terrain-more-tile-types) | The map is the base for everything else; a first set of base terrain, hills and forest changes play without new systems |
+| 2 | G4 | [Terrain: more tile types](../game/design-roadmap.md#g4-terrain-more-tile-types): in progress, [plan](active/G4-terrain.md) | The map is the base for everything else; a first set of base terrain, hills and forest changes play without new systems |
 | 3 | G9 | [Army units and combat](../game/design-roadmap.md#g9-army-units-and-combat) | Health and a small roster with counters make fights interesting with today's cities; builds on G4's defence modifiers |
 
 ## Next

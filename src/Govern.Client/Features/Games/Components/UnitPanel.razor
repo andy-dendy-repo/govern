@@ -1,4 +1,5 @@
-@* The selected unit: its type in its owner's colour and, for the player's own unit, its stats (movement left, sight, cost).
+@* The selected unit: its type in its owner's colour and, for the player's own unit, its stats (movement left, sight with the
+   bonus of the terrain it stands on, cost).
    Its actions are in the action bar (Screen/ActionBar). *@
 @using Govern.Core.Rulesets
 @using Govern.Core.Units
@@ -26,6 +27,18 @@
 
     private bool IsOwn => Unit.Owner == View.Viewer;
 
+    // Sight plus the bonus of the tile the unit stands on (hills); the own unit's tile is always visible, so its terrain is known.
+    private StatRow SightRow(int sight)
+    {
+        if (View.TileAt(Unit.Position).Terrain is { } terrain && Ruleset.Terrain(terrain).SightBonus is > 0 and var bonus)
+        {
+            return new(Icons.Sight, "Sight", $"{sight + bonus}",
+                $"Sees {sight + bonus} tiles around it: {sight}, plus {bonus} for standing on {Ruleset.TerrainName(terrain)}.", "sight");
+        }
+
+        return new(Icons.Sight, "Sight", $"{sight}", $"Sees {sight} tiles around it.", "sight");
+    }
+
     private StatRow[] Rows
     {
         get
@@ -35,7 +48,7 @@
             [
                 new(Icons.Movement, "Movement", $"{Unit.MovementLeft} of {definition.Movement}",
                     $"Movement left this turn: {Unit.MovementLeft}. Each turn starts with {definition.Movement}.", "movement"),
-                new(Icons.Sight, "Sight", $"{definition.Sight}", $"Sees {definition.Sight} tiles around it.", "sight"),
+                SightRow(definition.Sight),
                 new(Icons.Production, "Cost", $"{definition.ProductionCost}", $"A city needs {definition.ProductionCost} production to build one.", "cost"),
             ];
         }
