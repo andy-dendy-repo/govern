@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Plan: G4 terrain (forest, hills, mountains, lake) and the movement-cost lens
 
-**Status:** in progress (branch `claude/project-thread-ajx0tr`, PR into `stage`). Approved by Andrii 2026-09-30 with the defaults proposed below (one flat terrain list, a new ruleset version, defence and sight-blocking forests deferred).
+**Status:** done 2026-09-30, PR #28. Approved by Andrii 2026-09-30 with the defaults proposed below (one flat terrain list, a new ruleset version, defence and sight-blocking forests deferred).
 
 ## Context
 Every game is played on an all-plains map, so movement is uniform and the map has no shape. G4 is the second item of content slice C1: a small first set of terrain that changes play (cost to move, blocked tiles, a sight bonus), a seeded map generator that is fair for both players, and the first map lens (movement cost), which G1 moved here because a lens needs terrain that differs. G9 (units and combat) builds on it. Kept lean: only terrain with a mechanic today, only the mechanics nothing else blocks.
