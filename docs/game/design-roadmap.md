@@ -52,7 +52,7 @@ These follow from how `Govern.Core` works today ([game-core](../features/game-co
 
 ## G1. UI design system and approaches
 
-The decided approaches, the component catalog and how each mechanic adds its UI are in [game UI](../features/game-ui.md); the plan is [G1](../plans/active/G1-ui-design-system.md). Each G item below that needs a planned component (`YieldList`, `ResourceBadge`, `QueueList`, `TreeView`, a lens) adds it to that catalog.
+The decided approaches, the component catalog and how each mechanic adds its UI are in [game UI](../features/game-ui.md); the plan is [G1](../plans/done/G1-ui-design-system.md) (done). Each G item below that needs a planned component (`YieldList`, `ResourceBadge`, `QueueList`, `TreeView`, a lens) adds it to that catalog.
 
 - **Why:** every item below adds screens, panels, numbers and icons. Without agreed approaches the game UI grows inconsistent and hard to use. Decide the patterns once, write them down, and follow them.
 - **Deliverables:**
@@ -101,6 +101,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 | Feature | forest, jungle, marsh, oasis, floodplains, reef, taiga, volcano |
 
 - **Rules per tile:** movement cost, defence bonus, sight modifier (hills see further, forests block sight), passable by land or by sea, and the yields for G5.
+- **UI (decided 2026-09-30):** G4 builds the first map lens, movement cost: a lens registry (`IMapLens`), a toggle toolbar in the map zone and the lens state in `GameUiService`, drawn in the existing `BoardLayer.Lens` slot ([game UI](../features/game-ui.md#component-catalog)). It was moved here from G1 because a lens needs terrain that differs.
 - **Also:**
   - **Map generation:** seeded continents, climate bands (snow at the poles, desert near the equator) and coasts. Spawn spots should be fair.
   - **Naval movement:** land units cross water only aboard ships ([G15](#g15-ships-and-naval-movement)); water tiles are impassable for them otherwise.

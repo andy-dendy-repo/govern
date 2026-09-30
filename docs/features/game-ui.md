@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Game UI design system
 
-The game UI grows with every mechanic in the [design roadmap](../game/design-roadmap.md): terrain, units, buildings, trees, governors, seasons. The design system (backlog item G1) fixes the approaches once so each mechanic plugs into an existing slot instead of reshaping the screen. The rule file is `.claude/rules/game-ui.md`; the plan is [G1](../plans/active/G1-ui-design-system.md).
+The game UI grows with every mechanic in the [design roadmap](../game/design-roadmap.md): terrain, units, buildings, trees, governors, seasons. The design system (backlog item G1) fixes the approaches once so each mechanic plugs into an existing slot instead of reshaping the screen. The rule file is `.claude/rules/game-ui.md`; the plan is [G1](../plans/done/G1-ui-design-system.md) (done).
 
 **How it stays expandable:** every extension point is a registry or a slot, and a test fails when a new game thing lacks its UI part. A ruleset unit or terrain without an icon fails `GameSpriteTests`; a terrain without colours fails `GameUiTests`.
 
@@ -87,7 +87,7 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | `YieldList`, `ResourceBadge` | planned by G5/G8 | Yield and resource rows and badges |
 | `QueueList` | planned by G8/G10 | A reorderable build queue |
 | `TreeView` | planned by G11/G12 | Tech, culture and governor skill trees in a full-screen view |
-| Lens toolbar and `IMapLens` | planned with G4 | Toggleable map overlays; the first lens is movement cost, once G4 adds terrain that differs |
+| Lens toolbar and `IMapLens` | planned by G4 | Toggleable map overlays, one at a time, drawn in the `BoardLayer.Lens` slot; G4 builds them with the first lens, movement cost. Later lenses: resources (G5), rivers (G6), territory (G7), yields and loyalty (G8), seasons (G14) |
 
 ## Design gallery (/design)
 
