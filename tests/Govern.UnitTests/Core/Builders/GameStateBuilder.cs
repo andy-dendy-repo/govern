@@ -21,6 +21,7 @@ internal sealed class GameStateBuilder
 
     private readonly List<Unit> _units = [];
     private readonly List<City> _cities = [];
+    private readonly Dictionary<HexCoord, TerrainType> _terrain = [];
     private int _nextId = 1;
     private PlayerId _currentPlayer = P1;
     private int _turn = 1;
@@ -49,6 +50,17 @@ internal sealed class GameStateBuilder
         return this;
     }
 
+    // Puts a terrain other than plains on tiles, e.g. WithTerrain(TestRulesets.Forest, (6, 5), (6, 4)).
+    public GameStateBuilder WithTerrain(TerrainType terrain, params (int Column, int Row)[] tiles)
+    {
+        foreach (var (column, row) in tiles)
+        {
+            _terrain[At(column, row)] = terrain;
+        }
+
+        return this;
+    }
+
     public GameStateBuilder WithCurrentPlayer(PlayerId player, int turn = 1)
     {
         _currentPlayer = player;
@@ -62,10 +74,16 @@ internal sealed class GameStateBuilder
         Turn = _turn,
         CurrentPlayer = _currentPlayer,
         Status = GameStatus.InProgress,
-        Map = GameMap.Create(Width, Height, TestRulesets.Plains),
+        Map = BuildMap(),
         Players = [new Player(P1, PlayerStatus.Active, []), new Player(P2, PlayerStatus.Active, [])],
         Units = [.. _units],
         Cities = [.. _cities],
         RngState = 42,
     });
+
+    private GameMap BuildMap()
+    {
+        var map = GameMap.Create(Width, Height, TestRulesets.Plains);
+        return map with { Tiles = [.. map.Tiles.Select(tile => _terrain.TryGetValue(tile.Coord, out var terrain) ? tile with { Terrain = terrain } : tile)] };
+    }
 }

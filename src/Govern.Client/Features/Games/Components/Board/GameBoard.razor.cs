@@ -1,4 +1,5 @@
 using Govern.Client.Features.Games.Helpers;
+using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.Core.Map;
@@ -43,6 +44,10 @@ public partial class GameBoard
     /// <summary>The tiles to mark as reachable or attackable.</summary>
     [Parameter, EditorRequired]
     public BoardHighlights Highlights { get; set; } = null!;
+
+    /// <summary>The map lens to draw over the terrain, or <see langword="null"/> for none.</summary>
+    [Parameter]
+    public IMapLens? Lens { get; set; }
 
     /// <summary>Whether tile clicks are ignored (e.g. while a command is being sent); panning and zooming still work.</summary>
     [Parameter]

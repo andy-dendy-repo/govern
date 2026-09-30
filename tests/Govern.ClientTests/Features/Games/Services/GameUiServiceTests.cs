@@ -1,7 +1,9 @@
+using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.Core.Cities;
 using Govern.Core.Units;
+using Govern.Core.Visibility;
 using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Services;
@@ -63,5 +65,62 @@ public class GameUiServiceTests
         _ui.Escape().ShouldBeFalse();
 
         _changes.ShouldBe(0);
+    }
+
+    [Fact]
+    public void ToggleLens_Off_TurnsItOnAndNotifies()
+    {
+        var lens = new MovementCostLens(new RulesetService());
+
+        _ui.ToggleLens(lens);
+
+        _ui.ActiveLens.ShouldBeSameAs(lens);
+        _changes.ShouldBe(1);
+    }
+
+    [Fact]
+    public void ToggleLens_Active_TurnsItOff()
+    {
+        var lens = new MovementCostLens(new RulesetService());
+        _ui.ToggleLens(lens);
+
+        _ui.ToggleLens(lens);
+
+        _ui.ActiveLens.ShouldBeNull();
+        _changes.ShouldBe(2);
+    }
+
+    [Fact]
+    public void ToggleLens_AnotherLensActive_SwitchesToTheNewOne()
+    {
+        _ui.ToggleLens(new MovementCostLens(new RulesetService()));
+        var other = new OtherLens();
+
+        _ui.ToggleLens(other);
+
+        _ui.ActiveLens.ShouldBeSameAs(other);
+    }
+
+    [Fact]
+    public void Escape_WithALensOn_KeepsTheLens()
+    {
+        var lens = new MovementCostLens(new RulesetService());
+        _ui.ToggleLens(lens);
+        _ui.Select(Ruleset, Start(), BoardSelection.Of(new UnitId(1)));
+
+        _ui.Escape();
+
+        _ui.ActiveLens.ShouldBeSameAs(lens);
+    }
+
+    private sealed class OtherLens : IMapLens
+    {
+        public string Id => "other";
+
+        public string Name => "Other";
+
+        public string Icon => "ui-sight";
+
+        public LensMark? MarkFor(TileView tile) => null;
     }
 }

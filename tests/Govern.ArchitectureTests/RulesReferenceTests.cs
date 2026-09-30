@@ -28,7 +28,11 @@ public class RulesReferenceTests
     public void TerrainTable_MatchesTheRuleset()
     {
         var expected = Ruleset.Terrains
-            .Select(static terrain => Row(Ruleset.TerrainName(terrain.Id), terrain.MovementCost, YesNo(terrain.IsPassable)))
+            .Select(static terrain => Row(
+                Ruleset.TerrainName(terrain.Id),
+                terrain.IsPassable ? $"{terrain.MovementCost}" : "—",
+                YesNo(terrain.IsPassable),
+                terrain.SightBonus == 0 ? "—" : $"+{terrain.SightBonus}"))
             .ToList();
 
         Table("Terrain types").ShouldBe(expected, ignoreOrder: true, Because);

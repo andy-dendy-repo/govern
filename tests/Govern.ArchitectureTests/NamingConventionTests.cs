@@ -243,6 +243,19 @@ public class NamingConventionTests
             .Check(GovernArchitecture.Instance);
     }
 
+    [Fact]
+    public void ClientMapLenses_AreSealedLensesImplementingIMapLens()
+    {
+        Classes().That().ResideInNamespaceMatching(@"^Govern\.Client\.Features\.\w+\.Lenses$")
+            .And().AreNotNested().And().DoNotHaveNameContaining("<")
+            .Should().BeSealed()
+            .AndShould().HaveNameEndingWith("Lens")
+            .AndShould().ImplementInterface(typeof(Govern.Client.Features.Games.Lenses.IMapLens))
+            .Because("Lenses/ holds only IMapLens and its sealed XxxLens implementations, one per map lens")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
     // Top-level, hand-written Govern types (excludes nested types such as LoggerMessage 'Log' classes and compiler-generated/file types).
     private static GivenTypesConjunction ProductionTypes() =>
         Types().That().ResideInNamespaceMatching(GovernArchitecture.GovernNamespace)

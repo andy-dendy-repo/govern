@@ -53,6 +53,49 @@
     --gv-terrain-explored: var(--gv-terrain-plains-explored);
 }
 
+.terrain-forest {
+    --gv-terrain: var(--gv-terrain-forest);
+    --gv-terrain-explored: var(--gv-terrain-forest-explored);
+}
+
+.terrain-hills {
+    --gv-terrain: var(--gv-terrain-hills);
+    --gv-terrain-explored: var(--gv-terrain-hills-explored);
+}
+
+.terrain-mountains {
+    --gv-terrain: var(--gv-terrain-mountains);
+    --gv-terrain-explored: var(--gv-terrain-mountains-explored);
+}
+
+.terrain-lake {
+    --gv-terrain: var(--gv-terrain-lake);
+    --gv-terrain-explored: var(--gv-terrain-lake-explored);
+}
+
+/* The drawing inside a terrain symbol (Components/Game/GameSprite). */
+.terrain-mark {
+    fill: none;
+    stroke: var(--gv-terrain-mark);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+/* A terrain symbol on a board tile: its hex takes the tile's own colour, so only the drawing shows. Clicks go to the tile. */
+.board .terrain-symbol {
+    pointer-events: none;
+}
+
+.board .terrain-symbol.visible {
+    fill: var(--gv-terrain);
+}
+
+.board .terrain-symbol.explored {
+    fill: var(--gv-terrain-explored);
+    --gv-terrain-mark: var(--gv-terrain-mark-explored);
+}
+
 .game-icon.terrain {
     fill: var(--gv-terrain);
 }
@@ -62,6 +105,55 @@
 .board .layer-cities,
 .board .layer-units {
     pointer-events: none;
+}
+
+/* The active map lens (Components/Board/BoardLens): a tint per value and a label. */
+.board .lens-mark.cheap {
+    fill: var(--gv-lens-cheap);
+}
+
+.board .lens-mark.costly {
+    fill: var(--gv-lens-costly);
+}
+
+.board .lens-mark.blocked {
+    fill: var(--gv-lens-blocked);
+}
+
+.board .lens-label {
+    fill: var(--gv-lens-label);
+    stroke: var(--gv-lens-label-outline);
+    stroke-width: 3;
+    font-size: 16px;
+    font-weight: 700;
+    text-anchor: middle;
+    paint-order: stroke;
+}
+
+.lens-toolbar {
+    position: absolute;
+    top: var(--gv-space-2);
+    left: var(--gv-space-2);
+    display: flex;
+    gap: var(--gv-space-1);
+}
+
+.lens-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--gv-space-1);
+    padding: var(--gv-space-1) var(--gv-space-2);
+    border: 1px solid var(--gv-border);
+    border-radius: var(--gv-radius);
+    background: var(--gv-surface-raised);
+    color: var(--gv-text);
+    font: inherit;
+    cursor: pointer;
+}
+
+.lens-toggle.active {
+    border-color: var(--gv-accent);
+    box-shadow: inset 0 0 0 1px var(--gv-accent);
 }
 
 .board .overlay {

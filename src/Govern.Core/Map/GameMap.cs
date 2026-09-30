@@ -34,6 +34,15 @@ public sealed record GameMap(int Width, int Height, ImmutableArray<Tile> Tiles)
         return new GameMap(width, height, tiles.MoveToImmutable());
     }
 
+    /// <summary>
+    /// The tile opposite a coordinate through the map's centre (a 180° turn): column <c>Width − 1 − column</c>, row
+    /// <c>Height − 1 − row</c>. The map generator lays terrain on both, so the two halves of a map are the same. On a map
+    /// with an even height this keeps neighbours neighbours.
+    /// </summary>
+    /// <param name="coord">A coordinate on the map.</param>
+    /// <returns>The opposite coordinate.</returns>
+    public HexCoord MirrorOf(HexCoord coord) => HexCoord.FromOffset(Width - 1 - coord.Column, Height - 1 - coord.Row);
+
     /// <summary>Whether the coordinate lies on this map.</summary>
     /// <param name="coord">The coordinate to test.</param>
     /// <returns><see langword="true"/> when the tile exists.</returns>

@@ -197,4 +197,39 @@ public class MoveUnitActionTests
         GameEngine.Execute(ruleset, state, P1, new MoveUnitCommand(soldier, At(4, 2))).ShouldSucceed().State.FindUnit(soldier)!.MovementLeft.ShouldBe(0);
         GameEngine.Execute(ruleset, state, P1, new MoveUnitCommand(soldier, At(5, 2))).ShouldFailWith(RuleViolations.Unreachable);
     }
+
+    [Fact]
+    public void Execute_IntoForest_SpendsTwoMovement()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Forest, (3, 2));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2))).ShouldSucceed();
+
+        update.State.FindUnit(soldier)!.MovementLeft.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Execute_ForestWithOneMovementLeft_ReturnsUnreachable()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Forest, (3, 2));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2, movementLeft: 1);
+
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2)));
+
+        result.ShouldFailWith(RuleViolations.Unreachable);
+    }
+
+    [Theory]
+    [InlineData("mountains")]
+    [InlineData("lake")]
+    public void Execute_ImpassableTerrain_ReturnsUnreachable(string terrain)
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(new(terrain), (3, 2));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2)));
+
+        result.ShouldFailWith(RuleViolations.Unreachable);
+    }
 }

@@ -18,7 +18,8 @@ Govern.Client/
 ├── Features/[Feature]/      UF +
 │   ├── Pages/               routable components: XxxPage.razor (+ .razor.cs / .razor.css), flat
 │   ├── Components/          components used only by this feature (one level of group folders allowed, e.g. Board/)
-│   └── Clients/             typed Api clients: XxxClient.cs, flat
+│   ├── Clients/             typed Api clients: XxxClient.cs, flat
+│   └── Lenses/              map lenses: IMapLens and XxxLens.cs, flat (Games only today)
 ├── Helpers Models Enums Options Exceptions Extensions Attributes Services   (UF, free-form, usual suffixes)
 └── wwwroot/                 index.html, css/ (tokens, app, board, game-ui), js/ (ES modules), appsettings*.json, staticwebapp.config.json
 ```
@@ -28,6 +29,7 @@ Govern.Client/
 | `Features/[Feature]/Pages` | components named `XxxPage` (e.g. `LoginPage`, `NotFoundPage`), file `XxxPage.razor` |
 | `Layout`, `Components`, `Features/[Feature]/Components` | Razor components only (no plain classes; logic goes to `Services` or a client) |
 | `Features/[Feature]/Clients` | `sealed` classes ending with `Client` |
+| `Features/[Feature]/Lenses` | files `*Lens.cs`; `sealed` classes ending with `Lens` that implement `IMapLens` (`game-ui.md`) |
 | UF folders | the usual suffixes from `architecture.md` (`Options`, `Service`, …) |
 
 - Only components, their code-behind (`.razor.cs`) and scoped styles (`.razor.css`) sit next to each other. Scoped styles need `<link rel="stylesheet" href="Govern.Client.styles.css" />` in `index.html`; it was removed while no `.razor.css` exists, so add it back with the first one.

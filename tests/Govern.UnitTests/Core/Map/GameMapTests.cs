@@ -46,4 +46,26 @@ public class GameMapTests
 
         Should.Throw<ArgumentOutOfRangeException>(() => map.TileAt(HexCoord.FromOffset(10, 0)));
     }
+
+    [Fact]
+    public void MirrorOf_EvenHeight_KeepsNeighboursNeighbours()
+    {
+        var map = GameMap.Create(9, 8, TestRulesets.Plains);
+
+        foreach (var tile in map.Tiles)
+        {
+            foreach (var neighbour in tile.Coord.Neighbors().Where(map.Contains))
+            {
+                map.MirrorOf(tile.Coord).DistanceTo(map.MirrorOf(neighbour)).ShouldBe(1);
+            }
+        }
+    }
+
+    [Fact]
+    public void MirrorOf_Corner_IsTheOppositeCorner()
+    {
+        var map = GameMap.Create(9, 8, TestRulesets.Plains);
+
+        map.MirrorOf(HexCoord.FromOffset(0, 0)).ShouldBe(HexCoord.FromOffset(8, 7));
+    }
 }

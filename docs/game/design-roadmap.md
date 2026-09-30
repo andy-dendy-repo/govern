@@ -86,11 +86,12 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 - **Why:** dozens of terrains, resources, units, buildings and tech nodes are easier to balance as data than as C# switches.
 - **Status:** part A done, part B deferred (format in [game data](game-data.md)).
   - **Done (Ruleset A, [plan](../plans/done/ruleset-a-core.md)):** Core reads every number, list and text from a ruleset document (`rulesets/default/v1.json`), validated at load time with JSON paths; the former `UnitCatalog`/`TerrainCatalog` and constants are gone.
-  - **Deferred (Ruleset B, [plan](../plans/deferred/ruleset-b-store-and-pin.md)):** rulesets stored per version in the database, each game pinned to one, and a ruleset choice in the lobby. New content goes into the embedded `rulesets/default/v1.json` until then.
+  - **Deferred (Ruleset B, [plan](../plans/deferred/ruleset-b-store-and-pin.md)):** rulesets stored per version in the database, each game pinned to one, and a ruleset choice in the lobby. New content goes into the embedded default ruleset until then, as a new version file (`rulesets/default/v2.json` since G4).
   - Each later item adds its section to the ruleset (and, where the state changes, to the state schema).
 
 ## G4. Terrain: more tile types
 
+- **Status:** in progress ([plan](../plans/active/G4-terrain.md)). First set: plains, forest (cost 2), hills (cost 2, +1 sight), mountains and lake (impassable); seeded, mirrored map generation; the movement-cost lens with the lens registry and toolbar. Still open from the list below: more base terrains (with G5 yields), terrain layers such as forested hills (G5), defence modifiers (G9), forests blocking sight (needs a line-of-sight design that keeps the previews exact), climate bands, continents and coasts, seas (G15).
 - **Requested:** forest, jungle, desert, mountain, meadow, sea, ocean, lake.
 - **Suggested additions:** plains, tundra, snow/ice, hills, marsh/swamp, savanna/steppe, taiga, coast/beach, floodplains, oasis, reef, volcano, canyon.
 - **Suggested model (as in Civ):** three layers per tile instead of one big list:

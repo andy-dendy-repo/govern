@@ -5,5 +5,5 @@
 - [In-process state checks](project_in_process_state.md) — limiter TOCTOU across PBKDF2, MemoryCache SizeLimit evicts LRU (not fail-open), Reset race
 - [Client checks](project_client_checks.md) — Blazor client: WASM facts, configure-client.sh, Plan 4/5b traps, G1 game UI (IsFixed cascade, Esc focus, seat CSS)
 - [App Service hosting checks](project_app_service_hosting.md) — Health check pings default domain, release deploys before API_ORIGIN is validated
-- [Game core checks](project_game_core_checks.md) — fog oracles, STJ; Plans 2/3a/3b/3c/5a checks; vacuous `x?.P.ShouldBe` asserts; parity-test scenario gaps
+- [Game core checks](project_game_core_checks.md) — fog oracles, RNG leaks (ids, G4 terrain via Next), Plans 2-5a checks, vacuous `x?.P.ShouldBe`, parity gaps
 - [OpenAPI checks](project_openapi_checks.md) — transformer order vs RegisterComponents, unresolved security refs silently dropped, Swagger UI placement

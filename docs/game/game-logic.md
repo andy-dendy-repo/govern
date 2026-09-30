@@ -27,14 +27,26 @@ updated: 2026-09-30
 Input: the players (in turn order) and a secret random seed.
 
 1. Check the players: exactly [`setup.players`], all distinct.
-2. Create the map: [`map.defaultWidth`] × [`map.defaultHeight`] (each within [`map.minSize`]–[`map.maxSize`]), every tile [`map.defaultTerrain`].
+2. Size the map: [`map.defaultWidth`] × [`map.defaultHeight`] (each within [`map.minSize`]–[`map.maxSize`]), every tile [`map.defaultTerrain`] for now.
 3. Start the random generator from the seed.
 4. For each player, in order:
    1. Pick the spawn zone: the first player's zone is the left [`map.spawn.zoneColumnsPerMille`] of the columns, the second's the right one.
    2. Pick a random column in the zone and a random row, keeping [`map.spawn.edgeMargin`] tiles from the edges.
    3. Place the [`setup.startingUnits`] in order: the first on the spawn tile, the k-th k columns from it towards the map centre on the same row (by default a settler, with a soldier next to it). Each unit starts with full movement [`units.*.movement`] and a new random id (see [Randomness and ids](#randomness-and-ids)).
-5. Set round 1, the current player to the first player, status "in progress".
-6. Update what every player has explored (see [Fog of war](#fog-of-war)).
+5. Generate the terrain (see [Map generation](#map-generation)); the tiles of every starting unit stay [`map.defaultTerrain`].
+6. Set round 1, the current player to the first player, status "in progress".
+7. Update what every player has explored (see [Fog of war](#fog-of-war)).
+
+### Map generation
+
+The map's two halves are always the same: every tile is written together with its **mirror**, the tile at column `width − 1 − column` and row `height − 1 − row` (a half turn around the centre). On a map with an even height (the default, 14) the mirror keeps neighbours neighbours, so both halves play the same; on an odd height they differ slightly along the middle rows. The spawns are not mirrored (step 4 picks each independently), so a player can't work out the opponent's start from their own; the map only narrows it slightly (the opponent's starting tiles and their mirrors are plains, which halves the possible start spots on the default ruleset). Knowing one half also tells a player the terrain of the other: that is the accepted price of a fair map. The generator's draws are hashed (`DeterministicRandom.NextHashed`), so the terrain reveals nothing about the random generator's state.
+
+1. **Reserve** every starting unit's tile and its mirror: they stay [`map.defaultTerrain`].
+2. For each entry of [`map.generation.patches`], in order:
+   1. The target is [`map.generation.patches.*.sharePerMille`] thousandths of the map's tiles (mirrors included).
+   2. Until the target is reached, or after as many seeds as the map has tiles: pick a random tile as a seed and **grow a patch** from it. The patch keeps a list of candidate tiles (first the seed); it takes a random candidate, places the terrain on it and on its mirror when both are still [`map.defaultTerrain`] and not reserved, and adds that tile's neighbours to the candidates. It stops at [`map.generation.patches.*.patchSize`] tiles, at the target, or when no candidate is left.
+   3. **Impassable terrain keeps the map connected:** a tile of impassable terrain [`terrains.*.isPassable`] is placed only if every passable tile can still reach every other; otherwise the placement is undone and the next candidate is tried.
+3. The generator draws from the game's random generator after the spawns, so the same seed always gives the same map.
 
 ## Executing a command
 
@@ -56,7 +68,7 @@ Every player action is a command sent by one player (the actor). The engine runs
 3. If the target holds a unit **the actor can see** → `move.occupied`. A hidden blocker is not revealed; it just makes the tile unreachable.
 4. Find the cheapest paths (Dijkstra) from the unit's tile, spending at most its movement left:
    - a tile can be entered if it is on the map, its terrain is passable [`terrains.*.isPassable`], no unit stands on it, and no enemy city stands on it;
-   - entering a tile costs its terrain's [`terrains.*.movementCost`];
+   - entering a tile costs its terrain's [`terrains.*.movementCost`] (default ruleset: plains 1, forest and hills 2), and a path may not cost more than the movement left, so a unit with 1 movement left can't enter a cost-2 tile;
    - equal costs are broken by row, then column, so the path is always the same.
 5. The target isn't among the reachable tiles → `move.unreachable`.
 6. Move the unit to the target and subtract the path's cost from its movement.
@@ -110,7 +122,7 @@ After every successful command:
 
 ## Fog of war
 
-1. **Visible tiles** of a player: every tile within [`units.*.sight`] of each of their units, and within [`cities.sight`] of each of their cities.
+1. **Visible tiles** of a player: every tile within [`units.*.sight`] of each of their units, and within [`cities.sight`] of each of their cities, each plus the [`terrains.*.sightBonus`] of the tile the unit or city stands on (hills: +1).
 2. **Explored tiles:** after every command, each active player's newly visible tiles are added to their explored set, which only grows.
 3. **The view** a player receives:
    - every tile, as unexplored (no terrain), explored (terrain, as last seen) or visible;
@@ -143,7 +155,7 @@ These answers are **exactly** what the engine would decide, because they share t
 
 ## Future mechanics
 
-Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: map generation and terrain layers (G4), yields and resources (G5), river crossing (G6), territory growth (G7), city growth, loyalty and the production queue (G8), combat with health and the counter matrix (G9), builders and building upgrades (G10), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
+Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), yields and resources (G5), river crossing (G6), territory growth (G7), city growth, loyalty and the production queue (G8), combat with health and the counter matrix (G9), builders and building upgrades (G10), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
 
 ## Open questions
 

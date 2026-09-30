@@ -1,0 +1,39 @@
+@* The active map lens (Features/Games/Lenses) in its BoardLayer: a tinted hex and a short label on every tile the lens marks.
+   Nothing is rendered while no lens is on. Clicks pass through to the tiles (pointer-events: none in board.css). *@
+@using Govern.Client.Features.Games.Enums
+@using Govern.Client.Features.Games.Helpers
+@using Govern.Client.Features.Games.Lenses
+@using Govern.Core.Visibility
+
+@if (Lens is not null)
+{
+    <g class="@($"layer-lens lens-{Lens.Id}")" data-layer="@BoardLayers.Name(BoardLayer.Lens)">
+        @for (var index = 0; index < View.Tiles.Length; index++)
+        {
+            if (Lens.MarkFor(View.Tiles[index]) is not { } mark)
+            {
+                continue;
+            }
+
+            var (x, y) = HexLayout.Center(View.CoordAt(index));
+            <g class="@($"lens-mark {mark.Class}")" transform="translate(@HexLayout.Format(x) @HexLayout.Format(y))">
+                <title>@mark.Description</title>
+                <use href="#hex"/>
+                <text class="lens-label" dy="0.35em">@mark.Label</text>
+            </g>
+        }
+    </g>
+}
+
+@code {
+    private (PlayerView View, IMapLens? Lens)? _rendered;
+
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter] public IMapLens? Lens { get; set; }
+
+    protected override bool ShouldRender() =>
+        _rendered is not { } rendered || !ReferenceEquals(rendered.View, View) || !ReferenceEquals(rendered.Lens, Lens);
+
+    protected override void OnAfterRender(bool firstRender) => _rendered = (View, Lens);
+}
