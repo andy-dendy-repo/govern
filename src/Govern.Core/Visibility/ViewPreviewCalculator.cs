@@ -46,7 +46,7 @@ internal static class ViewPreviewCalculator
             return violation;
         }
 
-        return view.FindOwnUnit(unitId) is { } settler
+        return OwnUnit(view, unitId) is { } settler
             ? FoundCityRule.Check(settler, view.Cities.Select(static city => city.Position))
             : RuleViolations.UnitNotFound;
     }
@@ -65,7 +65,13 @@ internal static class ViewPreviewCalculator
 
     // The viewer's unit when they may act with it now; otherwise null.
     private static Unit? ActingUnit(PlayerView view, UnitId unitId) =>
-        CheckTurn(view) is null ? view.FindOwnUnit(unitId) : null;
+        CheckTurn(view) is null ? OwnUnit(view, unitId) : null;
+
+    // The viewer's own unit as the rules' checks take it. Its movement is always in the view: only enemy movement is hidden.
+    private static Unit? OwnUnit(PlayerView view, UnitId unitId) =>
+        view.FindOwnUnit(unitId) is { MovementLeft: { } movementLeft } own
+            ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft)
+            : null;
 
     private static RuleViolation? CheckTurn(PlayerView view) => CommandGuardRule.CheckTurn(
         view.Status,

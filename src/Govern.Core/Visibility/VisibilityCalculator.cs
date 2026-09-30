@@ -82,7 +82,10 @@ public static class VisibilityCalculator
             state.Map.Height,
             [.. tiles],
             // Ordered by (random) id, not by creation, so the order reveals nothing about when enemy objects were created.
-            [.. state.Units.Where(unit => unit.Owner == viewer || visible.Contains(unit.Position)).OrderBy(static unit => unit.Id.Value)],
+            [.. state.Units
+                .Where(unit => unit.Owner == viewer || visible.Contains(unit.Position))
+                .OrderBy(static unit => unit.Id.Value)
+                .Select(unit => UnitView.From(unit, viewer))],
             [.. state.Cities
                 .Where(city => city.Owner == viewer || visible.Contains(city.Position))
                 .OrderBy(static city => city.Id.Value)

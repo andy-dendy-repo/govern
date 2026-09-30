@@ -179,9 +179,41 @@ public class VisibilityCalculatorTests
         {
             Cities = [.. state.Cities.Select(c => c.Id == enemyCity ? city with { Producing = UnitType.Settler, ProductionProgress = 5 } : c)],
         };
+        GameEngine.ViewFor(state, P1).Cities.ShouldContain(c => c.Id == enemyCity, "the enemy city must be in sight for this test to mean anything");
 
         GameEngine.ViewFor(progressed, P1).Version.ShouldBe(GameEngine.ViewFor(state, P1).Version);
         GameEngine.ViewFor(progressed, P2).Version.ShouldNotBe(GameEngine.ViewFor(state, P2).Version);
+    }
+
+    [Fact]
+    public void ViewFor_EnemyUnitInSight_HidesItsMovementButShowsTheOwnersOwn()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var own = builder.AddUnit(P1, UnitType.Soldier, 4, 4, movementLeft: 1);
+        var enemy = builder.AddUnit(P2, UnitType.Soldier, 5, 4, movementLeft: 1);
+        var state = builder.Build();
+
+        var p1View = GameEngine.ViewFor(state, P1);
+        var p2View = GameEngine.ViewFor(state, P2);
+
+        p1View.Units.Single(unit => unit.Id == enemy).ShouldBe(new UnitView(enemy, P2, UnitType.Soldier, At(5, 4), MovementLeft: null));
+        p1View.Units.Single(unit => unit.Id == own).MovementLeft.ShouldBe(1);
+        p2View.Units.Single(unit => unit.Id == enemy).MovementLeft.ShouldBe(1);
+        p2View.Units.Single(unit => unit.Id == own).MovementLeft.ShouldBeNull();
+    }
+
+    [Fact]
+    public void ViewFor_EnemyMovementChangesInSight_KeepsTheVersion()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
+        var enemy = builder.AddUnit(P2, UnitType.Soldier, 6, 4, movementLeft: 2);
+        var state = builder.Build();
+        var spent = state with { Units = [.. state.Units.Select(unit => unit.Id == enemy ? unit with { MovementLeft = 0 } : unit)] };
+        GameEngine.ViewFor(state, P1).Units.ShouldContain(unit => unit.Id == enemy, "the enemy unit must be in sight for this test to mean anything");
+
+        GameEngine.ViewFor(spent, P1).Version.ShouldBe(GameEngine.ViewFor(state, P1).Version);
+        GameEngine.ViewFor(spent, P2).Version.ShouldNotBe(GameEngine.ViewFor(state, P2).Version);
     }
 
     [Fact]

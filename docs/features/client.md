@@ -2,7 +2,7 @@
 title: Blazor client
 tags: [client, blazor, webassembly, radzen, csp, static-web-apps, security-headers, bunit, configuration, auth, jwt, refresh-token, web-locks, login, games, lobby, invite-link, sse, server-sent-events, reconnect, backoff, board, hex, svg, pan, zoom, commands, stale-version]
 code: [src/Govern.Client, src/Govern.Client/Auth, src/Govern.Client/Features/Games, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/wwwroot/js/board.js, tests/Govern.ClientTests, tests/Govern.ArchitectureTests/ClientSecurityTests.cs, tests/Govern.ArchitectureTests/ClientContractTests.cs, .github/scripts/configure-client.sh, .github/workflows/release.yml]
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Blazor client
@@ -143,7 +143,7 @@ Every delay is at least 2 s, which keeps one tab under the 30-openings-per-minut
 
 ## Client game board (hex map, selection and commands)
 
-A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the board (`Components/Board/GameBoard`) and a side column with the turn, the selection and, once finished, the result. The client references `Govern.Core` for the view types (`PlayerView`, `Unit`, `CityView`, commands) and for the view-based previews only (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a `PlayerView`, [game-core](game-core.md#view-previews-for-the-client)). It never holds a `GameState` or runs `Execute`; the server stays authoritative (`LayerDependencyTests.Client_UsesCoreOnlyForViewsAndPreviews`).
+A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the board (`Components/Board/GameBoard`) and a side column with the turn, the selection and, once finished, the result. The client references `Govern.Core` for the view types (`PlayerView`, `UnitView`, `CityView`, commands) and for the view-based previews only (`GameEngine.ReachableTiles`/`AttackTargets`/`CheckFoundCity` over a `PlayerView`, [game-core](game-core.md#view-previews-for-the-client)). It never holds a `GameState` or runs `Execute`; the server stays authoritative (`LayerDependencyTests.Client_UsesCoreOnlyForViewsAndPreviews`).
 
 | Part | What it does |
 |---|---|
