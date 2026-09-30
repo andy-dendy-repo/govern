@@ -11,4 +11,5 @@ internal sealed record RulesetDocument(
     ImmutableArray<TerrainDefinition> Terrains,
     ImmutableArray<UnitDefinition> Units,
     CityRules Cities,
+    CombatRules Combat,
     ImmutableDictionary<string, string> Texts);

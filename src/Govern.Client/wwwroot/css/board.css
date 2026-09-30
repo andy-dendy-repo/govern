@@ -170,6 +170,25 @@
     stroke: var(--gv-overlay-attackable-stroke);
 }
 
+.board .overlay.target {
+    fill: var(--gv-overlay-target);
+    stroke: var(--gv-selected);
+    stroke-width: 3;
+}
+
+/* A hurt unit's health under its symbol (BoardPieces). */
+.board .health-track {
+    fill: var(--gv-health-track);
+}
+
+.board .health-fill {
+    fill: var(--gv-health-good);
+}
+
+.board .health-fill.low {
+    fill: var(--gv-health-low);
+}
+
 .board .piece {
     stroke: var(--gv-board-outline);
     stroke-width: 1.5;

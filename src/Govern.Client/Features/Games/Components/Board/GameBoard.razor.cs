@@ -49,6 +49,10 @@ public partial class GameBoard
     [Parameter]
     public IMapLens? Lens { get; set; }
 
+    /// <summary>The ruleset's full health, so hurt units show a health bar; 0 draws none.</summary>
+    [Parameter]
+    public int MaxHealth { get; set; }
+
     /// <summary>Whether tile clicks are ignored (e.g. while a command is being sent); panning and zooming still work.</summary>
     [Parameter]
     public bool Disabled { get; set; }

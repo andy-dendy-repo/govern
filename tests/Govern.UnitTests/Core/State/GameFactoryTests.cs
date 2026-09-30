@@ -172,7 +172,7 @@ public class GameFactoryTests
     {
         var ruleset = TestRulesets.With(json =>
         {
-            json["terrains"]!.AsArray().Add(new JsonObject { ["id"] = "grass", ["movementCost"] = 1, ["isPassable"] = true, ["sightBonus"] = 0 });
+            json["terrains"]!.AsArray().Add(new JsonObject { ["id"] = "grass", ["movementCost"] = 1, ["isPassable"] = true, ["sightBonus"] = 0, ["defenceBonus"] = 0 });
             json["texts"]!["terrain.grass.name"] = "Grass";
             json["map"]!["defaultTerrain"] = "grass";
             json["map"]!["generation"]!["patches"] = new JsonArray();

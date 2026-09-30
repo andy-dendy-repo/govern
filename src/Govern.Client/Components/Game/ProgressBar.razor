@@ -1,7 +1,7 @@
 @* Progress towards a cost with how many turns are left at the current rate (production today; research, growth later). *@
 
 <div class="progress">
-    <RadzenProgressBar Value="@Math.Min(Value, Max)" Max="@Math.Max(Max, 1)" ShowValue="false" aria-label="@Label"/>
+    <RadzenProgressBar Value="@Math.Min(Value, Max)" Max="@Math.Max(Max, 1)" ShowValue="false" AriaLabel="@Label"/>
     <span class="progress-text">
         <GameIcon Id="@Icons.Turns"/>
         <span class="progress-turns">@TurnsText</span>

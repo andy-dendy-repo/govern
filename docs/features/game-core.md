@@ -19,7 +19,7 @@ updated: 2026-09-30
 | `GameFactory.Create(ruleset, GameSetup)` | New game: a generated map of the ruleset's size (or the setup's size, within the ruleset's limits) whose two halves mirror each other ([map generation](#map-generation)); each player gets the ruleset's starting units (by default a settler plus an adjacent soldier) on the default terrain. Turn 1, first player, version 0 |
 | `GameEngine.Execute(ruleset, state, actor, command)` | Validates and applies one `GameCommand`. Returns `CommandResult`: a `GameUpdate` (new `GameState` + ordered `GameEvent`s) or a `RuleViolation`. A rejected command never changes the state |
 | `GameEngine.ReachableTiles(ruleset, state, viewer, unitId)` | Tiles one of the viewer's units can move to this turn, for UI highlights. Another player's unit always returns an empty list |
-| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CheckFoundCity(ruleset, view, unitId)` | What `Execute` would decide for a move, an attack or founding a city, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
+| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CombatForecast(ruleset, view, unitId, target)`, `CheckFoundCity(ruleset, view, unitId)` | What `Execute` would decide for a move, an attack (and the damage range of a fight) or founding a city, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
 | `GameEngine.ViewFor(ruleset, state, player)` | The fog-of-war `PlayerView`: the only shape a client may receive |
 | `GameSerializer` | The one JSON format for storage (jsonb), the Api and the client |
 
@@ -39,27 +39,31 @@ After each accepted command, `Execute`:
 
 ## Terrain and map generation
 
-| Terrain (default ruleset) | Movement cost | Passable | Sight bonus |
-|---|---|---|---|
-| Plains (default terrain) | 1 | yes | 0 |
-| Forest | 2 | yes | 0 |
-| Hills | 2 | yes | +1 |
-| Mountains | — | no | 0 |
-| Lake | — | no | 0 |
+| Terrain (default ruleset) | Movement cost | Passable | Sight bonus | Defence bonus |
+|---|---|---|---|---|
+| Plains (default terrain) | 1 | yes | 0 | 0 |
+| Forest | 2 | yes | 0 | +3 |
+| Hills | 2 | yes | +1 | +3 |
+| Mountains | — | no | 0 | 0 |
+| Lake | — | no | 0 | 0 |
 
 - **Map generation** (`Map/MapGenerator`, internal, called by `GameFactory` after the spawns): patches of each `map.generation.patches` terrain grow from random seeds until they cover their share; every tile is written with its mirror, so both halves are the same. Spawn tiles and their mirrors stay default terrain; an impassable tile is placed only while all passable tiles stay connected (flood fill). The spawns themselves are not mirrored, so the map narrows the opponent's start only slightly (their starting tiles are plains). Every draw goes through `DeterministicRandom.NextHashed` (SHA-256 of the raw draw), because the whole map reaches the clients and raw `Next` results would expose the generator's low bits. Algorithm: [game logic](../game/game-logic.md#map-generation).
 - **Sight bonus:** `VisibilityCalculator.VisibleTiles` adds the `SightBonus` of the tile a unit or city stands on. It only adds sight, so the fog invariants the previews rely on still hold.
-- **Deferred:** terrain defence (G9), forests blocking sight (needs line of sight and breaks the "sees every reachable tile" invariant), terrain layers such as forested hills (G5).
+- **Defence bonus:** added to a defending unit's strength in `CombatCalculator` (G9).
+- **Deferred:** forests blocking sight (needs line of sight and breaks the "sees every reachable tile" invariant), terrain layers such as forested hills (G5).
 - Reference: Red Blob Games, "Hexagonal Grids".
 
 ## Units and cities (the default ruleset)
 
-| Unit | Movement | Sight | Cost | Abilities |
-|---|---|---|---|---|
-| Settler | 2 | 2 | 6 | `found_city`: founds a city (consumed) |
-| Soldier | 2 | 2 | 4 | `attack`: attacks adjacent enemy units; captures undefended enemy cities |
+| Unit | Class | Strength | Movement | Sight | Cost | Abilities |
+|---|---|---|---|---|---|---|
+| Settler | civilian | — | 2 | 2 | 6 | `found_city`: founds a city (consumed) |
+| Soldier | melee | 20 | 2 | 2 | 4 | `attack`: fights adjacent enemy units; captures undefended enemy cities |
+| Spearman | anti_cavalry | 18 | 2 | 2 | 4 | `attack` |
+| Horseman | cavalry | 20 | 3 | 3 | 6 | `attack` |
+| Archer | ranged | 10 (shoots at 22, range 2) | 2 | 2 | 5 | `ranged_attack`: shoots enemy units in range, no damage back |
 
-- `UnitType` and `TerrainType` are ids from the ruleset (`readonly record struct`s written to JSON as the plain id). Stats come from `ruleset.Unit(type)`; rules check abilities (`UnitDefinition.CanFoundCity`/`CanAttack`), never a unit id. A new unit is a ruleset entry only; a new ability also needs a `UnitAbility` value, a command and a rule.
+- `UnitType` and `TerrainType` are ids from the ruleset (`readonly record struct`s written to JSON as the plain id). Stats come from `ruleset.Unit(type)`; rules check abilities (`UnitDefinition.CanFoundCity`/`CanAttack`/`CanRangedAttack`, `AttackRange`), never a unit id. A new unit is a ruleset entry only; a new ability also needs a `UnitAbility` value, a command and a rule.
 - **Cities** (the ruleset's `cities` section; defaults in brackets):
   - sight (2);
   - production per turn at the end of the owner's turn (1);
@@ -69,6 +73,15 @@ After each accepted command, `Execute`:
   - a captured city's progress resets (yes).
 - **Stacking:** at most one unit per tile. A unit may stand in its own city.
 
+## Combat (G9)
+
+- **State:** `Unit.Damage` (0 = unhurt; health = `combat.maxHealth` − damage). Stored as damage so games saved before G9 read as unhurt with no schema bump; the JSON leaves it out while it is 0. The view carries `UnitView.Health` for every unit the viewer sees.
+- **`Engine/CombatCalculator`** (internal) works out a fight from two `Combatant`s (type, health, terrain): strengths with their `CombatModifier`s (health, counter, terrain), and each side's damage range. `AttackRule` rolls within those ranges; `GameEngine.CombatForecast` returns them to the client. Integer maths only.
+- **Rolls** use `DeterministicRandom.NextHashed`, defender first, and only for a side whose range isn't a single value (a ranged attacker and a civilian take fixed damage).
+- **Events:** `UnitAttackedEvent` (`unit_attacked`: both units, both positions, damage dealt and taken), then a `UnitDestroyedEvent` for each unit brought to 0.
+- **Healing** is part of `EndTurnRule`, before production: a hurt unit with full movement left rested.
+- Algorithm and numbers: [game logic](../game/game-logic.md#combat), [game data](../game/game-data.md#combat-combat).
+
 ## Game rules v1 (commands)
 
 | Command (`type` in JSON) | Rule |
@@ -76,7 +89,7 @@ After each accepted command, `Execute`:
 | `MoveUnitCommand` (`move_unit`) | Cheapest path (Dijkstra) to an empty tile within `MovementLeft`. Never through units or enemy cities. Emits `UnitMovedEvent` with the path |
 | `FoundCityCommand` (`found_city`) | Settler with movement left, not on a city, spacing respected. The settler is removed and a city created (`CityFoundedEvent`) |
 | `SetProductionCommand` (`set_production`) | Own city; changes what it builds and keeps its progress (`ProductionChangedEvent`) |
-| `AttackCommand` (`attack`) | Soldier with movement left, adjacent target. The attacker always wins in v1: a defending unit is destroyed (`UnitDestroyedEvent`); an undefended enemy city is captured and the soldier moves in (`CityCapturedEvent`). Movement drops to 0 |
+| `AttackCommand` (`attack`) | A unit with `attack` or `ranged_attack` and movement left; a target in range (adjacent for melee). Against a unit, both fight ([combat](#combat-g9)): `UnitAttackedEvent`, then `UnitDestroyedEvent` for each unit at 0 health; an undefended enemy city is captured by a melee attacker, which moves in (`CityCapturedEvent`). Movement drops to 0 |
 | `EndTurnCommand` (`end_turn`) | The actor's cities produce. A finished unit spawns on the city or its first free neighbour with 0 movement; if the city is surrounded, it waits. The next active player gets full movement; the round (`Turn`) increases on wrap (`TurnEndedEvent`) |
 | `ResignCommand` (`resign`) | Any active player, any time (`PlayerResignedEvent`) |
 
@@ -102,7 +115,7 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `move.occupied` / `move.unreachable` | A **visible** unit stands on the target / off map, own tile, blocked, too far, or a hidden unit is there |
 | `city.tile_taken` / `city.too_close` | Founding on a city / closer than the minimum spacing |
 | `city.not_found` / `city.unknown_unit_type` | The actor has no such city / a unit type the game's ruleset doesn't have |
-| `attack.not_adjacent` / `attack.no_target` / `attack.own_target` | Attack target problems |
+| `attack.not_adjacent` / `attack.out_of_range` / `attack.no_target` / `attack.own_target` | Attack target problems (`out_of_range` for ranged units; `no_target` also for a ranged unit aimed at an empty city) |
 
 Exceptions are reserved for programming errors: an invalid `GameSetup`, an unknown command type, or `ViewFor` for a non-participant.
 
@@ -129,12 +142,13 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 | Member | Answer | Equal to |
 |---|---|---|
 | `GameEngine.ReachableTiles(view, unitId)` | Tiles the unit can move to, row then column | the tiles a `MoveUnitCommand` would be accepted for |
-| `GameEngine.AttackTargets(view, unitId)` | Adjacent tiles with an enemy unit or city | the tiles an `AttackCommand` would be accepted for |
+| `GameEngine.AttackTargets(view, unitId)` | Tiles in range with an enemy unit (or, for melee, an enemy city) | the tiles an `AttackCommand` would be accepted for |
+| `GameEngine.CombatForecast(view, unitId, target)` | Both strengths, their modifiers and each side's damage range; `null` for a capture or a rejected attack | the range `Execute` rolls in |
 | `GameEngine.CheckFoundCity(view, unitId)` | `null`, or the `RuleViolation` | what a `FoundCityCommand` would return |
 
 - All three give nothing (or the violation) when the game is over, it isn't the viewer's turn, or the unit isn't the viewer's, the same as the command guard.
-- **Why a view is enough:** unit sight ≥ movement, and founder sight ≥ city spacing − 1 (enforced by `RulesetValidator`). Every tile a unit could reach, attack or be blocked by is therefore visible, and the view shows every unit and city on it. Reachability over a view enters only visible tiles.
-- **They can't drift from the rules:** `AttackRule.Check` and `FoundCityRule.Check` are shared by the rule and the preview, as are the turn check (`CommandGuardRule.CheckTurn`) and the Dijkstra in `ReachabilityCalculator`. `GameEnginePreviewTests` compares each preview with `Execute` for every tile within 3 of the unit, over scenarios covering own and enemy blockers, an own city in reach, enemies just outside sight (where the view and the state differ), the map edge, no movement, the opponent's turn, an enemy unit id, a finished game, and terrain: forest around the unit (with full and with 1 movement left), mountains and lake around it, a path around a lake, and a unit on hills that sees further. A new terrain type with a new cost or blocker adds its own parity scenarios.
+- **Why a view is enough:** unit sight ≥ movement, founder sight ≥ city spacing − 1, and ranged range ≤ sight (enforced by `RulesetValidator`). Every tile a unit could reach, attack or be blocked by is therefore visible, and the view shows every unit and city on it. Reachability over a view enters only visible tiles.
+- **They can't drift from the rules:** `AttackRule.Check` and `FoundCityRule.Check` are shared by the rule and the preview, as are the turn check (`CommandGuardRule.CheckTurn`) and the Dijkstra in `ReachabilityCalculator`. `GameEnginePreviewTests` compares each preview with `Execute` for every tile within 3 of the unit, over scenarios covering own and enemy blockers, an own city in reach, enemies just outside sight (where the view and the state differ), the map edge, no movement, the opponent's turn, an enemy unit id, a finished game, and terrain: forest around the unit (with full and with 1 movement left), mountains and lake around it, a path around a lake, a unit on hills that sees further, an archer with targets in and out of range, and a horseman. `CombatForecastTests` checks over 1000 seeds that `Execute` rolls exactly the forecast's lowest and highest damage for each kind of fight. A new terrain type with a new cost or blocker adds its own parity scenarios.
 
 ## View version
 
@@ -149,7 +163,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 ## Determinism and randomness
 
 - The same state, actor and command always produce the same result.
-- Randomness (spawn rows today, combat later) comes from `DeterministicRandom` (SplitMix64). Its state is stored in `GameState.RngState`, so replaying a command log rebuilds the exact game on any .NET version.
+- Randomness (spawn rows, map generation, combat damage) comes from `DeterministicRandom` (SplitMix64). Its state is stored in `GameState.RngState`, so replaying a command log rebuilds the exact game on any .NET version.
 - Pathfinding breaks cost ties by row, then column, so event paths never depend on the `PriorityQueue` implementation.
 - The host must generate `GameSetup.Seed` with a cryptographically secure RNG and never send it to clients, because spawn positions follow from it.
 - **Ids:** unit and city ids come from the same generator (`GameState.AllocateId`), including the four starting units. Each id is 31 bits of the **SHA-256 of a 64-bit draw**, redrawn when 0 or already used by a unit or city. Sequential ids would reveal how many units and cities the opponent created, and raw draws would be worse: SplitMix64 is invertible, so two raw ids let a player rebuild `RngState` in seconds and with it the opponent's spawn and every future id. Hashed ids reveal nothing and still replay identically.

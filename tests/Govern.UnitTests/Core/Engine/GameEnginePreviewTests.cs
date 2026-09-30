@@ -33,7 +33,10 @@ public class GameEnginePreviewTests
         "partial movement facing forest",
         "mountains and lake around",
         "path around a lake",
-        "on hills with enemies further out");
+        "on hills with enemies further out",
+        "archer with targets in range",
+        "archer on hills with an enemy out of range",
+        "horseman in the open");
 
     [Theory]
     [MemberData(nameof(Scenarios))]
@@ -203,6 +206,14 @@ public class GameEnginePreviewTests
         Should.Throw<ArgumentNullException>(() => GameEngine.CheckFoundCity(TestRulesets.Default, null!, new UnitId(1)));
     }
 
+    [Fact]
+    public void AttackTargets_Archer_ListsOnlyEnemyUnitsWithinRange()
+    {
+        var (state, archer, _) = Build("archer with targets in range");
+
+        GameEngine.AttackTargets(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), archer).ShouldBe([At(7, 5)]);
+    }
+
     private static (GameState State, UnitId Unit, HexCoord Origin) Build(string scenario)
     {
         var builder = new GameStateBuilder().WithCapitals();
@@ -227,6 +238,12 @@ public class GameEnginePreviewTests
             "partial movement facing forest" => (builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, movementLeft: 1), At(5, 5)),
             // Sight 2 plus 1 on hills: the enemy at distance 3 is in the view, but out of reach.
             "on hills with enemies further out" => (Soldier(builder, 5, 5), Blocker(builder, P2, 8, 5)),
+            // In range: the soldier two tiles away; not a target: the undefended city (archers can't capture) and the unit out of sight.
+            "archer with targets in range" => (builder.AddUnit(P1, TestRulesets.Archer, 5, 5),
+                EnemyCity(builder, 5, 3, Blocker(builder, P2, 7, 5, Blocker(builder, P2, 8, 5)))),
+            // Sight 3 on hills, but range 2: the enemy three tiles away is seen and can't be shot.
+            "archer on hills with an enemy out of range" => (builder.AddUnit(P1, TestRulesets.Archer, 5, 5), Blocker(builder, P2, 8, 5)),
+            "horseman in the open" => (builder.AddUnit(P1, TestRulesets.Horseman, 5, 5), Blocker(builder, P2, 7, 4)),
             _ => (Soldier(builder, 5, 5), At(5, 5)),
         };
 
@@ -254,7 +271,7 @@ public class GameEnginePreviewTests
                 .WithTerrain(TestRulesets.Hills, (6, 4)),
             // The lake blocks the straight line; the tile behind it costs 3 around it, one more than a full move.
             "path around a lake" => builder.WithTerrain(TestRulesets.Lake, (6, 5), (6, 4), (6, 6)),
-            "on hills with enemies further out" => builder.WithTerrain(TestRulesets.Hills, (5, 5)),
+            "on hills with enemies further out" or "archer on hills with an enemy out of range" => builder.WithTerrain(TestRulesets.Hills, (5, 5)),
             _ => builder,
         };
     }
@@ -263,10 +280,10 @@ public class GameEnginePreviewTests
         builder.AddUnit(owner ?? P1, TestRulesets.Soldier, column, row);
 
     // Adds a unit that only serves as an obstacle or target; returns the tested unit's origin for chaining.
-    private static HexCoord Blocker(GameStateBuilder builder, PlayerId owner, int column, int row)
+    private static HexCoord Blocker(GameStateBuilder builder, PlayerId owner, int column, int row, HexCoord? origin = null)
     {
         builder.AddUnit(owner, TestRulesets.Soldier, column, row);
-        return At(5, 5);
+        return origin ?? At(5, 5);
     }
 
     private static HexCoord EnemyCity(GameStateBuilder builder, int column, int row, HexCoord origin)
