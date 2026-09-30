@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Plan: G1 UI design system
 
-**Status:** phases 1–4 implemented on branch `claude/project-thread-pokkxe` (PR into `stage`); phase 5 (map lenses) waits for G4 terrain. The result is documented in [game UI](../../features/game-ui.md). What changed against this plan is under "Decisions made during implementation" at the end.
+**Status: done** (2026-09-30, PR #24 into `stage`): phases 1–4. Phase 5 (map lenses) moved to [G4](../../game/design-roadmap.md#g4-terrain-more-tile-types) on 2026-09-30: with only plains there is nothing for a lens to show, so a framework now would be dead code. The result is documented in [game UI](../../features/game-ui.md). What changed against this plan is under "Decisions made during implementation" at the end.
 
 ## Context
 Every upcoming game item (terrain, units and combat, buildings, trees, governors, seasons) adds screens, panels, numbers and icons. Today the game UI is one `GameTable` with a board and a stack of Radzen panels, colours hard-coded in `wwwroot/css/app.css`, board symbols inline in `GameBoard.razor`, and selection state held in `GameTable`. G1 fixes the approaches once (layout, interaction, visual language, components, UI state) and builds them so that each new mechanic plugs in instead of reshaping the screen. UI only: no Core, ruleset or Api change.

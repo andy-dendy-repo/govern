@@ -26,8 +26,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 | # | Id | Item | Area | Status | Detail |
 |---|---|---|---|---|---|
-| 1 | G1 | UI design system: an expandable system that grows with every new mechanic. UI only for now | client | in progress (phases 1–4: branch `claude/project-thread-pokkxe`; phase 5 lenses blocked by G4) | [plan](active/G1-ui-design-system.md), [G1](../game/design-roadmap.md#g1-ui-design-system-and-approaches), [game UI](../features/game-ui.md) |
-| 2 | C1 | Richer ruleset and Core: add content and mechanics to the embedded ruleset (`rulesets/default/v1.json`) and Core. C1 = G2, G4, G9 (agreed 2026-09-30) | core, ruleset | needs plan | [Content slice C1](#content-slice-c1-g2-g4-g9) |
+| 1 | C1 | Richer ruleset and Core: add content and mechanics to the embedded ruleset (`rulesets/default/v1.json`) and Core. C1 = G2, G4, G9 (agreed 2026-09-30) | core, ruleset | needs plan | [Content slice C1](#content-slice-c1-g2-g4-g9) |
 
 ### Content slice C1: G2, G4, G9
 
@@ -81,5 +80,6 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| G1 | UI design system: screen zones, tokens and light/dark, icon set, board layers, shared components, `/design` gallery ([game UI](../features/game-ui.md)). Map lenses moved to G4 | 2026-09-30, PR #24 | [G1](done/G1-ui-design-system.md) |
 | G3a | Core reads every game number from a loadable ruleset | 2026-09-30, PR #20 | [ruleset A](done/ruleset-a-core.md) |
 | F6 | Hide a visible enemy unit's movement (`UnitView`) | 2026-09-30, PR #19 | — |
