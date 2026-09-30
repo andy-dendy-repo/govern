@@ -26,7 +26,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 | # | Id | Item | Area | Status | Detail |
 |---|---|---|---|---|---|
-| 1 | G1 | UI design system: an expandable system that grows with every new mechanic. UI only for now | client | needs plan | [G1](../game/design-roadmap.md#g1-ui-design-system-and-approaches) |
+| 1 | G1 | UI design system: an expandable system that grows with every new mechanic. UI only for now | client | in progress (phases 1–4: branch `claude/project-thread-pokkxe`; phase 5 lenses blocked by G4) | [plan](active/G1-ui-design-system.md), [G1](../game/design-roadmap.md#g1-ui-design-system-and-approaches), [game UI](../features/game-ui.md) |
 | 2 | C1 | Richer ruleset and Core: add content and mechanics to the embedded ruleset (`rulesets/default/v1.json`) and Core. C1 = G2, G4, G9 (agreed 2026-09-30) | core, ruleset | needs plan | [Content slice C1](#content-slice-c1-g2-g4-g9) |
 
 ### Content slice C1: G2, G4, G9

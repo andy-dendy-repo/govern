@@ -1,0 +1,68 @@
+/*
+  Design tokens: the only place colour values are written (GameUiTests.Css_UsesColourValuesOnlyInTokens).
+  Light values first, dark values under prefers-color-scheme. Components and the board use var(--gv-*) only.
+  Names: --gv-<group>-<name>. A new terrain adds --gv-terrain-<id> and --gv-terrain-<id>-explored
+  (GameUiTests.Tokens_DefineAPaletteForEveryTerrain). See docs/features/game-ui.md.
+*/
+:root {
+    /* Seats, in turn order (PlayerView.Players). Up to four; F10 adds more. */
+    --gv-seat-1: #2f7de1;
+    --gv-seat-2: #d64545;
+    --gv-seat-3: #2e9e5b;
+    --gv-seat-4: #c28a12;
+
+    /* Board */
+    --gv-board-background: #1f2329;
+    --gv-board-outline: #14171c;
+    --gv-tile-stroke: #1f2329;
+    --gv-tile-unexplored: #2b3038;
+    --gv-selected: #ffd54a;
+    --gv-icon-mark: #ffffff;
+    --gv-label: #ffffff;
+    --gv-label-outline: #14171c;
+    --gv-overlay-reachable: rgba(255, 255, 255, 0.3);
+    --gv-overlay-reachable-stroke: #ffffff;
+    --gv-overlay-attackable: rgba(214, 69, 69, 0.35);
+    --gv-overlay-attackable-stroke: #d64545;
+
+    /* Terrain palette: visible and explored (remembered) shades per ruleset terrain id. */
+    --gv-terrain-plains: #9cc47f;
+    --gv-terrain-plains-explored: #6f8a60;
+
+    /* Panels and components (built on the Radzen theme, which follows the system light or dark setting). */
+    --gv-text: var(--rz-text-color);
+    --gv-text-muted: var(--rz-text-secondary-color);
+    --gv-surface: var(--rz-base-background-color);
+    --gv-surface-raised: var(--rz-card-background-color);
+    --gv-border: var(--rz-base-300);
+    --gv-accent: var(--rz-primary);
+    --gv-danger: var(--rz-danger);
+    --gv-shadow: rgba(0, 0, 0, 0.35);
+
+    /* Spacing and shape */
+    --gv-space-1: 0.25rem;
+    --gv-space-2: 0.5rem;
+    --gv-space-3: 1rem;
+    --gv-radius: 0.5rem;
+    --gv-icon-size: 1.25rem;
+
+    /* Blazor boot screen and error UI (app.css) */
+    --gv-boot-track: #e0e0e0;
+    --gv-boot-progress: #1b6ec2;
+    --gv-error-background: #b32121;
+    --gv-error-text: #ffffff;
+    --gv-error-ui-background: #ffffe0;
+    --gv-error-ui-shadow: rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --gv-board-background: #15181d;
+        --gv-tile-stroke: #15181d;
+        --gv-tile-unexplored: #22262d;
+        --gv-terrain-plains: #86ad6a;
+        --gv-terrain-plains-explored: #56704a;
+        --gv-boot-track: #3a3f47;
+        --gv-shadow: rgba(0, 0, 0, 0.7);
+    }
+}

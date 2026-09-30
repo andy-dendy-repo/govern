@@ -1,0 +1,30 @@
+@* Progress towards a cost with how many turns are left at the current rate (production today; research, growth later). *@
+
+<div class="progress">
+    <RadzenProgressBar Value="@Math.Min(Value, Max)" Max="@Math.Max(Max, 1)" ShowValue="false" aria-label="@Label"/>
+    <span class="progress-text">
+        <GameIcon Id="@Icons.Turns"/>
+        <span class="progress-turns">@TurnsText</span>
+    </span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int Value { get; set; }
+
+    [Parameter, EditorRequired] public int Max { get; set; }
+
+    /// <summary>How much is added each turn; 0 or less means it never completes at this rate.</summary>
+    [Parameter, EditorRequired] public int PerTurn { get; set; }
+
+    [Parameter, EditorRequired] public string Label { get; set; } = null!;
+
+    private string TurnsText => TurnsLeft switch
+    {
+        null => "Never at this rate",
+        0 => "Done this turn",
+        1 => "1 turn left",
+        var turns => $"{turns} turns left",
+    };
+
+    private int? TurnsLeft => Value >= Max ? 0 : PerTurn <= 0 ? null : (Max - Value + PerTurn - 1) / PerTurn;
+}
