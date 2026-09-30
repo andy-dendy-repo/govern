@@ -135,8 +135,8 @@ public static class GamesApi
             {
                 var game = Game.Create(opponentId, joinedAt);
                 game.Join(userId, joinedAt);
-                game.Start(opponentId, joinedAt);
-                game.Execute(userId, new ResignCommand(), joinedAt);
+                game.Start(opponentId, TestRulesets.Default, joinedAt);
+                game.Execute(userId, TestRulesets.Default, new ResignCommand(), joinedAt);
                 db.Games.Add(game);
             }
 

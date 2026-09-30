@@ -262,12 +262,12 @@ public class WatchGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixt
         var state = await StoredStateAsync(gameId);
         var mover = new PlayerId(caller.Players.Single(p => p.IsYou).PlayerId);
         var opponent = new PlayerId(caller.Players.Single(p => !p.IsYou).PlayerId);
-        var opponentVersion = GameEngine.ViewFor(state, opponent).Version;
+        var opponentVersion = GameEngine.ViewFor(TestRulesets.Default, state, opponent).Version;
 
         return state.Units
             .Where(unit => unit.Owner == mover)
-            .SelectMany(unit => GameEngine.ReachableTiles(state, mover, unit.Id).Select(target => new MoveUnitCommand(unit.Id, target)))
-            .FirstOrDefault(move => GameEngine.ViewFor(GameEngine.Execute(state, mover, move).Update!.State, opponent).Version == opponentVersion)
+            .SelectMany(unit => GameEngine.ReachableTiles(TestRulesets.Default, state, mover, unit.Id).Select(target => new MoveUnitCommand(unit.Id, target)))
+            .FirstOrDefault(move => GameEngine.ViewFor(TestRulesets.Default, GameEngine.Execute(TestRulesets.Default, state, mover, move).Update!.State, opponent).Version == opponentVersion)
             .ShouldNotBeNull("the starting position has no move hidden from the opponent");
     }
 

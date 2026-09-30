@@ -1,10 +1,16 @@
+using System.Text.Json.Serialization;
+
 namespace Govern.Core.Map;
 
 /// <summary>
-/// Kind of terrain on a tile; its movement rules live in <see cref="TerrainCatalog"/>.
+/// Kind of terrain on a tile: the id of a terrain in the game's ruleset (<see cref="Rulesets.Ruleset.Terrains"/>), such as
+/// <c>plains</c>. Its movement rules come from <see cref="Rulesets.Ruleset.Terrain"/>. JSON holds the plain id.
 /// </summary>
-public enum TerrainType
+/// <param name="Id">The ruleset id.</param>
+[JsonConverter(typeof(TerrainTypeJsonConverter))]
+public readonly record struct TerrainType(string Id)
 {
-    /// <summary>Open land: passable, movement cost 1.</summary>
-    Plains,
+    /// <summary>The id.</summary>
+    /// <returns><see cref="Id"/>.</returns>
+    public override string ToString() => Id;
 }

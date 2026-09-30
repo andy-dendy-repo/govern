@@ -218,7 +218,7 @@ public class GameTableTests : ClientTestContext
         Tile(cut, At(2, 2)).Click();
 
         cut.Find(".city-panel .city-name").TextContent.ShouldBe("Home");
-        cut.Find(".production").TextContent.ShouldBe("Producing a settler: 2 of 6");
+        cut.Find(".production").TextContent.ShouldBe("Producing a Settler: 2 of 6");
         cut.Find("button.produce-settler").HasAttribute("disabled").ShouldBeTrue();
         cut.Find("button.produce-soldier").Click();
         cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
@@ -244,7 +244,7 @@ public class GameTableTests : ClientTestContext
 
         Tile(cut, At(5, 2)).Click();
 
-        cut.Find(".unit-name").TextContent.Trim().ShouldBe("Enemy soldier");
+        cut.Find(".unit-name").TextContent.Trim().ShouldBe("Enemy Soldier");
         cut.FindAll(".movement, button.found-city").ShouldBeEmpty();
         cut.FindAll("use.overlay").ShouldBeEmpty();
     }

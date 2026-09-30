@@ -22,11 +22,11 @@
         }
         @if (SelectedUnit is { } unit)
         {
-            <UnitPanel View="@View" Unit="@unit" Busy="@_sending" Command="@SendAsync"/>
+            <UnitPanel View="@View" Unit="@unit" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
         }
         else if (SelectedCity is { } city)
         {
-            <CityPanel View="@View" City="@city" Busy="@_sending" Command="@SendAsync"/>
+            <CityPanel View="@View" City="@city" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
         }
     </RadzenStack>
 </div>

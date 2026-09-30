@@ -4,6 +4,7 @@ using Govern.Core.State;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
 using Govern.Domain.Events;
+using Govern.UnitTests.Core.Builders;
 
 namespace Govern.UnitTests.Domain.Entities;
 
@@ -97,7 +98,7 @@ public class GameTests
         var game = Game.Create(Creator, Now);
         game.Join(Joiner, Now);
 
-        game.Start(Creator, Now);
+        game.Start(Creator, TestRulesets.Default, Now);
 
         game.Phase.ShouldBe(GamePhase.InProgress);
         var state = game.State.ShouldNotBeNull();
@@ -124,7 +125,7 @@ public class GameTests
         var game = Game.Create(Creator, Now);
         game.Join(Joiner, Now);
 
-        Should.Throw<InvalidOperationException>(() => game.Start(Joiner, Now));
+        Should.Throw<InvalidOperationException>(() => game.Start(Joiner, TestRulesets.Default, Now));
         game.Phase.ShouldBe(GamePhase.Lobby);
     }
 
@@ -133,7 +134,7 @@ public class GameTests
     {
         var game = Game.Create(Creator, Now);
 
-        Should.Throw<InvalidOperationException>(() => game.Start(Creator, Now));
+        Should.Throw<InvalidOperationException>(() => game.Start(Creator, TestRulesets.Default, Now));
         game.State.ShouldBeNull();
     }
 
@@ -142,7 +143,7 @@ public class GameTests
     {
         var game = StartedGame();
 
-        Should.Throw<InvalidOperationException>(() => game.Start(Creator, Now));
+        Should.Throw<InvalidOperationException>(() => game.Start(Creator, TestRulesets.Default, Now));
     }
 
     [Fact]
@@ -154,7 +155,7 @@ public class GameTests
         game.Join(Joiner, Now);
         game.Revision.ShouldBe(1);
 
-        game.Start(Creator, Now);
+        game.Start(Creator, TestRulesets.Default, Now);
         game.Revision.ShouldBe(2);
     }
 
@@ -173,7 +174,7 @@ public class GameTests
         var game = StartedGame();
         var before = game.State!;
 
-        var result = game.Execute(Creator, new EndTurnCommand(), Now);
+        var result = game.Execute(Creator, TestRulesets.Default, new EndTurnCommand(), Now);
 
         result.IsSuccess.ShouldBeTrue();
         game.State.ShouldBeSameAs(result.Update!.State);
@@ -189,7 +190,7 @@ public class GameTests
         var game = StartedGame();
         var before = game.State;
 
-        var result = game.Execute(Joiner, new EndTurnCommand(), Now);
+        var result = game.Execute(Joiner, TestRulesets.Default, new EndTurnCommand(), Now);
 
         result.Violation.ShouldBe(RuleViolations.NotYourTurn);
         game.State.ShouldBeSameAs(before);
@@ -202,7 +203,7 @@ public class GameTests
     {
         var game = StartedGame();
 
-        var result = game.Execute(Joiner, new ResignCommand(), Now);
+        var result = game.Execute(Joiner, TestRulesets.Default, new ResignCommand(), Now);
 
         result.IsSuccess.ShouldBeTrue();
         game.Phase.ShouldBe(GamePhase.Finished);
@@ -217,7 +218,7 @@ public class GameTests
         var game = Game.Create(Creator, Now);
         game.Join(Joiner, Now);
 
-        Should.Throw<InvalidOperationException>(() => game.Execute(Creator, new EndTurnCommand(), Now));
+        Should.Throw<InvalidOperationException>(() => game.Execute(Creator, TestRulesets.Default, new EndTurnCommand(), Now));
     }
 
     [Fact]
@@ -225,7 +226,7 @@ public class GameTests
     {
         var game = StartedGame();
 
-        Should.Throw<InvalidOperationException>(() => game.Execute(Guid.CreateVersion7(), new EndTurnCommand(), Now));
+        Should.Throw<InvalidOperationException>(() => game.Execute(Guid.CreateVersion7(), TestRulesets.Default, new EndTurnCommand(), Now));
     }
 
     [Fact]
@@ -242,8 +243,8 @@ public class GameTests
         var game = Game.Create(Creator, Now);
 
         game.Join(Joiner, Now);
-        game.Start(Creator, Now);
-        game.Execute(Creator, new EndTurnCommand(), Now);
+        game.Start(Creator, TestRulesets.Default, Now);
+        game.Execute(Creator, TestRulesets.Default, new EndTurnCommand(), Now);
 
         game.DomainEvents.ShouldBe([new GameChangedEvent(game.Id), new GameChangedEvent(game.Id), new GameChangedEvent(game.Id)]);
     }
@@ -255,7 +256,7 @@ public class GameTests
         game.ClearDomainEvents();
 
         game.Join(Joiner, Now);
-        game.Execute(Joiner, new EndTurnCommand(), Now);
+        game.Execute(Joiner, TestRulesets.Default, new EndTurnCommand(), Now);
 
         game.DomainEvents.ShouldBeEmpty();
     }
@@ -354,7 +355,7 @@ public class GameTests
         game.Join(Joiner, Now.AddMinutes(1));
         game.ActivityAt.ShouldBe(Now.AddMinutes(1));
 
-        game.Start(Creator, Now.AddMinutes(2));
+        game.Start(Creator, TestRulesets.Default, Now.AddMinutes(2));
         game.ActivityAt.ShouldBe(Now.AddMinutes(2));
     }
 
@@ -374,10 +375,10 @@ public class GameTests
     {
         var game = StartedGame();
 
-        game.Execute(Creator, new EndTurnCommand(), Now.AddMinutes(1));
+        game.Execute(Creator, TestRulesets.Default, new EndTurnCommand(), Now.AddMinutes(1));
         game.ActivityAt.ShouldBe(Now.AddMinutes(1));
 
-        game.Execute(Creator, new ResignCommand(), Now.AddMinutes(2));
+        game.Execute(Creator, TestRulesets.Default, new ResignCommand(), Now.AddMinutes(2));
         game.ActivityAt.ShouldBe(Now.AddMinutes(2));
     }
 
@@ -388,11 +389,11 @@ public class GameTests
         var mover = game.FindPlayer(Creator)!.PlayerId;
         var move = game.State!.Units
             .Where(unit => unit.Owner == mover)
-            .SelectMany(unit => GameEngine.ReachableTiles(game.State, mover, unit.Id).Select(target => new MoveUnitCommand(unit.Id, target)))
+            .SelectMany(unit => GameEngine.ReachableTiles(TestRulesets.Default, game.State, mover, unit.Id).Select(target => new MoveUnitCommand(unit.Id, target)))
             .First();
 
-        game.Execute(Creator, move, Now.AddMinutes(1)).IsSuccess.ShouldBeTrue();
-        game.Execute(Joiner, new EndTurnCommand(), Now.AddMinutes(2)).IsSuccess.ShouldBeFalse();
+        game.Execute(Creator, TestRulesets.Default, move, Now.AddMinutes(1)).IsSuccess.ShouldBeTrue();
+        game.Execute(Joiner, TestRulesets.Default, new EndTurnCommand(), Now.AddMinutes(2)).IsSuccess.ShouldBeFalse();
 
         game.ActivityAt.ShouldBe(Now);
         game.Revision.ShouldBe(3);
@@ -402,7 +403,7 @@ public class GameTests
     {
         var game = Game.Create(Creator, Now);
         game.Join(Joiner, Now);
-        game.Start(Creator, Now);
+        game.Start(Creator, TestRulesets.Default, Now);
         return game;
     }
 }

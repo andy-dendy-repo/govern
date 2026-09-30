@@ -36,7 +36,7 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
             stored.CurrentPlayerId.ShouldBe(opponent.PlayerId);
             stored.Revision.ShouldBe(3);
             var you = new PlayerId(body.Players.Single(p => p.IsYou).PlayerId);
-            GameEngine.ViewFor(stored.State.ShouldNotBeNull(), you).Version.ShouldBe(body.View.Version);
+            GameEngine.ViewFor(TestRulesets.Default, stored.State.ShouldNotBeNull(), you).Version.ShouldBe(body.View.Version);
         }
 
         (await GamesApi.GetGameAsync(Client, joiner, game.Id, Ct)).View!.CurrentPlayer.ShouldBe(new PlayerId(opponent.PlayerId));
@@ -49,7 +49,7 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
         var view = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!;
         var unit = view.Units.First(u => u.Owner == view.Viewer);
         var state = await StoredStateAsync(game.Id);
-        var target = GameEngine.ReachableTiles(state, view.Viewer, unit.Id).First();
+        var target = GameEngine.ReachableTiles(TestRulesets.Default, state, view.Viewer, unit.Id).First();
         var json = $$"""
             { "expectedVersion": {{view.Version}},
               "command": { "unitId": { "value": {{unit.Id.Value}} }, "target": { "q": {{target.Q}}, "r": {{target.R}} }, "type": "move_unit" } }

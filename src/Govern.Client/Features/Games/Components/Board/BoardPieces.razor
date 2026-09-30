@@ -3,7 +3,6 @@
 @using Govern.Client.Features.Games.Models
 @using Govern.Core.Map
 @using Govern.Core.State
-@using Govern.Core.Units
 @using Govern.Core.Visibility
 
 <g class="pieces">
@@ -24,8 +23,9 @@
     }
     @foreach (var unit in View.Units)
     {
-        <use href="@(unit.Type == UnitType.Settler ? "#settler" : "#soldier")" x="@X(unit.Position)" y="@Y(unit.Position)"
-             class="@PieceClass($"unit {(unit.Type == UnitType.Settler ? "settler" : "soldier")}", unit.Owner, Selection.Unit == unit.Id)"/>
+        @* Each unit id has a symbol of the same name in GameBoard (settler, soldier). *@
+        <use href="@($"#{unit.Type.Id}")" x="@X(unit.Position)" y="@Y(unit.Position)"
+             class="@PieceClass($"unit {unit.Type.Id}", unit.Owner, Selection.Unit == unit.Id)"/>
     }
 </g>
 

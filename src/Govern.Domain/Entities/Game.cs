@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using Govern.Core.Engine;
+using Govern.Core.Rulesets;
 using Govern.Core.State;
 using Govern.Domain.EntityBase;
 using Govern.Domain.Enums;
@@ -21,8 +22,8 @@ namespace Govern.Domain.Entities;
 /// </remarks>
 public sealed class Game : BaseAuditableEntity
 {
-    /// <summary>Number of seats.</summary>
-    public const int MaxPlayers = GameSetup.PlayerCount;
+    /// <summary>Number of seats. Every ruleset is for two players for now (<see cref="SetupRules.Players"/>).</summary>
+    public const int MaxPlayers = 2;
 
     /// <summary>
     /// How long a lobby may go without activity (<see cref="ActivityAt"/>) before it expires and is deleted.
@@ -174,22 +175,25 @@ public sealed class Game : BaseAuditableEntity
     }
 
     /// <summary>
-    /// Starts the game: creates the engine state with the players in seat order and a secret random seed.
+    /// Starts the game: creates the engine state from the ruleset, with the players in seat order and a secret random seed.
     /// </summary>
     /// <param name="userId">The user starting the game.</param>
+    /// <param name="ruleset">The ruleset the game is played with.</param>
     /// <param name="now">The current time.</param>
     /// <exception cref="InvalidOperationException">
     /// The user is not the creator, the game is not in the lobby, or it is not full.
     /// </exception>
-    public void Start(Guid userId, DateTimeOffset now)
+    public void Start(Guid userId, Ruleset ruleset, DateTimeOffset now)
     {
+        ArgumentNullException.ThrowIfNull(ruleset);
+
         if (userId != CreatorId || Phase != GamePhase.Lobby || !IsFull)
         {
             throw new InvalidOperationException("Only the creator can start a full lobby.");
         }
 
         var players = _players.OrderBy(static player => player.Seat).Select(static player => player.PlayerId);
-        State = GameFactory.Create(new GameSetup([.. players], NewSeed()));
+        State = GameFactory.Create(ruleset, new GameSetup([.. players], NewSeed()));
         Phase = GamePhase.InProgress;
         CurrentPlayerId = State.CurrentPlayer.Value;
         MarkChanged(now);
@@ -201,12 +205,14 @@ public sealed class Game : BaseAuditableEntity
     /// <see cref="ActivityAt"/> moves only when the turn passes or the game finishes.
     /// </summary>
     /// <param name="userId">The seated user sending the command.</param>
+    /// <param name="ruleset">The ruleset the game was started with.</param>
     /// <param name="command">The command.</param>
     /// <param name="now">The current time.</param>
     /// <returns>The engine's result: the update, or the <see cref="RuleViolation"/> that rejected the command.</returns>
     /// <exception cref="InvalidOperationException">The game has not started, or the user has no seat in it.</exception>
-    public CommandResult Execute(Guid userId, GameCommand command, DateTimeOffset now)
+    public CommandResult Execute(Guid userId, Ruleset ruleset, GameCommand command, DateTimeOffset now)
     {
+        ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(command);
 
         if (State is null || FindPlayer(userId) is not { } player)
@@ -214,7 +220,7 @@ public sealed class Game : BaseAuditableEntity
             throw new InvalidOperationException("Only a seated player of a started game can send commands.");
         }
 
-        var result = GameEngine.Execute(State, player.PlayerId, command);
+        var result = GameEngine.Execute(ruleset, State, player.PlayerId, command);
         if (result.IsSuccess)
         {
             State = result.Update.State;

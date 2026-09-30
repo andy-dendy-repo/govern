@@ -14,7 +14,7 @@ The Games feature lets a signed-in user create a two-player game, share an invit
 | Phase | Meaning | Allowed |
 |---|---|---|
 | `lobby` | Created; waiting for a second player. `state` is null | Join with the invite code; the joiner leaves; the creator cancels (deletes) it, or starts once both seats are taken. Deleted after 7 days without activity |
-| `inProgress` | Started: `GameFactory.Create` built the board with a secret random seed. The creator (seat 0) moves first | Send commands; read the view |
+| `inProgress` | Started: `GameFactory.Create` built the board from the default ruleset (`rulesets/default/v1.json`, embedded and parsed once by `DefaultRulesetService`, which every game handler passes to the engine) with a secret random seed. The creator (seat 0) moves first | Send commands; read the view |
 | `finished` | The engine decided the game (victory or resignation). Set by the same command that ended it | Read; every command returns `game.finished` |
 
 Phases are stored as text (`games.phase`) and sent as camelCase strings. A cancelled or expired lobby is deleted, not given a phase: its rows and invite code are gone, and GET returns 404. Leaving a running game is done by resigning. Regenerating an invite code is not supported yet.

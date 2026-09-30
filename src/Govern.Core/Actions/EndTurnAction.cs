@@ -3,6 +3,7 @@ using Govern.Core.Cities;
 using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Map;
+using Govern.Core.Rulesets;
 using Govern.Core.State;
 using Govern.Core.Units;
 
@@ -18,19 +19,19 @@ public sealed record EndTurnCommand : GameCommand;
 /// </summary>
 internal static class EndTurnRule
 {
-    public static CommandResult Apply(GameState state, PlayerId actor)
+    public static CommandResult Apply(Ruleset ruleset, GameState state, PlayerId actor)
     {
         var events = ImmutableArray.CreateBuilder<GameEvent>();
         var produced = state.Cities
             .Where(city => city.Owner == actor)
             .Select(static city => city.Id)
-            .Aggregate(state, (current, cityId) => Produce(current, current.FindCity(cityId)!, events));
+            .Aggregate(state, (current, cityId) => Produce(ruleset, current, current.FindCity(cityId)!, events));
 
-        return new GameUpdate(PassTurn(produced, events), events.ToImmutable());
+        return new GameUpdate(PassTurn(ruleset, produced, events), events.ToImmutable());
     }
 
     // Hands the turn to the next active player in turn order; the round number increases when it wraps around.
-    private static GameState PassTurn(GameState state, ImmutableArray<GameEvent>.Builder events)
+    private static GameState PassTurn(Ruleset ruleset, GameState state, ImmutableArray<GameEvent>.Builder events)
     {
         var players = state.Players;
         var currentIndex = players.Select(static player => player.Id).ToList().IndexOf(state.CurrentPlayer);
@@ -45,17 +46,17 @@ internal static class EndTurnRule
 
             var turn = currentIndex + step >= players.Length ? state.Turn + 1 : state.Turn;
             events.Add(new TurnEndedEvent(state.CurrentPlayer, next.Id, turn));
-            return ResetMovement(state with { CurrentPlayer = next.Id, Turn = turn }, next.Id);
+            return ResetMovement(ruleset, state with { CurrentPlayer = next.Id, Turn = turn }, next.Id);
         }
 
         return state;
     }
 
-    private static GameState Produce(GameState state, City city, ImmutableArray<GameEvent>.Builder events)
+    private static GameState Produce(Ruleset ruleset, GameState state, City city, ImmutableArray<GameEvent>.Builder events)
     {
-        var cost = UnitCatalog.Get(city.Producing).ProductionCost;
-        var progress = Math.Min(city.ProductionProgress + City.ProductionPerTurn, cost);
-        if (progress < cost || SpawnTile(state, city) is not { } tile)
+        var cost = ruleset.Unit(city.Producing).ProductionCost;
+        var progress = Math.Min(city.ProductionProgress + ruleset.Cities.ProductionPerTurn, cost);
+        if (progress < cost || SpawnTile(ruleset, state, city) is not { } tile)
         {
             return state.WithCity(city with { ProductionProgress = progress });
         }
@@ -69,12 +70,12 @@ internal static class EndTurnRule
     }
 
     // The city tile when free, otherwise the first free neighbour a unit could stand on; null when surrounded.
-    private static HexCoord? SpawnTile(GameState state, City city)
+    private static HexCoord? SpawnTile(Ruleset ruleset, GameState state, City city)
     {
         foreach (var coord in city.Position.Neighbors().Prepend(city.Position))
         {
             var ownCityOrNone = state.CityAt(coord) is not { } other || other.Owner == city.Owner;
-            if (state.Map.IsPassable(coord) && state.UnitAt(coord) is null && ownCityOrNone)
+            if (state.Map.IsPassable(ruleset, coord) && state.UnitAt(coord) is null && ownCityOrNone)
             {
                 return coord;
             }
@@ -83,8 +84,8 @@ internal static class EndTurnRule
         return null;
     }
 
-    private static GameState ResetMovement(GameState state, PlayerId player) => state with
+    private static GameState ResetMovement(Ruleset ruleset, GameState state, PlayerId player) => state with
     {
-        Units = [.. state.Units.Select(unit => unit.Owner == player ? unit with { MovementLeft = unit.Definition.Movement } : unit)],
+        Units = [.. state.Units.Select(unit => unit.Owner == player ? unit with { MovementLeft = ruleset.Unit(unit.Type).Movement } : unit)],
     };
 }
