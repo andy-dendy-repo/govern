@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Plan: G2 game rules reference
 
-**Status:** in progress on `claude/project-thread-6ko932`. Approved by Andrii 2026-09-30, with open questions 5 and 6 answered as proposed below.
+**Status:** done 2026-09-30, PR #26. Approved by Andrii 2026-09-30, with open questions 5 and 6 answered as proposed below.
 
 ## Context
 The game's rules are spread over `docs/game/game-logic.md` (step-by-step algorithms with ruleset keys, for developers), `docs/features/game-core.md` (implementation) and the plans. G2 is the first item of content slice C1 because G4 and G9 each change the rules and should update one page as they go. The outcome is `docs/game/rules.md`: the complete, current rules written for a player, with its numbers kept equal to `rulesets/default/v1.json` by a test, and a Definition of Done line so every rules change updates it.
