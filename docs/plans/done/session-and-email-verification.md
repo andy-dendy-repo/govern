@@ -7,9 +7,9 @@ updated: 2026-09-29
 
 # Plans: session lifecycle, transactional sign-up email, email verification
 
-**Status: done (closed 2026-09-29).** Plan 1 is delivered. Plans 2 and 3 moved to [next follow-ups](next-follow-ups.md) (items 4 and 5); their sections below stay as the detailed design for those items.
+**Status: done (closed 2026-09-29).** Plan 1 is delivered. Plans 2 and 3 moved to [next follow-ups](../deferred/follow-ups.md) (items 4 and 5); their sections below stay as the detailed design for those items.
 
-Increments, each on its own branch from `stage`, each run through `/develop-feature`, and each merged before the next starts. Plan 1 (refresh token pruning, session cap, sign-out) is done; see [users](../features/users.md). Together they replace backlog items #1 (sign-out), #4 (email verification), #6 (refresh token cleanup) and #7 (outbox) that used to be in [follow-ups](done-follow-ups.md). When a plan is merged, remove its section here; delete this file after Plan 3. There are no hosted jobs, no Azure Functions and no outbox.
+Increments, each on its own branch from `stage`, each run through `/develop-feature`, and each merged before the next starts. Plan 1 (refresh token pruning, session cap, sign-out) is done; see [users](../../features/users.md). Together they replace backlog items #1 (sign-out), #4 (email verification), #6 (refresh token cleanup) and #7 (outbox) that used to be in [follow-ups](follow-ups.md). When a plan is merged, remove its section here; delete this file after Plan 3. There are no hosted jobs, no Azure Functions and no outbox.
 
 ---
 

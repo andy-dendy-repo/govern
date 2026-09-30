@@ -1,81 +1,77 @@
 ---
-title: Next follow-ups (after the game plans)
-tags: [plan, backlog, follow-ups, release, game, security, auth, email-verification, entra, postgres, monitoring]
+title: Deferred follow-ups (release, infrastructure, accounts, multiplayer)
+tags: [plan, deferred, follow-ups, release, game, security, auth, email-verification, entra, postgres, monitoring, simultaneous-turns, multiplayer]
 code: [src, infra, .github/workflows]
 updated: 2026-09-30
 ---
 
-# Next follow-ups
+# Deferred follow-ups
 
-Future game mechanics are listed separately in the [game design roadmap](game-design-roadmap.md). All earlier plans are done: the [template roadmap](done-template-solution-roadmap.md), the [follow-ups backlog](done-follow-ups.md) and its [delivery plans](done-follow-ups-delivery.md), [session and email verification](done-session-and-email-verification.md) Plan 1, and game Plans 1–5 ([game delivery](done-game-delivery.md), [game plan 2](done-game-lobby.md)). This file holds everything still open, collected from those plans.
+**Status: deferred (2026-09-30).** The game itself (UI design system, richer ruleset content and mechanics) comes first; the items below wait. Their priority and "revisit when" triggers are in the [backlog](../backlog.md), which is the only place priorities are kept. The details here are kept so an item can be picked up without rediscovering it.
 
-Run each item through `/develop-feature`. It gets its own plan in `.claude/rules/planning.md` format, a branch, and a PR. Game work branches from and PRs to `gamecore` until the game ships; everything else branches from `stage`. When an item is done, remove it here and update the related docs.
+The items were collected from the earlier plans (all [done](../done/)). Ids `F1`–`F10` keep the numbers of the former "next follow-ups" list (`F6`, the `UnitView` change, is done). Game ideas that were item 8 there are split: game log and animations, player-chosen city names and the scale-out backplane are now `F11`–`F13` in the backlog's Next list; turn timers stay here as `F8`.
 
-| # | Priority | Item | Area | Size |
-|---|---|---|---|---|
-| 1 | High | [Ship the game](#1-ship-the-game) | release | M |
-| 2 | High | [Least-privilege database access](#2-least-privilege-database-access) | infra | M |
-| 3 | Medium | [Monitoring and alerts](#3-monitoring-and-alerts) | infra | M |
-| 4 | Medium | [Sign-up email inside the database transaction](#4-sign-up-email-inside-the-database-transaction) | users | S |
-| 5 | Medium | [Email verification](#5-email-verification) | users, client | M |
-| 7 | Low | [Invite code rotation (kick)](#7-invite-code-rotation-kick) | game | S |
-| 8 | — | [Game ideas](#8-game-ideas) | game | S–L each |
-| 9 | — | [Simultaneous turns (Civ 6 style)](#9-simultaneous-turns-civ-6-style) | game | M–L |
-| 10 | — | [More than two players](#10-more-than-two-players) | game | M |
+When an item is picked up, it runs through `/develop-feature`: its own plan in `.claude/rules/planning.md` format under `docs/plans/active/`, a branch, and a PR. Game work branches from and PRs to `gamecore` until the game ships; everything else branches from `stage`.
 
-## 1. Ship the game
+| Id | Item | Area | Size |
+|---|---|---|---|
+| F1 | [Ship the game](#f1-ship-the-game) | release | M |
+| F2 | [Least-privilege database access](#f2-least-privilege-database-access) | infra | M |
+| F3 | [Monitoring and alerts](#f3-monitoring-and-alerts) | infra | M |
+| F4 | [Sign-up email inside the database transaction](#f4-sign-up-email-inside-the-database-transaction) | users | S |
+| F5 | [Email verification](#f5-email-verification) | users, client | M |
+| F7 | [Invite code rotation (kick)](#f7-invite-code-rotation-kick) | game | S |
+| F8 | [Turn timers and absent players](#f8-turn-timers-and-absent-players) | game | M |
+| F9 | [Simultaneous turns (Civ 6 style)](#f9-simultaneous-turns-civ-6-style) | game | M–L |
+| F10 | [More than two players](#f10-more-than-two-players) | game | M |
+
+## F1. Ship the game
 
 - **Why:** the game (Plans 1–5) lives on `gamecore`. Players can't reach it until it is released.
 - **Steps:**
-  1. Merge PR #17 (client board) into `gamecore`.
-  2. Open a PR from `gamecore` to `stage`.
-  3. Run the `security-auditor` agent before the `stage` → `main` release PR. Critical or High findings block the release.
-  4. Release. If this is the first deployment, follow [deployment](../operations/deployment.md): the [template roadmap](done-template-solution-roadmap.md) recorded Bicep and the workflows as written but not yet run.
+  1. Open a PR from `gamecore` to `stage`.
+  2. Run the `security-auditor` agent before the `stage` → `main` release PR. Critical or High findings block the release.
+  3. Release. If this is the first deployment, follow [deployment](../../operations/deployment.md): the [template roadmap](../done/template-solution-roadmap.md) recorded Bicep and the workflows as written but not yet run.
 - **Check after deploy (not covered locally):**
   - Play a game in the published Release build (Blazor trimming; `Govern.Core` is kept whole by `TrimMode` partial).
   - Confirm the board works under the Static Web App CSP with no violations in the console. The dev server doesn't send the CSP.
 
-## 2. Least-privilege database access
+## F2. Least-privilege database access
 
-- **Why:** the Api connects with the PostgreSQL administrator login, and the firewall allows all Azure services. The admin password is the only barrier ([deployment known gaps](../operations/deployment.md#known-gaps-follow-ups)). Formerly follow-up #2.
+- **Why:** the Api connects with the PostgreSQL administrator login, and the firewall allows all Azure services. The admin password is the only barrier ([deployment known gaps](../../operations/deployment.md#known-gaps-follow-ups)). Formerly follow-up #2.
 - **Approach:** Microsoft Entra authentication with the Web App's system-assigned managed identity. A database role mapped to that identity owns only the `govern` objects, and the connection string holds no password. The admin password stays as break-glass only.
-- **Detailed plan:** [follow-ups delivery, Plan 4](done-follow-ups-delivery.md#plan-4-least-privilege-database-access-via-entra-managed-identity-2).
+- **Detailed plan:** [follow-ups delivery, Plan 4](../done/follow-ups-delivery.md#plan-4-least-privilege-database-access-via-entra-managed-identity-2).
 
-## 3. Monitoring and alerts
+## F3. Monitoring and alerts
 
 - **Why:** refresh-token theft (EventId 1001), brute force (401/429 spikes) and 5xx responses are only visible in container stdout. Formerly follow-up #5.
 - **Approach:** one Log Analytics workspace, workspace-based Application Insights, and the Azure Monitor OpenTelemetry distro exporting Warning+ logs. Add alerts on EventId 1001, on 5xx rate and on 401/429 spikes, reusing the action group of the storage alert (`infra/modules/alerts.bicep`).
-- **Detailed plan:** [follow-ups delivery, Plan 5](done-follow-ups-delivery.md#plan-5-monitoring-and-alerts-5).
+- **Detailed plan:** [follow-ups delivery, Plan 5](../done/follow-ups-delivery.md#plan-5-monitoring-and-alerts-5).
 
-## 4. Sign-up email inside the database transaction
+## F4. Sign-up email inside the database transaction
 
 - **Why:** the sign-up email should be sent only when the user row commits, with no outbox or hosted job.
-- **Detailed plan:** [session and email verification, Plan 2](done-session-and-email-verification.md#plan-2-send-the-sign-up-email-inside-the-database-transaction).
+- **Detailed plan:** [session and email verification, Plan 2](../done/session-and-email-verification.md#plan-2-send-the-sign-up-email-inside-the-database-transaction).
 
-## 5. Email verification
+## F5. Email verification
 
-- **Why:** accounts are cheap today: there's no email verification, and sign-up is limited only per IP. That makes the game storage abuse (many accounts looping create → join → start → resign) possible over days. The seat quota and the storage alert bound it, and verification (or a daily sign-up cap) is the lasting fix (Medium, [game plan 2 follow-ups](done-game-lobby.md#follow-ups-from-the-code-review-and-security-audit-before-stage--main)).
+- **Why:** accounts are cheap today: there's no email verification, and sign-up is limited only per IP. That makes the game storage abuse (many accounts looping create → join → start → resign) possible over days. The seat quota and the storage alert bound it, and verification (or a daily sign-up cap) is the lasting fix (Medium, [game plan 2 follow-ups](../done/game-lobby.md#follow-ups-from-the-code-review-and-security-audit-before-stage--main)).
 - **Scope:** the Api side, plus the client's confirm-email page (the client shipped first).
-- **Detailed plan:** [session and email verification, Plan 3](done-session-and-email-verification.md#plan-3-email-verification).
+- **Detailed plan:** [session and email verification, Plan 3](../done/session-and-email-verification.md#plan-3-email-verification).
 
-## 7. Invite code rotation (kick)
+## F7. Invite code rotation (kick)
 
 - **Why:** leaving a lobby doesn't rotate the invite code, so a player who left (or anyone the code leaked to) can take the free seat again. The creator's only recourse is to cancel and recreate (Low, Plan 3c audit).
 - **Approach:** a creator-only "remove player" that frees the seat and rotates the code, with a lobby-panel button.
 - **Also Low:** the lobby cap is a soft cap, because simultaneous creates can overshoot it.
 
-## 8. Game ideas
+## F8. Turn timers and absent players
 
-Deferred from the [game delivery plan](done-game-delivery.md). None is scheduled. Bigger game mechanics (terrain, resources, rivers, city territory and stats, governors, unit roster and HP combat, builders and buildings, science and culture trees, seasons), plus the UI design system and the game rules reference, are in the [game design roadmap](game-design-roadmap.md).
+- **Why:** a player who stops playing blocks the game, since turns alternate and nothing ends a turn for them. Formerly one of the item 8 game ideas.
+- **Approach:** a per-turn time limit and a rule for absent players (auto end turn, then forfeit after n missed turns). Needs server background work.
+- **Prerequisite for** [simultaneous turns](#f9-simultaneous-turns-civ-6-style) and [more than two players](#f10-more-than-two-players).
 
-| Idea | Size | Notes |
-|---|---|---|
-| Game log and animations from engine events filtered by visibility (`VisibilityCalculator.EventsFor`) | M–L | Core first, then client UI |
-| Player-chosen city names | S–M | Also closes a small leak: `City N` counts the founder's cities at founding, hidden ones included |
-| Turn timers and handling of absent players | M | Needs server background work; a prerequisite for [simultaneous turns](#9-simultaneous-turns-civ-6-style) |
-| Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | M | Only needed with more than one instance |
-
-## 9. Simultaneous turns (Civ 6 style)
+## F9. Simultaneous turns (Civ 6 style)
 
 - **Why:** in Civ 6 all players act at once during a turn, and the round ends when everyone has ended their turn. Waiting for the opponent to finish every turn is slow. Today turns alternate: `GameState.CurrentPlayer` may act, and `CommandGuardRule` answers everyone else with `game.not_your_turn`.
 - **Approach:** a turn mode chosen in the lobby (`Alternating`, the default, or `Simultaneous`) and stored in the game state.
@@ -93,9 +89,9 @@ Deferred from the [game delivery plan](done-game-delivery.md). None is scheduled
 - **Decide first:**
   - **Stale commands:** every visible enemy move changes your view fingerprint, so `expectedVersion` would reject many commands mid-skirmish. Recommended: make the version check advisory in simultaneous mode; the engine re-checks every command against the current state anyway.
   - **Double moves:** a unit can attack at the end of one turn and again at the start of the next, before the opponent reacts. Civ 6's answer is dynamic turns (simultaneous in peace, alternating at war); the stored turn mode leaves room for that later.
-  - **Absent players:** a round ends only when everyone ends their turn, so do this together with turn timers ([game ideas](#8-game-ideas)), or after them.
+  - **Absent players:** a round ends only when everyone ends their turn, so do this together with [turn timers](#f8-turn-timers-and-absent-players), or after them.
 
-## 10. More than two players
+## F10. More than two players
 
 - **Why:** games are 1-vs-1 only. Free-for-all games of 3–4 players would add variety.
 - **Already N-ready:**
@@ -116,7 +112,7 @@ Deferred from the [game delivery plan](done-game-delivery.md). None is scheduled
 | Tests | two-player scenarios | 3–4 players: turn order, elimination mid-game, resigning out of turn, each player's fog |
 
 - **Decide first:**
-  - **Waiting:** with alternating turns, each player waits for all the others every round. Do this with or after [simultaneous turns](#9-simultaneous-turns-civ-6-style) and turn timers ([game ideas](#8-game-ideas)).
+  - **Waiting:** with alternating turns, each player waits for all the others every round. Do this with or after [simultaneous turns](#f9-simultaneous-turns-civ-6-style) and [turn timers](#f8-turn-timers-and-absent-players).
   - **Free-for-all dynamics:** ganging up and kingmaking are expected; teams or diplomacy would be a separate feature.
   - **Resigning mid-game:** the game continues for the others. Check that the current player resigning on their own turn passes the turn with 3+ players.
-  - **Start below the max:** the invite code stays valid until start, which makes [invite code rotation](#7-invite-code-rotation-kick) a bit more relevant.
+  - **Start below the max:** the invite code stays valid until start, which makes [invite code rotation](#f7-invite-code-rotation-kick) a bit more relevant.
