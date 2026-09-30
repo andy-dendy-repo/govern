@@ -14,7 +14,7 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 | # | Item | Depends on | Size |
 |---|---|---|---|
 | G1 | [UI design system and approaches](#g1-ui-design-system-and-approaches) | — | M |
-| G2 | [Game rules reference](#g2-game-rules-reference) | — | S, then ongoing |
+| G2 | [Game rules reference](#g2-game-rules-reference) *(in progress)* | — | S, then ongoing |
 | G3 | [Data-driven catalogs and a new state schema](#g3-data-driven-catalogs-and-a-new-state-schema-suggested) *(part A done; part B deferred)* | — | M |
 | G4 | [Terrain: more tile types](#g4-terrain-more-tile-types) | G3 | M |
 | G5 | [Resources and tile yields](#g5-resources-and-tile-yields) | G4 | L |
@@ -74,11 +74,12 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 ## G2. Game rules reference
 
 - **Why:** the rules are spread over the code, [game-core](../features/game-core.md) and the plans. Players and developers need one place that says how the game works.
-- **Deliverable:** `docs/game/rules.md`: the complete, current rules, written for players. It covers the map and terrain, movement, cities, production, combat, victory, and later every G item. Tables of numbers (unit stats, terrain costs, yields) come from the ruleset.
+- **Status:** in progress ([plan](../plans/active/G2-rules-reference.md)). The reference is [rules](rules.md).
+- **Deliverable:** `docs/game/rules.md`: the complete, current rules, written for players. It covers the map and terrain, movement, cities, production, combat, victory, and later every G item. Tables of numbers (unit stats, terrain costs, game numbers) come from the ruleset.
 - **Keeping it true:**
-  - Every rules change updates it in the same PR (add this to the Definition of Done in `CLAUDE.md` and to `.claude/rules/game-core.md`).
-  - *(Suggested)* A test compares the documented tables with the ruleset, so the numbers can't drift.
-  - *(Suggested)* Later, the client shows the same reference in-game (a "Civilopedia" screen), fed from the ruleset.
+  - Every rules change updates it in the same PR (in the Definition of Done in `CLAUDE.md` and in `.claude/rules/game-core.md`).
+  - `RulesReferenceTests` (architecture tests) compares the terrain, unit and game-number tables with the default ruleset, so the numbers can't drift and a new unit or terrain can't ship undocumented.
+  - *(Deferred)* The client shows the same reference in-game (a "Civilopedia" screen), fed from the ruleset. Revisit when G9's unit roster is big enough that players need it in the game.
 
 ## G3. Data-driven catalogs and a new state schema *(suggested)*
 
@@ -274,5 +275,5 @@ Answer before planning the item each one affects. Questions 2–6 came from the 
 2. **Where texts live:** in the ruleset (proposed, so names and rules change together), or in a separate language pack?
 3. **Which languages first?**
 4. **The Api's error messages:** translated by the Api (from the `Accept-Language` header), or the Api sends the code and English, and the client translates by code?
-5. **Level of detail of [game logic](game-logic.md):** rules only, as the draft is now (what a player could read), or also naming the Core classes that implement each step?
-6. **Relation to the rules reference (G2):** is [game logic](game-logic.md) itself the player-facing rules reference, or the source a separate player-facing version is written from?
+5. ~~**Level of detail of [game logic](game-logic.md)**~~ *Answered with G2 (2026-09-30):* rules only; it names no Core classes (those are in [game-core](../features/game-core.md)).
+6. ~~**Relation to the rules reference (G2)**~~ *Answered with G2 (2026-09-30):* [game logic](game-logic.md) stays the developer version (algorithms with ruleset keys); the player-facing version is a separate page, [rules](rules.md). A rules change updates both.

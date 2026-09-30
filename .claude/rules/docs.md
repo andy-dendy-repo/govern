@@ -18,7 +18,7 @@ paths:
 | `docs/operations/<topic>.md` | Infra, deployment, configuration, runbooks |
 | `docs/plans/backlog.md` | The one list of open work and the only place priorities are kept (see "Backlog" in `planning.md`) |
 | `docs/plans/{active,deferred,done}/<slug>.md` | Plans by state (see `planning.md`). Move a plan with `git mv` when its state changes, then update every link to it |
-| `docs/game/*.md` | The game's design: `game-data.md` (the loadable ruleset: every configurable number, list and text, its format and examples) and `game-logic.md` (Core's algorithms, step by step, with the ruleset keys they use). A game rule change updates both. `design-roadmap.md` describes future mechanics (G items); it holds no priorities |
+| `docs/game/*.md` | The game's design: `rules.md` (the rules reference for players, no code or ruleset keys outside its closing maintainer section; its tables are checked against the ruleset by `RulesReferenceTests`), `game-data.md` (the loadable ruleset: every configurable number, list and text, its format and examples) and `game-logic.md` (Core's algorithms for developers, step by step, with the ruleset keys they use, no class names). A game rule change updates `rules.md` and `game-logic.md`, and `game-data.md` when the ruleset format changes. `design-roadmap.md` describes future mechanics (G items); it holds no priorities |
 
 ## Writing rules
 

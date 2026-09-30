@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Game logic: Core algorithms
 
-**Status: draft, under discussion.** This describes, as simple step-by-step algorithms, what `Govern.Core` does today. Every number comes from the game's ruleset and is written as its key in brackets, for example [`units.*.movement`]; the keys are described in [game data](game-data.md). Core reads all of them from the ruleset (`Govern.Core/Rulesets`); none is a constant in code. The implementation details (classes, tests, JSON) are in [game-core](../features/game-core.md).
+**Status: draft, under discussion.** This describes, as simple step-by-step algorithms, what `Govern.Core` does today. Every number comes from the game's ruleset and is written as its key in brackets, for example [`units.*.movement`]; the keys are described in [game data](game-data.md). Core reads all of them from the ruleset (`Govern.Core/Rulesets`); none is a constant in code. The implementation details (classes, tests, JSON) are in [game-core](../features/game-core.md). The same rules written for players, without keys or algorithms, are the [rules reference](rules.md); a rules change updates both.
 
 ## Terms
 
@@ -147,4 +147,4 @@ Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, b
 
 ## Open questions
 
-Tracked in the [design roadmap open questions](design-roadmap.md#open-questions) (questions 5–6 concern this document), to discuss later.
+Tracked in the [design roadmap open questions](design-roadmap.md#open-questions). Questions 5 and 6, which concerned this document, were answered with G2: this document stays for developers and names no Core classes, and the player-facing version is the [rules reference](rules.md).
