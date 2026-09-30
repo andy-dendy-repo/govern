@@ -1,0 +1,21 @@
+@* A number with its exact value and origin: shown on hover (title), and on focus or tap through the info button, so it
+   works with a keyboard and on touch screens without a long press. *@
+
+<span class="number-tooltip" title="@Text">
+    <span class="number">@ChildContent</span>
+    <RadzenButton Icon="info" Variant="Variant.Text" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                  aria-label="@($"Details: {Text}")" aria-expanded="@(_open ? "true" : "false")"
+                  Click="@(() => _open = !_open)" class="tooltip-toggle"/>
+    @if (_open)
+    {
+        <span role="tooltip" class="tooltip-text">@Text</span>
+    }
+</span>
+
+@code {
+    private bool _open;
+
+    [Parameter, EditorRequired] public string Text { get; set; } = null!;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

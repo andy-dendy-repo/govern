@@ -1,0 +1,37 @@
+@* The game's icon set: one <symbol> per unit id, terrain id, the city and each UI glyph, rendered once per game screen.
+   Every <svg> on the page draws an icon with <use href="#id"> (GameIcon, the board). Ids come from Helpers/Icons.
+   A new ruleset unit or terrain adds its symbol here (GameSpriteTests fails until it does). Shapes sit in a 26x26 box
+   centred on 0,0; the fill comes from the <use> (a seat or terrain colour), the white mark from .icon-mark. *@
+
+<svg class="game-sprite" aria-hidden="true" focusable="false" width="0" height="0">
+    <defs>
+        <symbol id="city" overflow="visible">
+            <path d="M-13,10 V-4 H-9 V-9 H-4 V-4 H4 V-9 H9 V-4 H13 V10 Z"/>
+        </symbol>
+        <symbol id="unit-settler" overflow="visible">
+            <circle r="9"/>
+            <path class="icon-mark" d="M-3,6 V-6 L5,-3 L-3,0"/>
+        </symbol>
+        <symbol id="unit-soldier" overflow="visible">
+            <path d="M0,-11 L10,-6 V2 C10,7 5,10 0,12 C-5,10 -10,7 -10,2 V-6 Z"/>
+            <path class="icon-mark" d="M-4,-3 L4,5 M4,-3 L-4,5"/>
+        </symbol>
+        <symbol id="terrain-plains" overflow="visible">
+            <polygon points="0,-11 9.5,-5.5 9.5,5.5 0,11 -9.5,5.5 -9.5,-5.5"/>
+        </symbol>
+        <symbol id="ui-movement" overflow="visible">
+            <path class="icon-line" d="M-9,0 H7 M1,-6 L7,0 L1,6"/>
+        </symbol>
+        <symbol id="ui-sight" overflow="visible">
+            <path class="icon-line" d="M-10,0 C-5,-7 5,-7 10,0 C5,7 -5,7 -10,0 Z"/>
+            <circle r="3"/>
+        </symbol>
+        <symbol id="ui-production" overflow="visible">
+            <path class="icon-line" d="M-8,8 L2,-2"/>
+            <path d="M0,-10 L9,-1 L5,3 L-4,-6 Z"/>
+        </symbol>
+        <symbol id="ui-turns" overflow="visible">
+            <path class="icon-line" d="M-6,-9 H6 L-6,9 H6 Z"/>
+        </symbol>
+    </defs>
+</svg>

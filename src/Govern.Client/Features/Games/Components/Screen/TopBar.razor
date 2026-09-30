@@ -1,0 +1,38 @@
+@* The top zone of the game screen: the player's seat, the turn and whose turn it is, End turn, and Resign (asks first).
+   Later counters (treasury, science, culture, season) are added here, one element each, before the actions. *@
+@using Govern.Core.Actions
+@using Govern.Core.Engine
+@using Govern.Core.State
+@using Govern.Core.Visibility
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween"
+             Gap="1rem" Wrap="FlexWrap.Wrap" class="top-bar">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <span class="@($"seat-swatch {Seats.Class(View, View.Viewer)}")" title="Your colour"></span>
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="turn rz-m-0">@TurnText</RadzenText>
+    </RadzenStack>
+    @if (View.Status == GameStatus.InProgress)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+            <RadzenButton Text="End turn" Icon="skip_next" Disabled="@(Busy || !IsYourTurn)"
+                          Click="@(() => Command.InvokeAsync(new EndTurnCommand()))" class="end-turn"/>
+            <ConfirmButton Text="Resign" Icon="flag" Question="Resign the game? Your opponent wins." ConfirmText="Yes, resign"
+                           CancelText="Keep playing" Disabled="@Busy" Class="resign"
+                           Confirmed="@(() => Command.InvokeAsync(new ResignCommand()))"/>
+        </RadzenStack>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback<GameCommand> Command { get; set; }
+
+    private bool IsYourTurn => View.CurrentPlayer == View.Viewer;
+
+    private string TurnText => View.Status == GameStatus.Finished
+        ? $"Turn {View.Turn}: game over"
+        : $"Turn {View.Turn}: {(IsYourTurn ? "your turn" : "opponent's turn")}";
+}

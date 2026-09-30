@@ -1,4 +1,5 @@
-@* The selected city: its name and, for the player's own city, what it produces and the buttons to change it. *@
+@* The selected city: its name in its owner's colour and, for the player's own city, what it produces, how long that takes,
+   and the buttons to change it (each with its cost). *@
 @using Govern.Core.Actions
 @using Govern.Core.Engine
 @using Govern.Core.Rulesets
@@ -7,7 +8,10 @@
 @using Govern.Core.Visibility
 
 <RadzenStack Gap="0.5rem" class="city-panel">
-    <RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.H3" class="city-name">@City.Name</RadzenText>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <GameIcon Id="@Icons.City" Class="@Seats.Class(View, City.Owner)"/>
+        <RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.H3" class="city-name rz-m-0">@City.Name</RadzenText>
+    </RadzenStack>
     @if (City.Owner != View.Viewer)
     {
         <RadzenText TextStyle="TextStyle.Body2" class="enemy-city">Enemy city</RadzenText>
@@ -15,14 +19,22 @@
     else
     {
         <RadzenText TextStyle="TextStyle.Body2" class="production">@ProductionText</RadzenText>
+        @if (City.Producing is { } producing)
+        {
+            <ProgressBar Value="@(City.ProductionProgress ?? 0)" Max="@Ruleset.Unit(producing).ProductionCost"
+                         PerTurn="@Ruleset.Cities.ProductionPerTurn" Label="Production"/>
+        }
         <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" Wrap="FlexWrap.Wrap">
-            @foreach (var type in Ruleset.Units.Select(static unit => unit.Id))
+            @foreach (var unit in Ruleset.Units)
             {
-                <RadzenButton Text="@($"Build {Ruleset.UnitName(type)}")" Size="ButtonSize.Small"
-                              ButtonStyle="@(City.Producing == type ? ButtonStyle.Primary : ButtonStyle.Light)"
-                              Disabled="@(Busy || !CanAct || City.Producing == type)"
-                              Click="@(() => Command.InvokeAsync(new SetProductionCommand(City.Id, type)))"
-                              class="@($"produce produce-{type.Id}")"/>
+                <RadzenButton Size="ButtonSize.Small"
+                              ButtonStyle="@(City.Producing == unit.Id ? ButtonStyle.Primary : ButtonStyle.Light)"
+                              Disabled="@(Busy || !CanAct || City.Producing == unit.Id)"
+                              Click="@(() => Command.InvokeAsync(new SetProductionCommand(City.Id, unit.Id)))"
+                              class="@($"produce produce-{unit.Id.Id}")">
+                    <span class="produce-name">Build @Ruleset.UnitName(unit.Id)</span>
+                    <CostLabel Amount="@unit.ProductionCost"/>
+                </RadzenButton>
             }
         </RadzenStack>
     }

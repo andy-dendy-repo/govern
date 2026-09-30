@@ -1,0 +1,44 @@
+@* A destructive action that asks inline first (resign today; disband, remove a building later): one click shows the
+   question, a second click on the confirm button acts. Nothing happens on a single accidental click. *@
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap" class="confirm-button">
+    @if (_confirming)
+    {
+        <RadzenText TextStyle="TextStyle.Body1" TagName="TagName.Span" class="confirm-text">@Question</RadzenText>
+        <RadzenButton Text="@ConfirmText" ButtonStyle="ButtonStyle.Danger" Disabled="@Disabled" Click="@ConfirmAsync"
+                      class="@($"confirm-{Class}")"/>
+        <RadzenButton Text="@CancelText" ButtonStyle="ButtonStyle.Light" Click="@(() => _confirming = false)" class="dismiss"/>
+    }
+    else
+    {
+        <RadzenButton Text="@Text" Icon="@Icon" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Disabled="@Disabled"
+                      Click="@(() => _confirming = true)" class="@Class"/>
+    }
+</RadzenStack>
+
+@code {
+    private bool _confirming;
+
+    [Parameter, EditorRequired] public string Text { get; set; } = null!;
+
+    [Parameter, EditorRequired] public string Question { get; set; } = null!;
+
+    [Parameter, EditorRequired] public string ConfirmText { get; set; } = null!;
+
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>The button's class; the confirm button gets <c>confirm-</c> followed by it.</summary>
+    [Parameter, EditorRequired] public string Class { get; set; } = null!;
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public EventCallback Confirmed { get; set; }
+
+    private async Task ConfirmAsync()
+    {
+        _confirming = false;
+        await Confirmed.InvokeAsync();
+    }
+}

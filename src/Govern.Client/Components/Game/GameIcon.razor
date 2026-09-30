@@ -1,0 +1,17 @@
+@* One icon from the game's icon set (GameSprite), sized to the text. Decorative unless Label is set. *@
+
+<svg class="@($"game-icon {Class}".TrimEnd())" viewBox="-13 -13 26 26" focusable="false"
+     role="@(Label is null ? null : "img")" aria-label="@Label" aria-hidden="@(Label is null ? "true" : null)">
+    <use href="@($"#{Id}")"/>
+</svg>
+
+@code {
+    /// <summary>The symbol id (see <c>Helpers/Icons</c>).</summary>
+    [Parameter, EditorRequired] public string Id { get; set; } = null!;
+
+    /// <summary>What the icon means, read by screen readers; leave empty when text next to it says the same.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Extra classes, such as a seat (<c>seat-1</c>) or a terrain (<c>terrain terrain-plains</c>).</summary>
+    [Parameter] public string? Class { get; set; }
+}

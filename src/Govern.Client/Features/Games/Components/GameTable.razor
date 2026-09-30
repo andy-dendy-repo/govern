@@ -1,32 +1,30 @@
-@* A started game: the board with the side panels (turn, selection, result). Sends one command at a time. *@
+@* A started game: the game screen with its zones (top bar, map, side panel, action bar; see docs/features/game-ui.md).
+   Sends one command at a time. Esc clears the selection. *@
 @using Govern.Client.Features.Games.Components.Board
-@using Govern.Core.State
+@using Govern.Client.Features.Games.Components.Screen
 
-<div class="game-table">
-    <GameBoard View="@View" Selection="@_selection" Highlights="@_highlights" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
-    <RadzenStack Gap="1rem" class="game-side">
-        @if (_stale)
-        {
-            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="stale">
-                The game changed before your move arrived, so nothing was applied. The board is up to date now.
-            </RadzenAlert>
-        }
-        <ApiErrorAlert Error="@_error"/>
-        @if (View.Status == GameStatus.Finished)
-        {
-            <GameOverPanel View="@View"/>
-        }
-        else
-        {
-            <TurnPanel View="@View" Busy="@_sending" Command="@SendAsync"/>
-        }
-        @if (SelectedUnit is { } unit)
-        {
-            <UnitPanel View="@View" Unit="@unit" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
-        }
-        else if (SelectedCity is { } city)
-        {
-            <CityPanel View="@View" City="@city" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
-        }
-    </RadzenStack>
-</div>
+<CascadingValue Value="@_ui" IsFixed="true">
+    <GameSprite/>
+    <div class="game-screen" tabindex="-1" @onkeydown="@OnKeyDown">
+        <div class="zone-top">
+            <TopBar View="@View" Busy="@_sending" Command="@SendAsync"/>
+        </div>
+        <div class="zone-map">
+            <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+        </div>
+        <div class="zone-actions">
+            <ActionBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
+        </div>
+        <aside class="zone-side">
+            <SidePanel View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync">
+                @if (_stale)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="stale">
+                        The game changed before your move arrived, so nothing was applied. The board is up to date now.
+                    </RadzenAlert>
+                }
+                <ApiErrorAlert Error="@_error"/>
+            </SidePanel>
+        </aside>
+    </div>
+</CascadingValue>

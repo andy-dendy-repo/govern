@@ -7,6 +7,7 @@ using Govern.Client.Features.Games.Models;
 using Govern.ClientTests.Support;
 using Govern.Core.Map;
 using Govern.Core.Visibility;
+using Microsoft.AspNetCore.Components.Web;
 using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Components;
@@ -91,7 +92,7 @@ public class GameTableTests : ClientTestContext
         Tile(cut, At(1, 1)).Click();
 
         Api.RequestsTo(TestGames.CommandsPath()).Count.ShouldBe(1);
-        cut.Find("svg").ClassList.ShouldContain("busy");
+        cut.Find("svg.board").ClassList.ShouldContain("busy");
         response.SetResult(FakeApiHandler.Json(TestGames.Started()));
         await Eventually.HoldsAsync(() => _changed.Count == 1, "the first command finishes");
         cut.WaitForAssertion(() => cut.Find("button.end-turn").HasAttribute("disabled").ShouldBeFalse());
@@ -269,6 +270,66 @@ public class GameTableTests : ClientTestContext
 
         cut.Find(".game-over .result").TextContent.ShouldBe("You won!");
         cut.FindAll("button.end-turn, button.resign").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_Started_ShowsTheZonesAndTheIconSet()
+    {
+        var cut = RenderTable(TestGames.Started());
+
+        cut.FindAll(".game-screen .zone-top .top-bar").Count.ShouldBe(1);
+        cut.FindAll(".game-screen .zone-map svg.board").Count.ShouldBe(1);
+        cut.FindAll(".game-screen .zone-side .side-panel").Count.ShouldBe(1);
+        cut.FindAll("svg.game-sprite symbol#unit-settler").Count.ShouldBe(1);
+        cut.Find(".top-bar .seat-swatch").ClassList.ShouldContain("seat-1");
+        cut.Find(".selection-hint").TextContent.ShouldContain("Select a unit or a city");
+    }
+
+    [Fact]
+    public void Escape_WithAUnitSelected_ClearsTheSelection()
+    {
+        var cut = RenderTable(TestGames.Started());
+        Tile(cut, At(2, 2)).Click();
+        cut.FindAll(".unit-panel").Count.ShouldBe(1);
+
+        cut.Find(".game-screen").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        cut.FindAll(".unit-panel, .action-bar, use.overlay").ShouldBeEmpty();
+        cut.FindAll(".selection-hint").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Render_OwnUnitSelected_ShowsItsStatsAndItsActionsInTheActionBar()
+    {
+        var cut = RenderTable(TestGames.Started());
+
+        Tile(cut, At(2, 2)).Click();
+
+        cut.Find(".unit-panel .movement .stat-value").TextContent.ShouldContain("2 of 2");
+        cut.Find(".unit-panel .sight .stat-value").TextContent.ShouldContain("2");
+        cut.Find(".unit-panel .cost .stat-value").TextContent.ShouldContain("6");
+        cut.FindAll(".action-bar button.found-city").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Render_OpponentsTurn_DisablesFoundCity()
+    {
+        var cut = RenderTable(TestGames.Started(view: Start() with { CurrentPlayer = Opponent }));
+
+        Tile(cut, At(2, 2)).Click();
+
+        cut.Find("button.found-city").HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Render_OwnCityProducing_ShowsTurnsLeftAndCosts()
+    {
+        var cut = RenderTable(TestGames.Started(view: Create(cities: [City(7, You, At(2, 2), "Home")])));
+
+        Tile(cut, At(2, 2)).Click();
+
+        cut.Find(".city-panel .progress-turns").TextContent.ShouldBe("4 turns left");
+        cut.Find("button.produce-soldier .cost-amount").TextContent.ShouldBe("4");
     }
 
     private IRenderedComponent<GameTable> RenderTable(GetGameResponse game) =>

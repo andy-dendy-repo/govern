@@ -1,11 +1,13 @@
-@* Highlights, cities and units over the terrain. Clicks pass through to the tiles (pointer-events: none in app.css). *@
+@* The highlights, cities and units over the terrain, each in its BoardLayer. Clicks pass through to the tiles
+   (pointer-events: none in board.css). Pieces are coloured by seat (seat-1, seat-2: turn order) and marked own or enemy. *@
 @using Govern.Client.Features.Games.Helpers
 @using Govern.Client.Features.Games.Models
+@using Govern.Client.Helpers
 @using Govern.Core.Map
 @using Govern.Core.State
 @using Govern.Core.Visibility
 
-<g class="pieces">
+<g class="layer-highlights" data-layer="highlights">
     @foreach (var coord in Highlights.Reachable)
     {
         <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay reachable"/>
@@ -14,17 +16,20 @@
     {
         <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay attackable"/>
     }
+</g>
+<g class="layer-cities" data-layer="cities">
     @foreach (var city in View.Cities)
     {
         <g class="@PieceClass("city", city.Owner, Selection.City == city.Id)" transform="translate(@X(city.Position) @Y(city.Position))">
-            <use href="#city"/>
+            <use href="@($"#{Icons.City}")"/>
             <text y="26" class="city-name">@city.Name</text>
         </g>
     }
+</g>
+<g class="layer-units" data-layer="units">
     @foreach (var unit in View.Units)
     {
-        @* Each unit id has a symbol of the same name in GameBoard (settler, soldier). *@
-        <use href="@($"#{unit.Type.Id}")" x="@X(unit.Position)" y="@Y(unit.Position)"
+        <use href="@($"#{Icons.Unit(unit.Type)}")" x="@X(unit.Position)" y="@Y(unit.Position)"
              class="@PieceClass($"unit {unit.Type.Id}", unit.Owner, Selection.Unit == unit.Id)"/>
     }
 </g>
@@ -49,5 +54,5 @@
     private static string Y(HexCoord coord) => HexLayout.Format(HexLayout.Center(coord).Y);
 
     private string PieceClass(string kind, PlayerId owner, bool selected) =>
-        $"piece {kind} {(owner == View.Viewer ? "own" : "enemy")}{(selected ? " selected" : null)}";
+        $"piece {kind} {Seats.Class(View, owner)} {(owner == View.Viewer ? "own" : "enemy")}{(selected ? " selected" : null)}";
 }
