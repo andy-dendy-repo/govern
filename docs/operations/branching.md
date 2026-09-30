@@ -2,7 +2,7 @@
 title: Branching and release strategy
 tags: [git, branching, pull-request, release, ci, branch-protection]
 code: [.github/workflows/ci.yml, .github/workflows/release.yml, .claude/hooks/bash-guard.sh]
-updated: 2026-09-27
+updated: 2026-09-30
 ---
 
 # Branching and release strategy
@@ -11,8 +11,8 @@ updated: 2026-09-27
 |---|---|---|
 | `main` | Production. Every push is released | Only by a PR from `stage` |
 | `stage` | Integration branch; the base of all work | Only by PRs from feature branches |
-| `gamecore` | Integration branch for the game ([game delivery plan](../plans/done/game-delivery.md)); merged to `stage` when the game is ready | Only by PRs from game feature branches; CI runs on PRs to it |
-| `feature/<name>`, `fix/<name>`, `chore/<name>` | One change each | Branched from `stage` (game work: from `gamecore`) |
+| `gamecore` | Retired (2026-09-30): it was the game's integration branch ([game delivery plan](../plans/done/game-delivery.md)) and is merged into `stage`. New game work branches from `stage` | No new PRs |
+| `feature/<name>`, `fix/<name>`, `chore/<name>` | One change each | Branched from `stage` (game work too) |
 
 ## Flow
 

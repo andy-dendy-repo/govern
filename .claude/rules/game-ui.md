@@ -1,0 +1,31 @@
+---
+paths:
+  - "src/Govern.Client/**"
+---
+
+# Game UI design system
+
+The approaches for every game screen, panel, number and icon. Full description, catalog and "adding UI for a new mechanic": `docs/features/game-ui.md`. Enforced by `tests/Govern.ArchitectureTests/GameUiTests` (colours, terrain palette) and `tests/Govern.ClientTests` (`GameSpriteTests`: icons per ruleset id; `GameBoardTests`: layer order). Change the rule and the tests together.
+
+## Where game UI goes
+
+| Adding… | Put it in |
+|---|---|
+| A shared game component (numbers, costs, progress, confirm, icons) | `Components/Game/XxxX.razor`, with bUnit tests in `tests/Govern.ClientTests/Components/Game` and an entry on the design gallery (`Features/Design/Pages/DesignPage`) |
+| Something in a screen zone | `Features/Games/Components/Screen/`: counters in `TopBar`, unit actions in `ActionBar`, a panel per selection kind in `SidePanel` |
+| A panel for one selection kind | `Features/Games/Components/XxxPanel.razor`, chosen by `SidePanel` |
+| UI state of the game screen (selection, lens, open view) | `Features/Games/Services/GameUiService`, cascaded by `GameTable`; never game state |
+| New map content | a `Features/Games/Enums/BoardLayer` slot, rendered as `<g data-layer="…">` in that order |
+| An icon | a `<symbol>` in `Components/Game/GameSprite.razor`; its id in `Helpers/Icons` (`unit-<id>`, `terrain-<id>`, `ui-<name>`) |
+| A colour | a token in `wwwroot/css/tokens.css` (light, and dark under `prefers-color-scheme: dark`) |
+
+## Rules
+
+- **Colours only as tokens.** No hex, `rgb()`/`hsl()`, named or other colour values outside `wwwroot/css/tokens.css`, and none in Razor `fill`/`stroke`/`color`/`background`/`style` attributes. Use `var(--gv-…)` and classes: `seat-<n>` (from `Helpers/Seats`, the turn order) for players, `terrain terrain-<id>` for terrain.
+- **Every ruleset id has its UI.** A new unit or terrain needs its sprite symbol; a new terrain also needs `--gv-terrain-<id>` and `--gv-terrain-<id>-explored` in `tokens.css` and its `.terrain-<id>` rule in `board.css`.
+- **Icons only from the sprite.** Draw with `GameIcon` (panels) or `<use href="#id">` (board); no other inline SVG icons, image files or icon fonts for game things (Radzen's Material icons stay for generic buttons such as End turn). `GameIcon` is decorative unless `Label` is set.
+- **Select, then act.** Nothing happens on a single accidental click: a destructive action uses `ConfirmButton`; a disabled action shows the rule's reason next to it.
+- **Exact numbers on demand.** A derived number shows its origin through `NumberTooltip` (or a `StatRow` detail).
+- **Keyboard and touch.** Every action is a button reachable with Tab; no behaviour depends on hover or long press alone.
+- **Reuse before adding.** Check the catalog in `docs/features/game-ui.md` and the gallery first; a new shared component is added to both.
+- **Layout.** The screen zones are the CSS grid in `wwwroot/css/game-ui.css`; they stack map first on narrow screens. No component sets its own page-level layout.

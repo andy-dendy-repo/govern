@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Govern.Client.Features.Games.Components.Board;
+using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.ClientTests.Support;
@@ -53,6 +54,33 @@ public partial class GameBoardTests : ClientTestContext
         cut.FindAll("use.unit.soldier.enemy").Count.ShouldBe(1);
         cut.Find("g.city.enemy text.city-name").TextContent.ShouldBe("<b>Aria</b>");
         cut.FindAll("b").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_Pieces_AreColouredBySeatAndDrawnFromTheIconSet()
+    {
+        var view = Create([Settler(1, You, At(2, 2)), Soldier(3, Opponent, At(5, 2))], [City(8, Opponent, At(5, 4), "Aria")]);
+
+        var cut = RenderBoard(view);
+
+        cut.Find("use.unit.settler").ClassList.ShouldContain("seat-1");
+        cut.Find("use.unit.settler").GetAttribute("href").ShouldBe("#unit-settler");
+        cut.Find("use.unit.soldier").ClassList.ShouldContain("seat-2");
+        cut.Find("g.city").ClassList.ShouldContain("seat-2");
+        cut.Find("g.city use").GetAttribute("href").ShouldBe("#city");
+    }
+
+    [Fact]
+    public void Render_Layers_FollowTheBoardLayerOrder()
+    {
+        var cut = RenderBoard(Start());
+
+        var rendered = cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")!).ToList();
+
+        rendered.ShouldNotBeEmpty();
+        var order = Enum.GetNames<BoardLayer>().Select(static name => name.ToLowerInvariant()).ToList();
+        rendered.ShouldAllBe(layer => order.Contains(layer));
+        rendered.Select(layer => order.IndexOf(layer)).ShouldBeInOrder(SortDirection.Ascending);
     }
 
     [Fact]

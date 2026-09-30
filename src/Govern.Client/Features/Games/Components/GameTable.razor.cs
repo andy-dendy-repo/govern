@@ -8,11 +8,13 @@ using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.Visibility;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Govern.Client.Features.Games.Components;
 
 /// <summary>
-/// A started game: the board and the side panels. It keeps the selection and sends the player's commands, one at a time,
+/// A started game: the game screen (top bar, board, side panel, action bar). It owns the screen's <see cref="GameUiService"/>
+/// (the selection, cascaded to the panels) and sends the player's commands, one at a time,
 /// based on the version of the view on screen. The game after a command (or, when the command was stale, the game read
 /// again) is reported through <see cref="GameChanged"/>; the page owns the game.
 /// </summary>
@@ -22,9 +24,10 @@ public partial class GameTable : IDisposable
     public const string StaleVersionCode = "game.stale_version";
 
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly GameUiService _ui = new();
+    private ElementReference _screen;
     private PlayerView? _view;
-    private BoardSelection _selection = BoardSelection.None;
-    private BoardHighlights _highlights = BoardHighlights.None;
+    private bool _focusScreen = true;
     private ApiError? _error;
     private bool _sending;
     private bool _stale;
@@ -47,17 +50,17 @@ public partial class GameTable : IDisposable
 
     private PlayerView View => Game.View ?? throw new InvalidOperationException("The game table needs a started game with a view.");
 
-    private UnitView? SelectedUnit => _selection.Unit is { } id ? View.Units.FirstOrDefault(unit => unit.Id == id) : null;
-
-    private CityView? SelectedCity => _selection.City is { } id ? View.Cities.FirstOrDefault(city => city.Id == id) : null;
-
     /// <inheritdoc />
     public void Dispose()
     {
+        _ui.Changed -= StateHasChanged;
         _lifetime.Cancel();
         _lifetime.Dispose();
         GC.SuppressFinalize(this);
     }
+
+    /// <inheritdoc />
+    protected override void OnInitialized() => _ui.Changed += StateHasChanged;
 
     /// <inheritdoc />
     protected override void OnParametersSet()
@@ -65,13 +68,24 @@ public partial class GameTable : IDisposable
         if (!ReferenceEquals(View, _view))
         {
             _view = View;
-            Select(BoardClickResolver.Prune(View, _selection));
+            _ui.Refresh(Ruleset, View);
 
             // A later view (a snapshot, not this table's own command) makes the last error or notice out of date.
             if (!_sending)
             {
                 (_error, _stale) = (null, false);
             }
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Keep keyboard focus in the screen so Esc works: on arrival, and after a command, whose disabled buttons drop focus.
+        if (_focusScreen)
+        {
+            _focusScreen = false;
+            await _screen.FocusAsync(preventScroll: true);
         }
     }
 
@@ -82,8 +96,8 @@ public partial class GameTable : IDisposable
             return;
         }
 
-        var click = BoardClickResolver.Resolve(Ruleset, View, _selection, coord);
-        Select(click.Next);
+        var click = BoardClickResolver.Resolve(Ruleset, View, _ui.Selection, coord);
+        _ui.Select(Ruleset, View, click.Next);
         if (click.Command is { } command)
         {
             await SendAsync(command);
@@ -122,6 +136,7 @@ public partial class GameTable : IDisposable
         finally
         {
             _sending = false;
+            _focusScreen = true;
         }
     }
 
@@ -139,9 +154,11 @@ public partial class GameTable : IDisposable
         await GameChanged.InvokeAsync(result.Value);
     }
 
-    private void Select(BoardSelection selection)
+    private void OnKeyDown(KeyboardEventArgs args)
     {
-        _selection = selection;
-        _highlights = BoardClickResolver.Highlights(Ruleset, View, selection);
+        if (args.Key == "Escape")
+        {
+            _ui.Escape();
+        }
     }
 }

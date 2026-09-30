@@ -52,6 +52,8 @@ These follow from how `Govern.Core` works today ([game-core](../features/game-co
 
 ## G1. UI design system and approaches
 
+The decided approaches, the component catalog and how each mechanic adds its UI are in [game UI](../features/game-ui.md); the plan is [G1](../plans/active/G1-ui-design-system.md). Each G item below that needs a planned component (`YieldList`, `ResourceBadge`, `QueueList`, `TreeView`, a lens) adds it to that catalog.
+
 - **Why:** every item below adds screens, panels, numbers and icons. Without agreed approaches the game UI grows inconsistent and hard to use. Decide the patterns once, write them down, and follow them.
 - **Deliverables:**
   - `docs/features/game-ui.md` (the design approaches) and a rule in `.claude/rules/blazor-client.md` (or a new `game-ui.md` rule), so future features follow them.

@@ -1,0 +1,112 @@
+/*
+  The hex board (Features/Games/Components/Board). Colours are tokens (tokens.css); symbols come from GameSprite.
+  Layers render in the fixed BoardLayer order: terrain, rivers, improvements, borders, lens, highlights, cities, units.
+*/
+.board-frame {
+    position: relative;
+    min-width: 0;
+}
+
+.board {
+    display: block;
+    width: 100%;
+    height: min(70vh, 40rem);
+    background: var(--gv-board-background);
+    border-radius: var(--gv-radius);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.board.busy {
+    cursor: progress;
+}
+
+.board-zoom {
+    position: absolute;
+    top: var(--gv-space-2);
+    right: var(--gv-space-2);
+}
+
+.board .tile {
+    stroke: var(--gv-tile-stroke);
+    stroke-width: 1.5;
+    cursor: pointer;
+}
+
+.board .tile.unexplored {
+    fill: var(--gv-tile-unexplored);
+}
+
+.board .tile.visible {
+    fill: var(--gv-terrain, var(--gv-tile-unexplored));
+}
+
+.board .tile.explored {
+    fill: var(--gv-terrain-explored, var(--gv-tile-unexplored));
+}
+
+/* One rule per ruleset terrain id (GameUiTests.BoardCss_MapsEveryTerrainToItsPalette): it picks the terrain's tokens for the
+   board tiles and for terrain icons (GameIcon with class "terrain terrain-<id>"). */
+.terrain-plains {
+    --gv-terrain: var(--gv-terrain-plains);
+    --gv-terrain-explored: var(--gv-terrain-plains-explored);
+}
+
+.game-icon.terrain {
+    fill: var(--gv-terrain);
+}
+
+.board .layer-lens,
+.board .layer-highlights,
+.board .layer-cities,
+.board .layer-units {
+    pointer-events: none;
+}
+
+.board .overlay {
+    stroke-width: 2;
+}
+
+.board .overlay.reachable {
+    fill: var(--gv-overlay-reachable);
+    stroke: var(--gv-overlay-reachable-stroke);
+}
+
+.board .overlay.attackable {
+    fill: var(--gv-overlay-attackable);
+    stroke: var(--gv-overlay-attackable-stroke);
+}
+
+.board .piece {
+    stroke: var(--gv-board-outline);
+    stroke-width: 1.5;
+}
+
+.board .piece.selected {
+    stroke: var(--gv-selected);
+    stroke-width: 3;
+}
+
+.board .city-name {
+    fill: var(--gv-label);
+    stroke: var(--gv-label-outline);
+    stroke-width: 3;
+    font-size: 12px;
+    font-weight: 600;
+    text-anchor: middle;
+    paint-order: stroke;
+}
+
+/* Seat colours, for pieces on the board and icons in the panels. */
+.seat-1 { fill: var(--gv-seat-1); color: var(--gv-seat-1); }
+.seat-2 { fill: var(--gv-seat-2); color: var(--gv-seat-2); }
+.seat-3 { fill: var(--gv-seat-3); color: var(--gv-seat-3); }
+.seat-4 { fill: var(--gv-seat-4); color: var(--gv-seat-4); }
+
+/* The white mark inside a unit symbol (Components/Game/GameSprite). */
+.icon-mark {
+    fill: none;
+    stroke: var(--gv-icon-mark);
+    stroke-width: 2;
+}
