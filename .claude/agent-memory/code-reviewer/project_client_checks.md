@@ -31,3 +31,5 @@ Review 9 (2026-09-30, G1 game UI design system, phases 1-4). Traps for later gam
 - Esc is a `@onkeydown` on `div.game-screen tabindex=-1`: works only while focus is inside it (not on load, not after a focused button becomes disabled); every keydown re-renders GameTable; Esc inside ConfirmButton/NumberTooltip bubbles and clears the selection instead.
 - `.game-icon { fill: currentColor }` (game-ui.css, loaded after board.css) beats `.seat-N { fill }` at equal specificity; it works only because `.seat-N` also sets `color`. Seat 0 (unknown) and seat >4 have no colour.
 - `GameUiTests` colour regexes catch hex and functional colours only, not named colours (`white`, `red`).
+
+Review 10 (2026-09-30, G4 terrain + lenses). Check on later board work: new tokens are often added only to the light `:root` block (G4 `--gv-terrain-mark`, `--gv-lens-*`), so a dark-on-dark mark ends up on dark explored tiles; `<title>` inside a layer with `pointer-events: none` never shows as a hover tooltip; param-less children (LensToolbar) re-render only from their own handlers, not from the parent.

@@ -28,7 +28,12 @@ public class GameEnginePreviewTests
         "settler near enemy city",
         "not your turn",
         "enemy unit id",
-        "game finished");
+        "game finished",
+        "forest around",
+        "partial movement facing forest",
+        "mountains and lake around",
+        "path around a lake",
+        "on hills with enemies further out");
 
     [Theory]
     [MemberData(nameof(Scenarios))]
@@ -146,6 +151,51 @@ public class GameEnginePreviewTests
     }
 
     [Fact]
+    public void ReachableTiles_ForestAround_EntersForestButNotBeyondIt()
+    {
+        var (state, unitId, _) = Build("forest around");
+
+        var reachable = GameEngine.ReachableTiles(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
+
+        reachable.ShouldContain(At(6, 5));
+        reachable.ShouldNotContain(At(7, 5));
+        reachable.ShouldContain(At(6, 3));
+    }
+
+    [Fact]
+    public void ReachableTiles_PartialMovementFacingForest_LeavesOutTheForest()
+    {
+        var (state, unitId, _) = Build("partial movement facing forest");
+
+        var reachable = GameEngine.ReachableTiles(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
+
+        reachable.ShouldBe([At(6, 4), At(5, 6)]);
+    }
+
+    [Fact]
+    public void ReachableTiles_MountainsAndLake_AreNeverReachable()
+    {
+        var (state, unitId, _) = Build("mountains and lake around");
+
+        var reachable = GameEngine.ReachableTiles(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
+
+        reachable.ShouldNotContain(At(6, 5));
+        reachable.ShouldNotContain(At(5, 4));
+        reachable.ShouldNotContain(At(4, 5));
+        reachable.ShouldNotContain(At(5, 6));
+        reachable.ShouldContain(At(6, 4));
+        reachable.ShouldContain(At(6, 6));
+    }
+
+    [Fact]
+    public void Previews_OnHills_ShowTheEnemyThreeTilesAway()
+    {
+        var (state, _, _) = Build("on hills with enemies further out");
+
+        GameEngine.ViewFor(TestRulesets.Default, state, P1).Units.ShouldContain(unit => unit.Owner == P2);
+    }
+
+    [Fact]
     public void Previews_NullView_Throw()
     {
         Should.Throw<ArgumentNullException>(() => GameEngine.ReachableTiles(TestRulesets.Default, null!, new UnitId(1)));
@@ -174,6 +224,9 @@ public class GameEnginePreviewTests
             "settler on a city" => (builder.AddUnit(P1, TestRulesets.Settler, 0, 0), At(0, 0)),
             "settler near enemy city" => (builder.AddUnit(P1, TestRulesets.Settler, 5, 5), EnemyCity(builder, 7, 5, At(5, 5))),
             "enemy unit id" => (Soldier(builder, 5, 5, P2), At(5, 5)),
+            "partial movement facing forest" => (builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, movementLeft: 1), At(5, 5)),
+            // Sight 2 plus 1 on hills: the enemy at distance 3 is in the view, but out of reach.
+            "on hills with enemies further out" => (Soldier(builder, 5, 5), Blocker(builder, P2, 8, 5)),
             _ => (Soldier(builder, 5, 5), At(5, 5)),
         };
 
@@ -182,9 +235,28 @@ public class GameEnginePreviewTests
             Soldier(builder, 3, 5);
         }
 
+        AddTerrain(builder, scenario);
+
         var state = (scenario == "not your turn" ? builder.WithCurrentPlayer(P2) : builder).Build();
         state = scenario == "game finished" ? state with { Status = GameStatus.Finished, Winner = P1 } : state;
         return (state, unit, origin);
+    }
+
+    // Terrain costs and blockers around the unit at (5, 5); the other scenarios play on plains only.
+    private static void AddTerrain(GameStateBuilder builder, string scenario)
+    {
+        _ = scenario switch
+        {
+            "forest around" or "partial movement facing forest" => builder.WithTerrain(TestRulesets.Forest, (6, 5), (4, 5), (5, 4), (6, 6), (7, 5)),
+            "mountains and lake around" => builder
+                .WithTerrain(TestRulesets.Mountains, (6, 5), (5, 4))
+                .WithTerrain(TestRulesets.Lake, (4, 5), (5, 6))
+                .WithTerrain(TestRulesets.Hills, (6, 4)),
+            // The lake blocks the straight line; the tile behind it costs 3 around it, one more than a full move.
+            "path around a lake" => builder.WithTerrain(TestRulesets.Lake, (6, 5), (6, 4), (6, 6)),
+            "on hills with enemies further out" => builder.WithTerrain(TestRulesets.Hills, (5, 5)),
+            _ => builder,
+        };
     }
 
     private static UnitId Soldier(GameStateBuilder builder, int column, int row, PlayerId? owner = null) =>

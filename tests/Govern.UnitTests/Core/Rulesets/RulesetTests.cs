@@ -48,6 +48,14 @@ public class RulesetTests
         ["settler misses blocking cities"] = json => json["cities"]!["minimumSpacing"] = 4,
         ["missing unit name"] = json => json["texts"]!.AsObject().Remove("unit.soldier.name"),
         ["empty text"] = json => json["texts"]!["terrain.plains.name"] = " ",
+        ["negative sight bonus"] = json => json["terrains"]![2]!["sightBonus"] = -1,
+        ["unknown patch terrain"] = json => json["map"]!["generation"]!["patches"]![0]!["terrain"] = "desert",
+        ["patch of the default terrain"] = json => json["map"]!["generation"]!["patches"]![0]!["terrain"] = "plains",
+        ["terrain patched twice"] = json => json["map"]!["generation"]!["patches"]![1]!["terrain"] = "forest",
+        ["empty patch share"] = json => json["map"]!["generation"]!["patches"]![0]!["sharePerMille"] = 0,
+        ["empty patch"] = json => json["map"]!["generation"]!["patches"]![0]!["patchSize"] = 0,
+        ["patches cover over half"] = json => json["map"]!["generation"]!["patches"]![0]!["sharePerMille"] = 400,
+        ["too much impassable terrain"] = json => json["map"]!["generation"]!["patches"]![3]!["sharePerMille"] = 120,
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -89,6 +97,14 @@ public class RulesetTests
         { "settler misses blocking cities", "$.units[0].sight" },
         { "missing unit name", "$.texts" },
         { "empty text", "$.texts['terrain.plains.name']" },
+        { "negative sight bonus", "$.terrains[2].sightBonus" },
+        { "unknown patch terrain", "$.map.generation.patches[0].terrain" },
+        { "patch of the default terrain", "$.map.generation.patches[0].terrain" },
+        { "terrain patched twice", "$.map.generation.patches[1].terrain" },
+        { "empty patch share", "$.map.generation.patches[0].sharePerMille" },
+        { "empty patch", "$.map.generation.patches[0].patchSize" },
+        { "patches cover over half", "$.map.generation.patches" },
+        { "too much impassable terrain", "$.map.generation.patches" },
     };
 
     [Fact]
@@ -106,7 +122,13 @@ public class RulesetTests
         ruleset.Unit(TestRulesets.Settler).CanAttack.ShouldBeFalse();
         ruleset.Unit(TestRulesets.Soldier).CanAttack.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Soldier).ProductionCost.ShouldBe(4);
-        ruleset.Terrain(TestRulesets.Plains).ShouldBe(new TerrainDefinition(TestRulesets.Plains, 1, true));
+        ruleset.Terrain(TestRulesets.Plains).ShouldBe(new TerrainDefinition(TestRulesets.Plains, 1, true, 0));
+        ruleset.Terrain(TestRulesets.Forest).ShouldBe(new TerrainDefinition(TestRulesets.Forest, 2, true, 0));
+        ruleset.Terrain(TestRulesets.Hills).ShouldBe(new TerrainDefinition(TestRulesets.Hills, 2, true, 1));
+        ruleset.Terrain(TestRulesets.Mountains).IsPassable.ShouldBeFalse();
+        ruleset.Terrain(TestRulesets.Lake).IsPassable.ShouldBeFalse();
+        ruleset.Map.Generation.Patches.Select(static patch => patch.Terrain)
+            .ShouldBe([TestRulesets.Forest, TestRulesets.Hills, TestRulesets.Mountains, TestRulesets.Lake]);
         ruleset.Map.DefaultWidth.ShouldBe(20);
         ruleset.Map.DefaultHeight.ShouldBe(14);
         ruleset.Cities.MinimumSpacing.ShouldBe(3);

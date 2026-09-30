@@ -17,6 +17,11 @@ internal static class RulesetValidator
     // At most a quarter of the width each, so the two spawn zones, and the units placed towards the centre, never meet.
     private const int MaxZoneColumnsPerMille = 250;
 
+    // The generator keeps at least half of every map default terrain, and lays down few enough impassable tiles that it can
+    // always keep the passable ones connected.
+    private const int MaxGeneratedSharePerMille = 500;
+    private const int MaxImpassableSharePerMille = 150;
+
     public static ImmutableArray<RulesetProblem> Validate(RulesetDocument document)
     {
         var problems = new List<RulesetProblem>();
@@ -27,6 +32,7 @@ internal static class RulesetValidator
         CheckTerrains(document.Terrains, problems);
         CheckSetup(document, units, problems);
         CheckMap(document.Map, terrains, document.Terrains, problems);
+        CheckGeneration(document.Map, terrains, document.Terrains, problems);
         CheckCities(document, units, problems);
         CheckFogInvariants(document, problems);
         CheckTexts(document, problems);
@@ -87,6 +93,7 @@ internal static class RulesetValidator
         for (var index = 0; index < terrains.Length; index++)
         {
             AtLeast(terrains[index].MovementCost, 1, $"$.terrains[{index}].movementCost", problems);
+            AtLeast(terrains[index].SightBonus, 0, $"$.terrains[{index}].sightBonus", problems);
         }
 
         if (!terrains.IsEmpty && !terrains.Any(static terrain => terrain.IsPassable))
@@ -144,6 +151,38 @@ internal static class RulesetValidator
         if (map.Spawn.EdgeMargin < 1 || map.Spawn.EdgeMargin >= zone || map.Spawn.EdgeMargin * 2 >= map.MinSize)
         {
             problems.Add(new("$.map.spawn.edgeMargin", $"Must be at least 1 and less than the spawn zone on the smallest map ({zone} columns)."));
+        }
+    }
+
+    private static void CheckGeneration(MapRules map, HashSet<string> terrainIds, ImmutableArray<TerrainDefinition> terrains, List<RulesetProblem> problems)
+    {
+        var patches = map.Generation.Patches;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var index = 0; index < patches.Length; index++)
+        {
+            var patch = patches[index];
+            var path = $"$.map.generation.patches[{index}]";
+            if (Reference(patch.Terrain.Id, terrainIds, "terrain", $"{path}.terrain", problems)
+                && (patch.Terrain == map.DefaultTerrain || !seen.Add(patch.Terrain.Id)))
+            {
+                problems.Add(new($"{path}.terrain", "Must not be the default terrain or a terrain listed before."));
+            }
+
+            AtLeast(patch.SharePerMille, 1, $"{path}.sharePerMille", problems);
+            AtLeast(patch.PatchSize, 1, $"{path}.patchSize", problems);
+        }
+
+        if (patches.Sum(static patch => patch.SharePerMille) > MaxGeneratedSharePerMille)
+        {
+            problems.Add(new("$.map.generation.patches", $"The shares must add up to at most {MaxGeneratedSharePerMille}."));
+        }
+
+        var impassable = patches
+            .Where(patch => terrains.FirstOrDefault(terrain => terrain.Id == patch.Terrain) is { IsPassable: false })
+            .Sum(static patch => patch.SharePerMille);
+        if (impassable > MaxImpassableSharePerMille)
+        {
+            problems.Add(new("$.map.generation.patches", $"The shares of impassable terrains must add up to at most {MaxImpassableSharePerMille}."));
         }
     }
 

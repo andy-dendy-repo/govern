@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Plan: The loadable ruleset, part B (deferred)
 
-**Status: deferred (2026-09-30).** Storing rulesets in the database, versioning and pinning them per game, and choosing a setup in the lobby add a table, a repository, caching and an endpoint with no player-visible gain while there is one ruleset and no production games. The Api and the client keep embedding `rulesets/default/v1.json` (part A, [done](../done/ruleset-a-core.md)); new content goes into that file.
+**Status: deferred (2026-09-30).** Storing rulesets in the database, versioning and pinning them per game, and choosing a setup in the lobby add a table, a repository, caching and an endpoint with no player-visible gain while there is one ruleset and no production games. The Api and the client keep embedding the newest default ruleset file (part A, [done](../done/ruleset-a-core.md)); new content goes into a new version file (`rulesets/default/v2.json` since G4, see [game data](../../game/game-data.md#versions-in-the-repository)).
 
 **Revisit when:** a balance change would alter games already running in production, or run-time (admin) publishing or a ruleset choice in the lobby is wanted. Tracked in the [backlog](../backlog.md) as G3b.
 

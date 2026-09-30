@@ -9,6 +9,14 @@ namespace Govern.Core.Rulesets;
 /// <param name="DefaultHeight">Rows of a new map.</param>
 /// <param name="MinSize">Smallest allowed width and height.</param>
 /// <param name="MaxSize">Largest allowed width and height.</param>
-/// <param name="DefaultTerrain">The terrain of every tile of a new map.</param>
+/// <param name="DefaultTerrain">The terrain of every tile the generator leaves alone, and of every spawn tile.</param>
 /// <param name="Spawn">Where players start.</param>
-public sealed record MapRules(int DefaultWidth, int DefaultHeight, int MinSize, int MaxSize, TerrainType DefaultTerrain, SpawnRules Spawn);
+/// <param name="Generation">How a new map gets its other terrain.</param>
+public sealed record MapRules(
+    int DefaultWidth,
+    int DefaultHeight,
+    int MinSize,
+    int MaxSize,
+    TerrainType DefaultTerrain,
+    SpawnRules Spawn,
+    MapGenerationRules Generation);

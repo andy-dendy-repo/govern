@@ -10,7 +10,7 @@ using Govern.Core.Visibility;
 namespace Govern.ClientTests.Support;
 
 /// <summary>
-/// Player views shaped like the Api's, built by hand on a small all-plains map. Change the turn, status or players with
+/// Player views shaped like the Api's, built by hand on a small map (all plains unless a test passes its terrain). Change the turn, status or players with
 /// <c>with</c> (e.g. <c>Start() with { CurrentPlayer = Opponent }</c>).
 /// </summary>
 public static class TestViews
@@ -34,19 +34,28 @@ public static class TestViews
 
     public static readonly TerrainType Plains = new("plains");
 
+    public static readonly TerrainType Forest = new("forest");
+
+    public static readonly TerrainType Hills = new("hills");
+
+    public static readonly TerrainType Mountains = new("mountains");
+
     /// <summary>Your settler (id 1) at (2,2), your soldier (id 2) at (3,2), and an enemy soldier (id 3) at (5,2).</summary>
     public static PlayerView Start() =>
         Create([Settler(1, You, At(2, 2)), Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(5, 2))]);
 
     public static PlayerView Create(
-        IEnumerable<UnitView>? units = null, IEnumerable<CityView>? cities = null, Func<HexCoord, TileVisibility>? visibility = null)
+        IEnumerable<UnitView>? units = null,
+        IEnumerable<CityView>? cities = null,
+        Func<HexCoord, TileVisibility>? visibility = null,
+        Func<HexCoord, TerrainType>? terrain = null)
     {
         var tiles = Enumerable.Range(0, Width * Height)
             .Select(index => HexCoord.FromOffset(index % Width, index / Width))
             .Select(coord => (visibility?.Invoke(coord) ?? TileVisibility.Visible) switch
             {
                 TileVisibility.Unexplored => new TileView(TileVisibility.Unexplored, null),
-                var seen => new TileView(seen, Plains),
+                var seen => new TileView(seen, terrain?.Invoke(coord) ?? Plains),
             });
 
         return new PlayerView(

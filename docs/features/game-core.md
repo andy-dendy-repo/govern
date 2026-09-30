@@ -16,7 +16,7 @@ updated: 2026-09-30
 | Member | Purpose |
 |---|---|
 | `Ruleset.Parse(json)` / `ParseValid(json)` | Reads, validates and hashes a ruleset document ([game data](../game/game-data.md#reading-a-ruleset-in-code)) |
-| `GameFactory.Create(ruleset, GameSetup)` | New game: a map of the ruleset's default terrain and size (or the setup's size, within the ruleset's limits); each player gets the ruleset's starting units (by default a settler plus an adjacent soldier). Turn 1, first player, version 0 |
+| `GameFactory.Create(ruleset, GameSetup)` | New game: a generated map of the ruleset's size (or the setup's size, within the ruleset's limits) whose two halves mirror each other ([map generation](#map-generation)); each player gets the ruleset's starting units (by default a settler plus an adjacent soldier) on the default terrain. Turn 1, first player, version 0 |
 | `GameEngine.Execute(ruleset, state, actor, command)` | Validates and applies one `GameCommand`. Returns `CommandResult`: a `GameUpdate` (new `GameState` + ordered `GameEvent`s) or a `RuleViolation`. A rejected command never changes the state |
 | `GameEngine.ReachableTiles(ruleset, state, viewer, unitId)` | Tiles one of the viewer's units can move to this turn, for UI highlights. Another player's unit always returns an empty list |
 | `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CheckFoundCity(ruleset, view, unitId)` | What `Execute` would decide for a move, an attack or founding a city, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
@@ -34,7 +34,22 @@ After each accepted command, `Execute`:
 - **Pointy-top hexes in axial coordinates:** `HexCoord(Q, R)`. `S = -Q - R` is derived.
 - **Rectangular maps** use the **odd-r offset layout**: odd rows are shifted half a tile right. `HexCoord.FromOffset(column, row)` converts from offset coordinates, and `Column`/`Row` convert back.
 - **Distance** is `(|ΔQ| + |ΔR| + |ΔS|) / 2`. `Neighbors()` always returns the six tiles in the same order (east, then counter-clockwise), which keeps pathfinding deterministic.
-- **Map size:** `GameMap.Width × Height` (the ruleset's default, 20×14, within its limits, 8–40). Tiles are stored row by row. Every tile is the ruleset's `defaultTerrain` (`plains`, movement cost 1) for now; terrain rules come from the ruleset (`Ruleset.Terrain`).
+- **Map size:** `GameMap.Width × Height` (the ruleset's default, 20×14, within its limits, 8–40). Tiles are stored row by row. Terrain rules come from the ruleset (`Ruleset.Terrain`): movement cost, passable, sight bonus.
+- **Mirror:** `GameMap.MirrorOf(coord)` is the tile opposite through the map's centre (column `W − 1 − c`, row `H − 1 − r`); on an even height it keeps neighbours neighbours.
+
+## Terrain and map generation
+
+| Terrain (default ruleset) | Movement cost | Passable | Sight bonus |
+|---|---|---|---|
+| Plains (default terrain) | 1 | yes | 0 |
+| Forest | 2 | yes | 0 |
+| Hills | 2 | yes | +1 |
+| Mountains | — | no | 0 |
+| Lake | — | no | 0 |
+
+- **Map generation** (`Map/MapGenerator`, internal, called by `GameFactory` after the spawns): patches of each `map.generation.patches` terrain grow from random seeds until they cover their share; every tile is written with its mirror, so both halves are the same. Spawn tiles and their mirrors stay default terrain; an impassable tile is placed only while all passable tiles stay connected (flood fill). The spawns themselves are not mirrored, so the map narrows the opponent's start only slightly (their starting tiles are plains). Every draw goes through `DeterministicRandom.NextHashed` (SHA-256 of the raw draw), because the whole map reaches the clients and raw `Next` results would expose the generator's low bits. Algorithm: [game logic](../game/game-logic.md#map-generation).
+- **Sight bonus:** `VisibilityCalculator.VisibleTiles` adds the `SightBonus` of the tile a unit or city stands on. It only adds sight, so the fog invariants the previews rely on still hold.
+- **Deferred:** terrain defence (G9), forests blocking sight (needs line of sight and breaks the "sees every reachable tile" invariant), terrain layers such as forested hills (G5).
 - Reference: Red Blob Games, "Hexagonal Grids".
 
 ## Units and cities (the default ruleset)
@@ -119,7 +134,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 
 - All three give nothing (or the violation) when the game is over, it isn't the viewer's turn, or the unit isn't the viewer's, the same as the command guard.
 - **Why a view is enough:** unit sight ≥ movement, and founder sight ≥ city spacing − 1 (enforced by `RulesetValidator`). Every tile a unit could reach, attack or be blocked by is therefore visible, and the view shows every unit and city on it. Reachability over a view enters only visible tiles.
-- **They can't drift from the rules:** `AttackRule.Check` and `FoundCityRule.Check` are shared by the rule and the preview, as are the turn check (`CommandGuardRule.CheckTurn`) and the Dijkstra in `ReachabilityCalculator`. `GameEnginePreviewTests` compares each preview with `Execute` for every tile within 3 of the unit, over scenarios covering own and enemy blockers, an own city in reach, enemies just outside sight (where the view and the state differ), the map edge, no movement, the opponent's turn, an enemy unit id and a finished game. The map is plains only today, so a new terrain type adds its own parity scenarios.
+- **They can't drift from the rules:** `AttackRule.Check` and `FoundCityRule.Check` are shared by the rule and the preview, as are the turn check (`CommandGuardRule.CheckTurn`) and the Dijkstra in `ReachabilityCalculator`. `GameEnginePreviewTests` compares each preview with `Execute` for every tile within 3 of the unit, over scenarios covering own and enemy blockers, an own city in reach, enemies just outside sight (where the view and the state differ), the map edge, no movement, the opponent's turn, an enemy unit id, a finished game, and terrain: forest around the unit (with full and with 1 movement left), mountains and lake around it, a path around a lake, and a unit on hills that sees further. A new terrain type with a new cost or blocker adds its own parity scenarios.
 
 ## View version
 
@@ -164,7 +179,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v1.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`).
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v2.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`

@@ -120,11 +120,11 @@ public class GameFactoryTests
         GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, setup)).ShouldBe(GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, setup)));
     }
 
-    // Recorded before the ruleset replaced the hard-coded setup: the default ruleset must give exactly the same new games.
+    // Recorded with ruleset v2 (G4 map generation): the same ruleset and setup must always give exactly the same new game.
     [Theory]
-    [InlineData(1UL, "713cedbec82fbe6fb70c80722790531951b7bbb05fd75a38eb9683acff25d2c2")]
-    [InlineData(42UL, "bb1a6b7d90af0a6e561ce7a589cfe5859e8fdc171537156cfb7b6516c76e0c8c")]
-    [InlineData(987_654_321UL, "3a06b74548b5de52c5b0a2d714bf3c56e926c7c83be0092a6ca313acbffa21e7")]
+    [InlineData(1UL, "23c358634f56c5b0c33ea29ea9fb6f8b7584f4528facd1b511a91ce9a3218f9a")]
+    [InlineData(42UL, "e6746696b02ed70baff27a2b464dc09ceef3224c47346ef69e4e5093592e8ec5")]
+    [InlineData(987_654_321UL, "a37bc4ec8a0d9f8b8fc0aae14c1d0611ac43e89c18ef598b5ce23f94806c39e4")]
     public void Create_KnownSeed_GivesTheRecordedState(ulong seed, string expectedSha256)
     {
         var json = GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, new GameSetup([P1, P2], seed)));
@@ -168,13 +168,14 @@ public class GameFactoryTests
     }
 
     [Fact]
-    public void Create_SetupSize_OverridesTheRulesetDefaultAndFillsTheDefaultTerrain()
+    public void Create_SetupSizeAndNoPatches_OverridesTheRulesetDefaultAndFillsTheDefaultTerrain()
     {
         var ruleset = TestRulesets.With(json =>
         {
-            json["terrains"]!.AsArray().Add(new JsonObject { ["id"] = "grass", ["movementCost"] = 1, ["isPassable"] = true });
+            json["terrains"]!.AsArray().Add(new JsonObject { ["id"] = "grass", ["movementCost"] = 1, ["isPassable"] = true, ["sightBonus"] = 0 });
             json["texts"]!["terrain.grass.name"] = "Grass";
             json["map"]!["defaultTerrain"] = "grass";
+            json["map"]!["generation"]!["patches"] = new JsonArray();
         });
 
         var state = GameFactory.Create(ruleset, new GameSetup([P1, P2], Seed: 3, Width: 10, Height: 9));
