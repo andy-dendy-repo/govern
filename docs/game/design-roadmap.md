@@ -14,7 +14,7 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 | # | Item | Depends on | Size |
 |---|---|---|---|
 | G1 | [UI design system and approaches](#g1-ui-design-system-and-approaches) | — | M |
-| G2 | [Game rules reference](#g2-game-rules-reference) *(in progress)* | — | S, then ongoing |
+| G2 | [Game rules reference](#g2-game-rules-reference) *(done)* | — | S, then ongoing |
 | G3 | [Data-driven catalogs and a new state schema](#g3-data-driven-catalogs-and-a-new-state-schema-suggested) *(part A done; part B deferred)* | — | M |
 | G4 | [Terrain: more tile types](#g4-terrain-more-tile-types) | G3 | M |
 | G5 | [Resources and tile yields](#g5-resources-and-tile-yields) | G4 | L |
@@ -74,7 +74,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 ## G2. Game rules reference
 
 - **Why:** the rules are spread over the code, [game-core](../features/game-core.md) and the plans. Players and developers need one place that says how the game works.
-- **Status:** in progress ([plan](../plans/active/G2-rules-reference.md)). The reference is [rules](rules.md).
+- **Status:** done 2026-09-30, PR #26 ([plan](../plans/done/G2-rules-reference.md)). The reference is [rules](rules.md).
 - **Deliverable:** `docs/game/rules.md`: the complete, current rules, written for players. It covers the map and terrain, movement, cities, production, combat, victory, and later every G item. Tables of numbers (unit stats, terrain costs, game numbers) come from the ruleset.
 - **Keeping it true:**
   - Every rules change updates it in the same PR (in the Definition of Done in `CLAUDE.md` and in `.claude/rules/game-core.md`).
