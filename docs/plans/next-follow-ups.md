@@ -107,7 +107,7 @@ Deferred from the [game delivery plan](done-game-delivery.md). None is scheduled
 
 | Where | Today | Change |
 |---|---|---|
-| `Core/State/GameSetup.PlayerCount` and the `GameFactory` check | exactly 2 | a player count of 2–N (say 4) in `GameSetup` |
+| The ruleset's `setup.players` (the validator requires 2) and the `GameFactory` check | exactly 2 | a range of 2–N (say 4) in the ruleset |
 | `GameFactory.SpawnTiles(isLeftSide)` | left or right quarter of the map | spawn spots spread over the map (corners or a ring) with a minimum distance, still drawn from the seeded generator |
 | Map size | 20×14 default | scales with the player count, or the creator chooses |
 | `Domain/Entities/Game.MaxPlayers` / `IsFull` | = `PlayerCount` | max seats chosen at create time (min 2), stored in a column; one migration |

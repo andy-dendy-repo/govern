@@ -1,8 +1,10 @@
 using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Games.Models;
+using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
 using Govern.Core.Engine;
+using Govern.Core.Rulesets;
 using Govern.Core.Visibility;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
@@ -42,11 +44,13 @@ public sealed record GetGameResponse(
     /// <summary>Maps a loaded game (with its players) for one of its players.</summary>
     /// <param name="game">The game.</param>
     /// <param name="caller">The caller's seat in <paramref name="game"/>.</param>
+    /// <param name="ruleset">The ruleset the game is played with.</param>
     /// <returns>The response; <see cref="View"/> is built with <see cref="GameEngine.ViewFor"/>.</returns>
-    public static GetGameResponse From(Game game, GamePlayer caller)
+    public static GetGameResponse From(Game game, GamePlayer caller, Ruleset ruleset)
     {
         ArgumentNullException.ThrowIfNull(game);
         ArgumentNullException.ThrowIfNull(caller);
+        ArgumentNullException.ThrowIfNull(ruleset);
 
         var players = game.Players
             .OrderBy(static player => player.Seat)
@@ -60,7 +64,7 @@ public sealed record GetGameResponse(
             isCreator,
             isCreator && game.Phase == GamePhase.Lobby ? game.InviteCode.Value : null,
             players,
-            game.State is { } state ? GameEngine.ViewFor(state, caller.PlayerId) : null,
+            game.State is { } state ? GameEngine.ViewFor(ruleset, state, caller.PlayerId) : null,
             game.CreatedAt);
     }
 }
@@ -77,7 +81,10 @@ public sealed class GetGameValidator : AbstractValidator<GetGameRequest>
 /// <summary>
 /// Handles <see cref="GetGameRequest"/>. The whole aggregate is read (no tracking), since the view needs the full state.
 /// </summary>
-internal sealed class GetGameHandler(IApplicationDbContextFactory dbContextFactory, ICurrentUserService currentUser)
+internal sealed class GetGameHandler(
+    IApplicationDbContextFactory dbContextFactory,
+    ICurrentUserService currentUser,
+    DefaultRulesetService rulesets)
     : IRequestHandler<GetGameRequest, GetGameResponse>
 {
     /// <inheritdoc />
@@ -100,6 +107,6 @@ internal sealed class GetGameHandler(IApplicationDbContextFactory dbContextFacto
             return GameErrors.NotFound;
         }
 
-        return GetGameResponse.From(game, caller);
+        return GetGameResponse.From(game, caller, rulesets.Ruleset);
     }
 }

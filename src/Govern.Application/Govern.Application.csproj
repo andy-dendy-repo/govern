@@ -8,4 +8,7 @@
   <ItemGroup>
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\rulesets\default\v1.json" LogicalName="Govern.Rulesets.default.v1.json" />
+  </ItemGroup>
 </Project>

@@ -1,6 +1,7 @@
 using Govern.Core.Cities;
 using Govern.Core.Engine;
 using Govern.Core.Events;
+using Govern.Core.Rulesets;
 using Govern.Core.State;
 using Govern.Core.Units;
 
@@ -10,7 +11,7 @@ namespace Govern.Core.Actions;
 /// Chooses which unit a city builds; accumulated progress is kept.
 /// </summary>
 /// <param name="CityId">The actor's city.</param>
-/// <param name="UnitType">Unit type to build.</param>
+/// <param name="UnitType">Unit type to build: a unit id of the game's ruleset.</param>
 public sealed record SetProductionCommand(CityId CityId, UnitType UnitType) : GameCommand;
 
 /// <summary>
@@ -18,7 +19,7 @@ public sealed record SetProductionCommand(CityId CityId, UnitType UnitType) : Ga
 /// </summary>
 internal static class SetProductionRule
 {
-    public static CommandResult Apply(GameState state, PlayerId actor, SetProductionCommand command)
+    public static CommandResult Apply(Ruleset ruleset, GameState state, PlayerId actor, SetProductionCommand command)
     {
         var city = state.FindCity(command.CityId);
         if (city is null || city.Owner != actor)
@@ -26,7 +27,7 @@ internal static class SetProductionRule
             return RuleViolations.CityNotFound;
         }
 
-        if (!Enum.IsDefined(command.UnitType))
+        if (ruleset.FindUnit(command.UnitType) is null)
         {
             return RuleViolations.UnknownUnitType;
         }

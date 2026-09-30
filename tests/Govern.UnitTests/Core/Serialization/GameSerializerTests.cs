@@ -17,7 +17,7 @@ public class GameSerializerTests
     [Fact]
     public void DeserializeState_SerializedGame_RoundTripsExactly()
     {
-        var state = GameFactory.Create(new GameSetup([P1, P2], Seed: 3));
+        var state = GameFactory.Create(TestRulesets.Default, new GameSetup([P1, P2], Seed: 3));
         var json = GameSerializer.Serialize(state);
 
         var restored = GameSerializer.DeserializeState(json);
@@ -32,7 +32,7 @@ public class GameSerializerTests
         { new MoveUnitCommand(new UnitId(1), At(2, 3)), "move_unit" },
         { new AttackCommand(new UnitId(1), At(2, 3)), "attack" },
         { new FoundCityCommand(new UnitId(1)), "found_city" },
-        { new SetProductionCommand(new CityId(4), UnitType.Settler), "set_production" },
+        { new SetProductionCommand(new CityId(4), TestRulesets.Settler), "set_production" },
         { new EndTurnCommand(), "end_turn" },
         { new ResignCommand(), "resign" },
     };
@@ -62,14 +62,33 @@ public class GameSerializerTests
             GameSerializer.Deserialize<GameCommand>("""{"type":"set_production","cityId":{"value":1},"unitType":99}"""));
     }
 
+    [Theory]
+    [InlineData("""{"type":"set_production","cityId":{"value":1},"unitType":null}""")]
+    [InlineData("""{"type":"set_production","cityId":{"value":1},"unitType":{"id":"soldier"}}""")]
+    public void Deserialize_UnitTypeNotAString_Throws(string json)
+    {
+        Should.Throw<JsonException>(() => GameSerializer.Deserialize<GameCommand>(json));
+    }
+
+    [Fact]
+    public void Serialize_UnitType_WritesThePlainRulesetId()
+    {
+        var command = new SetProductionCommand(new CityId(1), TestRulesets.Soldier);
+
+        var json = GameSerializer.Serialize<GameCommand>(command);
+
+        json.ShouldContain("\"unitType\":\"soldier\"");
+        GameSerializer.Deserialize<GameCommand>(json).ShouldBe(command);
+    }
+
     [Fact]
     public void Deserialize_Events_RoundTripWithDiscriminators()
     {
         var builder = new GameStateBuilder();
         builder.AddCity(P1, 0, 0);
-        var attacker = builder.AddUnit(P1, UnitType.Soldier, 3, 3);
-        builder.AddUnit(P2, UnitType.Settler, 4, 3);
-        var events = GameEngine.Execute(builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed().Events;
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        builder.AddUnit(P2, TestRulesets.Settler, 4, 3);
+        var events = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed().Events;
         var json = GameSerializer.Serialize(events);
 
         var restored = GameSerializer.Deserialize<GameEvent[]>(json);
@@ -128,8 +147,8 @@ public class GameSerializerTests
     public void DeserializeState_FinishedGameWithCities_RoundTripsExactly()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
-        var finished = GameEngine.Execute(builder.Build(), P2, new ResignCommand()).ShouldSucceed().State;
+        builder.AddUnit(P1, TestRulesets.Soldier, 4, 4);
+        var finished = GameEngine.Execute(TestRulesets.Default, builder.Build(), P2, new ResignCommand()).ShouldSucceed().State;
         var json = GameSerializer.Serialize(finished);
 
         var restored = GameSerializer.DeserializeState(json);
@@ -142,7 +161,7 @@ public class GameSerializerTests
     [Fact]
     public void Deserialize_PlayerView_RoundTripsExactly()
     {
-        var view = GameEngine.ViewFor(GameFactory.Create(new GameSetup([P1, P2], Seed: 9)), P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, GameFactory.Create(TestRulesets.Default, new GameSetup([P1, P2], Seed: 9)), P1);
         var json = GameSerializer.Serialize(view);
 
         GameSerializer.Serialize(GameSerializer.Deserialize<Govern.Core.Visibility.PlayerView>(json)).ShouldBe(json);
@@ -152,9 +171,9 @@ public class GameSerializerTests
     public void Serialize_PlayerView_WritesNoTileCoordinatesAndNullEnemyProduction()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
+        builder.AddUnit(P1, TestRulesets.Soldier, 4, 4);
         builder.AddCity(P2, 6, 4);
-        var view = GameEngine.ViewFor(builder.Build(), P1);
+        var view = GameEngine.ViewFor(TestRulesets.Default, builder.Build(), P1);
 
         var json = GameSerializer.Serialize(view);
         var root = JsonDocument.Parse(json).RootElement;
@@ -170,9 +189,9 @@ public class GameSerializerTests
     public void Serialize_PlayerView_WritesNullEnemyMovement()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        builder.AddUnit(P1, UnitType.Soldier, 4, 4);
-        builder.AddUnit(P2, UnitType.Soldier, 5, 4);
-        var view = GameEngine.ViewFor(builder.Build(), P1);
+        builder.AddUnit(P1, TestRulesets.Soldier, 4, 4);
+        builder.AddUnit(P2, TestRulesets.Soldier, 5, 4);
+        var view = GameEngine.ViewFor(TestRulesets.Default, builder.Build(), P1);
 
         var json = GameSerializer.Serialize(view);
         var units = JsonDocument.Parse(json).RootElement.GetProperty("units").EnumerateArray().ToList();

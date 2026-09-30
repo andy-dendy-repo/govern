@@ -1,0 +1,209 @@
+using System.Text.Json.Nodes;
+using Govern.Core.Map;
+using Govern.Core.Rulesets;
+using Govern.Core.Units;
+using Govern.UnitTests.Core.Builders;
+
+namespace Govern.UnitTests.Core.Rulesets;
+
+public class RulesetTests
+{
+    // Each change breaks one rule of the validator (or of the strict JSON reading) in the default document.
+    private static readonly Dictionary<string, Action<JsonNode>> Changes = new()
+    {
+        ["unknown field"] = json => json["units"]![0]!["cost"] = 1,
+        ["missing field"] = json => json["units"]![0]!.AsObject().Remove("sight"),
+        ["number as text"] = json => json["setup"]!["players"] = "2",
+        ["null section"] = json => json["cities"] = null,
+        ["ability as number"] = json => json["units"]![0]!["abilities"] = new JsonArray(0),
+        ["unknown ability"] = json => json["units"]![0]!["abilities"] = new JsonArray("fly"),
+        ["repeated ability"] = json => json["units"]![0]!["abilities"] = new JsonArray("attack", "attack"),
+        ["id not snake_case"] = json => json["units"]![0]!["id"] = "Settler",
+        ["duplicate id"] = json => json["units"]![1]!["id"] = "settler",
+        ["no terrains"] = json => json["terrains"] = new JsonArray(),
+        ["no movement"] = json => json["units"]![1]!["movement"] = 0,
+        ["free unit"] = json => json["units"]![1]!["productionCost"] = 0,
+        ["free terrain"] = json => json["terrains"]![0]!["movementCost"] = 0,
+        ["three players"] = json => json["setup"]!["players"] = 3,
+        ["no starting units"] = json => json["setup"]!["startingUnits"] = new JsonArray(),
+        ["unknown starting unit"] = json => json["setup"]!["startingUnits"] = new JsonArray("settler", "knight"),
+        ["no founder"] = json => json["setup"]!["startingUnits"] = new JsonArray("soldier"),
+        ["too many starting units"] = json => json["setup"]!["startingUnits"] = new JsonArray("settler", "soldier", "soldier"),
+        ["map below the engine's minimum"] = json => json["map"]!["minSize"] = 7,
+        ["map above the engine's maximum"] = json => json["map"]!["maxSize"] = 41,
+        ["default width above the maximum"] = json => json["map"]!["defaultWidth"] = 41,
+        ["unknown default terrain"] = json => json["map"]!["defaultTerrain"] = "desert",
+        ["impassable default terrain"] = json => json["terrains"]![0]!["isPassable"] = false,
+        ["empty spawn zone"] = json => json["map"]!["spawn"]!["zoneColumnsPerMille"] = 0,
+        ["spawn zone over a quarter"] = json => json["map"]!["spawn"]!["zoneColumnsPerMille"] = 251,
+        ["spawn on the edge"] = json => json["map"]!["spawn"]!["edgeMargin"] = 0,
+        ["margin as wide as the zone"] = json => json["map"]!["spawn"]!["edgeMargin"] = 2,
+        ["blind cities"] = json => json["cities"]!["sight"] = 0,
+        ["no city spacing"] = json => json["cities"]!["minimumSpacing"] = 0,
+        ["no production"] = json => json["cities"]!["productionPerTurn"] = 0,
+        ["unknown initial production"] = json => json["cities"]!["initialProduction"] = "knight",
+        ["missing name template"] = json => json["cities"]!["nameTemplate"] = "city.missing",
+        ["template without a number"] = json => json["texts"]!["city.default_name"] = "Town",
+        ["unit sees less than it moves"] = json => json["units"]![1]!["sight"] = 1,
+        ["settler misses blocking cities"] = json => json["cities"]!["minimumSpacing"] = 4,
+        ["missing unit name"] = json => json["texts"]!.AsObject().Remove("unit.soldier.name"),
+        ["empty text"] = json => json["texts"]!["terrain.plains.name"] = " ",
+    };
+
+    public static TheoryData<string, string> InvalidDocuments => new()
+    {
+        { "unknown field", "$.units[0].cost" },
+        { "missing field", "$.units[0]" },
+        { "number as text", "$.setup.players" },
+        { "null section", "$.cities" },
+        { "ability as number", "$.units[0].abilities[0]" },
+        { "unknown ability", "$.units[0].abilities[0]" },
+        { "repeated ability", "$.units[0].abilities" },
+        { "id not snake_case", "$.units[0].id" },
+        { "duplicate id", "$.units[1].id" },
+        { "no terrains", "$.terrains" },
+        { "no movement", "$.units[1].movement" },
+        { "free unit", "$.units[1].productionCost" },
+        { "free terrain", "$.terrains[0].movementCost" },
+        { "three players", "$.setup.players" },
+        { "no starting units", "$.setup.startingUnits" },
+        { "unknown starting unit", "$.setup.startingUnits[1]" },
+        { "no founder", "$.setup.startingUnits" },
+        { "too many starting units", "$.setup.startingUnits" },
+        { "map below the engine's minimum", "$.map.minSize" },
+        { "map above the engine's maximum", "$.map.maxSize" },
+        { "default width above the maximum", "$.map.defaultWidth" },
+        { "unknown default terrain", "$.map.defaultTerrain" },
+        { "impassable default terrain", "$.map.defaultTerrain" },
+        { "empty spawn zone", "$.map.spawn.zoneColumnsPerMille" },
+        { "spawn zone over a quarter", "$.map.spawn.zoneColumnsPerMille" },
+        { "spawn on the edge", "$.map.spawn.edgeMargin" },
+        { "margin as wide as the zone", "$.map.spawn.edgeMargin" },
+        { "blind cities", "$.cities.sight" },
+        { "no city spacing", "$.cities.minimumSpacing" },
+        { "no production", "$.cities.productionPerTurn" },
+        { "unknown initial production", "$.cities.initialProduction" },
+        { "missing name template", "$.cities.nameTemplate" },
+        { "template without a number", "$.texts['city.default_name']" },
+        { "unit sees less than it moves", "$.units[1].sight" },
+        { "settler misses blocking cities", "$.units[0].sight" },
+        { "missing unit name", "$.texts" },
+        { "empty text", "$.texts['terrain.plains.name']" },
+    };
+
+    [Fact]
+    public void Parse_DefaultRuleset_IsValidAndHoldsTodaysGame()
+    {
+        var result = Ruleset.Parse(TestRulesets.DefaultJson);
+
+        result.IsValid.ShouldBeTrue(string.Join("; ", result.Problems));
+        result.Problems.ShouldBeEmpty();
+        var ruleset = result.Ruleset;
+        ruleset.Setup.Players.ShouldBe(2);
+        ruleset.Setup.StartingUnits.ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
+        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
+        ruleset.Unit(TestRulesets.Settler).CanFoundCity.ShouldBeTrue();
+        ruleset.Unit(TestRulesets.Settler).CanAttack.ShouldBeFalse();
+        ruleset.Unit(TestRulesets.Soldier).CanAttack.ShouldBeTrue();
+        ruleset.Unit(TestRulesets.Soldier).ProductionCost.ShouldBe(4);
+        ruleset.Terrain(TestRulesets.Plains).ShouldBe(new TerrainDefinition(TestRulesets.Plains, 1, true));
+        ruleset.Map.DefaultWidth.ShouldBe(20);
+        ruleset.Map.DefaultHeight.ShouldBe(14);
+        ruleset.Cities.MinimumSpacing.ShouldBe(3);
+        ruleset.Hash.ShouldBe(Ruleset.ComputeHash(TestRulesets.DefaultJson));
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidDocuments))]
+    public void Parse_InvalidDocument_ReportsTheProblemAtItsPath(string change, string path)
+    {
+        var result = Ruleset.Parse(TestRulesets.Document(Changes[change]).ToJsonString());
+
+        result.IsValid.ShouldBeFalse();
+        result.Ruleset.ShouldBeNull();
+        result.Problems.ShouldContain(problem => problem.Path == path && problem.Message.Length > 0, string.Join("; ", result.Problems));
+    }
+
+    [Theory]
+    [InlineData("{")]
+    [InlineData("[]")]
+    [InlineData("null")]
+    [InlineData("""{ "setup": { "players": 2, "players": 2, "startingUnits": [] } }""")]
+    public void Parse_NotARulesetObject_ReportsAProblem(string json)
+    {
+        var result = Ruleset.Parse(json);
+
+        result.IsValid.ShouldBeFalse();
+        result.Problems.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void Parse_DuplicateTextKey_ReportsAProblemInsteadOfThrowing()
+    {
+        var json = TestRulesets.DefaultJson.Replace(
+            "\"city.default_name\": \"City {n}\"", "\"city.default_name\": \"City {n}\", \"city.default_name\": \"Town {n}\"", StringComparison.Ordinal);
+
+        var result = Ruleset.Parse(json);
+
+        json.ShouldNotBe(TestRulesets.DefaultJson);
+        result.IsValid.ShouldBeFalse();
+        result.Problems.ShouldHaveSingleItem().Path.ShouldStartWith("$.texts");
+    }
+
+    [Fact]
+    public void Parse_SeveralProblems_ReportsEveryOne()
+    {
+        var json = TestRulesets.Document(json =>
+        {
+            json["units"]![1]!["movement"] = 0;
+            json["cities"]!["productionPerTurn"] = 0;
+        }).ToJsonString();
+
+        var result = Ruleset.Parse(json);
+
+        result.Problems.Select(static problem => problem.Path).ShouldBe(["$.units[1].movement", "$.cities.productionPerTurn"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void ParseValid_InvalidDocument_ThrowsWithEveryProblem()
+    {
+        var json = TestRulesets.Document(json => json["setup"]!["players"] = 3).ToJsonString();
+
+        var exception = Should.Throw<FormatException>(() => Ruleset.ParseValid(json));
+
+        exception.Message.ShouldContain("$.setup.players");
+    }
+
+    [Fact]
+    public void ComputeHash_AnyChangeToTheText_ChangesTheHash()
+    {
+        var hash = Ruleset.ComputeHash(TestRulesets.DefaultJson);
+
+        hash.Length.ShouldBe(64);
+        hash.ShouldBe(hash.ToLowerInvariant());
+        Ruleset.ComputeHash(TestRulesets.DefaultJson + " ").ShouldNotBe(hash);
+        Ruleset.Parse(TestRulesets.DefaultJson + "\n").Ruleset!.Hash.ShouldNotBe(hash);
+    }
+
+    [Fact]
+    public void Lookups_UnknownIds_ReturnNullOrThrow()
+    {
+        var ruleset = TestRulesets.Default;
+
+        ruleset.FindUnit(new UnitType("knight")).ShouldBeNull();
+        ruleset.FindUnit(default).ShouldBeNull();
+        Should.Throw<ArgumentException>(() => ruleset.Unit(new UnitType("knight")));
+        Should.Throw<ArgumentException>(() => ruleset.Terrain(new TerrainType("desert")));
+        Should.Throw<ArgumentException>(() => ruleset.Text("unit.knight.name"));
+    }
+
+    [Fact]
+    public void Names_ComeFromTheTexts()
+    {
+        var ruleset = TestRulesets.With(json => json["texts"]!["city.default_name"] = "Town {n} of {n}");
+
+        ruleset.UnitName(TestRulesets.Settler).ShouldBe("Settler");
+        ruleset.TerrainName(TestRulesets.Plains).ShouldBe("Plains");
+        ruleset.CityName(12).ShouldBe("Town 12 of 12");
+    }
+}

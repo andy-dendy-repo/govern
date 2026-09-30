@@ -1,6 +1,7 @@
 using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Map;
+using Govern.Core.Rulesets;
 using Govern.Core.State;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -19,7 +20,7 @@ public sealed record MoveUnitCommand(UnitId UnitId, HexCoord Target) : GameComma
 /// </summary>
 internal static class MoveUnitRule
 {
-    public static CommandResult Apply(GameState state, PlayerId actor, MoveUnitCommand command)
+    public static CommandResult Apply(Ruleset ruleset, GameState state, PlayerId actor, MoveUnitCommand command)
     {
         if (!CommandGuardRule.TryGetOwnedUnit(state, actor, command.UnitId, out var unit, out var error))
         {
@@ -33,12 +34,12 @@ internal static class MoveUnitRule
 
         // Only a visible blocker is reported as occupied; a hidden one must look like any other unreachable tile.
         if (state.UnitAt(command.Target) is { } blocker && blocker.Id != unit.Id
-            && VisibilityCalculator.VisibleTiles(state, actor).Contains(command.Target))
+            && VisibilityCalculator.VisibleTiles(ruleset, state, actor).Contains(command.Target))
         {
             return RuleViolations.TileOccupied;
         }
 
-        var reachability = ReachabilityCalculator.Compute(state, unit);
+        var reachability = ReachabilityCalculator.Compute(ruleset, state, unit);
         if (!reachability.CanReach(command.Target))
         {
             return RuleViolations.Unreachable;

@@ -21,7 +21,7 @@ public static class RuleViolations
     public static readonly RuleViolation NoMovementLeft = new("unit.no_movement", "The unit has no movement left this turn.");
 
     /// <summary>The unit type cannot found cities.</summary>
-    public static readonly RuleViolation CannotFoundCity = new("unit.cannot_found_city", "Only settlers can found cities.");
+    public static readonly RuleViolation CannotFoundCity = new("unit.cannot_found_city", "This unit cannot found a city.");
 
     /// <summary>The unit type cannot attack.</summary>
     public static readonly RuleViolation CannotAttack = new("unit.cannot_attack", "This unit cannot attack.");
