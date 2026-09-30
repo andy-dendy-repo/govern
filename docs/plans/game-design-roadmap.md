@@ -7,7 +7,7 @@ updated: 2026-09-30
 
 # Game design roadmap
 
-Where the game goes after the 1-vs-1 prototype (game Plans 1–5, [game delivery](game-delivery.md)): a much richer, Civilization-like game. This is a list of future plans, not a schedule. Each item becomes its own plan in `.claude/rules/planning.md` format when it is picked up, runs through `/develop-feature`, and branches from and PRs to `gamecore`. Smaller and operational work is in [next follow-ups](next-follow-ups.md).
+Where the game goes after the 1-vs-1 prototype (game Plans 1–5, [game delivery](done-game-delivery.md)): a much richer, Civilization-like game. This is a list of future plans, not a schedule. Each item becomes its own plan in `.claude/rules/planning.md` format when it is picked up, runs through `/develop-feature`, and branches from and PRs to `gamecore`. Smaller and operational work is in [next follow-ups](next-follow-ups.md).
 
 Items are numbered **G1–G15** so they don't clash with the follow-up numbers. Suggestions added to the original wish list are marked *(suggested)*.
 

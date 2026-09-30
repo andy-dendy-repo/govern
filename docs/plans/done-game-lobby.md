@@ -7,7 +7,7 @@ updated: 2026-09-29
 
 # Plan: Game plan 2: games, lobby and invite links
 
-Part of the [game delivery plan](game-delivery.md). Branch `feature/game-lobby` from `gamecore` after PR #8 (Core engine) is merged, and open the PR to `gamecore`. Run it through `/develop-feature`.
+Part of the [game delivery plan](done-game-delivery.md). Branch `feature/game-lobby` from `gamecore` after PR #8 (Core engine) is merged, and open the PR to `gamecore`. Run it through `/develop-feature`.
 
 **Status: done** (merged into `gamecore`). The feature is documented in [games](../features/games.md). The decisions and changes made during implementation are listed under "Decisions made during implementation" at the end.
 
@@ -169,7 +169,7 @@ Players can then create a game, send the link, see who joined, start the game an
 - New `docs/features/games.md`: the lobby lifecycle (phases), endpoints with status codes, error codes, the data model (`games`, `game_players`, the `jsonb` state), invite code rules and privacy (no emails exposed).
 - Update:
   - `docs/features/game-core.md` and `.claude/rules/game-core.md` (rename to `RuleViolation`/`RuleViolations`)
-  - `docs/plans/game-delivery.md` (Plan 2 → Done)
+  - `docs/plans/done-game-delivery.md` (Plan 2 → Done)
   - `docs/README.md`
 - `.claude/rules/persistence.md`: add the `jsonb` snapshot pattern (converter through `GameSerializer`, reference `ValueComparer`, no querying inside the JSON). That's a new convention, and it comes with its integration test.
 

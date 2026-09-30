@@ -9,7 +9,7 @@ updated: 2026-09-29
 
 **Status: done (closed 2026-09-29).** Plan 1 is delivered. Plans 2 and 3 moved to [next follow-ups](next-follow-ups.md) (items 4 and 5); their sections below stay as the detailed design for those items.
 
-Increments, each on its own branch from `stage`, each run through `/develop-feature`, and each merged before the next starts. Plan 1 (refresh token pruning, session cap, sign-out) is done; see [users](../features/users.md). Together they replace backlog items #1 (sign-out), #4 (email verification), #6 (refresh token cleanup) and #7 (outbox) that used to be in [follow-ups](follow-ups.md). When a plan is merged, remove its section here; delete this file after Plan 3. There are no hosted jobs, no Azure Functions and no outbox.
+Increments, each on its own branch from `stage`, each run through `/develop-feature`, and each merged before the next starts. Plan 1 (refresh token pruning, session cap, sign-out) is done; see [users](../features/users.md). Together they replace backlog items #1 (sign-out), #4 (email verification), #6 (refresh token cleanup) and #7 (outbox) that used to be in [follow-ups](done-follow-ups.md). When a plan is merged, remove its section here; delete this file after Plan 3. There are no hosted jobs, no Azure Functions and no outbox.
 
 ---
 
@@ -64,7 +64,7 @@ Today the welcome email is sent by `UserSignedUpEventHandler` after the commit, 
   - the trade-offs: a connection is held during the provider call, sign-up depends on the email provider being up, and the rare "sent but not committed" case
 - `docs/features/users.md`: the sign-up email paragraph.
 - `docs/architecture.md` / `docs/README.md`: index the ADR.
-- Remove this plan's section from `docs/plans/session-and-email-verification.md`.
+- Remove this plan's section from `docs/plans/done-session-and-email-verification.md`.
 - `.claude/agent-memory/code-reviewer/project_known_limitations.md`: update it if it mentions best-effort welcome email delivery.
 
 ## Verification
@@ -183,7 +183,7 @@ Sign-up returns 409 for registered emails, which lets anyone enumerate accounts,
   - remove the enumeration "accepted risk"
   - the entity table (new columns)
 - `docs/operations/configuration.md` and `docs/operations/deployment.md`: `EmailConfirmation:*`.
-- Remove this plan's section from `docs/plans/session-and-email-verification.md`.
+- Remove this plan's section from `docs/plans/done-session-and-email-verification.md`.
 - `.claude/rules`: no convention change.
 
 ## Verification

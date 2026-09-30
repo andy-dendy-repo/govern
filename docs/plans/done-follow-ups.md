@@ -11,9 +11,9 @@ updated: 2026-09-29
 
 Open work found by the first code review and security audit of the template Api (`feature/template-api`, 2026-09-27). Run each item through `/develop-feature`: it gets its own plan in `.claude/rules/planning.md` format, then a branch from `stage` and a PR. When an item is done, remove it here and update the related docs.
 
-Sign-out, refresh token cleanup, the transactional sign-up email and email verification (formerly #1, #4, #6 and #7) are planned in [session-and-email-verification](session-and-email-verification.md). Item numbers are kept so existing references stay valid. #11 (quiet first migration log) was dropped as not needed: the one-off EF Core 20102 error on a brand-new database is accepted.
+Sign-out, refresh token cleanup, the transactional sign-up email and email verification (formerly #1, #4, #6 and #7) are planned in [session-and-email-verification](done-session-and-email-verification.md). Item numbers are kept so existing references stay valid. #11 (quiet first migration log) was dropped as not needed: the one-off EF Core 20102 error on a brand-new database is accepted.
 
-The remaining items are planned, in delivery order, in [follow-ups-delivery](follow-ups-delivery.md). Done:
+The remaining items are planned, in delivery order, in [follow-ups-delivery](done-follow-ups-delivery.md). Done:
 - #12 stricter email validation and #3 per-account sign-in limiter: see the email rules and sign-in throttling in [users](../features/users.md).
 - #8 host filtering and health check split, and #9 Key Vault purge protection (enabled): see [deployment](../operations/deployment.md#health-checks-and-host-filtering).
 - #10 Blazor client: foundation (Radzen, CFT architecture, CSP gate, bUnit) and authentication with the login, register and profile pages, delivered through `gamecore` ahead of game Plan 4: see [client](../features/client.md).

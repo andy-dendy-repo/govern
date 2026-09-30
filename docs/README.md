@@ -25,6 +25,11 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [decisions/0004-game-engine.md](decisions/0004-game-engine.md): authoritative server with a pure, deterministic, dependency-free game engine; hex map, alternating turns, fog of war.
 - [decisions/0005-live-updates.md](decisions/0005-live-updates.md): live game updates over SSE with per-player snapshots, an in-process change hub, an opaque view version and random ids.
 
+## Game design
+
+- [game/game-data.md](game/game-data.md): draft: the loadable ruleset: the boundary between data and Core logic, lifecycle (JSON in the repo, stored per version, pinned per game, parsed and validated by Core, served to the client), format conventions, every section with its fields, today's values and examples (game setup, map, terrains, units, cities, texts), validation rules; open questions in plans/ruleset-open-questions.md.
+- [game/game-logic.md](game/game-logic.md): draft: Core's algorithms as simple steps: creating a game, executing a command (guard, apply, victory, explore), move, attack, found city, set production, end turn, resign, elimination and victory, fog of war and the view version, view previews, randomness and ids, invariants, with the ruleset key for every number.
+
 ## Operations
 - [operations/local-development.md](operations/local-development.md): prerequisites, local Postgres, user-secrets, running the Api, tests and the container.
 - [operations/configuration.md](operations/configuration.md): every configuration key, its default and where secrets come from.
@@ -33,11 +38,12 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 - [operations/branching.md](operations/branching.md): branches, PR flow, release and protection.
 
 ## Plans
+- [plans/ruleset-open-questions.md](plans/ruleset-open-questions.md): open questions (to discuss) before the loadable ruleset and the game logic docs become a plan: who reads the database, where rulesets are authored and published, pinning per game, serving it to the client, one or several rulesets, texts and languages, error message translation, and the logic doc's level of detail.
 - [plans/game-design-roadmap.md](plans/game-design-roadmap.md): future game mechanics (G1–G15): the UI design system, a game rules reference, data-driven catalogs, terrain layers, resources and tile yields, rivers and bridges, city territory, stats and production queue, unit roster and combat, builders and buildings with upgrades, science and culture trees with upkeep, civilizations and governors, colonies founded by governors, seasons, ships and river navigation; the decisions taken and open questions.
 - [plans/next-follow-ups.md](plans/next-follow-ups.md): **all open work**, prioritised: ship the game, least-privilege DB access, monitoring, the sign-up email in the transaction, email verification, `UnitView`, invite code rotation, and the deferred game ideas, simultaneous turns, and more than two players.
-- [plans/game-delivery.md](plans/game-delivery.md): the game plans (Core engine, lobby, commands + SSE + lobby lifecycle, client lobby, client board), all done, and the `gamecore` branching flow.
-- [plans/game-lobby.md](plans/game-lobby.md): game plan 2 (done): `Game` aggregate, lobby with invite codes, creator-only start, `jsonb` state, five `/api/games` endpoints.
-- [plans/template-solution-roadmap.md](plans/template-solution-roadmap.md): how the template was built, step by step (done).
-- [plans/follow-ups.md](plans/follow-ups.md): the first backlog (done; open items moved to next follow-ups).
-- [plans/follow-ups-delivery.md](plans/follow-ups-delivery.md): delivery plans for the first backlog (done); its Entra and monitoring sections are the detailed design for next follow-ups items 2 and 3.
-- [plans/session-and-email-verification.md](plans/session-and-email-verification.md): session lifecycle (done); its sign-up email and email verification sections are the detailed design for next follow-ups items 4 and 5.
+- [plans/done-game-delivery.md](plans/done-game-delivery.md): the game plans (Core engine, lobby, commands + SSE + lobby lifecycle, client lobby, client board), all done, and the `gamecore` branching flow.
+- [plans/done-game-lobby.md](plans/done-game-lobby.md): game plan 2 (done): `Game` aggregate, lobby with invite codes, creator-only start, `jsonb` state, five `/api/games` endpoints.
+- [plans/done-template-solution-roadmap.md](plans/done-template-solution-roadmap.md): how the template was built, step by step (done).
+- [plans/done-follow-ups.md](plans/done-follow-ups.md): the first backlog (done; open items moved to next follow-ups).
+- [plans/done-follow-ups-delivery.md](plans/done-follow-ups-delivery.md): delivery plans for the first backlog (done); its Entra and monitoring sections are the detailed design for next follow-ups items 2 and 3.
+- [plans/done-session-and-email-verification.md](plans/done-session-and-email-verification.md): session lifecycle (done); its sign-up email and email verification sections are the detailed design for next follow-ups items 4 and 5.
