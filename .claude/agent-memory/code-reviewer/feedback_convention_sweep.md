@@ -14,6 +14,7 @@ When a change edits a convention, grep beyond `.claude/rules` and `docs/`. It ha
 - 2026-09-30, `UnitView` (view type swap `Unit` -> `UnitView`): game-core docs/rules updated, but the client's lists of Core view types (`.claude/rules/blazor-client.md` "Core only for views and previews", `docs/features/client.md` board section) still named `Unit`. On any Core view-type change, grep for the old type name in backticks across `docs/` and `.claude/rules`.
 
 - 2026-09-30, `gamecore` retired (in the G1 PR): CLAUDE.md and branching.md updated, but `docs/plans/deferred/follow-ups.md` (intro and F1 "PR from gamecore to stage"), `ruleset-b-store-and-pin.md` and `ci.yml` triggers were not.
+- 2026-09-30, G2 rules reference (`docs/game/rules.md` + `RulesReferenceTests`): CLAUDE.md DoD, game-core.md, docs.md updated, but `develop-feature` step 5 (docs/) still lists only features/architecture/operations docs. On any new mandatory doc, check that step.
 - 2026-09-27, Swagger UI: `security.md` and `api-endpoints.md` were updated but `.claude/agents/security-auditor.md` (HTTP surface: "OpenAPI is Development-only") was not.
 
 **Why:** CLAUDE.md DoD item 5 requires rules, skills, agents and docs to change together with the convention. Stale agent prompts and skills make later features (and reviews) enforce the old rule.

@@ -37,7 +37,7 @@ Domain → Application.Common → Application → Infrastructure → Api → Cli
 Every new public or protected member is documented (`xml-docs.md`); the build fails on CS1591. Endpoints need `<response>` codes.
 
 ## 5. docs/ (RAG)
-Update or create `docs/features/<feature>.md` and `docs/README.md`, plus `docs/architecture.md`, `docs/operations/*` or an ADR when relevant (`docs.md`).
+Update or create `docs/features/<feature>.md` and `docs/README.md`, plus `docs/architecture.md`, `docs/operations/*` or an ADR when relevant (`docs.md`). A game rules change also updates the player rules reference `docs/game/rules.md` and `docs/game/game-logic.md` (`RulesReferenceTests` checks the reference's tables against the ruleset).
 
 ## 6. Correct the Claude rules
 If this work established or changed a convention, update the matching `.claude/rules/*.md`, skill or `CLAUDE.md` and the architecture test. Don't let rules drift from the code.
