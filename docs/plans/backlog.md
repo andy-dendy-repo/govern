@@ -26,7 +26,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 | # | Id | Item | Area | Status | Detail |
 |---|---|---|---|---|---|
-| 1 | C1 | Richer ruleset and Core: add content and mechanics to the embedded default ruleset (a new version file per change, `rulesets/default/v2.json` since G4) and Core. C1 = G2, G4, G9 (agreed 2026-09-30) | core, ruleset | G2 done; G4 in progress (branch `claude/project-thread-ajx0tr`) | [Content slice C1](#content-slice-c1-g2-g4-g9) |
+| 1 | C1 | Richer ruleset and Core: add content and mechanics to the embedded default ruleset (a new version file per change, `rulesets/default/v2.json` since G4) and Core. C1 = G2, G4, G9 (agreed 2026-09-30) | core, ruleset | G2 and G4 done; G9 needs plan | [Content slice C1](#content-slice-c1-g2-g4-g9) |
 
 ### Content slice C1: G2, G4, G9
 
@@ -35,7 +35,7 @@ Agreed 2026-09-30. The ruleset stays as it is today: one embedded file, no datab
 | # | Id | Item | Why now |
 |---|---|---|---|
 | 1 | G2 | [Game rules reference](../game/design-roadmap.md#g2-game-rules-reference): done 2026-09-30, PR #26, [plan](done/G2-rules-reference.md) | Small, and every content item updates it, so it should exist first |
-| 2 | G4 | [Terrain: more tile types](../game/design-roadmap.md#g4-terrain-more-tile-types): in progress, [plan](active/G4-terrain.md) | The map is the base for everything else; a first set of base terrain, hills and forest changes play without new systems |
+| 2 | G4 | [Terrain: more tile types](../game/design-roadmap.md#g4-terrain-more-tile-types): done 2026-09-30, PR #28, [plan](done/G4-terrain.md) | The map is the base for everything else; a first set of base terrain, hills and forest changes play without new systems |
 | 3 | G9 | [Army units and combat](../game/design-roadmap.md#g9-army-units-and-combat) | Health and a small roster with counters make fights interesting with today's cities; builds on G4's defence modifiers |
 
 ## Next
@@ -80,6 +80,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| G4 | Terrain: forest, hills (+1 sight), mountains and lake, seeded mirrored map generation (ruleset v2), the movement-cost map lens ([rules](../game/rules.md), [game UI](../features/game-ui.md)) | 2026-09-30, PR #28 | [G4](done/G4-terrain.md) |
 | G2 | Game rules reference for players ([rules](../game/rules.md)), checked against the ruleset by `RulesReferenceTests`; a rules change updates it (Definition of Done) | 2026-09-30, PR #26 | [G2](done/G2-rules-reference.md) |
 | G1 | UI design system: screen zones, tokens and light/dark, icon set, board layers, shared components, `/design` gallery ([game UI](../features/game-ui.md)). Map lenses moved to G4 | 2026-09-30, PR #24 | [G1](done/G1-ui-design-system.md) |
 | G3a | Core reads every game number from a loadable ruleset | 2026-09-30, PR #20 | [ruleset A](done/ruleset-a-core.md) |
