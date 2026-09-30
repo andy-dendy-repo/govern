@@ -10,6 +10,8 @@ When a change edits a convention, grep beyond `.claude/rules` and `docs/`. It ha
 - 2026-09-27, Blazor client foundation (new `Govern.ClientTests`, `blazor-client.md`, `client-tests.md`): `code-reviewer.md` inputs and the tests dimension, the `develop-feature` step 3 test list, the `/verify` phases and report table, and the `integration-tests.md` "everything except" scope were not updated.
 
 - 2026-09-27, health split + HostAllowListMiddleware: `api-endpoints.md` "Pipeline order in Program.cs" and "Middleware ... registered transient; the current one is ExceptionHandlingMiddleware" were left stale (new middleware registered singleton).
+- 2026-09-27, game core (new `gamecore` integration branch): CLAUDE.md Layout line and done-game-delivery.md updated, but `.github/workflows/ci.yml` triggers, `.claude/hooks/bash-guard.sh` protected branches, CLAUDE.md "Branching" and docs/operations/branching.md were not.
+- 2026-09-30, `UnitView` (view type swap `Unit` -> `UnitView`): game-core docs/rules updated, but the client's lists of Core view types (`.claude/rules/blazor-client.md` "Core only for views and previews", `docs/features/client.md` board section) still named `Unit`. On any Core view-type change, grep for the old type name in backticks across `docs/` and `.claude/rules`.
 
 - 2026-09-27, Swagger UI: `security.md` and `api-endpoints.md` were updated but `.claude/agents/security-auditor.md` (HTTP surface: "OpenAPI is Development-only") was not.
 

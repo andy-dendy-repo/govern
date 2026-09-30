@@ -1,0 +1,122 @@
+using System.Collections.Frozen;
+using System.Collections.Immutable;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using Govern.Core.Map;
+using Govern.Core.Units;
+
+namespace Govern.Core.Rulesets;
+
+/// <summary>
+/// Every customisable number, list and text of a game, read from a ruleset JSON document (see <c>docs/game/game-data.md</c>).
+/// Core holds the mechanics; the ruleset holds the data they use. A game always runs with the one ruleset it was started with.
+/// Immutable, so one instance can be shared by every game and request.
+/// </summary>
+public sealed class Ruleset
+{
+    private readonly FrozenDictionary<UnitType, UnitDefinition> _units;
+    private readonly FrozenDictionary<TerrainType, TerrainDefinition> _terrains;
+
+    internal Ruleset(RulesetDocument document, string hash)
+    {
+        Setup = document.Setup;
+        Map = document.Map;
+        Terrains = document.Terrains;
+        Units = document.Units;
+        Cities = document.Cities;
+        Texts = document.Texts;
+        Hash = hash;
+        _units = document.Units.ToFrozenDictionary(static unit => unit.Id);
+        _terrains = document.Terrains.ToFrozenDictionary(static terrain => terrain.Id);
+    }
+
+    /// <summary>How a game starts.</summary>
+    public SetupRules Setup { get; }
+
+    /// <summary>The board.</summary>
+    public MapRules Map { get; }
+
+    /// <summary>Every terrain, in the document's order.</summary>
+    public ImmutableArray<TerrainDefinition> Terrains { get; }
+
+    /// <summary>Every unit, in the document's order (the order the client lists them in).</summary>
+    public ImmutableArray<UnitDefinition> Units { get; }
+
+    /// <summary>Cities.</summary>
+    public CityRules Cities { get; }
+
+    /// <summary>Every text a player reads, by key (English only for now).</summary>
+    public ImmutableDictionary<string, string> Texts { get; }
+
+    /// <summary>The SHA-256 of the exact document text, as lowercase hex (<see cref="ComputeHash"/>).</summary>
+    public string Hash { get; }
+
+    /// <summary>Parses and validates a ruleset document.</summary>
+    /// <param name="json">The document text, exactly as stored; its hash becomes <see cref="Hash"/>.</param>
+    /// <returns>The ruleset, or every problem found.</returns>
+    public static RulesetParseResult Parse(string json) => RulesetParser.Parse(json);
+
+    /// <summary>Parses a ruleset document that is known to be valid, such as one already published.</summary>
+    /// <param name="json">The document text.</param>
+    /// <returns>The ruleset.</returns>
+    /// <exception cref="FormatException">The document is not a valid ruleset; the message lists every problem.</exception>
+    public static Ruleset ParseValid(string json)
+    {
+        var result = Parse(json);
+        return result.IsValid
+            ? result.Ruleset
+            : throw new FormatException($"The ruleset is invalid: {string.Join("; ", result.Problems)}");
+    }
+
+    /// <summary>The hash of a ruleset document: SHA-256 of its UTF-8 bytes, as lowercase hex. Any change, even whitespace, changes it.</summary>
+    /// <param name="json">The document text.</param>
+    /// <returns>64 lowercase hex characters.</returns>
+    public static string ComputeHash(string json)
+    {
+        ArgumentNullException.ThrowIfNull(json);
+        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(json)));
+    }
+
+    /// <summary>Looks up a unit type that may not exist, such as one sent in a command.</summary>
+    /// <param name="type">The unit type.</param>
+    /// <returns>Its definition, or <see langword="null"/> when the ruleset has no such unit.</returns>
+    public UnitDefinition? FindUnit(UnitType type) => _units.GetValueOrDefault(type);
+
+    /// <summary>The definition of a unit type that is in the game.</summary>
+    /// <param name="type">A unit type of this ruleset.</param>
+    /// <returns>Its definition.</returns>
+    /// <exception cref="ArgumentException">The ruleset has no such unit (a programming error).</exception>
+    public UnitDefinition Unit(UnitType type) =>
+        FindUnit(type) ?? throw new ArgumentException($"The ruleset has no unit '{type.Id}'.", nameof(type));
+
+    /// <summary>The definition of a terrain that is in the game.</summary>
+    /// <param name="type">A terrain of this ruleset.</param>
+    /// <returns>Its definition.</returns>
+    /// <exception cref="ArgumentException">The ruleset has no such terrain (a programming error).</exception>
+    public TerrainDefinition Terrain(TerrainType type) =>
+        _terrains.GetValueOrDefault(type) ?? throw new ArgumentException($"The ruleset has no terrain '{type.Id}'.", nameof(type));
+
+    /// <summary>A text by key.</summary>
+    /// <param name="key">A key the ruleset uses, such as <c>unit.settler.name</c>.</param>
+    /// <returns>The English text.</returns>
+    /// <exception cref="ArgumentException">The ruleset has no such text.</exception>
+    public string Text(string key) =>
+        Texts.GetValueOrDefault(key) ?? throw new ArgumentException($"The ruleset has no text '{key}'.", nameof(key));
+
+    /// <summary>The display name of a unit type.</summary>
+    /// <param name="type">A unit type of this ruleset.</param>
+    /// <returns>The text <c>unit.{id}.name</c>.</returns>
+    public string UnitName(UnitType type) => Text($"unit.{type.Id}.name");
+
+    /// <summary>The display name of a terrain.</summary>
+    /// <param name="type">A terrain of this ruleset.</param>
+    /// <returns>The text <c>terrain.{id}.name</c>.</returns>
+    public string TerrainName(TerrainType type) => Text($"terrain.{type.Id}.name");
+
+    /// <summary>The name of a player's new city.</summary>
+    /// <param name="number">The founder's city count including the new one.</param>
+    /// <returns>The <see cref="CityRules.NameTemplate"/> text with <c>{n}</c> replaced.</returns>
+    public string CityName(int number) =>
+        Text(Cities.NameTemplate).Replace("{n}", number.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal);
+}

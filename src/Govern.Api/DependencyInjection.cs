@@ -1,6 +1,9 @@
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Govern.Api.Extensions;
+using Govern.Api.Helpers;
 using Govern.Api.Middlewares;
 using Govern.Api.Models;
 using Govern.Api.Options;
@@ -17,8 +20,9 @@ using Microsoft.IdentityModel.Tokens;
 namespace Govern.Api;
 
 /// <summary>
-/// Registers the HTTP layer: ProblemDetails, OpenAPI (with the Bearer security scheme), JWT authentication with a deny-by-default authorization
-/// fallback, rate limiting, CORS and the current-user accessor.
+/// Registers the HTTP layer: ProblemDetails, OpenAPI (with the Bearer security scheme), JSON (enums as camelCase strings, matching
+/// <c>GameSerializer</c>), JWT authentication with a deny-by-default authorization fallback, rate limiting, the game stream settings,
+/// CORS and the current-user accessor.
 /// </summary>
 public static class DependencyInjection
 {
@@ -32,7 +36,7 @@ public static class DependencyInjection
         /// Adds all Api services.
         /// </summary>
         /// <param name="configuration">
-        /// Application configuration (<c>Cors</c>, <c>RateLimiting</c>, <c>HostFiltering</c>, <c>Jwt</c>).
+        /// Application configuration (<c>Cors</c>, <c>RateLimiting</c>, <c>GameStream</c>, <c>HostFiltering</c>, <c>Jwt</c>).
         /// </param>
         /// <returns>The service collection, for chaining.</returns>
         public IServiceCollection AddApi(IConfiguration configuration)
@@ -41,12 +45,15 @@ public static class DependencyInjection
 
             services.AddProblemDetails();
             services.AddOpenApi(static options => options.AddBearerSecurity());
+            services.ConfigureHttpJsonOptions(static json => json.SerializerOptions.Converters.Add(
+                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddTransient<ExceptionHandlingMiddleware>();
 
             services.AddJwtAuthentication();
-            services.AddIpRateLimiting(configuration);
+            services.AddRateLimiting(configuration);
+            services.AddGameStream(configuration);
             services.AddHostAllowList(configuration);
             services.AddAllowListCors(configuration);
 
@@ -76,7 +83,7 @@ public static class DependencyInjection
                 .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
         }
 
-        private void AddIpRateLimiting(IConfiguration configuration)
+        private void AddRateLimiting(IConfiguration configuration)
         {
             services.AddOptions<RateLimitingOptions>().Bind(configuration.GetSection(RateLimitingOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
             services.AddRateLimiter(static limiter =>
@@ -86,8 +93,16 @@ public static class DependencyInjection
                     context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.AuthPermitLimit, Window = settings.AuthWindow }));
                 limiter.AddPolicy(RateLimitingPolicies.Health, static context => PerClientIp(
                     context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.HealthPermitLimit, Window = settings.HealthWindow }));
+                limiter.AddPolicy(RateLimitingPolicies.Games, static context => PerUser(
+                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.GamesPermitLimit, Window = settings.GamesWindow }));
+                limiter.AddPolicy(RateLimitingPolicies.GameCommands, static context => PerUser(
+                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.GameCommandsPermitLimit, Window = settings.GameCommandsWindow }));
+                limiter.AddPolicy(RateLimitingPolicies.GameStreams, static context => GameStreamsPerUser(context));
             });
         }
+
+        private void AddGameStream(IConfiguration configuration) =>
+            services.AddOptions<GameStreamOptions>().Bind(configuration.GetSection(GameStreamOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
 
         private void AddHostAllowList(IConfiguration configuration)
         {
@@ -117,4 +132,28 @@ public static class DependencyInjection
         var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
         return RateLimitPartition.GetFixedWindowLimiter(IpPartitionKey.From(context.Connection.RemoteIpAddress), _ => limits(settings));
     }
+
+    // Per user: at most N open streams (the lease is held while the stream is open), then a fixed window on opening them.
+    // Concurrency comes first, so a stream the window rejects gives its concurrency permit back at once.
+    private static RateLimitPartition<string> GameStreamsPerUser(HttpContext context)
+    {
+        var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
+        return RateLimitPartition.Get(UserPartitionKey(context), _ => new OwningChainedRateLimiter(
+            new ConcurrencyLimiter(new ConcurrencyLimiterOptions { PermitLimit = settings.GameStreamsConcurrentLimit, QueueLimit = 0 }),
+            new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions { PermitLimit = settings.GameStreamsPermitLimit, Window = settings.GameStreamsWindow })));
+    }
+
+    // Fixed window per signed-in user (the JWT subject).
+    private static RateLimitPartition<string> PerUser(HttpContext context, Func<RateLimitingOptions, FixedWindowRateLimiterOptions> limits)
+    {
+        var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
+        return RateLimitPartition.GetFixedWindowLimiter(UserPartitionKey(context), _ => limits(settings));
+    }
+
+    // The signed-in user (JWT subject) for per-user policies. The limiter runs after authorization, so a protected endpoint
+    // never gets here without a user; the client-IP key only guards against a per-user policy on an anonymous endpoint.
+    private static string UserPartitionKey(HttpContext context) =>
+        context.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value is { Length: > 0 } userId
+            ? $"user:{userId}"
+            : IpPartitionKey.From(context.Connection.RemoteIpAddress);
 }

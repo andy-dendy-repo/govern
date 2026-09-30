@@ -7,8 +7,9 @@ Govern is an HTTP Web API with a Blazor WASM client. The server layers follow Cl
 | Path | Purpose |
 |---|---|
 | `src/` | Production projects |
-| `tests/` | `Govern.UnitTests` (Utils and Domain only), `Govern.IntegrationTests` (everything else on the server, Postgres Testcontainers), `Govern.ClientTests` (Blazor client, bUnit), `Govern.ArchitectureTests` (rules) |
+| `tests/` | `Govern.UnitTests` (Utils, Core and Domain only), `Govern.IntegrationTests` (everything else on the server, Postgres Testcontainers), `Govern.ClientTests` (Blazor client, bUnit), `Govern.ArchitectureTests` (rules) |
 | `docs/` | Knowledge base used for RAG (see `docs.md` rule) |
+| `rulesets/` | Game rulesets: `<key>/v<N>.json`, the loadable data Core plays with (format: `docs/game/game-data.md`). A published version is never edited; a change is a new version |
 | `infra/` | Bicep (Azure) |
 | `.github/workflows/`, `.github/scripts/` | CI (PR → stage/main) and release (stage → main); `configure-client.sh` fills the client's CSP and Api origin at release |
 
@@ -17,17 +18,18 @@ Govern is an HTTP Web API with a Blazor WASM client. The server layers follow Cl
 | Project | Purpose | May reference |
 |---|---|---|
 | `Govern.Utils` | Framework-agnostic building blocks: `Mediator/` (requests, handlers, pipelines, notifications), `Results/` (`Result<T>`, `Error`). Free-form folders | nothing |
-| `Govern.Domain` | Entities, value objects, domain events, `EntityBase/` | Utils |
-| `Govern.Application.Common` | Abstractions implemented by Infrastructure (db context, factory, transaction, current user, …) + common models/options | Domain, Utils |
-| `Govern.Application` | Use cases: `[Feature]/Contracts/XxxContract.cs` (Request/Response/Validator/Handler) | Application.Common, Domain, Utils |
-| `Govern.Infrastructure` | Implementations: `Persistence/` (EF Core + Npgsql), one folder per concern (Caching, Emailing, Telegram, …), `Background/` | Application, Application.Common, Domain, Utils |
+| `Govern.Domain` | Entities, value objects, domain events, `EntityBase/` | Core, Utils |
+| `Govern.Application.Common` | Abstractions implemented by Infrastructure (db context, factory, transaction, current user, …) + common models/options | Core, Domain, Utils |
+| `Govern.Application` | Use cases: `[Feature]/Contracts/XxxContract.cs` (Request/Response/Validator/Handler) | Application.Common, Core, Domain, Utils |
+| `Govern.Infrastructure` | Implementations: `Persistence/` (EF Core + Npgsql), one folder per concern (Caching, Emailing, Telegram, …), `Background/` | Application, Application.Common, Core, Domain, Utils |
 | `Govern.Api` | Composition root + minimal API endpoints (`Features/[Feature]/XxxEndpoint.cs`), middlewares, filters, health checks | everything server-side |
-| `Govern.Client` | Blazor WASM + Radzen UI, talks to Api over HTTP with a JWT bearer header (see `blazor-client.md`) | no server project |
-| `Govern.Core` | Ignored: excluded from rules; do not add code without asking | — |
+| `Govern.Client` | Blazor WASM + Radzen UI, talks to Api over HTTP with a JWT bearer header (see `blazor-client.md`) | Core only (no server project) |
+| `Govern.Core` | Pure, deterministic game engine: hex map, units, cities, commands, rules, fog of war, JSON format. Base class library only, shared by server and client (see `game-core.md`) | nothing (no packages either) |
 
 Extra constraints:
 - Domain must not use EF Core or ASP.NET Core.
 - Application must not use ASP.NET Core.
+- Core must not use any `Microsoft.*` type or package (`Core_DependsOnlyOnBaseClassLibrary`, `Core_HasNoPackageReferences`).
 - `Api/Features` must not use Infrastructure or Domain types directly. Go through Application contracts.
 
 ## Where does it go?
@@ -48,6 +50,8 @@ Extra constraints:
 | Migration runner / data seeding | `Infrastructure/Persistence/Services` |
 | An external integration (email, Telegram, cache…) | `Infrastructure/[Concern]/` (UF inside) |
 | A background job / outbox processor | `Infrastructure/Background/` |
+| A game action (command + the rule that applies it) or game event | `Core/Actions/XxxAction.cs` (`XxxCommand` + `XxxRule`), `Core/Events/XxxEvent.cs` (see `game-core.md`) |
+| A game number, list or text (unit or terrain stat, city rule, name) | the ruleset: `rulesets/<key>/vN.json`; a new kind of field also needs its record in `Core/Rulesets` (or `UnitDefinition`/`TerrainDefinition`) and a `RulesetValidator` check (see `game-core.md`, `docs/game/game-data.md`) |
 | An HTTP endpoint | `Api/Features/[Feature]/[UseCase]Endpoint.cs` (one per file) |
 | Request/response pipeline logic | `Api/Middlewares` (global) or `Api/Filters` (endpoint filters) |
 | A health check | `Api/HealthChecks/XxxHealthCheck.cs` |

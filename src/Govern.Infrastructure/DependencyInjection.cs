@@ -1,6 +1,7 @@
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Common.Models;
 using Govern.Application.Common.Options;
+using Govern.Infrastructure.Background;
 using Govern.Infrastructure.Caching.Services;
 using Govern.Infrastructure.Emailing.Services;
 using Govern.Infrastructure.Identity.Services;
@@ -8,6 +9,7 @@ using Govern.Infrastructure.Options;
 using Govern.Infrastructure.Persistence;
 using Govern.Infrastructure.Persistence.Interceptors;
 using Govern.Infrastructure.Persistence.Services;
+using Govern.Infrastructure.Realtime.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +19,8 @@ namespace Govern.Infrastructure;
 
 /// <summary>
 /// Registers Infrastructure implementations: persistence (PostgreSQL), identity (JWT, password hashing),
-/// email (mocked), in-memory sign-in throttling and the database health check.
+/// email (mocked), in-memory sign-in throttling, the in-process game change hub, the expired-lobby sweep and the database
+/// health check.
 /// </summary>
 public static class DependencyInjection
 {
@@ -28,7 +31,8 @@ public static class DependencyInjection
         /// Adds all Infrastructure services.
         /// </summary>
         /// <param name="configuration">
-        /// Application configuration (connection string, <c>Jwt</c>, <c>Database</c>, <c>SignInThrottling</c>).
+        /// Application configuration (connection string, <c>Jwt</c>, <c>Database</c>, <c>SignInThrottling</c>,
+        /// <c>LobbyCleanup</c>).
         /// </param>
         /// <returns>The service collection, for chaining.</returns>
         /// <exception cref="InvalidOperationException">The <c>Govern</c> connection string is missing.</exception>
@@ -47,6 +51,10 @@ public static class DependencyInjection
             services.AddSingleton<IPasswordHashingService, PasswordHashingService>();
             services.AddSingleton<IEmailService, LoggingEmailService>();
             services.AddSingleton<ISignInThrottlingService, MemorySignInThrottlingService>();
+            services.AddSingleton<IGameChangeService, InMemoryGameChangeService>();
+
+            services.AddOptions<LobbyCleanupOptions>().Bind(configuration.GetSection(LobbyCleanupOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
+            services.AddHostedService<ExpiredLobbyCleanupService>();
 
             return services;
         }

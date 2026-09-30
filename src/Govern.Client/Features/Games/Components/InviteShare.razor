@@ -1,0 +1,34 @@
+@* The creator's invite: the link (the code travels in its fragment only) and the bare code, each with a copy button. *@
+@using Govern.Client.Features.Games.Helpers
+@using Govern.Client.Services
+@inject NavigationManager Navigation
+@inject ClipboardService Clipboard
+
+<RadzenStack Gap="0.5rem" class="invite-share">
+    <RadzenText TextStyle="TextStyle.Body1">Send this link to the second player:</RadzenText>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+        <RadzenText TextStyle="TextStyle.Body2" class="invite-link">@Link</RadzenText>
+        <RadzenButton Text="Copy link" Icon="content_copy" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                      Click="@(() => CopyAsync(Link, "Link copied."))" class="copy-link"/>
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+        <RadzenText TextStyle="TextStyle.Body2">Or the code: <span class="invite-code">@Code</span></RadzenText>
+        <RadzenButton Text="Copy code" Icon="content_copy" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                      Click="@(() => CopyAsync(Code, "Code copied."))" class="copy-code"/>
+    </RadzenStack>
+    @if (_status is not null)
+    {
+        <RadzenText TextStyle="TextStyle.Caption" class="copy-status">@_status</RadzenText>
+    }
+</RadzenStack>
+
+@code {
+    private string? _status;
+
+    [Parameter, EditorRequired] public string Code { get; set; } = string.Empty;
+
+    private string Link => InviteLink.Build(Navigation.BaseUri, Code);
+
+    private async Task CopyAsync(string text, string copied) =>
+        _status = await Clipboard.CopyAsync(text, CancellationToken.None) ? copied : "Could not copy. Select the text and copy it.";
+}

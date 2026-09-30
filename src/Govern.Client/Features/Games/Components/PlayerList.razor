@@ -1,0 +1,23 @@
+@* The seats of a game as text: who is in, which seat is the caller's, and an empty seat while waiting for a second player. *@
+@using Govern.Client.Features.Games.Models
+
+<RadzenStack Gap="0.25rem" class="player-list">
+    @foreach (var player in Players)
+    {
+        <RadzenText TextStyle="TextStyle.Body1" class="player">@Describe(player)</RadzenText>
+    }
+    @if (Players.Count < 2)
+    {
+        <RadzenText TextStyle="TextStyle.Body2" class="player waiting">Waiting for a second player…</RadzenText>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<GamePlayerSummary> Players { get; set; } = [];
+
+    private static string Describe(GamePlayerSummary player)
+    {
+        string[] roles = [.. new[] { player.IsYou ? "you" : null, player.IsCreator ? "creator" : null }.OfType<string>()];
+        return roles.Length == 0 ? $"Player {player.Seat + 1}" : $"Player {player.Seat + 1} ({string.Join(", ", roles)})";
+    }
+}

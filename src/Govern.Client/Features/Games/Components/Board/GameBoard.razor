@@ -1,0 +1,35 @@
+@* The hex board: terrain, cities, units and the selected unit's moves and attacks. Drag to pan; the wheel or the buttons zoom. *@
+@using Govern.Client.Features.Games.Helpers
+
+<div class="board-frame">
+    <svg @ref="_board" class="@(Disabled ? "board busy" : "board")" role="application" aria-label="Game board"
+         @onpointerdown="@OnPointerDown" @onpointermove="@OnPointerMove" @onpointerup="@OnPointerUp"
+         @onpointerleave="@OnPointerUp" @onwheel="@OnWheelAsync">
+        <defs>
+            <symbol id="hex" overflow="visible"><polygon points="@HexLayout.Corners"/></symbol>
+            <symbol id="city" overflow="visible">
+                <path d="M-13,10 V-4 H-9 V-9 H-4 V-4 H4 V-9 H9 V-4 H13 V10 Z"/>
+            </symbol>
+            <symbol id="settler" overflow="visible">
+                <circle r="9"/>
+                <path class="mark" d="M-3,6 V-6 L5,-3 L-3,0"/>
+            </symbol>
+            <symbol id="soldier" overflow="visible">
+                <path d="M0,-11 L10,-6 V2 C10,7 5,10 0,12 C-5,10 -10,7 -10,2 V-6 Z"/>
+                <path class="mark" d="M-4,-3 L4,5 M4,-3 L-4,5"/>
+            </symbol>
+        </defs>
+        <g class="layer" transform="@_viewport.Transform">
+            <BoardTerrain View="@View" TileClicked="@OnTileClickedAsync"/>
+            <BoardPieces View="@View" Selection="@Selection" Highlights="@Highlights"/>
+        </g>
+    </svg>
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem" class="board-zoom">
+        <RadzenButton Icon="add" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom in"
+                      Click="@(() => ZoomAtCentre(ZoomStep))" class="zoom-in"/>
+        <RadzenButton Icon="remove" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom out"
+                      Click="@(() => ZoomAtCentre(1 / ZoomStep))" class="zoom-out"/>
+        <RadzenButton Icon="fit_screen" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Fit the map"
+                      Click="@FitAsync" class="zoom-fit"/>
+    </RadzenStack>
+</div>

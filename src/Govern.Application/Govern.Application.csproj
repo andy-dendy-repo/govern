@@ -1,10 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\Govern.Application.Common\Govern.Application.Common.csproj" />
+    <ProjectReference Include="..\Govern.Core\Govern.Core.csproj" />
     <ProjectReference Include="..\Govern.Domain\Govern.Domain.csproj" />
     <ProjectReference Include="..\Govern.Utils\Govern.Utils.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\rulesets\default\v1.json" LogicalName="Govern.Rulesets.default.v1.json" />
   </ItemGroup>
 </Project>

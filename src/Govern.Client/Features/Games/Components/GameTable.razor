@@ -1,0 +1,32 @@
+@* A started game: the board with the side panels (turn, selection, result). Sends one command at a time. *@
+@using Govern.Client.Features.Games.Components.Board
+@using Govern.Core.State
+
+<div class="game-table">
+    <GameBoard View="@View" Selection="@_selection" Highlights="@_highlights" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+    <RadzenStack Gap="1rem" class="game-side">
+        @if (_stale)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="stale">
+                The game changed before your move arrived, so nothing was applied. The board is up to date now.
+            </RadzenAlert>
+        }
+        <ApiErrorAlert Error="@_error"/>
+        @if (View.Status == GameStatus.Finished)
+        {
+            <GameOverPanel View="@View"/>
+        }
+        else
+        {
+            <TurnPanel View="@View" Busy="@_sending" Command="@SendAsync"/>
+        }
+        @if (SelectedUnit is { } unit)
+        {
+            <UnitPanel View="@View" Unit="@unit" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
+        }
+        else if (SelectedCity is { } city)
+        {
+            <CityPanel View="@View" City="@city" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
+        }
+    </RadzenStack>
+</div>

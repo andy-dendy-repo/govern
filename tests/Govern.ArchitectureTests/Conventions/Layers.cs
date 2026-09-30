@@ -6,14 +6,9 @@ namespace Govern.ArchitectureTests.Conventions;
 public static class Layers
 {
     /// <summary>
-    /// Projects that are deliberately excluded from all architecture rules.
-    /// </summary>
-    public static readonly string[] Ignored = ["Govern.Core"];
-
-    /// <summary>
     /// Source projects <c>Govern.UnitTests</c> may reference: only pure, framework-agnostic code (see <c>.claude/rules/unit-tests.md</c>).
     /// </summary>
-    public static readonly string[] UnitTestReferences = ["Govern.Domain", "Govern.Utils"];
+    public static readonly string[] UnitTestReferences = ["Govern.Core", "Govern.Domain", "Govern.Utils"];
 
     /// <summary>
     /// Every known source project mapped to the projects it may reference.
@@ -21,12 +16,13 @@ public static class Layers
     public static readonly IReadOnlyDictionary<string, string[]> AllowedReferences = new Dictionary<string, string[]>
     {
         ["Govern.Utils"] = [],
-        ["Govern.Domain"] = ["Govern.Utils"],
-        ["Govern.Application.Common"] = ["Govern.Domain", "Govern.Utils"],
-        ["Govern.Application"] = ["Govern.Application.Common", "Govern.Domain", "Govern.Utils"],
-        ["Govern.Infrastructure"] = ["Govern.Application", "Govern.Application.Common", "Govern.Domain", "Govern.Utils"],
-        ["Govern.Api"] = ["Govern.Application", "Govern.Application.Common", "Govern.Infrastructure", "Govern.Domain", "Govern.Utils"],
-        ["Govern.Client"] = [],
+        ["Govern.Core"] = [],
+        ["Govern.Domain"] = ["Govern.Core", "Govern.Utils"],
+        ["Govern.Application.Common"] = ["Govern.Core", "Govern.Domain", "Govern.Utils"],
+        ["Govern.Application"] = ["Govern.Application.Common", "Govern.Core", "Govern.Domain", "Govern.Utils"],
+        ["Govern.Infrastructure"] = ["Govern.Application", "Govern.Application.Common", "Govern.Core", "Govern.Domain", "Govern.Utils"],
+        ["Govern.Api"] = ["Govern.Application", "Govern.Application.Common", "Govern.Infrastructure", "Govern.Core", "Govern.Domain", "Govern.Utils"],
+        ["Govern.Client"] = ["Govern.Core"],
     };
 
     /// <summary>
