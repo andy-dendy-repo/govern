@@ -19,9 +19,11 @@ public static class BoardClickResolver
     /// <param name="selection">The selection before the click.</param>
     /// <param name="coord">The clicked tile.</param>
     /// <returns>
-    /// A move or attack by the selected own unit when the tile allows it (never while it is not the player's turn or the game
-    /// is over); otherwise the new selection: the unit on the tile (clicking a selected unit again selects the player's city
-    /// under it), else the city on the tile, else nothing.
+    /// A move by the selected own unit when the tile allows it (never while it is not the player's turn or the game is over).
+    /// On an enemy unit it can attack, a click selects it as the <see cref="BoardSelection.Target"/> (the forecast is shown);
+    /// only the forecast's Attack button attacks, so a double-click never attacks unseen. An undefended enemy city is captured
+    /// at once. Otherwise the new selection: the unit on
+    /// the tile (clicking a selected unit again selects the player's city under it), else the city on the tile, else nothing.
     /// </returns>
     public static BoardClick Resolve(Ruleset ruleset, PlayerView view, BoardSelection selection, HexCoord coord)
     {
@@ -33,12 +35,14 @@ public static class BoardClickResolver
         {
             if (GameEngine.ReachableTiles(ruleset, view, unitId).Contains(coord))
             {
-                return new BoardClick(selection, new MoveUnitCommand(unitId, coord));
+                return new BoardClick(selection with { Target = null }, new MoveUnitCommand(unitId, coord));
             }
 
             if (GameEngine.AttackTargets(ruleset, view, unitId).Contains(coord))
             {
-                return new BoardClick(selection, new AttackCommand(unitId, coord));
+                return view.UnitAt(coord) is null
+                    ? new BoardClick(selection with { Target = null }, new AttackCommand(unitId, coord))
+                    : new BoardClick(selection with { Target = coord }, null);
             }
         }
 
@@ -55,15 +59,22 @@ public static class BoardClickResolver
 
     /// <summary>
     /// Keeps a selection valid for a new view: a unit or city that is no longer in it (destroyed, captured, or out of sight)
-    /// is dropped.
+    /// is dropped, and so is a pending attack target the unit can no longer fight.
     /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The new view.</param>
     /// <param name="selection">The current selection.</param>
-    /// <returns>The selection, or <see cref="BoardSelection.None"/>.</returns>
-    public static BoardSelection Prune(PlayerView view, BoardSelection selection)
+    /// <returns>The selection, without a stale target, or <see cref="BoardSelection.None"/>.</returns>
+    public static BoardSelection Prune(Ruleset ruleset, PlayerView view, BoardSelection selection)
     {
+        ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(view);
         ArgumentNullException.ThrowIfNull(selection);
+
+        if (selection is { Unit: { } attacker, Target: { } target } && GameEngine.CombatForecast(ruleset, view, attacker, target) is null)
+        {
+            selection = selection with { Target = null };
+        }
 
         var kept = selection switch
         {

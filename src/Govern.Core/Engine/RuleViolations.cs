@@ -47,7 +47,10 @@ public static class RuleViolations
     /// <summary>The attack target is not adjacent to the attacker.</summary>
     public static readonly RuleViolation NotAdjacent = new("attack.not_adjacent", "The target is not next to the unit.");
 
-    /// <summary>There is no enemy unit or city on the target tile.</summary>
+    /// <summary>The target is farther than a ranged unit's range.</summary>
+    public static readonly RuleViolation OutOfRange = new("attack.out_of_range", "The target is out of the unit's range.");
+
+    /// <summary>There is no enemy unit or city on the target tile, or a ranged unit targets a city with no unit on it.</summary>
     public static readonly RuleViolation NoTarget = new("attack.no_target", "There is nothing to attack on that tile.");
 
     /// <summary>The target belongs to the attacker.</summary>

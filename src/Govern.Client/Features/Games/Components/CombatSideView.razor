@@ -1,0 +1,51 @@
+@* One side of a combat forecast: the unit, its health, its strength in this fight (each modifier in the tooltip) and the damage
+   it can take. *@
+@using Govern.Core.Rulesets
+@using Govern.Core.Visibility
+
+<RadzenStack Gap="0.25rem" class="@($"combat-side {Class}")">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+        <GameIcon Id="@Icons.Unit(Unit.Type)" Class="@Seats.Class(View, Unit.Owner)"/>
+        <RadzenText TextStyle="TextStyle.Body1" TagName="TagName.Span" class="rz-m-0">@Whose @Ruleset.UnitName(Unit.Type)</RadzenText>
+    </RadzenStack>
+    <HealthBar Health="@Unit.Health" Max="@Ruleset.Combat.MaxHealth" Label="@($"{Whose} {Ruleset.UnitName(Unit.Type)} health")"/>
+    <span class="combat-strength">
+        <GameIcon Id="@Icons.Strength"/>
+        Strength <NumberTooltip Text="@StrengthDetail">@Side.Strength</NumberTooltip>
+    </span>
+    <RadzenText TextStyle="TextStyle.Body2" TagName="TagName.Span" class="combat-outcome rz-m-0">@Outcome</RadzenText>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
+    [Parameter, EditorRequired] public string Whose { get; set; } = null!;
+
+    [Parameter, EditorRequired] public UnitView Unit { get; set; } = null!;
+
+    [Parameter, EditorRequired] public CombatSide Side { get; set; } = null!;
+
+    [Parameter] public string? Class { get; set; }
+
+    private string StrengthDetail => Side.BaseStrength == 0
+        ? "Can't fight: destroyed by any attack."
+        : $"{string.Join(", ", Side.Modifiers.Select(Describe).Prepend($"{Side.BaseStrength} base"))} = {Side.Strength}.";
+
+    private string Describe(CombatModifier modifier) => modifier.Kind switch
+    {
+        CombatModifierKind.Health => $"{modifier.Value} for being hurt",
+        CombatModifierKind.Counter => $"+{modifier.Value} against {Ruleset.ClassName(modifier.Subject!)}",
+        _ => $"+{modifier.Value} on {Ruleset.TerrainName(new(modifier.Subject!))}",
+    };
+
+    private string Outcome => Side switch
+    {
+        { MaxDamage: 0 } => "Takes no damage.",
+        { IsDestroyed: true } => "Will be destroyed.",
+        { MayBeDestroyed: true } => $"Takes {Side.MinDamage}–{Side.MaxDamage} damage and may be destroyed.",
+        _ when Side.MinDamage == Side.MaxDamage => $"Takes {Side.MinDamage} damage.",
+        _ => $"Takes {Side.MinDamage}–{Side.MaxDamage} damage.",
+    };
+}

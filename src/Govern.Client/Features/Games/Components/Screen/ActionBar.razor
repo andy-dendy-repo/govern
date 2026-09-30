@@ -40,6 +40,7 @@
 
     private UnitView? Unit => View.Status == GameStatus.InProgress && Ui.Selection.Unit is { } id ? View.FindOwnUnit(id) : null;
 
-    private static string Hint(UnitDefinition definition) =>
-        definition.CanAttack ? "Click a highlighted tile to move or attack." : "Click a highlighted tile to move.";
+    private static string Hint(UnitDefinition definition) => definition.AttackRange > 0
+        ? "Click a highlighted tile to move, or an enemy to see the attack forecast."
+        : "Click a highlighted tile to move.";
 }

@@ -1,5 +1,6 @@
 @* The highlights, cities and units over the terrain, each in its BoardLayer. Clicks pass through to the tiles
-   (pointer-events: none in board.css). Pieces are coloured by seat (seat-1, seat-2: turn order) and marked own or enemy. *@
+   (pointer-events: none in board.css). Pieces are coloured by seat (seat-1, seat-2: turn order) and marked own or enemy.
+   A hurt unit shows its health as a bar under its symbol; a pending attack target is marked. *@
 @using Govern.Client.Features.Games.Helpers
 @using Govern.Client.Features.Games.Models
 @using Govern.Client.Features.Games.Enums
@@ -14,7 +15,7 @@
     }
     @foreach (var coord in Highlights.Attackable)
     {
-        <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay attackable"/>
+        <use href="#hex" x="@X(coord)" y="@Y(coord)" class="@(coord == Selection.Target ? "overlay attackable target" : "overlay attackable")"/>
     }
 </g>
 <g class="layer-cities" data-layer="@BoardLayers.Name(BoardLayer.Cities)">
@@ -31,6 +32,14 @@
     {
         <use href="@($"#{Icons.Unit(unit.Type)}")" x="@X(unit.Position)" y="@Y(unit.Position)"
              class="@PieceClass($"unit {unit.Type.Id}", unit.Owner, Selection.Unit == unit.Id)"/>
+        @if (MaxHealth > 0 && unit.Health < MaxHealth)
+        {
+            <g class="health" transform="translate(@X(unit.Position) @Y(unit.Position))">
+                <rect class="health-track" x="-12" y="13" width="24" height="4"/>
+                <rect class="@(unit.Health * 3 <= MaxHealth ? "health-fill low" : "health-fill")" x="-12" y="13"
+                      width="@HexLayout.Format(24.0 * Math.Max(unit.Health, 0) / MaxHealth)" height="4"/>
+            </g>
+        }
     }
 </g>
 
@@ -42,6 +51,9 @@
     [Parameter, EditorRequired] public BoardSelection Selection { get; set; } = null!;
 
     [Parameter, EditorRequired] public BoardHighlights Highlights { get; set; } = null!;
+
+    /// <summary>The ruleset's full health; hurt units get a health bar. 0 draws none.</summary>
+    [Parameter] public int MaxHealth { get; set; }
 
     protected override bool ShouldRender() =>
         _rendered is not { } rendered

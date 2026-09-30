@@ -123,4 +123,37 @@ public class GameUiServiceTests
 
         public LensMark? MarkFor(TileView tile) => null;
     }
+
+    [Fact]
+    public void Escape_WithAPendingAttack_CancelsOnlyTheAttack()
+    {
+        var view = Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
+        _ui.Select(Ruleset, view, BoardSelection.Of(new UnitId(2)) with { Target = At(4, 2) });
+
+        _ui.Escape().ShouldBeTrue();
+
+        _ui.Selection.ShouldBe(BoardSelection.Of(new UnitId(2)));
+        _ui.Highlights.Attackable.ShouldBe([At(4, 2)]);
+    }
+
+    [Fact]
+    public void CancelAttack_NothingPending_DoesNotNotify()
+    {
+        _ui.Select(Ruleset, Start(), BoardSelection.Of(new UnitId(2)));
+
+        _ui.CancelAttack();
+
+        _changes.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Refresh_TargetNoLongerAttackable_DropsIt()
+    {
+        var view = Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
+        _ui.Select(Ruleset, view, BoardSelection.Of(new UnitId(2)) with { Target = At(4, 2) });
+
+        _ui.Refresh(Ruleset, Create([Soldier(2, You, At(3, 2), movementLeft: 0), Soldier(3, Opponent, At(4, 2), health: 60)]));
+
+        _ui.Selection.ShouldBe(BoardSelection.Of(new UnitId(2)));
+    }
 }

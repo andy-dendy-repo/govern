@@ -22,6 +22,9 @@ internal static class RulesetValidator
     private const int MaxGeneratedSharePerMille = 500;
     private const int MaxImpassableSharePerMille = 150;
 
+    // Keeps the integer combat maths far from overflowing (see CombatRulesValidator).
+    private const int MaxDefenceBonus = 100;
+
     public static ImmutableArray<RulesetProblem> Validate(RulesetDocument document)
     {
         var problems = new List<RulesetProblem>();
@@ -36,6 +39,7 @@ internal static class RulesetValidator
         CheckCities(document, units, problems);
         CheckFogInvariants(document, problems);
         CheckTexts(document, problems);
+        CombatRulesValidator.Validate(document, problems);
 
         return [.. problems];
     }
@@ -67,7 +71,7 @@ internal static class RulesetValidator
         return seen;
     }
 
-    private static bool IsValidId(string id) =>
+    internal static bool IsValidId(string id) =>
         id.Length is > 0 and <= MaxIdLength
         && char.IsAsciiLetterLower(id[0])
         && id.All(static c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '_');
@@ -94,6 +98,7 @@ internal static class RulesetValidator
         {
             AtLeast(terrains[index].MovementCost, 1, $"$.terrains[{index}].movementCost", problems);
             AtLeast(terrains[index].SightBonus, 0, $"$.terrains[{index}].sightBonus", problems);
+            InRange(terrains[index].DefenceBonus, 0, MaxDefenceBonus, $"$.terrains[{index}].defenceBonus", problems);
         }
 
         if (!terrains.IsEmpty && !terrains.Any(static terrain => terrain.IsPassable))
@@ -252,7 +257,7 @@ internal static class RulesetValidator
         return false;
     }
 
-    private static void AtLeast(int value, int minimum, string path, List<RulesetProblem> problems)
+    internal static void AtLeast(int value, int minimum, string path, List<RulesetProblem> problems)
     {
         if (value < minimum)
         {
@@ -260,7 +265,7 @@ internal static class RulesetValidator
         }
     }
 
-    private static void InRange(int value, int minimum, int maximum, string path, List<RulesetProblem> problems)
+    internal static void InRange(int value, int minimum, int maximum, string path, List<RulesetProblem> problems)
     {
         if (value < minimum || value > maximum)
         {
