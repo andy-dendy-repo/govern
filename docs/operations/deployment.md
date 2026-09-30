@@ -71,7 +71,7 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
 
 ## Known gaps (follow-ups)
 
-The database role and monitoring gaps are tracked in [next follow-ups](../plans/next-follow-ups.md) (items 2 and 3).
+The database role and monitoring gaps are tracked in [deferred follow-ups](../plans/deferred/follow-ups.md) (F2 and F3); their priority is in the [backlog](../plans/backlog.md).
 
 - **Database role:** the Api connects with the Postgres **administrator** login. Create a least-privilege role (owner of the `govern` schema only), store its connection string in Key Vault instead, or switch to Entra ID authentication with the Web App's managed identity.
 - **Network:** Postgres and Key Vault use public endpoints with firewall or RBAC. Private endpoints need a VNet and a higher App Service tier.

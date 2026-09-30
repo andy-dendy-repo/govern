@@ -143,8 +143,8 @@ These answers are **exactly** what the engine would decide, because they share t
 
 ## Future mechanics
 
-Each [roadmap](../plans/game-design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: map generation and terrain layers (G4), yields and resources (G5), river crossing (G6), territory growth (G7), city growth, loyalty and the production queue (G8), combat with health and the counter matrix (G9), builders and building upgrades (G10), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
+Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: map generation and terrain layers (G4), yields and resources (G5), river crossing (G6), territory growth (G7), city growth, loyalty and the production queue (G8), combat with health and the counter matrix (G9), builders and building upgrades (G10), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
 
 ## Open questions
 
-Tracked in [ruleset open questions](../plans/ruleset-open-questions.md) (questions 10–11 there concern this document), to discuss later.
+Tracked in the [design roadmap open questions](design-roadmap.md#open-questions) (questions 5–6 concern this document), to discuss later.

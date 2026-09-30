@@ -27,7 +27,7 @@ Govern is an HTTP Web API with a Blazor WASM client.
 - `rulesets/`: the game's rulesets (`<key>/vN.json`), the data Core plays with; format in `docs/game/game-data.md`. Never edit a published version; add a new one.
 - `infra/`: Bicep.
 - `.github/workflows/`: CI and release; `.github/scripts/configure-client.sh` fills the client CSP and Api origin.
-- `Govern.Core` is the pure game engine (base class library only, shared with the client); see `.claude/rules/game-core.md`. Game work branches from and PRs to `gamecore` (`docs/plans/done-game-delivery.md`).
+- `Govern.Core` is the pure game engine (base class library only, shared with the client); see `.claude/rules/game-core.md`. Game work branches from and PRs to `gamecore` (`docs/plans/done/game-delivery.md`).
 
 ## Commands
 
@@ -100,4 +100,4 @@ Branch from `stage` and open the PR to `stage`. A PR from `stage` to `main` is a
 | Agents (read-only, project memory) | `code-reviewer` (after every feature), `security-auditor` (before every stage → main release PR, and after auth, endpoint, config, infra or CI changes), `ef-core-specialist` (entities, configurations, migrations, slow queries) |
 | Hooks (`.claude/hooks/`) | bash guard (destructive git, protected branches, `rm -rf`), protected generated/secret files, whitespace format on edit, restore on csproj/props edit, test gate on Stop, branch info on SessionStart |
 
-Build history: `docs/plans/done-template-solution-roadmap.md` (done). Open work, prioritised: `docs/plans/next-follow-ups.md`.
+Build history: `docs/plans/done/template-solution-roadmap.md` (done). Open work, prioritised: `docs/plans/backlog.md` (the only place priorities are kept).

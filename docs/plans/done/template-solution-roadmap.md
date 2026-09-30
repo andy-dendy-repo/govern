@@ -9,7 +9,7 @@ updated: 2026-09-29
 
 ## Status (2026-09-29)
 
-**Done.** Every step is delivered. The first deployment (Bicep and the workflows) is part of shipping the game, item 1 of [next follow-ups](next-follow-ups.md).
+**Done.** Every step is delivered. The first deployment (Bicep and the workflows) is part of shipping the game, item 1 of [next follow-ups](../deferred/follow-ups.md).
 
 | Step | State |
 |---|---|
@@ -21,9 +21,9 @@ updated: 2026-09-29
 | 6 Users use cases | Done: sign-up, sign-in, refresh with rotation, current user |
 | 7 Api | Done |
 | 8 Integration test infrastructure | Done |
-| 9 Blazor client | **Done.** CFT architecture, Radzen shell, `Api:BaseUrl`, CSP and security headers on the Static Web App, bUnit tests, arch rules, and authentication with login, register and profile pages ([client](../features/client.md)). The game pages follow in [game delivery](done-game-delivery.md) |
+| 9 Blazor client | **Done.** CFT architecture, Radzen shell, `Api:BaseUrl`, CSP and security headers on the Static Web App, bUnit tests, arch rules, and authentication with login, register and profile pages ([client](../../features/client.md)). The game pages follow in [game delivery](game-delivery.md) |
 | 10 Container | Done (chiseled Noble image) |
-| 11 Bicep | Done; not yet deployed (see [deployment](../operations/deployment.md)) |
+| 11 Bicep | Done; not yet deployed (see [deployment](../../operations/deployment.md)) |
 | 12 GitHub workflows | Done; not yet run (no remote yet) |
 | 13 Claude rules and agents | Done: mapping, error-handling, persistence, api-endpoints, auth rules, `ef-core-specialist`. `blazor-client.md` and `client-tests.md` were added with the client foundation. `caching.md` was added with the first in-process cache (sign-in throttling) |
 | 14 Pattern skills | Done: add-use-case, add-entity, add-migration, add-infra-concern, outdated-packages |
@@ -34,7 +34,7 @@ Extra work added along the way:
 
 ### Follow-ups
 
-All open work is now in [next follow-ups](next-follow-ups.md). The first backlog, [done-follow-ups.md](done-follow-ups.md), is closed.
+All open work is now in [next follow-ups](../deferred/follow-ups.md). The first backlog, [done-follow-ups.md](follow-ups.md), is closed.
 
 The rest of this document is the original plan, kept for reference.
 

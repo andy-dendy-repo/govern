@@ -11,7 +11,7 @@ updated: 2026-09-27
 |---|---|---|
 | `main` | Production. Every push is released | Only by a PR from `stage` |
 | `stage` | Integration branch; the base of all work | Only by PRs from feature branches |
-| `gamecore` | Integration branch for the game ([game delivery plan](../plans/done-game-delivery.md)); merged to `stage` when the game is ready | Only by PRs from game feature branches; CI runs on PRs to it |
+| `gamecore` | Integration branch for the game ([game delivery plan](../plans/done/game-delivery.md)); merged to `stage` when the game is ready | Only by PRs from game feature branches; CI runs on PRs to it |
 | `feature/<name>`, `fix/<name>`, `chore/<name>` | One change each | Branched from `stage` (game work: from `gamecore`) |
 
 ## Flow

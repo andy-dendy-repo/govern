@@ -1,13 +1,13 @@
 ---
-title: Ruleset delivery plan (A: Core reads a ruleset, B: store, pin, serve)
-tags: [plan, game, core, ruleset, data, json, hash, migration, caching, pinning]
+title: Ruleset A plan (Core reads a ruleset) (done)
+tags: [plan, done, game, core, ruleset, data, json, hash]
 code: [rulesets, src/Govern.Core/Rulesets, src/Govern.Application/Games, src/Govern.Client/Features/Games]
 updated: 2026-09-30
 ---
 
-# Plan: The loadable ruleset (two PRs)
+# Plan: The loadable ruleset, part A (done)
 
-**Status:** Ruleset A implemented (branch `feature/ruleset-core`); Ruleset B next.
+**Status:** done (PR #20). Part B (store, pin, serve) is deferred: [ruleset B plan](../deferred/ruleset-b-store-and-pin.md).
 
 ## Context
 Every game number in `Govern.Core` is a constant or a C# switch today (`UnitCatalog`, `TerrainCatalog`, the `City` constants, `GameSetup`/`GameMap` sizes, the spawn logic in `GameFactory`). We agreed that Core keeps the mechanics and reads every customisable number, list and text from a **ruleset**:
@@ -42,7 +42,7 @@ Both branch from `origin/gamecore` (A after PR #19, UnitView, is merged, since b
   - an `abilities` list, not flags;
   - no `icon` yet (it comes with G1);
   - texts are English only, in their own section.
-- **Rule-violation messages stay in Core** (`RuleViolations`) for now. Moving them into `texts` needs the Api to render them per ruleset, and that belongs with open question 9.
+- **Rule-violation messages stay in Core** (`RuleViolations`) for now. Moving them into `texts` needs the Api to render them per ruleset, and that belongs with [open question 4 of the design roadmap](../../game/design-roadmap.md#open-questions).
 
 ---
 
@@ -161,90 +161,3 @@ Both branch from `origin/gamecore` (A after PR #19, UnitView, is merged, since b
   - change `productionPerTurn` in `TestRulesets` and see the EndTurn case fail.
 - Manual: run the Api and the client and play a few turns in two windows (Playwright) to check unit names, the build buttons and a founded city named "City 1".
 - `code-reviewer` on the diff.
-
----
-
-# Ruleset B — store, pin, serve
-
-## Scope
-- In:
-  - the `rulesets` table and a migration seeding default v1;
-  - `games.ruleset_id` pinned at start;
-  - a cached `RulesetRepository` replacing `DefaultRulesetService`;
-  - `GET /api/rulesets/{key}/{version}`;
-  - the pin in `GetGameResponse`;
-  - the client fetches the pinned ruleset and drops its embedded copy.
-- Out:
-  - the admin role and publishing at run time (a later plan; the `created_by` column exists and is always null for now);
-  - choosing a ruleset in the lobby (open question 6).
-
-## Affected areas
-- **Domain:**
-  - `Entities/RulesetVersion.cs`: `BaseEntity` plus `CreatedAt`, `Key`, `Version`, `Name`, `Hash`, `Document`, `CreatedBy?`.
-  - `Game.RulesetId` (Guid?), set by `Start`.
-- **Application.Common:** a `DbSet<RulesetVersion>` in `IApplicationDbContext`.
-- **Application:**
-  - `Rulesets/Repositories/RulesetRepository.cs`, the first repository. HybridCache holds the parsed Core `Ruleset` by row id (immutable, long expiry) and the latest version per key (short expiry, e.g. 1 minute). It checks with microsoft-docs how HybridCache keeps an immutable instance in L1 (sealed + `[ImmutableObject(true)]` on `Ruleset`).
-  - `Rulesets/Contracts/GetRulesetContract.cs`, and `Rulesets/Models/RulesetErrors.cs` (`ruleset.not_found`).
-  - The Games contracts use the repository:
-    - Start takes the latest `default`;
-    - SendCommand, Get and Watch take the game's pinned id.
-  - `GetGameResponse` gains `RulesetPin(Key, Version, Hash)?` (null in a lobby).
-  - `DefaultRulesetService` and the Application's embedded file are removed.
-- **Infrastructure:**
-  - `Persistence/Configurations/RulesetVersionConfiguration.cs`: table `rulesets`, unique `(key, version)`, max lengths (key 32, name 64, hash 64, document 1,000,000, which keeps the "every string has a max length" rule), and an FK from `games.ruleset_id` (Restrict, indexed).
-  - Migration `AddRulesets`:
-    - `InsertData` of default v1, with a fixed id, name "Classic", the document as a literal string and its hash;
-    - an `UPDATE games SET ruleset_id = … WHERE state IS NOT NULL` for games already running.
-  - HybridCache registration: `dotnet add package Microsoft.Extensions.Caching.Hybrid`.
-- **Api:** `Features/Rulesets/GetRulesetEndpoint.cs`, `GET /api/rulesets/{key}/{version:int}`:
-  - requires auth, like every game endpoint;
-  - returns the document text as `application/json`, with `Cache-Control: private, max-age=31536000, immutable` and `ETag` set to the hash;
-  - 404 `ruleset.not_found`.
-- **Client:**
-  - `Features/Games/Clients/RulesetsClient.cs` (`HttpClient` only here);
-  - `RulesetService` fetches the game's pin once per hash, parses it, checks the hash, and caches it for the session;
-  - `GamePage`/`GameTable` wait for the ruleset before drawing the board;
-  - the embedded copy is removed.
-
-## Steps
-1. Domain entity and `Game.RulesetId`; configuration; migration (with the seed and the backfill). Build.
-2. HybridCache, `RulesetRepository`, the Games contracts, `GetRulesetContract`. Build.
-3. Api endpoint. Build.
-4. Client: client, service, pages. Build.
-5. Tests, docs and rules, then `/verify`, review (including `ef-core-specialist` on the migration, and `security-auditor` for the new endpoint), and the PR.
-
-## Tests
-- **Integration:**
-  - `GetRulesetEndpointTests`:
-    - 200 returns exactly the file's text, with the headers;
-    - 404 for an unknown key or version;
-    - 401 without a token;
-    - 400 for a bad key.
-  - `RulesetSeedTests`: every `rulesets/*/v*.json` file has a row whose `document` is identical and whose `hash` is Core's hash of it. This fails if a published file is edited.
-  - `StartGameEndpointTests`: a started game is pinned to the latest default, and `GetGame` returns the pin.
-  - The command, get and watch tests stay green.
-  - `GovernApiFixture`: Respawner ignores `rulesets`.
-  - The `GamesApi` domain seed helpers pass a ruleset.
-- **Unit (Domain):** `Game.Start` stores the ruleset id.
-- **Client:**
-  - `RulesetsClientTests` (200, 404);
-  - `RulesetService` fetches once per hash and rejects a hash mismatch;
-  - `GamePage` shows loading until the ruleset arrives.
-- **Architecture:** `Rulesets` feature folders (existing templates cover them); `EndpointAuthorizationTests` covers the new route.
-
-## Docs & rules
-- New `docs/features/rulesets.md`: the table, seeding, pinning, caching and the endpoint. Also `games.md` (the pin), `game-data.md` (lifecycle implemented) and `docs/README.md`.
-- `.claude/rules/caching.md`: the HybridCache repository pattern (the rule asks the first repository to extend it).
-- `.claude/rules/persistence.md`: seed immutable reference data with `InsertData` in the migration, never edit a published seed, and add a test pinning it.
-- `docs/plans/ruleset-open-questions.md`: fold in questions 5 (authenticated, not public) and 6 (one `default` for now); keep 7–11 open.
-
-## Verification
-- `/verify` green with the full run shown.
-- `ef-core-specialist` on the migration.
-- Manual: a new game gets the pin, `GET /api/rulesets/default/1` returns the file, and the board plays.
-- `security-auditor`, because of the new endpoint.
-
-## Risks & open questions
-- **Games already running when B deploys** get pinned to v1 by the migration's backfill. v1 equals today's constants, so they keep playing unchanged.
-- **HybridCache and the `Ruleset` instance:** if marking `Ruleset` immutable isn't enough for L1 reuse, cache the document text and parse once per id in a small in-memory map inside the repository.
