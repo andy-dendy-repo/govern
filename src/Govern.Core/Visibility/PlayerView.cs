@@ -25,7 +25,9 @@ namespace Govern.Core.Visibility;
 /// Every tile, row-major (index <c>row * Width + column</c>), with what the viewer knows about it; <see cref="CoordAt"/> gives a
 /// tile's position and <see cref="TileAt"/> the tile at a position.
 /// </param>
-/// <param name="Units">The viewer's units and the enemy units on visible tiles, ordered by id.</param>
+/// <param name="Units">
+/// The viewer's units and the enemy units on visible tiles, ordered by id; enemy movement is hidden (<see cref="UnitView"/>).
+/// </param>
 /// <param name="Cities">
 /// The viewer's cities and the enemy cities on visible tiles, ordered by id; enemy production is hidden (<see cref="CityView"/>).
 /// </param>
@@ -40,7 +42,7 @@ public sealed record PlayerView(
     int Width,
     int Height,
     ImmutableArray<TileView> Tiles,
-    ImmutableArray<Unit> Units,
+    ImmutableArray<UnitView> Units,
     ImmutableArray<CityView> Cities,
     ImmutableArray<PlayerSummary> Players)
 {
@@ -78,7 +80,7 @@ public sealed record PlayerView(
     /// <summary>Returns the unit on a tile, if the viewer sees one there.</summary>
     /// <param name="coord">The tile.</param>
     /// <returns>The unit, or <see langword="null"/>.</returns>
-    public Unit? UnitAt(HexCoord coord) => Units.FirstOrDefault(unit => unit.Position == coord);
+    public UnitView? UnitAt(HexCoord coord) => Units.FirstOrDefault(unit => unit.Position == coord);
 
     /// <summary>Returns the city on a tile, if the viewer sees one there.</summary>
     /// <param name="coord">The tile.</param>
@@ -88,5 +90,5 @@ public sealed record PlayerView(
     /// <summary>Returns one of the viewer's own units.</summary>
     /// <param name="id">The unit.</param>
     /// <returns>The unit, or <see langword="null"/> when the viewer has no unit with this id.</returns>
-    public Unit? FindOwnUnit(UnitId id) => Units.FirstOrDefault(unit => unit.Id == id && unit.Owner == Viewer);
+    public UnitView? FindOwnUnit(UnitId id) => Units.FirstOrDefault(unit => unit.Id == id && unit.Owner == Viewer);
 }

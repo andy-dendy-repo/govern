@@ -2,7 +2,7 @@
 title: Games feature (lobby, invite codes, leave, cancel, lobby expiry, start, commands, live updates, player views, game list, limits, quota)
 tags: [games, game, lobby, invite, invite-code, leave, cancel, expiry, quota, activity-at, start, commands, expected-version, live-updates, sse, server-sent-events, stream, heartbeat, rate-limit, player-view, fog-of-war, jsonb, concurrency, privacy]
 code: [src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Api/Models/GameCommandBody.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Infrastructure/Background/ExpiredLobbyCleanupService.cs, src/Govern.Domain/Entities/Game.cs, src/Govern.Domain/Entities/GamePlayer.cs, src/Govern.Domain/ValueObjects/InviteCode.cs, src/Govern.Infrastructure/Persistence/Configurations/GameConfiguration.cs]
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Games feature
@@ -150,7 +150,7 @@ The rate limiter runs after authentication, so every game request has a user. Th
 
 ## Games JSON format
 
-`AddApi` registers `JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)` for HTTP JSON. Enums (`phase`, and every enum inside `view`) are therefore camelCase strings, and the `view` object is byte-for-byte the `GameSerializer` format that storage uses. In `view`, `tiles` are row-major without coordinates (`{"visibility":"visible","terrain":"plains"}`; the position follows from the index and `width`), and an enemy city's `producing` and `productionProgress` are null ([fog of war](game-core.md#fog-of-war-playerview)). Stream events serialize their data with the same HTTP JSON options.
+`AddApi` registers `JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)` for HTTP JSON. Enums (`phase`, and every enum inside `view`) are therefore camelCase strings, and the `view` object is byte-for-byte the `GameSerializer` format that storage uses. In `view`, `tiles` are row-major without coordinates (`{"visibility":"visible","terrain":"plains"}`; the position follows from the index and `width`), an enemy city's `producing` and `productionProgress` are null, and an enemy unit's `movementLeft` is null ([fog of war](game-core.md#fog-of-war-playerview)). Stream events serialize their data with the same HTTP JSON options.
 
 ## Games tests
 

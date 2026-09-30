@@ -4,7 +4,6 @@ using Govern.Client.Features.Games.Models;
 using Govern.Client.Models;
 using Govern.Core.Engine;
 using Govern.Core.Map;
-using Govern.Core.Units;
 using Govern.Core.Visibility;
 using Microsoft.AspNetCore.Components;
 
@@ -41,7 +40,7 @@ public partial class GameTable : IDisposable
 
     private PlayerView View => Game.View ?? throw new InvalidOperationException("The game table needs a started game with a view.");
 
-    private Unit? SelectedUnit => _selection.Unit is { } id ? View.Units.FirstOrDefault(unit => unit.Id == id) : null;
+    private UnitView? SelectedUnit => _selection.Unit is { } id ? View.Units.FirstOrDefault(unit => unit.Id == id) : null;
 
     private CityView? SelectedCity => _selection.City is { } id ? View.Cities.FirstOrDefault(city => city.Id == id) : null;
 

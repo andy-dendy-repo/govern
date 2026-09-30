@@ -28,7 +28,7 @@ public static class TestViews
         Create([Settler(1, You, At(2, 2)), Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(5, 2))]);
 
     public static PlayerView Create(
-        IEnumerable<Unit>? units = null, IEnumerable<CityView>? cities = null, Func<HexCoord, TileVisibility>? visibility = null)
+        IEnumerable<UnitView>? units = null, IEnumerable<CityView>? cities = null, Func<HexCoord, TileVisibility>? visibility = null)
     {
         var tiles = Enumerable.Range(0, Width * Height)
             .Select(index => HexCoord.FromOffset(index % Width, index / Width))
@@ -47,11 +47,13 @@ public static class TestViews
 
     public static HexCoord At(int column, int row) => HexCoord.FromOffset(column, row);
 
-    public static Unit Settler(int id, PlayerId owner, HexCoord at, int movementLeft = 2) =>
-        new(new UnitId(id), owner, UnitType.Settler, at, movementLeft);
+    /// <summary>A settler; an enemy unit's movement is hidden, as in the Api's views.</summary>
+    public static UnitView Settler(int id, PlayerId owner, HexCoord at, int movementLeft = 2) =>
+        new(new UnitId(id), owner, UnitType.Settler, at, owner == You ? movementLeft : null);
 
-    public static Unit Soldier(int id, PlayerId owner, HexCoord at, int movementLeft = 2) =>
-        new(new UnitId(id), owner, UnitType.Soldier, at, movementLeft);
+    /// <summary>A soldier; an enemy unit's movement is hidden, as in the Api's views.</summary>
+    public static UnitView Soldier(int id, PlayerId owner, HexCoord at, int movementLeft = 2) =>
+        new(new UnitId(id), owner, UnitType.Soldier, at, owner == You ? movementLeft : null);
 
     /// <summary>A city; an enemy city's production is hidden, as in the Api's views.</summary>
     public static CityView City(int id, PlayerId owner, HexCoord at, string name = "City 1") =>
