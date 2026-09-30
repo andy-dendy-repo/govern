@@ -5,7 +5,7 @@ paths:
 
 # XML documentation
 
-`GenerateDocumentationFile` is on for every `src/` project except Core (`Directory.Build.props`). With `TreatWarningsAsErrors`, a missing doc comment on a public or protected member (CS1591) **fails the build**.
+`GenerateDocumentationFile` is on for every `src/` project (`Directory.Build.props`). With `TreatWarningsAsErrors`, a missing doc comment on a public or protected member (CS1591) **fails the build**.
 
 ## What to document
 

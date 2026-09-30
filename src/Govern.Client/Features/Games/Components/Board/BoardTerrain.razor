@@ -1,0 +1,33 @@
+@* The map's tiles, one clickable hex each. It renders again only for a new view, so panning and zooming never re-diff them. *@
+@using Govern.Client.Features.Games.Helpers
+@using Govern.Core.Map
+@using Govern.Core.Visibility
+
+<g class="terrain">
+    @for (var index = 0; index < View.Tiles.Length; index++)
+    {
+        var coord = View.CoordAt(index);
+        var (x, y) = HexLayout.Center(coord);
+        <use href="#hex" x="@HexLayout.Format(x)" y="@HexLayout.Format(y)" class="@TileClass(View.Tiles[index])"
+             data-q="@coord.Q" data-r="@coord.R" @onclick="@(() => TileClicked.InvokeAsync(coord))"/>
+    }
+</g>
+
+@code {
+    private PlayerView? _rendered;
+
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter] public EventCallback<HexCoord> TileClicked { get; set; }
+
+    protected override bool ShouldRender() => !ReferenceEquals(View, _rendered);
+
+    protected override void OnAfterRender(bool firstRender) => _rendered = View;
+
+    private static string TileClass(TileView tile) => tile.Visibility switch
+    {
+        TileVisibility.Visible => $"tile visible terrain-{tile.Terrain}",
+        TileVisibility.Explored => $"tile explored terrain-{tile.Terrain}",
+        _ => "tile unexplored",
+    };
+}

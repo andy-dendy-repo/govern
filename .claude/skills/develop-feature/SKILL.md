@@ -28,7 +28,7 @@ Domain → Application.Common → Application → Infrastructure → Api → Cli
 - Use `roslyn-refactor` tools for renames, moves, signature changes and extractions instead of manual multi-file edits.
 
 ## 3. Tests
-- **Unit** (`tests/Govern.UnitTests`): only when Utils or Domain changed (`unit-tests.md`).
+- **Unit** (`tests/Govern.UnitTests`): only when Utils, Core or Domain changed (`unit-tests.md`).
 - **Integration** (`tests/Govern.IntegrationTests`): every new or changed endpoint needs the happy path, validation 400, auth 401/403 and domain errors (`integration-tests.md`).
 - **Client** (`tests/Govern.ClientTests`, bUnit): every new or changed client page, component, typed client or auth service (`client-tests.md`).
 - **Architecture** (`tests/Govern.ArchitectureTests`): if you introduced a new convention, folder or project, add or adjust a rule and prove it can fail (`architecture-tests.md`).

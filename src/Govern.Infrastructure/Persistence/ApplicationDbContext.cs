@@ -18,6 +18,12 @@ internal sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     /// <inheritdoc />
+    public DbSet<Game> Games => Set<Game>();
+
+    /// <inheritdoc />
+    public DbSet<GamePlayer> GamePlayers => Set<GamePlayer>();
+
+    /// <inheritdoc />
     public async Task<IApplicationDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken) =>
         new ApplicationDbContextTransaction(await Database.BeginTransactionAsync(cancellationToken));
 

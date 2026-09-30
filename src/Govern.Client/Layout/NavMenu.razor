@@ -1,3 +1,14 @@
 <RadzenPanelMenu>
-    <RadzenPanelMenuItem Text="Home" Icon="home" Path="" />
+    <RadzenPanelMenuItem Text="Home" Icon="home" Path=""/>
+    <AuthorizeView>
+        <Authorized>
+            <RadzenPanelMenuItem Text="Games" Icon="sports_esports" Path="games"/>
+            <RadzenPanelMenuItem Text="Join game" Icon="group_add" Path="join"/>
+            <RadzenPanelMenuItem Text="Profile" Icon="person" Path="profile"/>
+        </Authorized>
+        <NotAuthorized>
+            <RadzenPanelMenuItem Text="Sign in" Icon="login" Path="login"/>
+            <RadzenPanelMenuItem Text="Register" Icon="person_add" Path="register"/>
+        </NotAuthorized>
+    </AuthorizeView>
 </RadzenPanelMenu>

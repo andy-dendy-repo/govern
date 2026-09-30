@@ -1,10 +1,17 @@
+using Govern.Client.Auth;
+using Govern.Client.Features.Games.Clients;
+using Govern.Client.Features.Games.Services;
+using Govern.Client.Features.Users.Clients;
+using Govern.Client.Services;
 using Govern.Client.Options;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Radzen;
 
 namespace Govern.Client;
 
 /// <summary>
-/// Registers the client services: Radzen and the validated <see cref="ApiOptions"/>.
+/// Registers the client services: Radzen, the validated <see cref="ApiOptions"/>, the auth session and the typed Api clients.
 /// </summary>
 public static class DependencyInjection
 {
@@ -13,7 +20,7 @@ public static class DependencyInjection
     {
         /// <summary>
         /// Adds all client services. Components never get a bare <see cref="HttpClient"/>; Api calls go through typed
-        /// clients in <c>Features/[Feature]/Clients</c>.
+        /// clients in <c>Features/[Feature]/Clients</c>, which send the bearer token through <see cref="AuthorizationMessageHandler"/>.
         /// </summary>
         /// <param name="configuration">Client configuration (<c>Api</c>).</param>
         /// <returns>The service collection, for chaining.</returns>
@@ -31,8 +38,37 @@ public static class DependencyInjection
 
             services.AddSingleton(Microsoft.Extensions.Options.Options.Create(api));
             services.AddRadzenComponents();
+            AddAuth(services, api);
+            AddApiClient<UsersClient>(services, api);
+            AddApiClient<GamesClient>(services, api);
+            services.AddTransient<GameWatchService>();
+            services.AddScoped<BoardInteropService>();
+            services.AddSingleton<RulesetService>();
+            services.AddScoped<ClipboardService>();
+
+            // AddHttpClient also registers a plain HttpClient; components must use typed clients instead.
+            services.RemoveAll<HttpClient>();
 
             return services;
         }
     }
+
+    private static void AddAuth(IServiceCollection services, ApiOptions api)
+    {
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<TokenStore>();
+        services.AddSingleton<ICrossTabLock, WebLocksCrossTabLock>();
+        services.AddSingleton<JwtAuthenticationStateProvider>();
+        services.AddSingleton<AuthenticationStateProvider>(static provider => provider.GetRequiredService<JwtAuthenticationStateProvider>());
+        services.AddSingleton<AuthSession>();
+        services.AddAuthorizationCore();
+        services.AddCascadingAuthenticationState();
+        services.AddTransient<AuthorizationMessageHandler>();
+        services.AddHttpClient(AuthSession.HttpClientName, client => client.BaseAddress = api.BaseUrl);
+    }
+
+    private static void AddApiClient<TClient>(IServiceCollection services, ApiOptions api)
+        where TClient : class =>
+        services.AddHttpClient<TClient>(client => client.BaseAddress = api.BaseUrl)
+            .AddHttpMessageHandler<AuthorizationMessageHandler>();
 }

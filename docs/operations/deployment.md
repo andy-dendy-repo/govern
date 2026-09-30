@@ -2,7 +2,7 @@
 title: Deployment to Azure
 tags: [deployment, azure, bicep, github-actions, oidc, ghcr, app-service, static-web-apps, postgres, key-vault, health-checks, host-filtering, purge-protection]
 code: [infra/main.bicep, infra/modules, infra/main.bicepparam, .github/workflows/release.yml, .github/workflows/ci.yml, .github/scripts/configure-client.sh, src/Govern.Api/Middlewares/HostAllowListMiddleware.cs, src/Govern.Api/Models/HealthCheckRoutes.cs]
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Deployment to Azure
@@ -17,6 +17,7 @@ updated: 2026-09-27
 | PostgreSQL Flexible Server v17 + database `govern` | Burstable B1ms, 32 GB | TLS required and verified by the Api (`Ssl Mode=VerifyFull`); firewall allows Azure services only |
 | Key Vault (RBAC) | Standard | Secrets `ConnectionStrings--Govern`, `Jwt--SigningKey`; the Web App identity has "Key Vault Secrets User"; soft delete 7 days with **purge protection** (irreversible: secrets can't be purged early, and a deleted vault's name stays reserved for 7 days) |
 | Static Web App | Free | Blazor WASM client |
+| Azure Monitor metric alert + action group | Free tier of alert rules | `<app>-<env>-pg-storage` fires when the database's average `storage_percent` is above 80% for 30 minutes (storage is a fixed 32 GB, auto-grow off, and writes stop when it is full). The action group emails `ALERT_EMAIL`; without it the alert still exists but notifies nobody (`infra/modules/alerts.bicep`) |
 
 ## Release flow
 
@@ -44,6 +45,7 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
    - Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `POSTGRES_ADMIN_PASSWORD`, `JWT_SIGNING_KEY` (`openssl rand -base64 48`).
    - Variable: `AZURE_RESOURCE_GROUP`.
    - Optional variable: `API_ORIGIN` (lower-case `https://host`, e.g. `https://api.example.com`, no port or trailing slash; the release validates it before deploying) once the Api has a custom domain. Without it, the client uses `https://<apiHostname>` from the Bicep outputs. Its host is also added to the Api's `HostFiltering:AllowedHosts`, so set it in the same release that starts using the custom domain; until then, requests to that domain get 400.
+   - Optional variable: `ALERT_EMAIL`, the address that receives operational alerts (database storage). Set it before the first release; empty deploys the alert without a notification.
    - **Deployment branches:** `main` only. The workflow also refuses to publish or deploy from other refs, but this stops `workflow_dispatch` on any other branch from getting the OIDC identity and secrets.
    - Add required reviewers if releases need approval.
 4. **GHCR image access** (choose one):
@@ -69,7 +71,9 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
 
 ## Known gaps (follow-ups)
 
+The database role and monitoring gaps are tracked in [deferred follow-ups](../plans/deferred/follow-ups.md) (F2 and F3); their priority is in the [backlog](../plans/backlog.md).
+
 - **Database role:** the Api connects with the Postgres **administrator** login. Create a least-privilege role (owner of the `govern` schema only), store its connection string in Key Vault instead, or switch to Entra ID authentication with the Web App's managed identity.
 - **Network:** Postgres and Key Vault use public endpoints with firewall or RBAC. Private endpoints need a VNet and a higher App Service tier.
 - **Key Vault references:** they resolve after the role assignment propagates. On the very first deployment, restart the Web App if secrets show as unresolved.
-- **Monitoring:** there is no Log Analytics or Application Insights yet. Add diagnostic settings and alerts on refresh-token reuse (EventId 1001), 401/429 spikes and 5xx responses.
+- **Monitoring:** only the database storage alert exists. There is no Log Analytics or Application Insights yet. Add diagnostic settings and alerts on refresh-token reuse (EventId 1001), 401/429 spikes and 5xx responses.

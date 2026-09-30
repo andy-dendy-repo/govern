@@ -12,4 +12,8 @@ internal sealed class PostgresExceptionClassificationService : IDbExceptionClass
     /// <inheritdoc />
     public bool IsUniqueViolation(Exception exception) =>
         exception is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } };
+
+    /// <inheritdoc />
+    public bool IsForeignKeyViolation(Exception exception) =>
+        exception is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation } };
 }

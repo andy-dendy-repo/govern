@@ -66,3 +66,114 @@ h1:focus {
     .loading-progress-text:after {
         content: var(--blazor-load-percentage-text, "Loading");
     }
+
+/* Game board (Features/Games/Components/Board). Styles live here: the client has no scoped .razor.css files. */
+.game-table {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.board-frame {
+    position: relative;
+    flex: 1 1 28rem;
+    min-width: 0;
+}
+
+.game-side {
+    flex: 0 1 18rem;
+    min-width: 16rem;
+}
+
+.board {
+    display: block;
+    width: 100%;
+    height: min(70vh, 40rem);
+    background: #1f2329;
+    border-radius: 0.5rem;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.board.busy {
+    cursor: progress;
+}
+
+.board-zoom {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+}
+
+.board .tile {
+    stroke: #1f2329;
+    stroke-width: 1.5;
+    cursor: pointer;
+}
+
+.board .tile.unexplored {
+    fill: #2b3038;
+}
+
+.board .tile.explored.terrain-plains {
+    fill: #6f8a60;
+}
+
+.board .tile.visible.terrain-plains {
+    fill: #9cc47f;
+}
+
+.board .pieces {
+    pointer-events: none;
+}
+
+.board .overlay {
+    stroke-width: 2;
+}
+
+.board .overlay.reachable {
+    fill: rgba(255, 255, 255, 0.3);
+    stroke: #ffffff;
+}
+
+.board .overlay.attackable {
+    fill: rgba(214, 69, 69, 0.35);
+    stroke: #d64545;
+}
+
+.board .piece {
+    stroke: #14171c;
+    stroke-width: 1.5;
+}
+
+.board .piece.own {
+    fill: #2f7de1;
+}
+
+.board .piece.enemy {
+    fill: #d64545;
+}
+
+.board .piece.selected {
+    stroke: #ffd54a;
+    stroke-width: 3;
+}
+
+.board .piece .mark,
+.board .unit .mark {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 2;
+}
+
+.board .city-name {
+    fill: #ffffff;
+    stroke: #14171c;
+    stroke-width: 3;
+    font-size: 12px;
+    font-weight: 600;
+    text-anchor: middle;
+    paint-order: stroke;
+}

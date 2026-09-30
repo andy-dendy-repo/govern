@@ -20,6 +20,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Include="..\..\rulesets\**\*.json" Link="rulesets\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\Govern.Core\Govern.Core.csproj" />
       <ProjectReference Include="..\..\src\Govern.Domain\Govern.Domain.csproj" />
       <ProjectReference Include="..\..\src\Govern.Utils\Govern.Utils.csproj" />
     </ItemGroup>

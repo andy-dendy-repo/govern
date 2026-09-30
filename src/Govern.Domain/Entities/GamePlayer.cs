@@ -1,0 +1,50 @@
+using Govern.Core.State;
+using Govern.Domain.EntityBase;
+
+namespace Govern.Domain.Entities;
+
+/// <summary>
+/// A user's seat in a <see cref="Game"/>. Its <see cref="BaseEntity.Id"/> doubles as the engine's <see cref="Core.State.PlayerId"/>,
+/// so game states and player views never contain user ids. Created only through <see cref="Game"/>.
+/// </summary>
+public sealed class GamePlayer : BaseEntity
+{
+    private GamePlayer()
+    {
+    }
+
+    /// <summary>
+    /// The game this seat belongs to.
+    /// </summary>
+    public Guid GameId { get; private set; }
+
+    /// <summary>
+    /// The user in this seat; never sent to other players.
+    /// </summary>
+    public Guid UserId { get; private set; }
+
+    /// <summary>
+    /// Zero-based seat, which is also the turn order: seat 0 (the creator) moves first.
+    /// </summary>
+    public int Seat { get; private set; }
+
+    /// <summary>
+    /// When the user took the seat.
+    /// </summary>
+    public DateTimeOffset JoinedAt { get; private set; }
+
+    /// <summary>
+    /// The engine's identifier for this player: the per-game <see cref="BaseEntity.Id"/>, not the user id.
+    /// </summary>
+    public PlayerId PlayerId => new(Id);
+
+    internal static GamePlayer Create(Guid gameId, Guid userId, int seat, DateTimeOffset now)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("The user id must not be empty.", nameof(userId));
+        }
+
+        return new GamePlayer { GameId = gameId, UserId = userId, Seat = seat, JoinedAt = now };
+    }
+}

@@ -1,8 +1,15 @@
 using Govern.Client;
+using Govern.Client.Auth;
+using Govern.Client.Features.Games.Clients;
+using Govern.Client.Features.Games.Services;
+using Govern.Client.Features.Users.Clients;
+using Govern.Client.Services;
 using Govern.Client.Options;
 using Govern.ClientTests.Support;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Options;
+using Microsoft.JSInterop;
 
 namespace Govern.ClientTests;
 
@@ -51,5 +58,48 @@ public class DependencyInjectionTests
 
         services.ShouldNotContain(static descriptor => descriptor.ServiceType == typeof(HttpClient),
             "components must call the Api through typed clients in Features/[Feature]/Clients");
+    }
+
+    [Fact]
+    public void AddClient_ResolvesTypedClientsAndTheJwtAuthenticationState()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IJSRuntime, UnusedJsRuntime>();
+        services.AddClient(ClientTestContext.Configuration(("Api:BaseUrl", ClientTestContext.ApiBaseUrl)));
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+
+        provider.GetRequiredService<UsersClient>().ShouldNotBeNull();
+        provider.GetRequiredService<GamesClient>().ShouldNotBeNull();
+        provider.GetRequiredService<GameWatchService>().ShouldNotBeNull();
+        using (var scope = provider.CreateScope())
+        {
+            scope.ServiceProvider.GetRequiredService<ClipboardService>().ShouldNotBeNull();
+        }
+
+        provider.GetRequiredService<AuthenticationStateProvider>().ShouldBeSameAs(provider.GetRequiredService<JwtAuthenticationStateProvider>());
+        provider.GetRequiredService<ICrossTabLock>().ShouldBeOfType<WebLocksCrossTabLock>();
+    }
+
+    [Fact]
+    public async Task AddClient_ResolvesTheBoardInteropPerScope()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IJSRuntime, UnusedJsRuntime>();
+        services.AddClient(ClientTestContext.Configuration(("Api:BaseUrl", ClientTestContext.ApiBaseUrl)));
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+
+        await using var scope = provider.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<BoardInteropService>()
+            .ShouldBeSameAs(scope.ServiceProvider.GetRequiredService<BoardInteropService>());
+    }
+
+    private sealed class UnusedJsRuntime : IJSRuntime
+    {
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) => throw new NotSupportedException();
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) =>
+            throw new NotSupportedException();
     }
 }
