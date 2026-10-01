@@ -7,7 +7,7 @@ namespace Govern.Core.Units;
 /// <summary>
 /// What a unit is building: an improvement on its own tile, or a bridge over the river between its tile and a neighbour. At the
 /// end of its owner's turn the job gains the unit's <see cref="UnitDefinition.BuildProduction"/>, plus its city's production
-/// inside that city's work area; it is done when <see cref="Progress"/> reaches the cost. Moving, attacking or starting another
+/// inside that city's territory; it is done when <see cref="Progress"/> reaches the cost. Moving, attacking or starting another
 /// job drops it with its progress.
 /// </summary>
 /// <param name="Progress">Production points put into the job so far.</param>

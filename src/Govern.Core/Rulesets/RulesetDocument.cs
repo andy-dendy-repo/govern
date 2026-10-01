@@ -14,6 +14,7 @@ internal sealed record RulesetDocument(
     BridgeRules Bridges,
     ImmutableArray<UnitDefinition> Units,
     CityRules Cities,
+    TerritoryRules Territory,
     ImmutableArray<ResourceDefinition> Resources,
     ImmutableArray<ImprovementDefinition> Improvements,
     ImmutableArray<BuildingDefinition> Buildings,

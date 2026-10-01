@@ -1,6 +1,6 @@
 ---
 title: Game Core engine
-tags: [game, core, engine, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, work-area, stockpile, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
+tags: [game, core, engine, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
 updated: 2026-10-01
 ---
@@ -94,16 +94,26 @@ The soldier also has `build_bridge` with build production 1.
 
 ## Builders, improvements, buildings and bridges (G10a)
 
-Andrii's model, not a copy of another game: units have no build charges; a building unit has its own **build production** and, on its own city's ground, the city's production is added.
+Andrii's model, not a copy of another game: units have no build charges; a building unit has its own **build production** and, in its own city's territory, the city's production is added.
 - **Folder:** `Core/Economy` holds the ids (`ResourceType`, `ImprovementType`, `BuildingType`, plain ids in JSON like `UnitType`), `ResourceAmount` and the definitions (`ResourceDefinition`, `ImprovementDefinition`, `BuildingDefinition`). Ruleset sections: [game data: building sections](../game/game-data-economy.md).
-- **State, all optional in the JSON (no schema bump):** `Unit.Job` (`UnitJob`: progress, the round it started, and an `Improvement` or a `BridgeTo` target), `Tile.Improvement`, `Tile.Bridges` (`TileBridges`, one flag per stored side, like `TileRivers`), `City.ProducingBuilding` and `City.Buildings`, `Player.Resources` (the stockpile, in ruleset order).
-- **Work area:** `Cities/WorkArea` (`Contains`: distance 1..`cities.workRadius`; `Covers`: also the city tile; `ProductionPerTurn`: `productionPerTurn` plus the buildings' `production`). The validator keeps work areas from overlapping.
+- **State, all optional in the JSON (no schema bump):** `Unit.Job` (`UnitJob`: progress, the round it started, and an `Improvement` or a `BridgeTo` target), `Tile.Improvement`, `Tile.Bridges` (`TileBridges`, one flag per stored side, like `TileRivers`), `City.ProducingBuilding` and `City.Buildings`.
+- **City production:** `Cities/CityProduction.PerTurn` (`productionPerTurn` plus the buildings' `production`).
 - **Commands:** `BuildImprovementCommand` (`build_improvement`), `BuildBridgeCommand` (`build_bridge`), `ProduceBuildingCommand` (`produce_building`). Starting a job sets movement to 0 (`BuildStartedEvent`); moving or attacking drops the job; `SetProductionCommand` clears a building in production.
-- **End turn** (`EndTurnRule`): heal (units without a job), then `Engine/ConstructionRule.AdvanceJobs` (oldest job first; each city feeds one job and then skips its own production; a job whose placement check fails is dropped; `ImprovementBuiltEvent`, `BridgeBuiltEvent`), then `ConstructionRule.CollectYields` (buildings plus work-area improvements into the stockpile), then production (`BuildingCompletedEvent` for a building).
+- **End turn** (`EndTurnRule`): heal (units without a job), then `Engine/ConstructionRule.AdvanceJobs` (oldest job first; each city feeds one job and then skips its own production; a job whose placement check fails is dropped; `ImprovementBuiltEvent`, `BridgeBuiltEvent`), then `ConstructionRule.CollectYields` (each city's income into its stock, see below), then `TerritoryRule.Grow`, then production (`BuildingCompletedEvent` for a building).
 - **Bridges** are only seen through `GameMap.CrossedRiverBetween` / `PlayerView.CrossedRiverBetween` (null when the edge is bridged), used by the step cost, the combat river modifier and the capture check, so a bridged edge is like no river.
-- **View:** `TileView.Bridges` and `Improvement` for visible tiles only (they change); `UnitView.Job` for own units only; `CityView.ProducingBuilding` and `Buildings` for own cities only; `PlayerView.Resources` is the viewer's own stockpile.
-- **Previews:** `BuildImprovementRule.Check`, `BuildBridgeRule.Check` and `ProduceBuildingRule.Check` are shared by the rules and `ViewPreviewCalculator`; `Engine/BuildPreviewTests` checks parity with `Execute`. The bridge preview is exact because a `build_bridge` unit's sight is at least `workRadius` + 1 (validator).
+- **View:** `TileView.Bridges` and `Improvement` for visible tiles only (they change); `UnitView.Job` for own units only; `CityView.ProducingBuilding` and `Buildings` for own cities only.
+- **Previews:** `BuildImprovementRule.Check`, `BuildBridgeRule.Check` and `ProduceBuildingRule.Check` are shared by the rules and `ViewPreviewCalculator`; `Engine/BuildPreviewTests` checks parity with `Execute`.
 - Algorithms: [game logic](../game/game-logic.md#building-with-units-jobs). Later (G10b): upgrades, building health, pillage and repair, and the buildings' own mechanics.
+
+## Tile yields and territory (G5, G7)
+
+Andrii's model: every tile gives resources, a city owns the tiles of its territory, and each city keeps its own stock (ruleset v6, [game data](../game/game-data-economy.md#tile-yields-terrainsyields-riversyields)).
+- **State:** `Tile.Territory` (the owning `CityId`, left out of the JSON when null), `City.Stock` (`StockList`, in ruleset order) and `City.TilesGained`. `Player.Resources` is gone (schema 3).
+- **Yields:** `Economy/YieldCalculator` (public, used by the client): `TileYields` = terrain yields + per resource the largest yield of the rivers on the tile's edges (`GameMap`/`PlayerView.RiversAround`) + the improvement's; `CityIncome` = the territory's tile yields + `cities.yields` + the buildings' yields; `Sum` and `AmountOf`.
+- **Territory:** `Engine/TerritoryRule` (internal). `ClaimAround` runs when a city is founded (`initialRadius`, unowned tiles only); `Grow` runs at the end of the owner's turn: each city, by id, that holds `TerritoryRules.NextTileCost(TilesGained)` of the growth resource pays it and claims `NextTile` (unowned, touching the territory, within `maxRadius`; highest total yield, then nearest, then row, then column), emitting `TerritoryGrewEvent` (`territory_grew`). No randomness, so no draw changes.
+- **Rules that read territory:** founding on any territory tile is `city.in_territory`; an improvement needs a tile in an own city's territory that is not a city tile (`build.not_in_territory`); a bridge end in enemy territory is `bridge.enemy_territory`; a job is fed by the own city whose territory holds the unit's tile. A captured city keeps its territory and stock.
+- **View:** own territory is always visible; `TileView.TerritoryOwner` (visible tiles only) and `TerritoryCity` (the viewer's own territory only); `CityView.Stock` and `TilesGained` for own cities only. `GameEngine.CityIncome(ruleset, view, cityId)` previews a city's income and equals what the end of turn adds (`TerritoryRuleTests`).
+- Algorithms: [game logic](../game/game-logic.md#territory). Costs, upkeep and supply come next (G8a).
 
 ## Combat (G9)
 
@@ -122,7 +132,7 @@ Andrii's model, not a copy of another game: units have no build charges; a build
 | `FoundCityCommand` (`found_city`) | Settler with movement left, not on a city, spacing respected. The settler is removed and a city created (`CityFoundedEvent`) |
 | `SetProductionCommand` (`set_production`) | Own city; changes what it builds and keeps its progress (`ProductionChangedEvent`) |
 | `AttackCommand` (`attack`) | A unit with `attack` or `ranged_attack` and movement left; a target in range (adjacent for melee). Against a unit, both fight ([combat](#combat-g9)): `UnitAttackedEvent`, then `UnitDestroyedEvent` for each unit at 0 health; an undefended enemy city is captured by a melee attacker, which moves in (`CityCapturedEvent`). Movement drops to 0 |
-| `BuildImprovementCommand` (`build_improvement`) | A builder with movement left in an own work area starts an improvement job ([G10a](#builders-improvements-buildings-and-bridges-g10a)) |
+| `BuildImprovementCommand` (`build_improvement`) | A builder with movement left in its cities' territory starts an improvement job ([G10a](#builders-improvements-buildings-and-bridges-g10a)) |
 | `BuildBridgeCommand` (`build_bridge`) | A unit with `build_bridge` and movement left starts a bridge job over the river towards a neighbour |
 | `ProduceBuildingCommand` (`produce_building`) | Own city; produces a building it doesn't have yet (needs the adjacent terrain if any), keeps its progress (`ProductionChangedEvent` with `Building`) |
 | `EndTurnCommand` (`end_turn`) | Units heal, jobs advance, yields are collected, then the actor's cities produce. A finished unit spawns on the city or its first free neighbour with 0 movement; if the city is surrounded, it waits. The next active player gets full movement; the round (`Turn`) increases on wrap (`TurnEndedEvent`) |
@@ -148,21 +158,21 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `unit.no_movement` | No movement left this turn |
 | `unit.cannot_found_city` / `unit.cannot_attack` | Wrong unit type for the command |
 | `move.occupied` / `move.unreachable` | A **visible** unit stands on the target / off map, own tile, blocked, too far, or a hidden unit is there |
-| `city.tile_taken` / `city.too_close` | Founding on a city / closer than the minimum spacing |
+| `city.tile_taken` / `city.too_close` / `city.in_territory` | Founding on a city / closer than the minimum spacing / on a tile in any city's territory |
 | `city.not_found` / `city.unknown_unit_type` | The actor has no such city / a unit type the game's ruleset doesn't have |
 | `attack.not_adjacent` / `attack.out_of_range` / `attack.no_target` / `attack.own_target` | Attack target problems (`out_of_range` for ranged units; `no_target` also for a ranged unit aimed at an empty city) |
 | `attack.river_in_the_way` | A melee unit would capture an undefended city across a river it can't cross |
 | `unit.cannot_build_improvements` / `unit.cannot_build_bridges` | The unit type lacks the build ability |
-| `build.already_building` / `build.unknown_improvement` / `build.not_in_work_area` / `build.wrong_terrain` / `build.tile_improved` | Improvement job problems |
-| `bridge.not_adjacent` / `bridge.no_river` / `bridge.exists` / `bridge.impassable` / `bridge.enemy_work_area` | Bridge job problems |
+| `build.already_building` / `build.unknown_improvement` / `build.not_in_territory` / `build.wrong_terrain` / `build.tile_improved` | Improvement job problems |
+| `bridge.not_adjacent` / `bridge.no_river` / `bridge.exists` / `bridge.impassable` / `bridge.enemy_territory` | Bridge job problems |
 | `city.unknown_building` / `city.building_exists` / `city.building_needs_terrain` | Building production problems |
 
 Exceptions are reserved for programming errors: an invalid `GameSetup`, an unknown command type, or `ViewFor` for a non-participant.
 
 ## Fog of war (PlayerView)
 
-- A player sees every tile within the sight radius of their units and cities.
-- Everything a player has ever seen accumulates in `Player.Explored`.
+- A player sees every tile within the sight radius of their units and cities, and every tile of their cities' territory.
+- Everything a player has ever seen accumulates in `Player.Explored`, plus the tiles next to their cities' territory (`VisibilityCalculator.UpdateExplored`), so the rivers on the territory's outer edges are known and `CityIncome` matches the end of turn.
 - `PlayerView.Tiles` marks each tile as `Unexplored` (terrain and rivers hidden), `Explored` (terrain and rivers known) or `Visible`. A `TileView` carries no coordinates: tiles are row-major (index `row * Width + column`), so `PlayerView.CoordAt(index)` gives a tile's position and `TileAt(coord)` the tile at a position. That keeps every snapshot about a third smaller.
 - `PlayerView.Units` and `PlayerView.Cities` contain the viewer's own objects and enemy objects **on visible tiles only**.
 - **Enemy production is hidden:** cities are `CityView`s, and an enemy city's `Producing` and `ProductionProgress` are null. Its progress would tell the viewer when the next enemy unit appears. A change in enemy production therefore never changes the viewer's `Version`.
@@ -187,6 +197,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 | `GameEngine.CheckFoundCity(view, unitId)` | `null`, or the `RuleViolation` | what a `FoundCityCommand` would return |
 | `GameEngine.CheckBuildImprovement(view, unitId, improvement)` / `CheckProduceBuilding(view, cityId, building)` | `null`, or the `RuleViolation` | what a `BuildImprovementCommand` / `ProduceBuildingCommand` would return |
 | `GameEngine.BridgeTargets(view, unitId)` | The neighbours the unit can bridge to, row then column | the targets a `BuildBridgeCommand` would be accepted for |
+| `GameEngine.CityIncome(ruleset, view, cityId)` | What the viewer's own city adds to its stock at the end of the turn (empty for another player's city) | what `EndTurnCommand` adds |
 
 - All three give nothing (or the violation) when the game is over, it isn't the viewer's turn, or the unit isn't the viewer's, the same as the command guard.
 - **Why a view is enough:** unit sight ≥ movement, founder sight ≥ city spacing − 1, and ranged range ≤ sight (enforced by `RulesetValidator`). Every tile a unit could reach, attack or be blocked by is therefore visible, and the view shows every unit and city on it. Reachability over a view enters only visible tiles.
@@ -217,8 +228,9 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - Commands and events are polymorphic, with a `type` discriminator that may appear anywhere in the object.
 - The discriminator names are part of the storage and wire format. Never rename them.
 - **Required values:** every constructor value is required (`RespectRequiredConstructorParameters`). Bad client input, including a missing `type`, always surfaces as `JsonException` (a 400 in the Api), never a 500.
-- **Schema version:** `GameState.SchemaVersion` (currently 2) is read by `GameSerializer.DeserializeState` **before** binding. Older known versions are upgraded on read, and a missing or unknown version throws `NotSupportedException`. Bump it and add the upgrade on breaking changes.
+- **Schema version:** `GameState.SchemaVersion` (currently 3) is read by `GameSerializer.DeserializeState` **before** binding. Older known versions are upgraded on read, and a missing or unknown version throws `NotSupportedException`. Bump it and add the upgrade on breaking changes.
   - **Version 1 → 2:** version 1 had a `nextId` counter. The upgrade drops it and keeps the existing ids; new ids come from the generator.
+  - **Version 2 → 3 (G5, G7):** version 2 kept a stockpile per player (`players[].resources`). The upgrade gives each city, by id, the unowned tiles within the old work radius (1) as territory, and moves each player's stockpile into their first city's stock (a player without a city loses it).
 
 ## Tests
 
@@ -237,7 +249,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v5.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge` an improvement or a bridge; `AddUnit` takes a `UnitJob` and `AddCity` a building in production and built buildings.
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v6.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge` an improvement or a bridge; `AddUnit` takes a `UnitJob` and `AddCity` a building in production, a stock, tiles gained and built buildings; every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`

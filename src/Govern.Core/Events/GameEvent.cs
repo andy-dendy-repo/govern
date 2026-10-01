@@ -19,6 +19,7 @@ namespace Govern.Core.Events;
 [JsonDerivedType(typeof(ImprovementBuiltEvent), "improvement_built")]
 [JsonDerivedType(typeof(BridgeBuiltEvent), "bridge_built")]
 [JsonDerivedType(typeof(BuildingCompletedEvent), "building_completed")]
+[JsonDerivedType(typeof(TerritoryGrewEvent), "territory_grew")]
 [JsonDerivedType(typeof(PlayerResignedEvent), "player_resigned")]
 [JsonDerivedType(typeof(PlayerEliminatedEvent), "player_eliminated")]
 [JsonDerivedType(typeof(GameWonEvent), "game_won")]

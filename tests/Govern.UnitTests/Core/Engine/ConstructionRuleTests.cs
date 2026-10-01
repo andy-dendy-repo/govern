@@ -12,7 +12,7 @@ namespace Govern.UnitTests.Core.Engine;
 public class ConstructionRuleTests
 {
     [Fact]
-    public void EndTurn_BuilderInWorkArea_UsesItsOwnAndTheCitysProduction()
+    public void EndTurn_BuilderInTerritory_UsesItsOwnAndTheCitysProduction()
     {
         var builder = new GameStateBuilder().WithCapitals();
         var city = builder.AddCity(P1, 6, 4, progress: 1);
@@ -73,7 +73,7 @@ public class ConstructionRuleTests
     }
 
     [Fact]
-    public void EndTurn_BridgeOutsideEveryWorkArea_UsesOnlyTheUnitsProduction()
+    public void EndTurn_BridgeOutsideEveryTerritory_UsesOnlyTheUnitsProduction()
     {
         var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.DeepRiver, ((5, 5), (6, 5)));
         var unit = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, job: new UnitJob(4, 1, BridgeTo: At(6, 5)));
@@ -150,35 +150,54 @@ public class ConstructionRuleTests
     }
 
     [Fact]
-    public void EndTurn_ImprovementsAndBuildings_AddTheirYieldsToTheOwnersStockpileInRulesetOrder()
+    public void EndTurn_TerritoryImprovementsAndBuildings_AddTheirYieldsToTheCitysStockInRulesetOrder()
     {
         var builder = new GameStateBuilder().WithCapitals()
             .WithImprovement(TestRulesets.Farm, (5, 5), (7, 4))
             .WithImprovement(TestRulesets.Mine, (6, 3))
             .WithImprovement(TestRulesets.Farm, (9, 9));
-        builder.AddCity(P1, 6, 4, buildings: [TestRulesets.Campus, TestRulesets.Harbour]);
-        builder.AddCity(P2, 9, 8, buildings: [TestRulesets.TradePost]);
+        var own = builder.AddCity(P1, 6, 4, buildings: [TestRulesets.Campus, TestRulesets.Harbour]);
+        var enemy = builder.AddCity(P2, 8, 7, buildings: [TestRulesets.TradePost]);
 
         var update = EndTurn(builder.Build());
 
-        update.State.FindPlayer(P1)!.Stockpile.ShouldBe([
-            new ResourceAmount(TestRulesets.Food, 6),
+        // 7 plains tiles (2 food, 1 water each), two farms (+2 food each), a mine (+2 stone), the city's own culture, the campus
+        // (2 science) and the harbour (2 food).
+        update.State.FindCity(own)!.StockList.ShouldBe([
+            new ResourceAmount(TestRulesets.Food, 20),
+            new ResourceAmount(TestRulesets.Water, 7),
             new ResourceAmount(TestRulesets.Stone, 2),
             new ResourceAmount(TestRulesets.Science, 2),
+            new ResourceAmount(TestRulesets.Culture, 1),
         ]);
-        update.State.FindPlayer(P2)!.Resources.ShouldBeNull("only the ending player's cities yield");
+        update.State.FindCity(enemy)!.Stock.ShouldBeNull("only the ending player's cities yield");
 
         var next = EndTurn(EndTurn(update.State, P2).State);
-        next.State.FindPlayer(P1)!.Stockpile.First().ShouldBe(new ResourceAmount(TestRulesets.Food, 12));
-        next.State.FindPlayer(P2)!.Stockpile.ShouldBe([new ResourceAmount(TestRulesets.Food, 2), new ResourceAmount(TestRulesets.Gold, 2)]);
+        YieldCalculator.AmountOf(next.State.FindCity(own)!.StockList, TestRulesets.Food).ShouldBe(40);
+        YieldCalculator.AmountOf(next.State.FindCity(enemy)!.StockList, TestRulesets.Gold).ShouldBe(2);
     }
 
     [Fact]
-    public void EndTurn_ImprovementOutsideEveryWorkArea_YieldsNothing()
+    public void EndTurn_ImprovementOutsideEveryTerritory_YieldsNothing()
     {
-        var builder = new GameStateBuilder().WithCapitals().WithImprovement(TestRulesets.Farm, (5, 5));
+        var without = new GameStateBuilder().WithCapitals();
+        var with = new GameStateBuilder().WithCapitals().WithImprovement(TestRulesets.Farm, (5, 5));
 
-        EndTurn(builder.Build()).State.FindPlayer(P1)!.Resources.ShouldBeNull();
+        EndTurn(with.Build()).State.Cities.Select(static city => city.StockList.Sum(static amount => amount.Amount))
+            .ShouldBe(EndTurn(without.Build()).State.Cities.Select(static city => city.StockList.Sum(static amount => amount.Amount)));
+    }
+
+    [Fact]
+    public void EndTurn_RiverAroundATile_AddsItsWaterOnceWhateverTheNumberOfRivers()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Desert, (5, 4), (4, 4), (6, 4), (5, 3), (4, 3), (5, 5), (4, 5));
+        var city = builder.AddCity(P1, 5, 4);
+        builder.WithRiver(TestRulesets.River, ((5, 4), (6, 4)), ((5, 4), (4, 4)));
+
+        // Desert gives nothing: the water comes from the rivers (1 for each tile beside one, however many edges it has).
+        var stock = EndTurn(builder.Build()).State.FindCity(city)!.StockList;
+        YieldCalculator.AmountOf(stock, TestRulesets.Water).ShouldBe(3);
+        YieldCalculator.AmountOf(stock, TestRulesets.Food).ShouldBe(0);
     }
 
     [Fact]
@@ -204,7 +223,8 @@ public class ConstructionRuleTests
         finished.Producing.ShouldBe(TestRulesets.Archer);
         finished.ProductionProgress.ShouldBe(0);
         update.Events.ShouldContain(new BuildingCompletedEvent(city, TestRulesets.Campus));
-        update.State.FindPlayer(P1)!.Stockpile.ShouldBe([new ResourceAmount(TestRulesets.Gold, 2)], "a new building yields from the next turn");
+        YieldCalculator.AmountOf(update.State.FindCity(city)!.StockList, TestRulesets.Gold).ShouldBe(2);
+        YieldCalculator.AmountOf(update.State.FindCity(city)!.StockList, TestRulesets.Science).ShouldBe(0, "a new building yields from the next turn");
     }
 
     [Fact]

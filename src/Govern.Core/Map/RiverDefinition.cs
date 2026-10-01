@@ -1,3 +1,6 @@
+using System.Collections.Immutable;
+using Govern.Core.Economy;
+
 namespace Govern.Core.Map;
 
 /// <summary>
@@ -7,4 +10,8 @@ namespace Govern.Core.Map;
 /// <param name="CrossingCost">Movement points a land unit spends to cross it, on top of the cost of the tile it enters (0 for none).</param>
 /// <param name="IsCrossable">Whether land units may cross it at all.</param>
 /// <param name="DefenceBonus">Extra strength for a unit attacked in melee across it (0 for none).</param>
-public sealed record RiverDefinition(RiverType Id, int CrossingCost, bool IsCrossable, int DefenceBonus);
+/// <param name="Yields">
+/// What a tile with this river on one of its edges gains every turn. A tile with several rivers gains, per resource, the most any of
+/// them gives, not the sum.
+/// </param>
+public sealed record RiverDefinition(RiverType Id, int CrossingCost, bool IsCrossable, int DefenceBonus, ImmutableArray<ResourceAmount> Yields);

@@ -49,6 +49,10 @@ public static class TestViews
 
     public static readonly ResourceType Science = new("science");
 
+    public static readonly ResourceType Food = new("food");
+
+    public static readonly ResourceType Culture = new("culture");
+
     public static readonly TerrainType Plains = new("plains");
 
     public static readonly TerrainType Forest = new("forest");
@@ -73,26 +77,32 @@ public static class TestViews
         Func<HexCoord, TileVisibility>? visibility = null,
         Func<HexCoord, TerrainType>? terrain = null,
         Func<HexCoord, TileRivers?>? rivers = null,
-        IEnumerable<ResourceAmount>? resources = null,
         Func<HexCoord, ImprovementType?>? improvements = null,
         Func<HexCoord, TileBridges?>? bridges = null)
     {
+        // Every city owns the tiles next to it (the default territory.initialRadius), shown on visible tiles like the server does.
+        var cityList = (cities ?? []).ToList();
         var tiles = Enumerable.Range(0, Width * Height)
             .Select(index => HexCoord.FromOffset(index % Width, index / Width))
             .Select(coord => (visibility?.Invoke(coord) ?? TileVisibility.Visible) switch
             {
                 TileVisibility.Unexplored => new TileView(TileVisibility.Unexplored, null),
                 TileVisibility.Explored => new TileView(TileVisibility.Explored, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord)),
-                var seen => new TileView(seen, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord), bridges?.Invoke(coord), improvements?.Invoke(coord)),
+                var seen => WithTerritory(
+                    new TileView(seen, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord), bridges?.Invoke(coord), improvements?.Invoke(coord)),
+                    cityList.FirstOrDefault(city => city.Position.DistanceTo(coord) <= Ruleset.Territory.InitialRadius)),
             });
 
         return new PlayerView(
             You, Version, Turn: 3, CurrentPlayer: You, GameStatus.InProgress, Winner: null, Width, Height, [.. tiles],
             [.. (units ?? []).OrderBy(static unit => unit.Id.Value)],
             [.. (cities ?? []).OrderBy(static city => city.Id.Value)],
-            [new PlayerSummary(You, PlayerStatus.Active), new PlayerSummary(Opponent, PlayerStatus.Active)],
-            [.. resources ?? []]);
+            [new PlayerSummary(You, PlayerStatus.Active), new PlayerSummary(Opponent, PlayerStatus.Active)]);
     }
+
+    private static TileView WithTerritory(TileView tile, CityView? city) => city is null
+        ? tile
+        : tile with { TerritoryOwner = city.Owner, TerritoryCity = city.Owner == You ? city.Id : null };
 
     public static HexCoord At(int column, int row) => HexCoord.FromOffset(column, row);
 
@@ -109,9 +119,9 @@ public static class TestViews
         new(new UnitId(id), owner, type, at, owner == You ? movementLeft : null, health);
 
     /// <summary>A city; an enemy city's production is hidden, as in the Api's views.</summary>
-    public static CityView City(int id, PlayerId owner, HexCoord at, string name = "City 1") =>
+    public static CityView City(int id, PlayerId owner, HexCoord at, string name = "City 1", ImmutableArray<ResourceAmount>? stock = null) =>
         owner == You
-            ? new CityView(new CityId(id), owner, name, at, SettlerType, 2)
+            ? new CityView(new CityId(id), owner, name, at, SettlerType, 2, Stock: stock)
             : new CityView(new CityId(id), owner, name, at, null, null);
 
     public static PlayerView Finished(PlayerId? winner, PlayerStatus opponentStatus = PlayerStatus.Resigned) =>

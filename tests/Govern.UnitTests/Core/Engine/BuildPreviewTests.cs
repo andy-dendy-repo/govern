@@ -14,18 +14,18 @@ namespace Govern.UnitTests.Core.Engine;
 // every tile near the unit as a bridge target, and every building for a city.
 public class BuildPreviewTests
 {
-    // The tested unit stands at (5, 5); a P1 city at (6, 4) puts it in a work area unless the scenario says otherwise.
+    // The tested unit stands at (5, 5); a P1 city at (6, 4) puts it in a territory unless the scenario says otherwise.
     public static TheoryData<string> UnitScenarios => new(
-        "builder on plains in work area",
-        "builder on forest in work area",
+        "builder on plains in territory",
+        "builder on forest in territory",
         "builder on hills already improved",
-        "builder outside every work area",
-        "builder in an enemy work area",
+        "builder outside every territory",
+        "builder in an enemy territory",
         "builder without movement",
         "builder already building a farm",
         "builder by rivers and a bridge",
         "soldier by rivers",
-        "soldier by a river into an enemy work area",
+        "soldier by a river into an enemy territory",
         "soldier already bridging",
         "river into a lake",
         "settler by a river",
@@ -120,7 +120,7 @@ public class BuildPreviewTests
     private static (GameState State, UnitId Unit) BuildUnit(string scenario)
     {
         var builder = new GameStateBuilder().WithCapitals();
-        if (scenario is not ("builder outside every work area" or "builder in an enemy work area" or "soldier by a river into an enemy work area"))
+        if (scenario is not ("builder outside every territory" or "builder in an enemy territory" or "soldier by a river into an enemy territory"))
         {
             builder.AddCity(P1, 6, 4);
         }
@@ -143,10 +143,10 @@ public class BuildPreviewTests
 
         _ = scenario switch
         {
-            "builder on forest in work area" => builder.WithTerrain(TestRulesets.Forest, (5, 5)),
+            "builder on forest in territory" => builder.WithTerrain(TestRulesets.Forest, (5, 5)),
             "builder on hills already improved" => builder.WithTerrain(TestRulesets.Hills, (5, 5)).WithImprovement(TestRulesets.Mine, (5, 5)),
-            "builder outside every work area" => builder.AddCity(P1, 9, 5) is var _ ? builder : builder,
-            "builder in an enemy work area" => builder.AddCity(P2, 6, 4) is var _ ? builder : builder,
+            "builder outside every territory" => builder.AddCity(P1, 9, 5) is var _ ? builder : builder,
+            "builder in an enemy territory" => builder.AddCity(P2, 6, 4) is var _ ? builder : builder,
             // A stream east, a deep river north-west, a river west, a bridged river south-east, and a lake south-west.
             "builder by rivers and a bridge" or "soldier by rivers" or "settler by a river" or "archer by a river" or "soldier already bridging" => builder
                 .WithRiver(TestRulesets.Stream, ((5, 5), (6, 5)))
@@ -155,7 +155,7 @@ public class BuildPreviewTests
                 .WithBridge(((5, 5), (6, 6)))
                 .WithTerrain(TestRulesets.Lake, (5, 6)),
             // The enemy city two tiles west covers the far bank (4, 5).
-            "soldier by a river into an enemy work area" => builder
+            "soldier by a river into an enemy territory" => builder
                 .WithRiver(TestRulesets.River, ((5, 5), (4, 5)), ((5, 5), (6, 5)))
                 .AddCity(P2, 3, 5) is var _ ? builder : builder,
             "river into a lake" => builder.WithRiver(TestRulesets.River, ((5, 5), (6, 5))).WithTerrain(TestRulesets.Lake, (6, 5)),

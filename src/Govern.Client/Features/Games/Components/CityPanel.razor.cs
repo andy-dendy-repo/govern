@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using System.Globalization;
 using Govern.Client.Features.Games.Helpers;
 using Govern.Core.Cities;
 using Govern.Core.Economy;
@@ -41,7 +43,29 @@ public partial class CityPanel
     // While the city lends its production to a job on its ground, its own production gets nothing.
     private bool FeedsAJob => JobFundingResolver.FeedingCities(Ruleset, View).Values.Any(city => city.Id == City.Id);
 
-    private int PerTurn => FeedsAJob ? 0 : WorkArea.ProductionPerTurn(Ruleset, City.BuildingList);
+    private int PerTurn => FeedsAJob ? 0 : CityProduction.PerTurn(Ruleset, City.BuildingList);
+
+    // What the city adds to its stock at the end of the turn (its territory, its own yields and its buildings).
+    private ImmutableArray<ResourceAmount> Income => GameEngine.CityIncome(Ruleset, View, City.Id);
+
+    // The price of the next tile in the growth resource, against what the city holds of it.
+    private string TerritoryText
+    {
+        get
+        {
+            var territory = Ruleset.Territory;
+            var price = territory.NextTileCost(City.TilesGained);
+            var held = YieldCalculator.AmountOf(City.StockList, territory.GrowthResource);
+            return $"Next territory tile: {held} of {price} {Ruleset.ResourceName(territory.GrowthResource).ToLowerInvariant()}";
+        }
+    }
+
+    private static string Gain(int gain) => gain switch
+    {
+        > 0 => $"+{gain.ToString(CultureInfo.InvariantCulture)}",
+        < 0 => gain.ToString(CultureInfo.InvariantCulture),
+        _ => string.Empty,
+    };
 
     private int? ProducingCost => City.ProducingBuilding is { } building
         ? Ruleset.Building(building).Cost

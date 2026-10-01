@@ -17,10 +17,10 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 | G2 | [Game rules reference](#g2-game-rules-reference) *(done)* | — | S, then ongoing |
 | G3 | [Data-driven catalogs and a new state schema](#g3-data-driven-catalogs-and-a-new-state-schema-suggested) *(part A done; part B deferred)* | — | M |
 | G4 | [Terrain: more tile types](#g4-terrain-more-tile-types) | G3 | M |
-| G5 | [Resources and tile yields](#g5-resources-and-tile-yields) | G4 | L |
+| G5 | [Resources and tile yields](#g5-resources-and-tile-yields) *(first part in progress)* | G4 | L |
 | G6 | [Rivers and bridges](#g6-rivers-and-bridges) | G4 | M |
-| G7 | [City territory and growth](#g7-city-territory-and-growth) | G5 | L |
-| G8 | [City stats and the production queue](#g8-city-stats-and-the-production-queue) | G7 | L |
+| G7 | [City territory and growth](#g7-city-territory-and-growth) *(in progress)* | G5 | L |
+| G8 | [City stats and the production queue](#g8-city-stats-and-the-production-queue): G8a (costs, upkeep) planned, G8b deferred | G7 | L |
 | G9 | [Army units and combat](#g9-army-units-and-combat) | G3, G5 | L |
 | G10 | [Builders and buildings (with upgrades)](#g10-builders-and-buildings-with-upgrades): G10a done, G10b open | G7, G8 | L |
 | G11 | [Science and culture trees](#g11-science-and-culture-trees) | G8 | L |
@@ -111,6 +111,8 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G5. Resources and tile yields
 
+- **Status:** first part in progress 2026-10-01 ([plan](../plans/active/G5-G7-G8-economy.md), with G7 and G8a). Every terrain gives default yields (plains 2 food 1 water, forest 1 food 1 water 2 wood, hills 1 food 2 stone, mountains 2 stone, lake 1 food 3 water), a new desert gives nothing, a river on any edge of a tile adds 1 water (ruleset v6, [rules](rules.md#tile-yields)). Still open from the list below: sea water, metals, luxuries, strategic resources placed on the map, terrain layers.
+
 - **Requested:** water, sea water, food, metals (gold, silver, etc.), wood, rock, coal, oil, uranium.
 - **Suggested additions and grouping:**
 
@@ -148,12 +150,16 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G7. City territory and growth
 
+- **Status:** in progress 2026-10-01 ([plan](../plans/active/G5-G7-G8-economy.md)). Decided by the owner, not the Civ 6 model: a city claims the tiles within 1 when founded, then pays culture (4, +2 per tile gained) for one more tile at a time, chosen without randomness (highest total yield, then nearest, then row and column), up to radius 3; cities never take each other's tiles; own territory is always visible; each city keeps its own stock. Still open from the list below: buying tiles with gold, loyalty pressure from enemy units.
+
 - **Territory (requested):** a city owns tiles around it, up to a **maximum number of tiles** (or a maximum radius). New tiles are acquired over time at a speed driven by culture, as in Civ 6. Each time the growth counter fills, the city takes the "best" free adjacent tile, with weighted random choice from `DeterministicRandom`.
 - *(Suggested)* A player can also buy a tile with gold; a territory lens (G1) shows ownership and the next tile.
 - **Borders:** tiles of another player can't be taken by growth; enemy units in your territory could reduce your loyalty.
 - **Visibility:** owned tiles are public (borders are visible on explored tiles), but the growth progress is private.
 
 ## G8. City stats and the production queue
+
+- **Status:** split on 2026-10-01. **G8a** is planned ([plan](../plans/active/G5-G7-G8-economy.md)), the owner's model: every unit and building has a production cost, a resource cost paid in full when production begins, and a resource upkeep; a city keeps up what stands on its territory, with a per-city switch for buildings or units first; a unit outside territory is supplied by the 7 tiles around it; a shortage costs 10 HP a turn down to 1 HP, and HP come back once supplied; bridges and improvements cost no resources. **G8b** is deferred: population, housing, loyalty and the production queue.
 
 - **City parameters (requested):** gathered amount of each resource, population, room for population (housing), loyalty, production, science points, culture points, diplomacy points.
 - **Growth:** food surplus grows population until housing is full; population works tiles (automatically at first; *suggested* later, manual focus: food, production, science, culture).
@@ -188,7 +194,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G10. Builders and buildings (with upgrades)
 
-- **Status:** split on 2026-10-01. **G10a done** 2026-10-01 ([plan](../plans/done/G10a-builders-and-buildings.md), PR #33): the builder, tile improvements (farm, lumber camp, mine) in a city's work area, unique city buildings (army camp, campus, trade post, culture centre, harbour) that give a resource or production, bridges built by builders and soldiers, and a per-player stockpile (ruleset v5, [rules](rules.md#building-with-units)). **G10b** is open: upgrades, building health, pillage and repair, removing an improvement, and the buildings' own mechanics (traders from trade posts, faster army production in army camps, ships from harbours with G15).
+- **Status:** split on 2026-10-01. **G10a done** 2026-10-01 ([plan](../plans/done/G10a-builders-and-buildings.md), PR #33): the builder, tile improvements (farm, lumber camp, mine) in a city's work area, unique city buildings (army camp, campus, trade post, culture centre, harbour) that give a resource or production, bridges built by builders and soldiers, and a per-player stockpile (replaced by each city's stock in G7) (ruleset v5, [rules](rules.md#building-with-units)). **G10b** is open: upgrades, building health, pillage and repair, removing an improvement, and the buildings' own mechanics (traders from trade posts, faster army production in army camps, ships from harbours with G15).
 - **Owner's model (2026-10-01), not Civ 6:** builders have **no charges**. Builders and soldiers have their own build production; on their city's ground the city's production is added, outside it the unit builds alone (for now only bridges). Both builders and soldiers build bridges.
 - **Builder (requested):** a unit that lets a city apply its production to create, upgrade or remove buildings on tiles in its territory. It also builds bridges on river edges (moved here from G6, 2026-10-01; done in G10a: a crossed bridge counts as no river). Pillaging and repairing bridges are G10b.
 - **Building parameters (requested):** health, room for living (housing), resources produced, production needed to build it.

@@ -33,7 +33,7 @@ public class RulesetTests
         ["map below the engine's minimum"] = json => json["map"]!["minSize"] = 7,
         ["map above the engine's maximum"] = json => json["map"]!["maxSize"] = 41,
         ["default width above the maximum"] = json => json["map"]!["defaultWidth"] = 41,
-        ["unknown default terrain"] = json => json["map"]!["defaultTerrain"] = "desert",
+        ["unknown default terrain"] = json => json["map"]!["defaultTerrain"] = "tundra",
         ["impassable default terrain"] = json => json["terrains"]![0]!["isPassable"] = false,
         ["empty spawn zone"] = json => json["map"]!["spawn"]!["zoneColumnsPerMille"] = 0,
         ["spawn zone over a quarter"] = json => json["map"]!["spawn"]!["zoneColumnsPerMille"] = 251,
@@ -50,7 +50,7 @@ public class RulesetTests
         ["missing unit name"] = json => json["texts"]!.AsObject().Remove("unit.soldier.name"),
         ["empty text"] = json => json["texts"]!["terrain.plains.name"] = " ",
         ["negative sight bonus"] = json => json["terrains"]![2]!["sightBonus"] = -1,
-        ["unknown patch terrain"] = json => json["map"]!["generation"]!["patches"]![0]!["terrain"] = "desert",
+        ["unknown patch terrain"] = json => json["map"]!["generation"]!["patches"]![0]!["terrain"] = "tundra",
         ["patch of the default terrain"] = json => json["map"]!["generation"]!["patches"]![0]!["terrain"] = "plains",
         ["terrain patched twice"] = json => json["map"]!["generation"]!["patches"]![1]!["terrain"] = "forest",
         ["empty patch share"] = json => json["map"]!["generation"]!["patches"]![0]!["sharePerMille"] = 0,
@@ -101,7 +101,7 @@ public class RulesetTests
         ["maximum river length below the minimum"] = json => json["map"]!["generation"]!["rivers"]!["maxLength"] = 3,
         ["river too long"] = json => json["map"]!["generation"]!["rivers"]!["maxLength"] = 101,
         ["no river sources"] = json => json["map"]!["generation"]!["rivers"]!["sources"] = new JsonArray(),
-        ["unknown river source"] = json => json["map"]!["generation"]!["rivers"]!["sources"] = new JsonArray("hills", "desert"),
+        ["unknown river source"] = json => json["map"]!["generation"]!["rivers"]!["sources"] = new JsonArray("hills", "tundra"),
         ["river source listed twice"] = json => json["map"]!["generation"]!["rivers"]!["sources"] = new JsonArray("hills", "hills"),
         ["unknown river mouth"] = json => json["map"]!["generation"]!["rivers"]!["mouths"] = new JsonArray("sea"),
         ["no river stages"] = json => json["map"]!["generation"]!["rivers"]!["stages"] = new JsonArray(),
@@ -115,7 +115,7 @@ public class RulesetTests
         ["improvement id not snake_case"] = json => json["improvements"]![0]!["id"] = "Farm",
         ["free improvement"] = json => json["improvements"]![0]!["cost"] = 0,
         ["improvement without terrains"] = json => json["improvements"]![0]!["terrains"] = new JsonArray(),
-        ["unknown improvement terrain"] = json => json["improvements"]![0]!["terrains"] = new JsonArray("plains", "desert"),
+        ["unknown improvement terrain"] = json => json["improvements"]![0]!["terrains"] = new JsonArray("plains", "tundra"),
         ["improvement terrain listed twice"] = json => json["improvements"]![0]!["terrains"] = new JsonArray("plains", "plains"),
         ["improvement on impassable terrain"] = json => json["improvements"]![2]!["terrains"] = new JsonArray("mountains"),
         ["unknown yield resource"] = json => json["improvements"]![0]!["yields"]![0]!["resource"] = "iron",
@@ -130,22 +130,17 @@ public class RulesetTests
         ["free bridge"] = json => json["bridges"]!["cost"] = 0,
         ["builder without build production"] = json => json["units"]![5]!.AsObject().Remove("buildProduction"),
         ["build production without an ability"] = json => json["units"]![2]!["buildProduction"] = 1,
-        ["bridge builder sees less than the work radius"] = json =>
-        {
-            json["cities"]!["workRadius"] = 2;
-            json["cities"]!["minimumSpacing"] = 5;
-            foreach (var unit in json["units"]!.AsArray().Where(unit => unit!["id"]!.GetValue<string>() is "settler"))
-            {
-                unit!["sight"] = 4;
-            }
-        },
-        ["no work area"] = json => json["cities"]!["workRadius"] = 0,
-        ["overlapping work areas"] = json => json["cities"]!["workRadius"] = 2,
-        ["city sees less than its work area"] = json =>
-        {
-            json["cities"]!["workRadius"] = 3;
-            json["cities"]!["sight"] = 2;
-        },
+        ["unknown terrain yield resource"] = json => json["terrains"]![0]!["yields"]![0]!["resource"] = "iron",
+        ["empty river yield"] = json => json["rivers"]![0]!["yields"]![0]!["amount"] = 0,
+        ["unknown city yield resource"] = json => json["cities"]!["yields"]![0]!["resource"] = "iron",
+        ["starting stock too large"] = json => json["cities"]!["startingStock"]![0]!["amount"] = 1001,
+        ["negative initial territory"] = json => json["territory"]!["initialRadius"] = -1,
+        ["overlapping new territories"] = json => json["territory"]!["initialRadius"] = 2,
+        ["maximum territory below the initial one"] = json => json["territory"]!["maxRadius"] = 0,
+        ["territory too large"] = json => json["territory"]!["maxRadius"] = 11,
+        ["unknown growth resource"] = json => json["territory"]!["growthResource"] = "faith",
+        ["free territory"] = json => json["territory"]!["tileCost"] = 0,
+        ["negative territory price increase"] = json => json["territory"]!["tileCostIncrease"] = -1,
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -267,10 +262,17 @@ public class RulesetTests
         { "free bridge", "$.bridges.cost" },
         { "builder without build production", "$.units[5].buildProduction" },
         { "build production without an ability", "$.units[2].buildProduction" },
-        { "bridge builder sees less than the work radius", "$.units[1].sight" },
-        { "no work area", "$.cities.workRadius" },
-        { "overlapping work areas", "$.cities.workRadius" },
-        { "city sees less than its work area", "$.cities.sight" },
+        { "unknown terrain yield resource", "$.terrains[0].yields[0].resource" },
+        { "empty river yield", "$.rivers[0].yields[0].amount" },
+        { "unknown city yield resource", "$.cities.yields[0].resource" },
+        { "starting stock too large", "$.cities.startingStock[0].amount" },
+        { "negative initial territory", "$.territory.initialRadius" },
+        { "overlapping new territories", "$.territory.initialRadius" },
+        { "maximum territory below the initial one", "$.territory.maxRadius" },
+        { "territory too large", "$.territory.maxRadius" },
+        { "unknown growth resource", "$.territory.growthResource" },
+        { "free territory", "$.territory.tileCost" },
+        { "negative territory price increase", "$.territory.tileCostIncrease" },
     };
 
     [Fact]
@@ -291,9 +293,15 @@ public class RulesetTests
         ruleset.Unit(TestRulesets.Soldier).CanBuildBridges.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Soldier).BuildProduction.ShouldBe(1);
         ruleset.Unit(TestRulesets.Archer).BuildProduction.ShouldBe(0);
-        ruleset.Cities.WorkRadius.ShouldBe(1);
+        ruleset.Territory.InitialRadius.ShouldBe(1);
+        ruleset.Territory.MaxRadius.ShouldBe(3);
+        ruleset.Territory.GrowthResource.ShouldBe(TestRulesets.Culture);
+        ruleset.Territory.NextTileCost(0).ShouldBe(4);
+        ruleset.Territory.NextTileCost(3).ShouldBe(10);
+        ruleset.Cities.Yields.ShouldBe([new ResourceAmount(TestRulesets.Culture, 1)]);
+        ruleset.Cities.StartingStock.Select(static amount => amount.Resource).ShouldBe([TestRulesets.Food, TestRulesets.Water, TestRulesets.Wood, TestRulesets.Stone]);
         ruleset.Bridges.Cost.ShouldBe(6);
-        ruleset.Resources.Select(static resource => resource.Id.Id).ShouldBe(["food", "wood", "stone", "gold", "science", "culture"]);
+        ruleset.Resources.Select(static resource => resource.Id.Id).ShouldBe(["food", "water", "wood", "stone", "gold", "science", "culture"]);
         ruleset.Improvements.Select(static improvement => improvement.Id).ShouldBe([TestRulesets.Farm, TestRulesets.LumberCamp, TestRulesets.Mine]);
         ruleset.Improvement(TestRulesets.Mine).Terrains.ShouldBe([TestRulesets.Hills]);
         ruleset.Improvement(TestRulesets.Farm).Yields.ShouldHaveSingleItem().ShouldBe(new ResourceAmount(TestRulesets.Food, 2));
@@ -305,13 +313,14 @@ public class RulesetTests
         ruleset.Unit(TestRulesets.Settler).CanAttack.ShouldBeFalse();
         ruleset.Unit(TestRulesets.Soldier).CanAttack.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Soldier).ProductionCost.ShouldBe(4);
-        ruleset.Terrain(TestRulesets.Plains).ShouldBe(new TerrainDefinition(TestRulesets.Plains, 1, true, 0, 0));
-        ruleset.Terrain(TestRulesets.Forest).ShouldBe(new TerrainDefinition(TestRulesets.Forest, 2, true, 0, 3));
-        ruleset.Terrain(TestRulesets.Hills).ShouldBe(new TerrainDefinition(TestRulesets.Hills, 2, true, 1, 3));
+        ShouldBeTerrain(ruleset.Terrain(TestRulesets.Plains), 1, true, 0, 0, [new(TestRulesets.Food, 2), new(TestRulesets.Water, 1)]);
+        ShouldBeTerrain(ruleset.Terrain(TestRulesets.Forest), 2, true, 0, 3, [new(TestRulesets.Food, 1), new(TestRulesets.Water, 1), new(TestRulesets.Wood, 2)]);
+        ShouldBeTerrain(ruleset.Terrain(TestRulesets.Hills), 2, true, 1, 3, [new(TestRulesets.Food, 1), new(TestRulesets.Stone, 2)]);
+        ShouldBeTerrain(ruleset.Terrain(TestRulesets.Desert), 1, true, 0, 0, []);
         ruleset.Terrain(TestRulesets.Mountains).IsPassable.ShouldBeFalse();
         ruleset.Terrain(TestRulesets.Lake).IsPassable.ShouldBeFalse();
         ruleset.Map.Generation.Patches.Select(static patch => patch.Terrain)
-            .ShouldBe([TestRulesets.Forest, TestRulesets.Hills, TestRulesets.Mountains, TestRulesets.Lake]);
+            .ShouldBe([TestRulesets.Forest, TestRulesets.Hills, TestRulesets.Mountains, TestRulesets.Lake, TestRulesets.Desert]);
         ruleset.Map.DefaultWidth.ShouldBe(20);
         ruleset.Map.DefaultHeight.ShouldBe(14);
         ruleset.Cities.MinimumSpacing.ShouldBe(3);
@@ -324,11 +333,24 @@ public class RulesetTests
         ruleset.Combat.Counters.Length.ShouldBe(3);
         ruleset.ClassName("anti_cavalry").ShouldBe("Anti-cavalry");
         ruleset.Rivers.Select(static river => river.Id).ShouldBe([TestRulesets.Stream, TestRulesets.River, TestRulesets.DeepRiver]);
-        ruleset.River(TestRulesets.Stream).ShouldBe(new RiverDefinition(TestRulesets.Stream, 0, true, 0));
-        ruleset.River(TestRulesets.River).ShouldBe(new RiverDefinition(TestRulesets.River, 1, true, 3));
-        ruleset.River(TestRulesets.DeepRiver).ShouldBe(new RiverDefinition(TestRulesets.DeepRiver, 0, false, 5));
+        ShouldBeRiver(ruleset.River(TestRulesets.Stream), 0, true, 0);
+        ShouldBeRiver(ruleset.River(TestRulesets.River), 1, true, 3);
+        ShouldBeRiver(ruleset.River(TestRulesets.DeepRiver), 0, false, 5);
         ruleset.Map.Generation.Rivers.Stages.Select(static stage => stage.River).ShouldBe([TestRulesets.Stream, TestRulesets.River, TestRulesets.DeepRiver]);
         ruleset.Hash.ShouldBe(Ruleset.ComputeHash(TestRulesets.DefaultJson));
+    }
+
+    private static void ShouldBeTerrain(TerrainDefinition terrain, int movementCost, bool isPassable, int sightBonus, int defenceBonus, ResourceAmount[] yields)
+    {
+        (terrain.MovementCost, terrain.IsPassable, terrain.SightBonus, terrain.DefenceBonus).ShouldBe((movementCost, isPassable, sightBonus, defenceBonus));
+        terrain.Yields.ShouldBe(yields);
+    }
+
+    // Every river gives 1 water to the tiles beside it.
+    private static void ShouldBeRiver(RiverDefinition river, int crossingCost, bool isCrossable, int defenceBonus)
+    {
+        (river.CrossingCost, river.IsCrossable, river.DefenceBonus).ShouldBe((crossingCost, isCrossable, defenceBonus));
+        river.Yields.ShouldBe([new ResourceAmount(TestRulesets.Water, 1)]);
     }
 
     [Theory]
@@ -411,7 +433,7 @@ public class RulesetTests
         ruleset.FindUnit(new UnitType("knight")).ShouldBeNull();
         ruleset.FindUnit(default).ShouldBeNull();
         Should.Throw<ArgumentException>(() => ruleset.Unit(new UnitType("knight")));
-        Should.Throw<ArgumentException>(() => ruleset.Terrain(new TerrainType("desert")));
+        Should.Throw<ArgumentException>(() => ruleset.Terrain(new TerrainType("tundra")));
         Should.Throw<ArgumentException>(() => ruleset.River(new RiverType("canal")));
         Should.Throw<ArgumentException>(() => ruleset.Text("unit.knight.name"));
         ruleset.FindImprovement(new ImprovementType("plantation")).ShouldBeNull();

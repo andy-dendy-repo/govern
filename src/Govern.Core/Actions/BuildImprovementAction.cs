@@ -9,7 +9,7 @@ using Govern.Core.Units;
 namespace Govern.Core.Actions;
 
 /// <summary>
-/// Starts building an improvement on the unit's tile, which must be in a work area of one of the actor's cities.
+/// Starts building an improvement on the unit's tile, which must be in the territory of one of the actor's cities (not a city tile).
 /// </summary>
 /// <param name="UnitId">The actor's builder.</param>
 /// <param name="Improvement">The improvement: an improvement id of the game's ruleset.</param>
@@ -17,7 +17,7 @@ public sealed record BuildImprovementCommand(UnitId UnitId, ImprovementType Impr
 
 /// <summary>
 /// Gives a builder the job of building an improvement on its tile (see <see cref="UnitJob"/>). The tile must be in one of the
-/// actor's cities' work areas, have a terrain the improvement allows and no improvement yet. Starting uses the unit's remaining
+/// actor's cities' territory (off the city tiles), have a terrain the improvement allows and no improvement yet. Starting uses the unit's remaining
 /// movement and replaces any job it had.
 /// </summary>
 internal static class BuildImprovementRule
@@ -63,9 +63,9 @@ internal static class BuildImprovementRule
     // Whether the improvement may stand on the site; also checked again each turn while the job lasts.
     public static RuleViolation? CheckPlacement(ImprovementDefinition improvement, ImprovementSite site)
     {
-        if (!site.InOwnWorkArea)
+        if (!site.InOwnTerritory)
         {
-            return RuleViolations.NotInWorkArea;
+            return RuleViolations.NotInTerritory;
         }
 
         if (site.Existing is not null)
@@ -79,7 +79,9 @@ internal static class BuildImprovementRule
     public static ImprovementSite SiteOf(Ruleset ruleset, GameState state, Unit unit)
     {
         var tile = state.Map.TileAt(unit.Position);
-        var inWorkArea = state.Cities.Any(city => city.Owner == unit.Owner && WorkArea.Contains(ruleset, city.Position, unit.Position));
-        return new ImprovementSite(tile.Terrain, tile.Improvement, inWorkArea);
+        var inTerritory = tile.Territory is { } territory
+            && state.FindCity(territory)?.Owner == unit.Owner
+            && state.CityAt(unit.Position) is null;
+        return new ImprovementSite(tile.Terrain, tile.Improvement, inTerritory);
     }
 }
