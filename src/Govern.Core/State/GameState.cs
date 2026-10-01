@@ -16,9 +16,10 @@ public sealed record GameState
 {
     /// <summary>
     /// Version of this shape; bump it (and migrate stored games in <c>GameSerializer.DeserializeState</c>) on breaking changes.
-    /// Version 2 removed the shared id counter: ids are drawn from <see cref="RngState"/>.
+    /// Version 2 removed the shared id counter: ids are drawn from <see cref="RngState"/>. Version 3 moved resources from the
+    /// players to their cities and gave cities territory (<see cref="Map.Tile.Territory"/>).
     /// </summary>
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     /// <summary>Schema version the snapshot was written with.</summary>
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;

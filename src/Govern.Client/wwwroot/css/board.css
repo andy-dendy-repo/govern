@@ -73,6 +73,11 @@
     --gv-terrain-explored: var(--gv-terrain-lake-explored);
 }
 
+.terrain-desert {
+    --gv-terrain: var(--gv-terrain-desert);
+    --gv-terrain-explored: var(--gv-terrain-desert-explored);
+}
+
 /* The drawing inside a terrain symbol (Components/Game/GameSprite). */
 .terrain-mark {
     fill: none;
@@ -145,11 +150,21 @@
 
 .board .layer-rivers,
 .board .layer-improvements,
+.board .layer-borders,
 .board .layer-lens,
 .board .layer-highlights,
 .board .layer-cities,
 .board .layer-units {
     pointer-events: none;
+}
+
+/* Territory borders (Components/Board/BoardBorders): a line in the owner's seat colour (the seat-N class sets currentColor),
+   dashed so a border never reads as a river. */
+.border {
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-dasharray: 5 3;
+    stroke-linecap: round;
 }
 
 /* The active map lens (Components/Board/BoardLens): a tint per value and a label. */
@@ -163,6 +178,18 @@
 
 .board .lens-mark.blocked {
     fill: var(--gv-lens-blocked);
+}
+
+.board .lens-mark.rich {
+    fill: var(--gv-lens-rich);
+}
+
+.board .lens-mark.poor {
+    fill: var(--gv-lens-poor);
+}
+
+.board .lens-mark.barren {
+    fill: var(--gv-lens-barren);
 }
 
 /* A lens badge on a tile edge (a river crossing): a small disc with the label. */

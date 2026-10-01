@@ -187,6 +187,21 @@ public static class GameEngine
         return ViewPreviewCalculator.CheckProduceBuilding(ruleset, view, cityId, building);
     }
 
+    /// <summary>
+    /// What one of the viewer's cities will add to its stock at the end of their turn: the yields of its territory's tiles, its own
+    /// yields and its buildings' yields. The same sum the end of turn adds, from the view alone.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="cityId">One of the viewer's cities.</param>
+    /// <returns>The income in the ruleset's order, or empty when the city is not the viewer's.</returns>
+    public static ImmutableArray<ResourceAmount> CityIncome(Ruleset ruleset, PlayerView view, CityId cityId)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return ViewPreviewCalculator.CityIncome(ruleset, view, cityId);
+    }
+
     /// <summary>What one participant may see of the game (fog of war applied).</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="state">Current state.</param>

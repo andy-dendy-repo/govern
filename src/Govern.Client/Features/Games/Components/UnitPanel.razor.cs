@@ -63,7 +63,7 @@ public partial class UnitPanel
         {
             var perTurn = Ruleset.Unit(Unit.Type).BuildProduction;
             return JobFundingResolver.FeedingCities(Ruleset, View).TryGetValue(Unit.Id, out var city)
-                ? perTurn + WorkArea.ProductionPerTurn(Ruleset, city.BuildingList)
+                ? perTurn + CityProduction.PerTurn(Ruleset, city.BuildingList)
                 : perTurn;
         }
     }

@@ -38,7 +38,8 @@ public class RulesReferenceTests
                 terrain.IsPassable ? $"{terrain.MovementCost}" : "—",
                 YesNo(terrain.IsPassable),
                 terrain.SightBonus == 0 ? "—" : $"+{terrain.SightBonus}",
-                terrain.DefenceBonus == 0 ? "—" : $"+{terrain.DefenceBonus}"))
+                terrain.DefenceBonus == 0 ? "—" : $"+{terrain.DefenceBonus}",
+                Yields(terrain.Yields)))
             .ToList();
 
         Table("Terrain types").ShouldBe(expected, ignoreOrder: true, Because);
@@ -51,7 +52,8 @@ public class RulesReferenceTests
             .Select(static river => Row(
                 Ruleset.RiverName(river.Id),
                 !river.IsCrossable ? "Can't cross" : river.CrossingCost == 0 ? "Free" : $"+{river.CrossingCost}",
-                river.DefenceBonus == 0 ? "—" : $"+{river.DefenceBonus}"))
+                river.DefenceBonus == 0 ? "—" : $"+{river.DefenceBonus}",
+                Yields(river.Yields)))
             .ToList();
 
         Table("Rivers").ShouldBe(expected, ignoreOrder: true, Because);
@@ -132,7 +134,10 @@ public class RulesReferenceTests
             Row("City sight", Ruleset.Cities.Sight),
             Row("Minimum distance between cities", Ruleset.Cities.MinimumSpacing),
             Row("Production per turn", Ruleset.Cities.ProductionPerTurn),
-            Row("Work area radius", Ruleset.Cities.WorkRadius),
+            Row("Territory of a new city (radius)", Ruleset.Territory.InitialRadius),
+            Row("Largest territory (radius)", Ruleset.Territory.MaxRadius),
+            Row("Price of the first new tile", $"{Ruleset.Territory.TileCost} {Ruleset.ResourceName(Ruleset.Territory.GrowthResource).ToLowerInvariant()}"),
+            Row("Price increase per tile gained", Ruleset.Territory.TileCostIncrease),
             Row("Bridge cost", Ruleset.Bridges.Cost),
             Row("First unit a new city produces", Ruleset.UnitName(Ruleset.Cities.InitialProduction)),
             Row("Capturing a city resets its production", YesNo(Ruleset.Cities.CaptureResetsProduction)),

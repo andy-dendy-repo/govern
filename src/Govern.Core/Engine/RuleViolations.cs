@@ -38,6 +38,9 @@ public static class RuleViolations
     /// <summary>Another city is closer than the minimum spacing.</summary>
     public static readonly RuleViolation CityTooClose = new("city.too_close", "Another city is too close.");
 
+    /// <summary>The settler's tile is in a city's territory.</summary>
+    public static readonly RuleViolation CityInTerritory = new("city.in_territory", "This tile already belongs to a city.");
+
     /// <summary>The actor has no city with that id (it does not exist or belongs to someone else; the two are not distinguished).</summary>
     public static readonly RuleViolation CityNotFound = new("city.not_found", "You have no such city.");
 
@@ -71,8 +74,8 @@ public static class RuleViolations
     /// <summary>The improvement is not defined.</summary>
     public static readonly RuleViolation UnknownImprovement = new("build.unknown_improvement", "That improvement does not exist.");
 
-    /// <summary>The unit's tile is not in a work area of one of the actor's cities.</summary>
-    public static readonly RuleViolation NotInWorkArea = new("build.not_in_work_area", "Improvements can only be built in your cities' work areas.");
+    /// <summary>The unit's tile is not in the territory of one of the actor's cities, or is a city's tile.</summary>
+    public static readonly RuleViolation NotInTerritory = new("build.not_in_territory", "Improvements can only be built in your cities' territory, off the city tiles.");
 
     /// <summary>The improvement can't be built on the tile's terrain.</summary>
     public static readonly RuleViolation WrongTerrain = new("build.wrong_terrain", "That improvement can't be built on this terrain.");
@@ -92,8 +95,8 @@ public static class RuleViolations
     /// <summary>Units could not enter the far side of the river, so a bridge leads nowhere.</summary>
     public static readonly RuleViolation BridgeLeadsNowhere = new("bridge.impassable", "The other side of the river can't be entered.");
 
-    /// <summary>One of the bridge's ends is an enemy city's tile or in its work area.</summary>
-    public static readonly RuleViolation EnemyWorkArea = new("bridge.enemy_work_area", "You can't build a bridge in an enemy city's work area.");
+    /// <summary>One of the bridge's ends is in an enemy city's territory.</summary>
+    public static readonly RuleViolation EnemyTerritory = new("bridge.enemy_territory", "You can't build a bridge in an enemy city's territory.");
 
     /// <summary>The building is not defined.</summary>
     public static readonly RuleViolation UnknownBuilding = new("city.unknown_building", "That building does not exist.");

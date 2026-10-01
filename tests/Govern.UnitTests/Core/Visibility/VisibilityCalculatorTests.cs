@@ -164,13 +164,9 @@ public class VisibilityCalculatorTests
         var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((4, 4), (5, 4)));
         var own = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4, job: UnitJob.ForBridge(At(5, 4), 1));
         var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 5, 4, job: UnitJob.ForBridge(At(4, 4), 1));
-        var ownCity = builder.AddCity(P1, 3, 3, buildings: [TestRulesets.Campus]);
-        var enemyCity = builder.AddCity(P2, 6, 4, producingBuilding: TestRulesets.Harbour, buildings: [TestRulesets.TradePost]);
+        var ownCity = builder.AddCity(P1, 3, 3, stock: [new(TestRulesets.Food, 3)], tilesGained: 1, buildings: [TestRulesets.Campus]);
+        var enemyCity = builder.AddCity(P2, 6, 4, producingBuilding: TestRulesets.Harbour, stock: [new(TestRulesets.Gold, 9)], tilesGained: 2, buildings: [TestRulesets.TradePost]);
         var state = builder.Build();
-        state = state with
-        {
-            Players = [state.Players[0] with { Resources = [new(TestRulesets.Food, 3)] }, state.Players[1] with { Resources = [new(TestRulesets.Gold, 9)] }],
-        };
 
         var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
 
@@ -180,7 +176,32 @@ public class VisibilityCalculatorTests
         var seen = view.Cities.Single(city => city.Id == enemyCity);
         seen.Buildings.ShouldBeNull();
         seen.ProducingBuilding.ShouldBeNull();
-        view.Resources.ShouldBe([new(TestRulesets.Food, 3)]);
+        seen.Stock.ShouldBeNull();
+        seen.TilesGained.ShouldBe(0);
+        var mine = view.Cities.Single(city => city.Id == ownCity);
+        mine.StockList.ShouldBe([new(TestRulesets.Food, 3)]);
+        mine.TilesGained.ShouldBe(1);
+    }
+
+    [Fact]
+    public void ViewFor_Territory_OwnIsAlwaysVisibleAndEnemyOnlyOnVisibleTiles()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var own = builder.AddCity(P1, 2, 2);
+        builder.WithTerritory(own, (2, 6));
+        builder.AddCity(P2, 9, 7);
+        builder.AddUnit(P1, TestRulesets.Soldier, 6, 7);
+
+        var view = GameEngine.ViewFor(TestRulesets.Default, builder.Build(), P1);
+
+        var far = view.TileAt(At(2, 6));
+        far.Visibility.ShouldBe(TileVisibility.Visible, "a city sees all of its territory");
+        (far.TerritoryOwner, far.TerritoryCity).ShouldBe((P1, own));
+        var border = view.TileAt(At(8, 7));
+        (border.TerritoryOwner, border.TerritoryCity).ShouldBe((P2, (Govern.Core.Cities.CityId?)null), "the enemy's city is not named");
+        var hidden = view.TileAt(At(10, 7));
+        hidden.Visibility.ShouldNotBe(TileVisibility.Visible);
+        hidden.TerritoryOwner.ShouldBeNull();
     }
 
     [Fact]

@@ -189,6 +189,7 @@ public class MoveUnitActionTests
             json["units"]![1]!["movement"] = 4;
             json["units"]![1]!["sight"] = 2;
             json["terrains"]![0]!["movementCost"] = 2;
+            json["terrains"]![5]!["movementCost"] = 2;
         });
         var builder = new GameStateBuilder().WithCapitals();
         var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2, movementLeft: 4);

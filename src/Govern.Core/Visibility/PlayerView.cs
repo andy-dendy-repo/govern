@@ -1,4 +1,3 @@
-using Govern.Core.Economy;
 using System.Collections.Immutable;
 using Govern.Core.Map;
 using Govern.Core.State;
@@ -33,7 +32,6 @@ namespace Govern.Core.Visibility;
 /// The viewer's cities and the enemy cities on visible tiles, ordered by id; enemy production is hidden (<see cref="CityView"/>).
 /// </param>
 /// <param name="Players">Participants in turn order.</param>
-/// <param name="Resources">The viewer's own stockpile, in the ruleset's order (the opponent's is never shown).</param>
 public sealed record PlayerView(
     PlayerId Viewer,
     long Version,
@@ -46,8 +44,7 @@ public sealed record PlayerView(
     ImmutableArray<TileView> Tiles,
     ImmutableArray<UnitView> Units,
     ImmutableArray<CityView> Cities,
-    ImmutableArray<PlayerSummary> Players,
-    ImmutableArray<ResourceAmount> Resources)
+    ImmutableArray<PlayerSummary> Players)
 {
     /// <summary>The position of the tile at an index of <see cref="Tiles"/>.</summary>
     /// <param name="index">A tile index, 0 to <c>Width * Height - 1</c>.</param>
@@ -105,6 +102,12 @@ public sealed record PlayerView(
     /// <param name="b">The neighbouring tile.</param>
     /// <returns>The river crossed, or <see langword="null"/>.</returns>
     public RiverType? CrossedRiverBetween(HexCoord a, HexCoord b) => BridgeBetween(a, b) ? null : RiverBetween(a, b);
+
+    /// <summary>The rivers on the six edges of a tile, bridged or not, each edge at most once.</summary>
+    /// <param name="coord">The tile.</param>
+    /// <returns>The river of every edge that has one.</returns>
+    public IEnumerable<RiverType> RiversAround(HexCoord coord) =>
+        coord.Neighbors().Select(neighbor => RiverBetween(coord, neighbor)).OfType<RiverType>();
 
     /// <summary>Returns the unit on a tile, if the viewer sees one there.</summary>
     /// <param name="coord">The tile.</param>

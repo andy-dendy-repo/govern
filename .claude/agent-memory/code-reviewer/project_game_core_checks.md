@@ -67,3 +67,8 @@ Checks worth repeating:
 - Docs drift on edge objects: bridges are stored on one owner tile, so "seen while both banks are visible" claims are wrong (only the owner tile matters).
 - Heal-gating keyed on hidden state (job) widens the accepted heal leak; the docs' "known leak" sentence must be kept in sync.
 - Validator gaps to ask about on new radius-like fields: is the owner guaranteed to see what the field covers (cities.sight vs workRadius)?
+
+G5/G7/G8a PR 1 review (2026-10-01, claude/project-thread-qjb1fk: territory, per-city stock, schema 3). Found:
+- **Edge-stored data on an unexplored neighbour:** rivers live on one tile of each edge (`HexEdge.Between`), and an unexplored TileView has no Rivers. Own territory (maxRadius 3) reaches past city sight (2), so a border tile's W/SW/SE river edge can be stored on an unexplored tile: `GameEngine.CityIncome` undercounted water vs EndTurn (verified with a scratch test: 50 vs 55). Any preview summing per-tile data from the view must check "who stores the edge, and is that tile always known?".
+- Border growth on visible tiles exposes an enemy city's growth-resource income (culture buildings that CityView hides).
+Verified OK, don't re-derive: territory rules read only the unit's tile and neighbours (always visible since sight >= 1); NextTile is fully ordered (no HashSet order leak); FoundCity/BuildImprovement/Bridge previews match Execute; client `ApiJson` is not strict, so dropping a PlayerView ctor param doesn't break an old cached client.
