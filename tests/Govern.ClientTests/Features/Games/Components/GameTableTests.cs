@@ -337,15 +337,128 @@ public class GameTableTests : ClientTestContext
     }
 
     [Fact]
-    public void Render_EnemyUnitSelected_ShowsNoStatsAndNoActionBar()
+    public void Render_EnemyUnitSelected_ShowsItsHealthAndStrengthButNoMovementOrActionBar()
     {
-        var cut = RenderTable(TestGames.Started());
+        var cut = RenderTable(TestGames.Started(view: Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(5, 2), health: 70)])));
 
         Tile(cut, At(5, 2)).Click();
 
         cut.FindAll(".unit-panel").Count.ShouldBe(1);
         cut.Find(".unit-panel use").GetAttribute("href").ShouldBe("#unit-soldier");
-        cut.FindAll(".unit-panel .stat-table, .action-bar").ShouldBeEmpty();
+        cut.Find(".unit-panel .health-text").TextContent.ShouldBe("70 of 100");
+        cut.Find(".unit-panel .strength .stat-value .number").TextContent.ShouldBe("20");
+        cut.FindAll(".unit-panel .movement, .unit-panel .cost, .action-bar").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_OwnArcherSelected_ShowsItsRangedStrengthAndRange()
+    {
+        var cut = RenderTable(TestGames.Started(view: Create([Unit(2, You, ArcherType, At(3, 2))])));
+
+        Tile(cut, At(3, 2)).Click();
+
+        cut.Find(".unit-panel .ranged .stat-value .number").TextContent.ShouldBe("22, range 2");
+        cut.Find(".unit-panel .strength .stat-value .number").TextContent.ShouldBe("10");
+    }
+
+    [Fact]
+    public void Render_OwnSettlerSelected_ShowsItCantFight()
+    {
+        var cut = RenderTable(TestGames.Started());
+
+        Tile(cut, At(2, 2)).Click();
+
+        cut.Find(".unit-panel .strength .stat-value").TextContent.ShouldContain("—");
+        cut.Find(".unit-panel .strength .number-tooltip").GetAttribute("title")!.ShouldContain("can't fight");
+    }
+
+    [Fact]
+    public void Render_HurtUnit_ShowsAHealthBarOnTheBoard()
+    {
+        var cut = RenderTable(TestGames.Started(view: Create([Soldier(2, You, At(3, 2), health: 25), Soldier(3, Opponent, At(5, 2))])));
+
+        var fill = cut.Find("g.health rect.health-fill");
+        fill.GetAttribute("width").ShouldBe("6");
+        fill.ClassList.ShouldContain("low");
+        cut.FindAll("g.health").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Attack_ClickEnemy_ShowsTheForecastAndMarksTheTarget()
+    {
+        var cut = RenderTable(TestGames.Started(view: AdjacentSoldiers()));
+        Tile(cut, At(3, 2)).Click();
+
+        Tile(cut, At(4, 2)).Click();
+
+        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
+        cut.Find(".combat-forecast .combat-title").TextContent.ShouldContain("Attack the enemy Soldier?");
+        cut.Find(".combat-attacker .combat-outcome").TextContent.ShouldBe("Takes 24–36 damage.");
+        cut.Find(".combat-defender .combat-outcome").TextContent.ShouldBe("Takes 24–36 damage.");
+        cut.Find(".combat-defender .combat-strength .number").TextContent.ShouldBe("20");
+        cut.FindAll("use.overlay.target").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Attack_ForecastAttackButton_SendsTheAttack()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started(view: AdjacentSoldiers())));
+        var cut = RenderTable(TestGames.Started(view: AdjacentSoldiers()));
+        Tile(cut, At(3, 2)).Click();
+        Tile(cut, At(4, 2)).Click();
+
+        cut.Find("button.combat-attack").Click();
+
+        cut.WaitForAssertion(() => _changed.Count.ShouldBe(1));
+        Command(0)["command"]!["type"]!.GetValue<string>().ShouldBe("attack");
+    }
+
+    [Fact]
+    public void Attack_SecondClickOnTheTarget_KeepsTheForecastAndSendsNothing()
+    {
+        var cut = RenderTable(TestGames.Started(view: AdjacentSoldiers()));
+        Tile(cut, At(3, 2)).Click();
+        Tile(cut, At(4, 2)).Click();
+
+        Tile(cut, At(4, 2)).Click();
+
+        cut.FindAll(".combat-forecast").Count.ShouldBe(1);
+        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Attack_CancelOrEscape_ClosesTheForecastAndKeepsTheUnit()
+    {
+        var cut = RenderTable(TestGames.Started(view: AdjacentSoldiers()));
+        Tile(cut, At(3, 2)).Click();
+        Tile(cut, At(4, 2)).Click();
+
+        cut.Find("button.combat-cancel").Click();
+
+        cut.FindAll(".combat-forecast").ShouldBeEmpty();
+        cut.FindAll(".unit-panel").Count.ShouldBe(1);
+
+        Tile(cut, At(4, 2)).Click();
+        cut.Find(".game-screen").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        cut.FindAll(".combat-forecast").ShouldBeEmpty();
+        cut.FindAll(".unit-panel").Count.ShouldBe(1);
+        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Attack_ArcherForecast_SaysTheEnemyCantHitBack()
+    {
+        var cut = RenderTable(TestGames.Started(view: Create([Unit(2, You, ArcherType, At(3, 2)), Unit(3, Opponent, HorsemanType, At(5, 2), health: 40)])));
+        Tile(cut, At(3, 2)).Click();
+
+        Tile(cut, At(5, 2)).Click();
+
+        cut.Find(".combat-title").TextContent.ShouldContain("Shoot at the enemy Horseman?");
+        cut.Find(".combat-attacker .combat-outcome").TextContent.ShouldBe("Takes no damage.");
+        cut.Find(".combat-defender .health-text").TextContent.ShouldBe("40 of 100");
+        cut.Find(".combat-defender .combat-strength .number-tooltip").GetAttribute("title").ShouldBe("20 base, -6 for being hurt, +5 against Ranged = 19.");
+        cut.FindAll(".combat-note").Count.ShouldBe(1);
     }
 
     [Fact]
@@ -411,6 +524,8 @@ public class GameTableTests : ClientTestContext
         cut.FindAll("g[data-layer=lens]").ShouldBeEmpty();
         cut.Find(".lens-toolbar button[data-lens=movement-cost]").GetAttribute("aria-pressed").ShouldBe("false");
     }
+
+    private static PlayerView AdjacentSoldiers() => Create([Settler(1, You, At(1, 1)), Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
 
     private IRenderedComponent<GameTable> RenderTable(GetGameResponse game) =>
         Render<GameTable>(parameters => parameters

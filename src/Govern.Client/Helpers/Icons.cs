@@ -21,6 +21,12 @@ public static class Icons
     /// <summary>Production.</summary>
     public const string Production = "ui-production";
 
+    /// <summary>Health.</summary>
+    public const string Health = "ui-health";
+
+    /// <summary>Combat strength.</summary>
+    public const string Strength = "ui-strength";
+
     /// <summary>Turns (time left).</summary>
     public const string Turns = "ui-turns";
 

@@ -7,7 +7,8 @@ namespace Govern.ArchitectureTests;
 
 /// <summary>
 /// The player-facing rules reference (<c>docs/game/rules.md</c>) documents the ruleset the game is played with: every terrain
-/// and unit has one row with the ruleset's numbers, and the "Game numbers" table matches the setup, map and city sections.
+/// and unit has one row with the ruleset's numbers, every class counter has one row, and the "Game numbers" table matches the
+/// setup, map, city and combat sections.
 /// </summary>
 public class RulesReferenceTests
 {
@@ -22,6 +23,7 @@ public class RulesReferenceTests
     {
         [UnitAbility.FoundCity] = "Found city",
         [UnitAbility.Attack] = "Attack",
+        [UnitAbility.RangedAttack] = "Ranged attack",
     };
 
     [Fact]
@@ -32,7 +34,8 @@ public class RulesReferenceTests
                 Ruleset.TerrainName(terrain.Id),
                 terrain.IsPassable ? $"{terrain.MovementCost}" : "—",
                 YesNo(terrain.IsPassable),
-                terrain.SightBonus == 0 ? "—" : $"+{terrain.SightBonus}"))
+                terrain.SightBonus == 0 ? "—" : $"+{terrain.SightBonus}",
+                terrain.DefenceBonus == 0 ? "—" : $"+{terrain.DefenceBonus}"))
             .ToList();
 
         Table("Terrain types").ShouldBe(expected, ignoreOrder: true, Because);
@@ -47,6 +50,9 @@ public class RulesReferenceTests
         var expected = Ruleset.Units
             .Select(static unit => Row(
                 Ruleset.UnitName(unit.Id),
+                Ruleset.ClassName(unit.Class),
+                unit.Strength?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—",
+                unit.Ranged is { } ranged ? $"{ranged.Strength} (range {ranged.Range})" : "—",
                 unit.Movement,
                 unit.Sight,
                 unit.ProductionCost,
@@ -54,6 +60,16 @@ public class RulesReferenceTests
             .ToList();
 
         Table("Unit types").ShouldBe(expected, ignoreOrder: true, Because);
+    }
+
+    [Fact]
+    public void CountersTable_MatchesTheRuleset()
+    {
+        var expected = Ruleset.Combat.Counters
+            .Select(static counter => Row(Ruleset.ClassName(counter.Class), Ruleset.ClassName(counter.Against), $"+{counter.Bonus}"))
+            .ToList();
+
+        Table("Class counters").ShouldBe(expected, ignoreOrder: true, Because);
     }
 
     [Fact]
@@ -70,6 +86,14 @@ public class RulesReferenceTests
             Row("Production per turn", Ruleset.Cities.ProductionPerTurn),
             Row("First unit a new city produces", Ruleset.UnitName(Ruleset.Cities.InitialProduction)),
             Row("Capturing a city resets its production", YesNo(Ruleset.Cities.CaptureResetsProduction)),
+            Row("Full health", Ruleset.Combat.MaxHealth),
+            Row("Damage between equal units", Ruleset.Combat.Damage.Base),
+            Row("Extra damage per point of strength difference", Ruleset.Combat.Damage.PerStrengthPoint),
+            Row("Least damage", Ruleset.Combat.Damage.Min),
+            Row("Most damage", Ruleset.Combat.Damage.Max),
+            Row("Random spread of damage", $"±{Ruleset.Combat.Damage.SpreadPercent}%"),
+            Row("Healing per turn of rest", Ruleset.Combat.Healing.PerTurn),
+            Row("Healing per turn of rest in your city", Ruleset.Combat.Healing.InOwnCity),
         ];
 
         Table("Game numbers").ShouldBe(expected, ignoreOrder: true, Because);

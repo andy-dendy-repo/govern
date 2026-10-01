@@ -95,6 +95,24 @@ public class GameSerializerTests
 
         restored.ShouldBe(events.ToArray());
         json.ShouldContain("\"type\":\"game_won\"");
+        json.ShouldContain("\"type\":\"unit_attacked\"");
+    }
+
+    [Fact]
+    public void DeserializeState_UnitWithoutDamage_ReadsUnhurtAndWritesNoDamageUntilHurt()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var unhurt = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        var hurt = builder.AddUnit(P2, TestRulesets.Soldier, 8, 3, damage: 30);
+
+        var json = GameSerializer.Serialize(builder.Build());
+        var restored = GameSerializer.DeserializeState(json);
+
+        // Games saved before health existed have no damage field; they read as unhurt.
+        var units = JsonDocument.Parse(json).RootElement.GetProperty("units").EnumerateArray().ToList();
+        units.Count(static unit => unit.TryGetProperty("damage", out _)).ShouldBe(1);
+        restored.FindUnit(unhurt)!.Damage.ShouldBe(0);
+        restored.FindUnit(hurt)!.Damage.ShouldBe(30);
     }
 
     [Fact]
@@ -197,7 +215,7 @@ public class GameSerializerTests
         var units = JsonDocument.Parse(json).RootElement.GetProperty("units").EnumerateArray().ToList();
 
         units.Select(static unit => string.Join(',', unit.EnumerateObject().Select(static p => p.Name)))
-            .ShouldAllBe(names => names == "id,owner,type,position,movementLeft");
+            .ShouldAllBe(names => names == "id,owner,type,position,movementLeft,health");
         units.Single(IsOwnedBy(P2)).GetProperty("movementLeft").ValueKind.ShouldBe(JsonValueKind.Null);
         units.Single(IsOwnedBy(P1)).GetProperty("movementLeft").GetInt32().ShouldBe(2);
         GameSerializer.Serialize(GameSerializer.Deserialize<Govern.Core.Visibility.PlayerView>(json)).ShouldBe(json);

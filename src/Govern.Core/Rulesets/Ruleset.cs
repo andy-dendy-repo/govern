@@ -25,6 +25,7 @@ public sealed class Ruleset
         Terrains = document.Terrains;
         Units = document.Units;
         Cities = document.Cities;
+        Combat = document.Combat;
         Texts = document.Texts;
         Hash = hash;
         _units = document.Units.ToFrozenDictionary(static unit => unit.Id);
@@ -45,6 +46,9 @@ public sealed class Ruleset
 
     /// <summary>Cities.</summary>
     public CityRules Cities { get; }
+
+    /// <summary>Health, damage, healing and counters.</summary>
+    public CombatRules Combat { get; }
 
     /// <summary>Every text a player reads, by key (English only for now).</summary>
     public ImmutableDictionary<string, string> Texts { get; }
@@ -113,6 +117,11 @@ public sealed class Ruleset
     /// <param name="type">A terrain of this ruleset.</param>
     /// <returns>The text <c>terrain.{id}.name</c>.</returns>
     public string TerrainName(TerrainType type) => Text($"terrain.{type.Id}.name");
+
+    /// <summary>The display name of a unit class.</summary>
+    /// <param name="unitClass">A class used by a unit of this ruleset (<see cref="UnitDefinition.Class"/>).</param>
+    /// <returns>The text <c>class.{id}.name</c>.</returns>
+    public string ClassName(string unitClass) => Text($"class.{unitClass}.name");
 
     /// <summary>The name of a player's new city.</summary>
     /// <param name="number">The founder's city count including the new one.</param>

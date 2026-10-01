@@ -85,12 +85,35 @@ public static class GameEngine
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The viewer's current view.</param>
     /// <param name="unitId">The unit.</param>
-    /// <returns>Adjacent tiles with an enemy unit or city, ordered by row then column; empty when the unit cannot attack now.</returns>
+    /// <returns>
+    /// Tiles in the unit's range with an enemy unit (or, for melee, an undefended enemy city), ordered by row then column; empty
+    /// when the unit cannot attack now.
+    /// </returns>
     public static ImmutableArray<HexCoord> AttackTargets(Ruleset ruleset, PlayerView view, UnitId unitId)
     {
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(view);
         return ViewPreviewCalculator.AttackTargets(ruleset, view, unitId);
+    }
+
+    /// <summary>
+    /// What an attack by one of the viewer's units on a unit would do, worked out from their view alone (for the client): both
+    /// strengths with their modifiers and the damage range each side takes. <see cref="Execute"/> rolls the damage within these
+    /// ranges.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="unitId">The attacking unit.</param>
+    /// <param name="target">The tile to attack.</param>
+    /// <returns>
+    /// The forecast; <see langword="null"/> when an <see cref="AttackCommand"/> on the tile would be rejected, or when it would
+    /// capture an undefended city rather than fight.
+    /// </returns>
+    public static CombatForecast? CombatForecast(Ruleset ruleset, PlayerView view, UnitId unitId, HexCoord target)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return ViewPreviewCalculator.CombatForecast(ruleset, view, unitId, target);
     }
 
     /// <summary>

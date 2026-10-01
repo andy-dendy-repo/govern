@@ -32,14 +32,48 @@ public class BoardClickResolverTests
     }
 
     [Fact]
-    public void Resolve_SelectedSoldierAndAdjacentEnemy_Attacks()
+    public void Resolve_SelectedSoldierAndAdjacentEnemy_ShowsTheForecastAndNeverAttacksOnAClick()
     {
         var view = Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
+        var selection = BoardSelection.Of(YourSoldier);
+
+        var first = BoardClickResolver.Resolve(Ruleset, view, selection, At(4, 2));
+        var second = BoardClickResolver.Resolve(Ruleset, view, first.Next, At(4, 2));
+
+        first.ShouldBe(new BoardClick(selection with { Target = At(4, 2) }, null));
+        second.ShouldBe(first);
+    }
+
+    [Fact]
+    public void Resolve_SelectedSoldierAndUndefendedEnemyCity_CapturesAtOnce()
+    {
+        var view = Create([Soldier(2, You, At(3, 2))], [City(8, Opponent, At(4, 2))]);
         var selection = BoardSelection.Of(YourSoldier);
 
         var click = BoardClickResolver.Resolve(Ruleset, view, selection, At(4, 2));
 
         click.ShouldBe(new BoardClick(selection, new AttackCommand(YourSoldier, At(4, 2))));
+    }
+
+    [Fact]
+    public void Resolve_PendingTargetThenMove_MovesAndDropsTheTarget()
+    {
+        var view = Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
+        var selection = BoardSelection.Of(YourSoldier) with { Target = At(4, 2) };
+
+        var click = BoardClickResolver.Resolve(Ruleset, view, selection, At(2, 2));
+
+        click.ShouldBe(new BoardClick(BoardSelection.Of(YourSoldier), new MoveUnitCommand(YourSoldier, At(2, 2))));
+    }
+
+    [Fact]
+    public void Resolve_ArcherAndEnemyTwoTilesAway_ShowsTheForecast()
+    {
+        var view = Create([Unit(2, You, ArcherType, At(3, 2)), Soldier(3, Opponent, At(5, 2))]);
+
+        var click = BoardClickResolver.Resolve(Ruleset, view, BoardSelection.Of(YourSoldier), At(5, 2));
+
+        click.ShouldBe(new BoardClick(BoardSelection.Of(YourSoldier) with { Target = At(5, 2) }, null));
     }
 
     [Fact]
@@ -89,7 +123,27 @@ public class BoardClickResolverTests
     [Fact]
     public void Prune_UnitStillInView_KeepsIt()
     {
-        BoardClickResolver.Prune(Start(), BoardSelection.Of(YourSoldier)).ShouldBe(BoardSelection.Of(YourSoldier));
+        BoardClickResolver.Prune(Ruleset, Start(), BoardSelection.Of(YourSoldier)).ShouldBe(BoardSelection.Of(YourSoldier));
+    }
+
+    [Fact]
+    public void Prune_TargetStillInReach_KeepsIt()
+    {
+        var view = Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
+        var selection = BoardSelection.Of(YourSoldier) with { Target = At(4, 2) };
+
+        BoardClickResolver.Prune(Ruleset, view, selection).ShouldBe(selection);
+    }
+
+    [Fact]
+    public void Prune_AttackerSpentOrTargetGone_DropsOnlyTheTarget()
+    {
+        var spent = Create([Soldier(2, You, At(3, 2), movementLeft: 0), Soldier(3, Opponent, At(4, 2))]);
+        var gone = Create([Soldier(2, You, At(3, 2))]);
+        var selection = BoardSelection.Of(YourSoldier) with { Target = At(4, 2) };
+
+        BoardClickResolver.Prune(Ruleset, spent, selection).ShouldBe(BoardSelection.Of(YourSoldier));
+        BoardClickResolver.Prune(Ruleset, gone, selection).ShouldBe(BoardSelection.Of(YourSoldier));
     }
 
     [Fact]
@@ -97,8 +151,8 @@ public class BoardClickResolverTests
     {
         var view = Create([Settler(1, You, At(2, 2))]);
 
-        BoardClickResolver.Prune(view, BoardSelection.Of(YourSoldier)).ShouldBe(BoardSelection.None);
-        BoardClickResolver.Prune(view, BoardSelection.Of(new CityId(7))).ShouldBe(BoardSelection.None);
+        BoardClickResolver.Prune(Ruleset, view, BoardSelection.Of(YourSoldier)).ShouldBe(BoardSelection.None);
+        BoardClickResolver.Prune(Ruleset, view, BoardSelection.Of(new CityId(7))).ShouldBe(BoardSelection.None);
     }
 
     [Fact]
