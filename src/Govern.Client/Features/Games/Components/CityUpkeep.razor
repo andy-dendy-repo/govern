@@ -1,0 +1,28 @@
+@* The upkeep part of the player's own city panel: what the city pays a turn for its buildings and the units on its territory,
+   what it can't pay (and what that costs), and the switch for which it pays first. *@
+@using Govern.Core.Cities
+
+<RadzenStack Gap="0.25rem" class="city-upkeep">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap" class="upkeep-due">
+        <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="rz-m-0">@(Due.IsEmpty ? "No upkeep" : "Upkeep a turn")</RadzenText>
+        <ResourceCostLabels Ruleset="@Ruleset" Amounts="@Due"/>
+    </RadzenStack>
+    @if (ShortageText is { } shortage)
+    {
+        <RadzenText TextStyle="TextStyle.Caption" class="upkeep-shortage rz-m-0">@shortage</RadzenText>
+    }
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap" role="group" aria-label="Pay first">
+        <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="rz-m-0">Pay first</RadzenText>
+        @foreach (var (priority, label) in Priorities)
+        {
+            var active = City.UpkeepPriority == priority;
+            <RadzenButton Size="ButtonSize.ExtraSmall"
+                          ButtonStyle="@(active ? ButtonStyle.Primary : ButtonStyle.Light)"
+                          Disabled="@(Busy || !CanAct || active)"
+                          aria-pressed="@(active ? "true" : "false")"
+                          Click="@(() => Command.InvokeAsync(new Govern.Core.Actions.SetUpkeepPriorityCommand(City.Id, priority)))"
+                          class="@($"upkeep-priority upkeep-priority-{(priority == UpkeepPriority.UnitsFirst ? "units" : "buildings")}")"
+                          Text="@label"/>
+        }
+    </RadzenStack>
+</RadzenStack>

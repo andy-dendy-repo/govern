@@ -122,7 +122,7 @@ internal static class ViewPreviewCalculator
                 var tile = view.Tiles[index];
                 return YieldCalculator.TileYields(ruleset, tile.Terrain!.Value, view.RiversAround(view.CoordAt(index)), tile.Improvement);
             });
-        return YieldCalculator.CityIncome(ruleset, tileYields, city.BuildingList);
+        return YieldCalculator.CityIncome(ruleset, tileYields, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth));
     }
 
     public static RuleViolation? CheckProduceBuilding(Ruleset ruleset, PlayerView view, CityId cityId, BuildingType building)

@@ -1,6 +1,6 @@
 ---
 title: Game UI design system
-tags: [client, game-ui, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, territory, borders, city-stock, yields-lens, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
+tags: [client, game-ui, upkeep, resource-cost, supply, building-health, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, territory, borders, city-stock, yields-lens, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
 code: [src/Govern.Client/Components/Game, src/Govern.Client/Features/Games/Components/Screen, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/Features/Games/Services/GameUiService.cs, src/Govern.Client/Features/Design/Pages/DesignPage.razor, src/Govern.Client/Helpers, src/Govern.Client/wwwroot/css, tests/Govern.ArchitectureTests/GameUiTests.cs]
 updated: 2026-10-01
 ---
@@ -89,9 +89,12 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | `HealthBar` | built (G9) | A unit's health as a bar with "n of max", the danger style at a third or less; `UnitPanel` and the combat forecast. The board draws its own small SVG bar under each hurt unit (`BoardPieces`) |
 | `CombatForecastPanel`, `CombatSideView` | built (G9), feature panel | The forecast of a pending attack from `GameEngine.CombatForecast`: each side's health, strength (modifiers in the tooltip) and damage range, then Attack and Cancel |
 | `CityPanel` buildings | built (G10a), feature panel | The city's buildings, and a Build button per building it doesn't have (with its yield, its cost and the rule's reason when disabled) |
-| `CityPanel` stock and territory | built (G5, G7), feature panel | The city's stock (`.city-stock`, one `CostLabel` per resource with `+n` from `GameEngine.CityIncome`) and "Next territory tile: held of price culture" |
-| `YieldList` | planned by G8 | Yield rows per tile and city |
-| `QueueList` | planned by G8/G10 | A reorderable build queue |
+| `CityPanel` stock and territory | built (G5, G7), feature panel | The city's stock (`.city-stock`, one `CostLabel` per resource with its net gain a turn, `+n` or `-n`: income minus the upkeep it pays and the resource cost it pays to begin its item, from `GameEngine.CityForecast`) and "Next territory tile: held of price culture" |
+| `CityUpkeep` | built (G8a), feature panel | Inside `CityPanel`: the upkeep a turn (`.upkeep-due`, or "No upkeep"), what the city can't pay for (`.upkeep-shortage`: "Can't pay for Campus, Soldier: each loses 10 health at the end of the turn.") and the order switch, Buildings or Units (`.upkeep-priority-buildings`/`-units`, `aria-pressed`), which sends `SetUpkeepPriorityCommand` |
+| `CityPanel` costs and building health | built (G8a), feature panel | `.production-cost`: "Resources paid: X.", "Pays X at the end of the turn to begin.", "Waiting for X more to begin." or, while its production feeds a job, "Pays X to begin once its production is free of the job."; the production bar grows by the forecast's `ProductionPerTurn` (0 while it can't begin or feeds a job); every Build button also shows its resource cost (`ResourceCostLabels`); a hurt building shows "(70 of 100 health)" (`.building-health`) |
+| `UnitPanel` upkeep and supply | built (G8a), feature panel | For your own unit: its upkeep (`.unit-upkeep`) and who supplies it (`.unit-supply`, `supplied` or `short`): "Kept up by City 1.", "Fed by the land around it.", or why it loses health at the end of the turn, from `GameEngine.UnitSupply` |
+| `YieldList` | planned by G8b | Yield rows per tile and city |
+| `QueueList` | planned by G8b/G10b | A reorderable build queue |
 | `TreeView` | planned by G11/G12 | Tech, culture and governor skill trees in a full-screen view |
 | `LensToolbar`, `BoardLens` and `IMapLens` | built (G4) | Toggleable map overlays, one at a time ([map lenses](#map-lenses)); movement cost and yields (G5). Edge marks for river crossings (G6). Later lenses: loyalty (G8), seasons (G14) |
 

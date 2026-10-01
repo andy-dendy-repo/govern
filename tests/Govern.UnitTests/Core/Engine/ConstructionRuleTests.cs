@@ -156,7 +156,7 @@ public class ConstructionRuleTests
             .WithImprovement(TestRulesets.Farm, (5, 5), (7, 4))
             .WithImprovement(TestRulesets.Mine, (6, 3))
             .WithImprovement(TestRulesets.Farm, (9, 9));
-        var own = builder.AddCity(P1, 6, 4, buildings: [TestRulesets.Campus, TestRulesets.Harbour]);
+        var own = builder.AddCity(P1, 6, 4, paid: true, buildings: [TestRulesets.Campus, TestRulesets.Harbour]);
         var enemy = builder.AddCity(P2, 8, 7, buildings: [TestRulesets.TradePost]);
 
         var update = EndTurn(builder.Build());
@@ -213,7 +213,7 @@ public class ConstructionRuleTests
     public void EndTurn_BuildingFinished_JoinsTheCityAndProductionGoesBackToTheUnit()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        var city = builder.AddCity(P1, 5, 5, TestRulesets.Archer, progress: 7, producingBuilding: TestRulesets.Campus, buildings: [TestRulesets.TradePost]);
+        var city = builder.AddCity(P1, 5, 5, TestRulesets.Archer, progress: 7, producingBuilding: TestRulesets.Campus, paid: true, buildings: [TestRulesets.TradePost]);
 
         var update = EndTurn(builder.Build());
 

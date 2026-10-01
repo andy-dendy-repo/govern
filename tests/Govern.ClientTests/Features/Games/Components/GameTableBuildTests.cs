@@ -163,11 +163,11 @@ public class GameTableBuildTests : ClientTestContext
 
         Tile(cut, At(2, 2)).Click();
 
-        // 7 plains tiles (2 food, 1 water each) and the city's own culture.
+        // 7 plains tiles (2 food, 1 water each) and the city's own culture, less the settler's 4 food and 2 water paid to begin.
         cut.Find(".city-resource-food .cost-amount").TextContent.ShouldBe("5");
-        cut.Find(".city-resource-food .city-resource-gain").TextContent.ShouldBe("+14");
+        cut.Find(".city-resource-food .city-resource-gain").TextContent.ShouldBe("+10");
         cut.Find(".city-resource-water .cost-amount").TextContent.ShouldBe("0");
-        cut.Find(".city-resource-water .city-resource-gain").TextContent.ShouldBe("+7");
+        cut.Find(".city-resource-water .city-resource-gain").TextContent.ShouldBe("+5");
         cut.Find(".city-resource-culture .city-resource-gain").TextContent.ShouldBe("+1");
         cut.FindAll(".city-resource-gold").ShouldBeEmpty("no gold and no gain");
         cut.Find(".territory-growth").TextContent.ShouldBe("Next territory tile: 2 of 4 culture");

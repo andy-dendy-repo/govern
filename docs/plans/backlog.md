@@ -24,13 +24,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 ## Now
 
-Picked by the owner on 2026-10-01: G5, G7 and the economy part of G8 together, as one [plan](active/G5-G7-G8-economy.md) in two PRs (yields and territory first, then costs, upkeep and HP).
-
-| # | Id | Item | Status |
-|---|---|---|---|
-| 1 | G5 | [Resources and tile yields](../game/design-roadmap.md#g5-resources-and-tile-yields): every terrain yields, water and desert, rivers give water | in progress (branch `claude/project-thread-qjb1fk`, PR 1) |
-| 2 | G7 | [City territory and growth](../game/design-roadmap.md#g7-city-territory-and-growth): territory claimed on founding and grown with culture, each city's own stock | in progress (branch `claude/project-thread-qjb1fk`, PR 1) |
-| 3 | G8a | [City stats, part a](../game/design-roadmap.md#g8-city-stats-and-the-production-queue): resource costs paid when production begins, upkeep with a per-city priority, supply from the tiles around a unit outside territory, shortage damage down to 1 HP, building health | planned (PR 2) |
+Empty: G5, G7 and G8a are done (see Recently done). The owner picks the next item from Next or Deferred.
 
 ### Content slice C1: G2, G4, G9
 
@@ -65,8 +59,8 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 | F8 | Turn timers and absent players | 2026-09-30 | Prerequisite of F9 and F10, which are deferred | With F9 or F10 | [F8](deferred/follow-ups.md#f8-turn-timers-and-absent-players) |
 | F9 | Simultaneous turns (Civ 6 style) | 2026-09-30 | Content and UI first | Alternating turns become the main complaint in play | [F9](deferred/follow-ups.md#f9-simultaneous-turns-civ-6-style) |
 | F10 | More than two players | 2026-09-30 | Content and UI first | 1-vs-1 play is solid; after F8 and F9 | [F10](deferred/follow-ups.md#f10-more-than-two-players) |
-| G8b | City stats, part b: population, housing, loyalty and the production queue. Split from G8 on 2026-10-01; G8a (costs and upkeep) is in Now | 2026-10-01 | The owner wants costs, upkeep and supply first (G8a) | G8a is done and cities need to grow or be managed | [G8](../game/design-roadmap.md#g8-city-stats-and-the-production-queue) |
-| G10b | Builders and buildings, part b: upgrades, building health, pillage and repair, removing an improvement, the buildings' own mechanics (traders, faster army production, ships from harbours). Split from G10 on 2026-10-01; G10a is done | 2026-09-30 | Not in content slice C1; G10a gives the base; the rest needs G7, G8 (and G15 for ships) | The owner picks the next G item | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
+| G8b | City stats, part b: population, housing, loyalty and the production queue. Split from G8 on 2026-10-01; G8a (costs and upkeep) is done | 2026-10-01 | The owner wants costs, upkeep and supply first (G8a) | G8a is done and cities need to grow or be managed | [G8](../game/design-roadmap.md#g8-city-stats-and-the-production-queue) |
+| G10b | Builders and buildings, part b: upgrades, pillage and repair (building health came with G8a), removing an improvement, the buildings' own mechanics (traders, faster army production, ships from harbours). Split from G10 on 2026-10-01; G10a is done | 2026-09-30 | Not in content slice C1; G10a gives the base; the rest needs G7, G8 (and G15 for ships) | The owner picks the next G item | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
 | G11 | Science and culture trees | 2026-09-30 | Not in content slice C1; needs G8 | C1 is done; then pick the next slice | [G11](../game/design-roadmap.md#g11-science-and-culture-trees) |
 | G12 | Civilizations and governors | 2026-09-30 | Not in content slice C1; needs G8, G11 | C1 is done; then pick the next slice | [G12](../game/design-roadmap.md#g12-civilizations-and-governors) |
 | G13 | Colonies founded by governors | 2026-09-30 | Not in content slice C1; needs G12 | C1 is done; then pick the next slice | [G13](../game/design-roadmap.md#g13-colonies-founded-by-governors-settlers-removed) |
@@ -82,6 +76,9 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| G8a | City stats, part a: resource costs paid in full when production begins (refunded on a change), upkeep for units and buildings paid by the city whose territory holds them with a per-city order switch, units outside territory supplied by the land within 1, shortage damage of 10 a turn down to 1 health, building health 100 (nothing at 0, 10 back per paid turn); bridges and improvements free (ruleset v7, [rules](../game/rules.md#costs-and-upkeep)) | 2026-10-01, PR #35 | [G5, G7, G8a](done/G5-G7-G8-economy.md) |
+| G7 | City territory and growth: a city claims the tiles within 1, then buys one tile at a time with culture up to radius 3; each city keeps its own stock (ruleset v6, [rules](../game/rules.md#territory)) | 2026-10-01, PR #34 | [G5, G7, G8a](done/G5-G7-G8-economy.md) |
+| G5 | Resources and tile yields, first part: every terrain yields, desert gives nothing, rivers give water (ruleset v6, [rules](../game/rules.md#tile-yields)) | 2026-10-01, PR #34 | [G5, G7, G8a](done/G5-G7-G8-economy.md) |
 | G10a | Builders and buildings, part a: the builder; builders and soldiers build with their own build production plus the city's on its ground, no charges (owner's model); farm, lumber camp and mine in a city's work area; army camp, campus, trade post, culture centre and harbour; bridges over any river; the resource stockpile (ruleset v5, [rules](../game/rules.md#building-with-units)) | 2026-10-01, PR #33 | [G10a](done/G10a-builders-and-buildings.md) |
 | G6 | Rivers along hex edges: stream, river (+1 to cross, +3 defence) and deep river (can't cross, +5 defence), mirrored river generation, the rivers board layer and lens crossings (ruleset v4, [rules](../game/rules.md)). No generated bridges (owner); bridges moved to G10 | 2026-10-01, PR #32 | [G6](done/G6-rivers.md) |
 | C1 | Content slice C1: richer ruleset and Core (G2, G4, G9); its section stays under Now for the record | 2026-09-30, PR #30 | [slice](#content-slice-c1-g2-g4-g9) |

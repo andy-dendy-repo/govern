@@ -82,6 +82,15 @@ public class RulesReferenceTests
     }
 
     [Fact]
+    public void CostAndUpkeepTable_MatchesTheRuleset()
+    {
+        var units = Ruleset.Units.Select(static unit => Row(Ruleset.UnitName(unit.Id), Yields(unit.ResourceCost), Yields(unit.Upkeep)));
+        var buildings = Ruleset.Buildings.Select(static building => Row(Ruleset.BuildingName(building.Id), Yields(building.ResourceCost), Yields(building.Upkeep)));
+
+        Table("Costs and upkeep").ShouldBe([.. units, .. buildings], ignoreOrder: true, Because);
+    }
+
+    [Fact]
     public void ImprovementTable_MatchesTheRuleset()
     {
         var expected = Ruleset.Improvements
@@ -149,6 +158,10 @@ public class RulesReferenceTests
             Row("Random spread of damage", $"±{Ruleset.Combat.Damage.SpreadPercent}%"),
             Row("Healing per turn of rest", Ruleset.Combat.Healing.PerTurn),
             Row("Healing per turn of rest in your city", Ruleset.Combat.Healing.InOwnCity),
+            Row("Land that supplies a unit outside your territory (radius)", Ruleset.Upkeep.SupplyRadius),
+            Row("Health lost in a turn without upkeep", Ruleset.Upkeep.ShortageDamage),
+            Row("Full health of a building", Ruleset.Upkeep.BuildingHealth),
+            Row("Health a building regains per paid turn", Ruleset.Upkeep.BuildingRecovery),
         ];
 
         Table("Game numbers").ShouldBe(expected, ignoreOrder: true, Because);

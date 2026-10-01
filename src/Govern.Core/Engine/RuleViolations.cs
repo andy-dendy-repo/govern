@@ -44,6 +44,9 @@ public static class RuleViolations
     /// <summary>The actor has no city with that id (it does not exist or belongs to someone else; the two are not distinguished).</summary>
     public static readonly RuleViolation CityNotFound = new("city.not_found", "You have no such city.");
 
+    /// <summary>The upkeep order is not one the game knows.</summary>
+    public static readonly RuleViolation UnknownUpkeepPriority = new("city.unknown_upkeep_priority", "That upkeep order does not exist.");
+
     /// <summary>The unit type is not defined.</summary>
     public static readonly RuleViolation UnknownUnitType = new("city.unknown_unit_type", "That unit type does not exist.");
 

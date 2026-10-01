@@ -11,6 +11,7 @@ namespace Govern.Core.Actions;
 
 /// <summary>
 /// Makes a city produce a building; accumulated progress is kept, and the city goes back to its unit when the building is done.
+/// A resource cost already paid for the item it leaves goes back to the city's stock.
 /// </summary>
 /// <param name="CityId">The actor's city.</param>
 /// <param name="Building">The building: a building id of the game's ruleset.</param>
@@ -36,7 +37,7 @@ internal static class ProduceBuildingRule
             return violation;
         }
 
-        var changed = city with { ProducingBuilding = command.Building };
+        var changed = city.ProducingBuilding == command.Building ? city : CityProduction.Refund(ruleset, city) with { ProducingBuilding = command.Building };
         return new GameUpdate(state.WithCity(changed), [new ProductionChangedEvent(city.Id, city.Producing, command.Building)]);
     }
 

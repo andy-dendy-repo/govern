@@ -94,6 +94,39 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     }
 
     [Fact]
+    public async Task Post_SetUpkeepPriority_Returns200AndTheCityPaysUnitsFirst()
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var (city, version) = await FoundCityAsync(game.Id, creator);
+        var json = $$"""
+            { "expectedVersion": {{version}},
+              "command": { "type": "set_upkeep_priority", "cityId": { "value": {{city.Value}} }, "priority": "unitsFirst" } }
+            """;
+
+        var response = await GamesApi.SendCommandJsonAsync(Client, creator.AccessToken, game.Id, json, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var updated = (await GamesApi.ReadGameAsync(response, Ct)).View!.Cities.Single(c => c.Id == city);
+        updated.UpkeepPriority.ShouldBe(UpkeepPriority.UnitsFirst);
+        (await StoredStateAsync(game.Id)).FindCity(city).ShouldNotBeNull().UpkeepPriority.ShouldBe(UpkeepPriority.UnitsFirst);
+    }
+
+    [Fact]
+    public async Task Post_SetUnknownUpkeepPriority_Returns400()
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var (city, version) = await FoundCityAsync(game.Id, creator);
+        var json = $$"""
+            { "expectedVersion": {{version}},
+              "command": { "type": "set_upkeep_priority", "cityId": { "value": {{city.Value}} }, "priority": "goldFirst" } }
+            """;
+
+        var response = await GamesApi.SendCommandJsonAsync(Client, creator.AccessToken, game.Id, json, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Post_Resign_FinishesTheGameAndLaterCommandsReturnGameFinished()
     {
         var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);
