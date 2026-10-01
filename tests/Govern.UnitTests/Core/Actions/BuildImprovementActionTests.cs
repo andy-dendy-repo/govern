@@ -109,6 +109,28 @@ public class BuildImprovementActionTests
     }
 
     [Fact]
+    public void Execute_BuildingsTile_IsRefused()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithBuilding(TestRulesets.Campus, (5, 5));
+        builder.AddCity(P1, 6, 4, buildings: [TestRulesets.Campus]);
+        var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5);
+
+        GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new BuildImprovementCommand(unit, TestRulesets.Farm))
+            .ShouldFailWith(RuleViolations.TileHasBuilding);
+    }
+
+    [Fact]
+    public void Execute_TileReservedForABuilding_IsRefused()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddCity(P1, 6, 4, producingBuilding: TestRulesets.Campus, buildingSite: (5, 5));
+        var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5);
+
+        GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new BuildImprovementCommand(unit, TestRulesets.Farm))
+            .ShouldFailWith(RuleViolations.TileHasBuilding);
+    }
+
+    [Fact]
     public void Execute_NoMovementLeft_IsRefused()
     {
         var builder = new GameStateBuilder().WithCapitals();

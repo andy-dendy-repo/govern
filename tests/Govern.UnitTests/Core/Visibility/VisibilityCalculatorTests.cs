@@ -135,12 +135,14 @@ public class VisibilityCalculatorTests
     }
 
     [Fact]
-    public void ViewFor_ImprovementsAndBridges_ShowOnVisibleTilesOnly()
+    public void ViewFor_ImprovementsBuildingsAndBridges_ShowOnVisibleTilesOnly()
     {
         var builder = new GameStateBuilder().WithCapitals()
             .WithRiver(TestRulesets.River, ((2, 2), (3, 2)), ((6, 2), (7, 2)))
             .WithBridge(((2, 2), (3, 2)), ((6, 2), (7, 2)))
-            .WithImprovement(TestRulesets.Farm, (2, 3), (7, 2));
+            .WithImprovement(TestRulesets.Farm, (2, 3), (7, 2))
+            .WithBuilding(TestRulesets.Campus, (2, 2))
+            .WithBuilding(TestRulesets.TradePost, (6, 2));
         var scout = builder.AddUnit(P1, TestRulesets.Soldier, 5, 2);
         builder.AddUnit(P1, TestRulesets.Soldier, 2, 3);
         var state = builder.Build();
@@ -154,7 +156,9 @@ public class VisibilityCalculatorTests
         view.CrossedRiverBetween(At(3, 2), At(2, 2)).ShouldBeNull();
         view.TileAt(At(7, 2)).Visibility.ShouldBe(TileVisibility.Explored);
         view.TileAt(At(7, 2)).Improvement.ShouldBeNull();
+        view.TileAt(At(2, 2)).Building.ShouldBe(TestRulesets.Campus);
         view.TileAt(At(6, 2)).Visibility.ShouldBe(TileVisibility.Explored);
+        view.TileAt(At(6, 2)).Building.ShouldBeNull();
         view.BridgeBetween(At(6, 2), At(7, 2)).ShouldBeFalse();
         view.RiverBetween(At(6, 2), At(7, 2)).ShouldBe(TestRulesets.River);
     }
@@ -165,8 +169,8 @@ public class VisibilityCalculatorTests
         var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((4, 4), (5, 4)));
         var own = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4, job: UnitJob.ForBridge(At(5, 4), 1));
         var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 5, 4, job: UnitJob.ForBridge(At(4, 4), 1));
-        var ownCity = builder.AddCity(P1, 3, 3, stock: [new(TestRulesets.Food, 3)], tilesGained: 1, buildings: [TestRulesets.Campus]);
-        var enemyCity = builder.AddCity(P2, 6, 4, producingBuilding: TestRulesets.Harbour, stock: [new(TestRulesets.Gold, 9)], tilesGained: 2, buildings: [TestRulesets.TradePost]);
+        var ownCity = builder.AddCity(P1, 3, 3, producingBuilding: TestRulesets.TradePost, buildingSite: (3, 2), stock: [new(TestRulesets.Food, 3)], tilesGained: 1, buildings: [TestRulesets.Campus]);
+        var enemyCity = builder.AddCity(P2, 6, 4, producingBuilding: TestRulesets.Harbour, buildingSite: (7, 4), stock: [new(TestRulesets.Gold, 9)], tilesGained: 2, buildings: [TestRulesets.TradePost]);
         builder.WithCity(enemyCity, c => c with { ProductionPaid = true, UpkeepPriority = UpkeepPriority.UnitsFirst, BuildingDamage = [new BuildingDamage(TestRulesets.TradePost, 40)] })
             .WithCity(ownCity, c => c with { ProductionPaid = true, BuildingDamage = [new BuildingDamage(TestRulesets.Campus, 20)] });
         var state = builder.Build();
@@ -179,6 +183,7 @@ public class VisibilityCalculatorTests
         var seen = view.Cities.Single(city => city.Id == enemyCity);
         seen.Buildings.ShouldBeNull();
         seen.ProducingBuilding.ShouldBeNull();
+        seen.ProducingBuildingSite.ShouldBeNull();
         seen.Stock.ShouldBeNull();
         seen.TilesGained.ShouldBe(0);
         seen.ProductionPaid.ShouldBeFalse();
@@ -186,6 +191,7 @@ public class VisibilityCalculatorTests
         seen.BuildingDamage.ShouldBeNull();
         var mine = view.Cities.Single(city => city.Id == ownCity);
         mine.StockList.ShouldBe([new(TestRulesets.Food, 3)]);
+        mine.ProducingBuildingSite.ShouldBe(At(3, 2));
         mine.TilesGained.ShouldBe(1);
         mine.ProductionPaid.ShouldBeTrue();
         mine.DamageOf(TestRulesets.Campus).ShouldBe(20);

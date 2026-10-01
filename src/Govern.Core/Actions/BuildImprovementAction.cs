@@ -17,7 +17,8 @@ public sealed record BuildImprovementCommand(UnitId UnitId, ImprovementType Impr
 
 /// <summary>
 /// Gives a builder the job of building an improvement on its tile (see <see cref="UnitJob"/>). The tile must be in one of the
-/// actor's cities' territory (off the city tiles), have a terrain the improvement allows and no improvement yet. Starting uses the unit's remaining
+/// actor's cities' territory (off the city tiles), have a terrain the improvement allows, no improvement yet and no building (built
+/// or reserved by a city producing one). Starting uses the unit's remaining
 /// movement and replaces any job it had.
 /// </summary>
 internal static class BuildImprovementRule
@@ -73,6 +74,11 @@ internal static class BuildImprovementRule
             return RuleViolations.TileImproved;
         }
 
+        if (site.HasBuilding)
+        {
+            return RuleViolations.TileHasBuilding;
+        }
+
         return improvement.Terrains.Contains(site.Terrain) ? null : RuleViolations.WrongTerrain;
     }
 
@@ -82,6 +88,7 @@ internal static class BuildImprovementRule
         var inTerritory = tile.Territory is { } territory
             && state.FindCity(territory)?.Owner == unit.Owner
             && state.CityAt(unit.Position) is null;
-        return new ImprovementSite(tile.Terrain, tile.Improvement, inTerritory);
+        var hasBuilding = tile.Building is not null || state.Cities.Any(city => city.ProducingBuildingSite == unit.Position);
+        return new ImprovementSite(tile.Terrain, tile.Improvement, inTerritory, hasBuilding);
     }
 }

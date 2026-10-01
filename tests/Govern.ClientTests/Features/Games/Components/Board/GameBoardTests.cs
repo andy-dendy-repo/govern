@@ -208,7 +208,7 @@ public partial class GameBoardTests : ClientTestContext
     [Fact]
     public void Render_Lens_SitsBetweenTheTerrainAndTheHighlights()
     {
-        var cut = RenderBoard(Start(), highlights: new BoardHighlights([At(1, 1)], [], []), lens: new MovementCostLens(new RulesetService()));
+        var cut = RenderBoard(Start(), highlights: new BoardHighlights([At(1, 1)], [], [], []), lens: new MovementCostLens(new RulesetService()));
 
         cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "lens", "highlights", "cities", "units", "effects"]);
     }
@@ -216,7 +216,7 @@ public partial class GameBoardTests : ClientTestContext
     [Fact]
     public void Render_SelectionAndHighlights_AreMarked()
     {
-        var highlights = new BoardHighlights([At(1, 1), At(1, 2)], [At(4, 2)], []);
+        var highlights = new BoardHighlights([At(1, 1), At(1, 2)], [At(4, 2)], [], []);
 
         var cut = RenderBoard(Start(), BoardSelection.Of(new UnitId(1)), highlights);
 

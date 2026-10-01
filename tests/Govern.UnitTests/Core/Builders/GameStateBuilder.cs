@@ -26,6 +26,7 @@ internal sealed class GameStateBuilder
     private readonly Dictionary<HexEdge, RiverType> _rivers = [];
     private readonly HashSet<HexEdge> _bridges = [];
     private readonly Dictionary<HexCoord, ImprovementType> _improvements = [];
+    private readonly Dictionary<HexCoord, BuildingType> _buildings = [];
     private readonly Dictionary<HexCoord, CityId?> _territory = [];
     private int _nextId = 1;
     private PlayerId _currentPlayer = P1;
@@ -50,6 +51,7 @@ internal sealed class GameStateBuilder
         ImmutableArray<ResourceAmount>? stock = null,
         int tilesGained = 0,
         bool paid = false,
+        (int Column, int Row)? buildingSite = null,
         params BuildingType[] buildings)
     {
         var id = new CityId(_nextId++);
@@ -64,7 +66,8 @@ internal sealed class GameStateBuilder
             buildings.Length == 0 ? null : [.. buildings],
             stock,
             tilesGained,
-            paid));
+            paid,
+            ProducingBuildingSite: buildingSite is var (siteColumn, siteRow) ? At(siteColumn, siteRow) : null));
         return id;
     }
 
@@ -96,6 +99,13 @@ internal sealed class GameStateBuilder
             _improvements[At(column, row)] = improvement;
         }
 
+        return this;
+    }
+
+    // Puts a finished building on a tile, e.g. WithBuilding(TestRulesets.Campus, (5, 4)); the city's list is AddCity's buildings.
+    public GameStateBuilder WithBuilding(BuildingType building, (int Column, int Row) tile)
+    {
+        _buildings[At(tile.Column, tile.Row)] = building;
         return this;
     }
 
@@ -192,6 +202,7 @@ internal sealed class GameStateBuilder
             tile = tile with { Bridges = (tile.Bridges ?? new TileBridges()).With(edge.Side) };
         }
 
+        tile = _buildings.TryGetValue(tile.Coord, out var building) ? tile with { Building = building } : tile;
         return _improvements.TryGetValue(tile.Coord, out var improvement) ? tile with { Improvement = improvement } : tile;
     }
 }

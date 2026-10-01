@@ -23,6 +23,8 @@ public static class BoardClickResolver
     /// On an enemy unit it can attack, a click selects it as the <see cref="BoardSelection.Target"/> (the forecast is shown);
     /// only the forecast's Attack button attacks, so a double-click never attacks unseen. An undefended enemy city is captured
     /// at once. In bridge mode, a click on a marked neighbour builds the bridge and any other click only leaves bridge mode.
+    /// While the selected city places a building, a click on a marked tile orders the building there and any other click only
+    /// stops placing.
     /// Otherwise the new selection: the unit on
     /// the tile (clicking a selected unit again selects the player's city under it), else the city on the tile, else nothing.
     /// </returns>
@@ -32,11 +34,9 @@ public static class BoardClickResolver
         ArgumentNullException.ThrowIfNull(view);
         ArgumentNullException.ThrowIfNull(selection);
 
-        if (selection is { Unit: { } builder, Bridge: true } && view.FindOwnUnit(builder) is not null)
+        if (PickTile(ruleset, view, selection, coord) is { } picked)
         {
-            return GameEngine.BridgeTargets(ruleset, view, builder).Contains(coord)
-                ? new BoardClick(selection with { Bridge = false }, new BuildBridgeCommand(builder, coord))
-                : new BoardClick(selection with { Bridge = false }, null);
+            return picked;
         }
 
         if (selection.Unit is { } unitId && view.FindOwnUnit(unitId) is not null)
@@ -65,9 +65,33 @@ public static class BoardClickResolver
         return new BoardClick(city is null ? BoardSelection.None : BoardSelection.Of(city.Id), null);
     }
 
+    // A click while choosing a tile (bridge mode, or a city placing a building) ends the choice, and on a marked tile sends the
+    // command; null when no tile is being chosen.
+    private static BoardClick? PickTile(Ruleset ruleset, PlayerView view, BoardSelection selection, HexCoord coord)
+    {
+        if (selection is { Unit: { } builder, Bridge: true } && view.FindOwnUnit(builder) is not null)
+        {
+            return GameEngine.BridgeTargets(ruleset, view, builder).Contains(coord)
+                ? new BoardClick(selection with { Bridge = false }, new BuildBridgeCommand(builder, coord))
+                : new BoardClick(selection with { Bridge = false }, null);
+        }
+
+        if (selection is { City: { } city, Placing: { } building })
+        {
+            // The building's current site is offered again but changes nothing, so picking it only stops placing.
+            var current = view.Cities.FirstOrDefault(own => own.Id == city) is { } shown && shown.ProducingBuilding == building && shown.ProducingBuildingSite == coord;
+            return !current && GameEngine.BuildingSites(ruleset, view, city, building).Contains(coord)
+                ? new BoardClick(selection with { Placing = null }, new ProduceBuildingCommand(city, building, coord))
+                : new BoardClick(selection with { Placing = null }, null);
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Keeps a selection valid for a new view: a unit or city that is no longer in it (destroyed, captured, or out of sight)
-    /// is dropped, and so is a pending attack target the unit can no longer fight and bridge mode with nothing left to bridge.
+    /// is dropped, and so is a pending attack target the unit can no longer fight, bridge mode with nothing left to bridge and
+    /// placing a building with no tile left to take it.
     /// </summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The new view.</param>
@@ -89,6 +113,11 @@ public static class BoardClickResolver
             selection = selection with { Bridge = false };
         }
 
+        if (selection is { City: { } placer, Placing: { } building } && GameEngine.BuildingSites(ruleset, view, placer, building).IsEmpty)
+        {
+            selection = selection with { Placing = null };
+        }
+
         var kept = selection switch
         {
             { Unit: { } unit } => view.Units.Any(candidate => candidate.Id == unit),
@@ -100,12 +129,12 @@ public static class BoardClickResolver
 
     /// <summary>
     /// The tiles to mark for the selection: where the selected own unit can move and what it can attack, or in bridge mode
-    /// only the neighbours it can bridge to.
+    /// only the neighbours it can bridge to; for a city placing a building, the tiles that can take it.
     /// </summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The player's current view.</param>
     /// <param name="selection">The selection.</param>
-    /// <returns>The marked tiles; none unless an own unit that can act now is selected.</returns>
+    /// <returns>The marked tiles; none unless an own unit that can act now, or an own city placing a building, is selected.</returns>
     public static BoardHighlights Highlights(Ruleset ruleset, PlayerView view, BoardSelection selection)
     {
         ArgumentNullException.ThrowIfNull(ruleset);
@@ -114,9 +143,10 @@ public static class BoardClickResolver
 
         return selection switch
         {
-            { Unit: { } builder, Bridge: true } => new BoardHighlights([], [], [.. GameEngine.BridgeTargets(ruleset, view, builder)]),
+            { Unit: { } builder, Bridge: true } => new BoardHighlights([], [], [.. GameEngine.BridgeTargets(ruleset, view, builder)], []),
+            { City: { } city, Placing: { } building } => new BoardHighlights([], [], [], [.. GameEngine.BuildingSites(ruleset, view, city, building)]),
             { Unit: { } unitId } => new BoardHighlights(
-                [.. GameEngine.ReachableTiles(ruleset, view, unitId)], [.. GameEngine.AttackTargets(ruleset, view, unitId)], []),
+                [.. GameEngine.ReachableTiles(ruleset, view, unitId)], [.. GameEngine.AttackTargets(ruleset, view, unitId)], [], []),
             _ => BoardHighlights.None,
         };
     }

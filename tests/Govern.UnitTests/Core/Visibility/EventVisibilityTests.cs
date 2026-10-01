@@ -241,7 +241,7 @@ public class EventVisibilityTests
             new BuildStartedEvent(unit, job),
             new ImprovementBuiltEvent(unit, P1, At(2, 1), TestRulesets.Farm),
             new BridgeBuiltEvent(unit, P1, At(2, 1), At(3, 1)),
-            new BuildingCompletedEvent(city, TestRulesets.ArmyCamp),
+            new BuildingCompletedEvent(city, TestRulesets.ArmyCamp, At(2, 1)),
             new TerritoryGrewEvent(city, P1, At(0, 1)),
             new UnitStarvedEvent(unit, 90),
             new BuildingDamagedEvent(city, TestRulesets.ArmyCamp, 90),

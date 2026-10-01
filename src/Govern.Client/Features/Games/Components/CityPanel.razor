@@ -93,14 +93,16 @@
                             @foreach (var building in Ruleset.Buildings.Where(building => !City.BuildingList.Contains(building.Id)))
                             {
                                 var problem = GameEngine.CheckProduceBuilding(Ruleset, View, City.Id, building.Id);
+                                var placing = Ui.Selection.Placing == building.Id;
                                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
                                     <RadzenButton Size="ButtonSize.Small"
-                                                  ButtonStyle="@(City.ProducingBuilding == building.Id ? ButtonStyle.Primary : ButtonStyle.Light)"
-                                                  Disabled="@(Busy || !CanAct || problem is not null || City.ProducingBuilding == building.Id)"
-                                                  Click="@(() => Command.InvokeAsync(new ProduceBuildingCommand(City.Id, building.Id)))"
+                                                  ButtonStyle="@(City.ProducingBuilding == building.Id || placing ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                                  Disabled="@(Busy || !CanAct || problem is not null)"
+                                                  Click="@(() => Ui.PlaceBuilding(Ruleset, View, building.Id))"
+                                                  title="@(City.ProducingBuilding == building.Id ? "Pick another tile for it" : "Pick a tile for it")"
                                                   class="@($"produce produce-building-{building.Id.Id}")">
                                         <GameIcon Id="@Icons.Building(building.Id)"/>
-                                        <span class="produce-name">Build @Ruleset.BuildingName(building.Id)</span>
+                                        <span class="produce-name">@(City.ProducingBuilding == building.Id ? "Move" : "Build") @Ruleset.BuildingName(building.Id)</span>
                                         <CostLabel Amount="@building.Cost"/>
                                         <ResourceCostLabels Ruleset="@Ruleset" Amounts="@building.ResourceCost"/>
                                     </RadzenButton>
@@ -108,6 +110,10 @@
                                     @if (problem is not null)
                                     {
                                         <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="building-reason">@problem.Message</RadzenText>
+                                    }
+                                    @if (placing)
+                                    {
+                                        <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="building-placing">Pick a highlighted tile of the city's territory (Esc to cancel)</RadzenText>
                                     }
                                 </RadzenStack>
                             }

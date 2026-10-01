@@ -78,7 +78,8 @@ public static class TestViews
         Func<HexCoord, TerrainType>? terrain = null,
         Func<HexCoord, TileRivers?>? rivers = null,
         Func<HexCoord, ImprovementType?>? improvements = null,
-        Func<HexCoord, TileBridges?>? bridges = null)
+        Func<HexCoord, TileBridges?>? bridges = null,
+        Func<HexCoord, BuildingType?>? buildings = null)
     {
         // Every city owns the tiles next to it (the default territory.initialRadius), shown on visible tiles like the server does.
         var cityList = (cities ?? []).ToList();
@@ -89,7 +90,7 @@ public static class TestViews
                 TileVisibility.Unexplored => new TileView(TileVisibility.Unexplored, null),
                 TileVisibility.Explored => new TileView(TileVisibility.Explored, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord)),
                 var seen => WithTerritory(
-                    new TileView(seen, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord), bridges?.Invoke(coord), improvements?.Invoke(coord)),
+                    new TileView(seen, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord), bridges?.Invoke(coord), improvements?.Invoke(coord), Building: buildings?.Invoke(coord)),
                     cityList.FirstOrDefault(city => city.Position.DistanceTo(coord) <= Ruleset.Territory.InitialRadius)),
             });
 

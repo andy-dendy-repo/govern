@@ -106,13 +106,15 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     }
 
     [Fact]
-    public async Task Post_ProduceBuilding_Returns200AndTheCityProducesIt()
+    public async Task Post_ProduceBuilding_Returns200AndTheCityProducesItOnTheSite()
     {
         var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
         var (city, version) = await FoundCityAsync(game.Id, creator);
+        var view = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!;
+        var site = GameEngine.BuildingSites(TestRulesets.Default, view, city, new BuildingType("campus")).First();
         var json = $$"""
             { "expectedVersion": {{version}},
-              "command": { "type": "produce_building", "cityId": { "value": {{city.Value}} }, "building": "campus" } }
+              "command": { "type": "produce_building", "cityId": { "value": {{city.Value}} }, "building": "campus", "site": { "q": {{site.Q}}, "r": {{site.R}} } } }
             """;
 
         var response = await GamesApi.SendCommandJsonAsync(Client, creator.AccessToken, game.Id, json, Ct);
@@ -120,6 +122,20 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var produced = (await GamesApi.ReadGameAsync(response, Ct)).View!.Cities.Single(c => c.Id == city);
         produced.ProducingBuilding.ShouldBe(new BuildingType("campus"));
+        produced.ProducingBuildingSite.ShouldBe(site);
+    }
+
+    [Fact]
+    public async Task Post_ProduceBuildingOnTheCityTile_Returns409WithTheRuleViolationCode()
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var (city, version) = await FoundCityAsync(game.Id, creator);
+        var position = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Cities.Single(c => c.Id == city).Position;
+
+        var response = await GamesApi.SendCommandAsync(
+            Client, creator.AccessToken, game.Id, version, new ProduceBuildingCommand(city, new BuildingType("campus"), position), Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, RuleViolations.BuildingNotInTerritory.Code, Ct);
     }
 
     [Fact]
@@ -129,7 +145,7 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
         var (city, version) = await FoundCityAsync(game.Id, creator);
 
         var response = await GamesApi.SendCommandAsync(
-            Client, creator.AccessToken, game.Id, version, new ProduceBuildingCommand(city, new BuildingType("castle")), Ct);
+            Client, creator.AccessToken, game.Id, version, new ProduceBuildingCommand(city, new BuildingType("castle"), default), Ct);
 
         await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, RuleViolations.UnknownBuilding.Code, Ct);
     }
@@ -194,6 +210,7 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     [InlineData("""{ "expectedVersion": 0, "command": { "type": "teleport" } }""")]
     [InlineData("""{ "command": { "type": "end_turn" } }""")]
     [InlineData("""{ "expectedVersion": 0, "command": { "type": "move_unit" } }""")]
+    [InlineData("""{ "expectedVersion": 0, "command": { "type": "produce_building", "cityId": { "value": 1 }, "building": "campus" } }""")]
     public async Task Post_MalformedBody_Returns400(string json)
     {
         var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);

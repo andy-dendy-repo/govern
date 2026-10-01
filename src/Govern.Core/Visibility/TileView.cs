@@ -26,6 +26,7 @@ namespace Govern.Core.Visibility;
 /// since borders grow during the game.
 /// </param>
 /// <param name="TerritoryCity">The viewer's own city that owns the tile; <see langword="null"/> for any other tile.</param>
+/// <param name="Building">The building that stands on the tile; only on a <see cref="TileVisibility.Visible"/> tile.</param>
 public sealed record TileView(
     TileVisibility Visibility,
     TerrainType? Terrain,
@@ -33,4 +34,5 @@ public sealed record TileView(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TileBridges? Bridges = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImprovementType? Improvement = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PlayerId? TerritoryOwner = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CityId? TerritoryCity = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CityId? TerritoryCity = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] BuildingType? Building = null);

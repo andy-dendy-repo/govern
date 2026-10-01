@@ -87,10 +87,12 @@ internal static class ViewPreviewCalculator
             return RuleViolations.UnitNotFound;
         }
 
-        // The unit's own tile is visible, with its territory, and every one of the viewer's cities is in the view.
+        // The unit's own tile is visible, with its territory and building, and every one of the viewer's cities is in the view with
+        // its reserved site (only an own city can reserve a tile of own territory).
         var tile = view.TileAt(unit.Position);
         var inTerritory = tile.TerritoryCity is not null && view.CityAt(unit.Position) is null;
-        return BuildImprovementRule.Check(ruleset, unit, improvement, new ImprovementSite(tile.Terrain!.Value, tile.Improvement, inTerritory));
+        var hasBuilding = tile.Building is not null || view.Cities.Any(city => city.ProducingBuildingSite == unit.Position);
+        return BuildImprovementRule.Check(ruleset, unit, improvement, new ImprovementSite(tile.Terrain!.Value, tile.Improvement, inTerritory, hasBuilding));
     }
 
     public static ImmutableArray<HexCoord> BridgeTargets(Ruleset ruleset, PlayerView view, UnitId unitId)
@@ -125,6 +127,8 @@ internal static class ViewPreviewCalculator
         return YieldCalculator.CityIncome(ruleset, tileYields, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth));
     }
 
+    // The city check, then, when no tile of the territory takes the building, the reason of the tile that came closest (the
+    // city tile is skipped, since it never takes one): a harbour with free tiles but no lake says it needs the lake.
     public static RuleViolation? CheckProduceBuilding(Ruleset ruleset, PlayerView view, CityId cityId, BuildingType building)
     {
         if (CheckTurn(view) is { } violation)
@@ -132,18 +136,62 @@ internal static class ViewPreviewCalculator
             return violation;
         }
 
-        if (view.Cities.FirstOrDefault(city => city.Id == cityId && city.Owner == view.Viewer) is not { Producing: { } producing, ProductionProgress: { } progress } own)
+        if (OwnCity(view, cityId) is not { } city)
         {
             return RuleViolations.CityNotFound;
         }
 
-        // A city sees its neighbours (city sight is at least 1), so their terrain is known.
-        var city = new City(own.Id, own.Owner, own.Name, own.Position, producing, progress, own.ProducingBuilding, own.Buildings);
-        var neighbors = own.Position.Neighbors()
-            .Where(view.Contains)
-            .Select(coord => view.TileAt(coord).Terrain)
-            .OfType<TerrainType>();
-        return ProduceBuildingRule.Check(ruleset, city, building, [.. neighbors]);
+        if (ProduceBuildingRule.Check(ruleset, city, building) is { } cityViolation)
+        {
+            return cityViolation;
+        }
+
+        var reasons = TerritoryOf(view, city)
+            .Where(coord => coord != city.Position)
+            .Select(coord => ProduceBuildingRule.CheckSite(ruleset.Building(building), BuildingSiteOf(ruleset, view, city, coord)))
+            .ToList();
+        return reasons.Contains(null) ? null : reasons.MaxBy(static reason => ProduceBuildingRule.SiteCheckOrder.IndexOf(reason!)) ?? RuleViolations.BuildingNotInTerritory;
+    }
+
+    public static ImmutableArray<HexCoord> BuildingSites(Ruleset ruleset, PlayerView view, CityId cityId, BuildingType building)
+    {
+        if (CheckTurn(view) is not null || OwnCity(view, cityId) is not { } city || ProduceBuildingRule.Check(ruleset, city, building) is not null)
+        {
+            return [];
+        }
+
+        return [.. TerritoryOf(view, city)
+            .Where(coord => ProduceBuildingRule.CheckSite(ruleset.Building(building), BuildingSiteOf(ruleset, view, city, coord)) is null)
+            .OrderBy(static coord => coord.Row)
+            .ThenBy(static coord => coord.Column)];
+    }
+
+    // The viewer's own city as the rules' checks take it. Its production is always in the view: only an enemy's is hidden.
+    private static City? OwnCity(PlayerView view, CityId cityId) =>
+        view.Cities.FirstOrDefault(city => city.Id == cityId && city.Owner == view.Viewer) is { Producing: { } producing, ProductionProgress: { } progress } own
+            ? new City(own.Id, own.Owner, own.Name, own.Position, producing, progress, own.ProducingBuilding, own.Buildings, ProducingBuildingSite: own.ProducingBuildingSite)
+            : null;
+
+    private static IEnumerable<HexCoord> TerritoryOf(PlayerView view, City city) =>
+        Enumerable.Range(0, view.Tiles.Length).Where(index => view.Tiles[index].TerritoryCity == city.Id).Select(view.CoordAt);
+
+    // The viewer's own territory is always visible, with its improvements, buildings and units (with their jobs), and every
+    // neighbour of it is at least explored, so the terrain next to a site is known; a site outside the territory is rejected first.
+    private static BuildingSite BuildingSiteOf(Ruleset ruleset, PlayerView view, City city, HexCoord coord)
+    {
+        if (!view.Contains(coord) || view.TileAt(coord) is not { Terrain: { } terrain } tile)
+        {
+            return BuildingSite.Outside;
+        }
+
+        var improving = view.UnitAt(coord) is { Job.Improvement: not null } unit && unit.Owner == city.Owner;
+        var neighbors = coord.Neighbors().Where(view.Contains).Select(neighbor => view.TileAt(neighbor).Terrain).OfType<TerrainType>();
+        return new BuildingSite(
+            tile.TerritoryCity == city.Id && coord != city.Position,
+            ruleset.Terrain(terrain).IsPassable,
+            tile.Improvement is not null || tile.Building is not null,
+            improving,
+            [.. neighbors]);
     }
 
     // Both tiles are in sight (the target is a neighbour), and the view shows the territory of every visible tile.
