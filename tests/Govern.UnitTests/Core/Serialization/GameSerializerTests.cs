@@ -116,6 +116,22 @@ public class GameSerializerTests
     }
 
     [Fact]
+    public void DeserializeState_TileRivers_RoundTripAndAreLeftOutWhereThereAreNone()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.DeepRiver, ((3, 3), (4, 3)), ((3, 3), (3, 2)));
+        var state = builder.Build();
+
+        var json = GameSerializer.Serialize(state);
+        var restored = GameSerializer.DeserializeState(json);
+
+        // Games saved before rivers existed have no rivers field; they read as maps without rivers.
+        var tiles = JsonDocument.Parse(json).RootElement.GetProperty("map").GetProperty("tiles").EnumerateArray().ToList();
+        tiles.Count(static tile => tile.TryGetProperty("rivers", out _)).ShouldBe(1);
+        json.ShouldContain("\"rivers\":{\"east\":\"deep_river\",\"northWest\":\"deep_river\"}");
+        restored.Map.Tiles.ShouldBe(state.Map.Tiles);
+    }
+
+    [Fact]
     public void DeserializeState_OtherSchemaVersion_Throws()
     {
         var json = GameSerializer.Serialize(new GameStateBuilder().WithCapitals().Build() with { SchemaVersion = 99 });

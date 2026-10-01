@@ -86,6 +86,28 @@ public class RulesetTests
         ["damage per strength point too big"] = json => json["combat"]!["damage"]!["perStrengthPoint"] = 101,
         ["healing too big"] = json => json["combat"]!["healing"]!["perTurn"] = 1001,
         ["counter bonus too big"] = json => json["combat"]!["counters"]![0]!["bonus"] = 101,
+        ["no rivers"] = json => json["rivers"] = new JsonArray(),
+        ["river id not snake_case"] = json => json["rivers"]![0]!["id"] = "Stream",
+        ["negative crossing cost"] = json => json["rivers"]![1]!["crossingCost"] = -1,
+        ["crossing cost too big"] = json => json["rivers"]![1]!["crossingCost"] = 101,
+        ["negative river defence bonus"] = json => json["rivers"]![1]!["defenceBonus"] = -1,
+        ["river defence bonus too big"] = json => json["rivers"]![1]!["defenceBonus"] = 101,
+        ["no crossable river"] = json => { foreach (var river in json["rivers"]!.AsArray()) { river!["isCrossable"] = false; } },
+        ["missing river name"] = json => json["texts"]!.AsObject().Remove("river.deep_river.name"),
+        ["negative river count"] = json => json["map"]!["generation"]!["rivers"]!["count"] = -1,
+        ["too many rivers"] = json => json["map"]!["generation"]!["rivers"]!["count"] = 21,
+        ["empty river"] = json => json["map"]!["generation"]!["rivers"]!["minLength"] = 0,
+        ["maximum river length below the minimum"] = json => json["map"]!["generation"]!["rivers"]!["maxLength"] = 3,
+        ["river too long"] = json => json["map"]!["generation"]!["rivers"]!["maxLength"] = 101,
+        ["no river sources"] = json => json["map"]!["generation"]!["rivers"]!["sources"] = new JsonArray(),
+        ["unknown river source"] = json => json["map"]!["generation"]!["rivers"]!["sources"] = new JsonArray("hills", "desert"),
+        ["river source listed twice"] = json => json["map"]!["generation"]!["rivers"]!["sources"] = new JsonArray("hills", "hills"),
+        ["unknown river mouth"] = json => json["map"]!["generation"]!["rivers"]!["mouths"] = new JsonArray("sea"),
+        ["no river stages"] = json => json["map"]!["generation"]!["rivers"]!["stages"] = new JsonArray(),
+        ["unknown stage river"] = json => json["map"]!["generation"]!["rivers"]!["stages"]![1]!["river"] = "canal",
+        ["first stage after the source"] = json => json["map"]!["generation"]!["rivers"]!["stages"]![0]!["fromSegment"] = 1,
+        ["stages out of order"] = json => json["map"]!["generation"]!["rivers"]!["stages"]![2]!["fromSegment"] = 3,
+        ["uncrossable first stage"] = json => json["map"]!["generation"]!["rivers"]!["stages"]![0]!["river"] = "deep_river",
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -165,6 +187,28 @@ public class RulesetTests
         { "damage per strength point too big", "$.combat.damage.perStrengthPoint" },
         { "healing too big", "$.combat.healing.perTurn" },
         { "counter bonus too big", "$.combat.counters[0].bonus" },
+        { "no rivers", "$.rivers" },
+        { "river id not snake_case", "$.rivers[0].id" },
+        { "negative crossing cost", "$.rivers[1].crossingCost" },
+        { "crossing cost too big", "$.rivers[1].crossingCost" },
+        { "negative river defence bonus", "$.rivers[1].defenceBonus" },
+        { "river defence bonus too big", "$.rivers[1].defenceBonus" },
+        { "no crossable river", "$.rivers" },
+        { "missing river name", "$.texts" },
+        { "negative river count", "$.map.generation.rivers.count" },
+        { "too many rivers", "$.map.generation.rivers.count" },
+        { "empty river", "$.map.generation.rivers.minLength" },
+        { "maximum river length below the minimum", "$.map.generation.rivers.maxLength" },
+        { "river too long", "$.map.generation.rivers.maxLength" },
+        { "no river sources", "$.map.generation.rivers.sources" },
+        { "unknown river source", "$.map.generation.rivers.sources[1]" },
+        { "river source listed twice", "$.map.generation.rivers.sources" },
+        { "unknown river mouth", "$.map.generation.rivers.mouths[0]" },
+        { "no river stages", "$.map.generation.rivers.stages" },
+        { "unknown stage river", "$.map.generation.rivers.stages[1].river" },
+        { "first stage after the source", "$.map.generation.rivers.stages[0].fromSegment" },
+        { "stages out of order", "$.map.generation.rivers.stages[2].fromSegment" },
+        { "uncrossable first stage", "$.map.generation.rivers.stages[0].river" },
     };
 
     [Fact]
@@ -200,6 +244,11 @@ public class RulesetTests
         ruleset.Combat.MaxHealth.ShouldBe(100);
         ruleset.Combat.Counters.Length.ShouldBe(3);
         ruleset.ClassName("anti_cavalry").ShouldBe("Anti-cavalry");
+        ruleset.Rivers.Select(static river => river.Id).ShouldBe([TestRulesets.Stream, TestRulesets.River, TestRulesets.DeepRiver]);
+        ruleset.River(TestRulesets.Stream).ShouldBe(new RiverDefinition(TestRulesets.Stream, 0, true, 0));
+        ruleset.River(TestRulesets.River).ShouldBe(new RiverDefinition(TestRulesets.River, 1, true, 3));
+        ruleset.River(TestRulesets.DeepRiver).ShouldBe(new RiverDefinition(TestRulesets.DeepRiver, 0, false, 5));
+        ruleset.Map.Generation.Rivers.Stages.Select(static stage => stage.River).ShouldBe([TestRulesets.Stream, TestRulesets.River, TestRulesets.DeepRiver]);
         ruleset.Hash.ShouldBe(Ruleset.ComputeHash(TestRulesets.DefaultJson));
     }
 
@@ -284,6 +333,7 @@ public class RulesetTests
         ruleset.FindUnit(default).ShouldBeNull();
         Should.Throw<ArgumentException>(() => ruleset.Unit(new UnitType("knight")));
         Should.Throw<ArgumentException>(() => ruleset.Terrain(new TerrainType("desert")));
+        Should.Throw<ArgumentException>(() => ruleset.River(new RiverType("canal")));
         Should.Throw<ArgumentException>(() => ruleset.Text("unit.knight.name"));
     }
 
@@ -294,6 +344,7 @@ public class RulesetTests
 
         ruleset.UnitName(TestRulesets.Settler).ShouldBe("Settler");
         ruleset.TerrainName(TestRulesets.Plains).ShouldBe("Plains");
+        ruleset.RiverName(TestRulesets.DeepRiver).ShouldBe("Deep river");
         ruleset.CityName(12).ShouldBe("Town 12 of 12");
     }
 }

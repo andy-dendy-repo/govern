@@ -13,4 +13,7 @@ public enum CombatModifierKind
 
     /// <summary>The defender's tile gives defence (<see cref="Map.TerrainDefinition.DefenceBonus"/>).</summary>
     Terrain,
+
+    /// <summary>A melee attack crosses a river onto the defender (<see cref="Map.RiverDefinition.DefenceBonus"/>).</summary>
+    River,
 }

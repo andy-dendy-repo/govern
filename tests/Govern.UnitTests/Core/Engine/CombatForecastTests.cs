@@ -26,7 +26,10 @@ public class CombatForecastTests
         "hurt defender",
         "archer shoots",
         "settler",
-        "defender nearly dead");
+        "defender nearly dead",
+        "defender across a river",
+        "defender across a deep river in forest",
+        "archer shoots across a river");
 
     // Over many seeds, every rolled damage lies in the forecast's range, and both ends of the range occur.
     [Theory]
@@ -87,6 +90,36 @@ public class CombatForecastTests
         forecast.Defender.Modifiers.ShouldBe([new CombatModifier(CombatModifierKind.Terrain, 3, "forest")]);
         forecast.Defender.Strength.ShouldBe(23);
         forecast.Attacker.Modifiers.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Forecast_MeleeAcrossARiver_GivesTheDefenderTheRiverBonus()
+    {
+        var forecast = Forecast("defender across a river");
+
+        forecast.Defender.Modifiers.ShouldBe([new CombatModifier(CombatModifierKind.River, 3, "river")]);
+        forecast.Defender.Strength.ShouldBe(23);
+        forecast.Attacker.Modifiers.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Forecast_MeleeAcrossADeepRiverIntoForest_AddsBothBonuses()
+    {
+        var forecast = Forecast("defender across a deep river in forest");
+
+        forecast.Defender.Modifiers.ShouldBe([
+            new CombatModifier(CombatModifierKind.Terrain, 3, "forest"),
+            new CombatModifier(CombatModifierKind.River, 5, "deep_river"),
+        ]);
+        forecast.Defender.Strength.ShouldBe(28);
+    }
+
+    [Fact]
+    public void Forecast_RangedAcrossARiver_GivesNoRiverBonus()
+    {
+        var forecast = Forecast("archer shoots across a river");
+
+        forecast.Defender.Modifiers.ShouldBeEmpty();
     }
 
     [Fact]
@@ -174,19 +207,22 @@ public class CombatForecastTests
             "soldier attacks spearman" => (TestRulesets.Soldier, TestRulesets.Spearman, 0, 0),
             "hurt attacker" => (TestRulesets.Soldier, TestRulesets.Soldier, 50, 0),
             "hurt defender" => (TestRulesets.Soldier, TestRulesets.Soldier, 0, 60),
-            "archer shoots" => (TestRulesets.Archer, TestRulesets.Soldier, 0, 0),
+            "archer shoots" or "archer shoots across a river" => (TestRulesets.Archer, TestRulesets.Soldier, 0, 0),
             "settler" => (TestRulesets.Soldier, TestRulesets.Settler, 0, 0),
             "defender nearly dead" => (TestRulesets.Soldier, TestRulesets.Soldier, 0, 70),
             _ => (TestRulesets.Soldier, TestRulesets.Soldier, 0, 0),
         };
 
         var attacker = builder.AddUnit(P1, attackerType, 3, 3, damage: attackerDamage);
-        var targetColumn = fight == "archer shoots" ? 5 : 4;
+        var targetColumn = fight is "archer shoots" or "archer shoots across a river" ? 5 : 4;
         builder.AddUnit(P2, defenderType, targetColumn, 3, damage: defenderDamage);
         _ = fight switch
         {
             "defender in forest" => builder.WithTerrain(TestRulesets.Forest, (4, 3)),
             "defender on hills" => builder.WithTerrain(TestRulesets.Hills, (4, 3)).WithTerrain(TestRulesets.Forest, (3, 3)),
+            "defender across a river" => builder.WithRiver(TestRulesets.River, ((3, 3), (4, 3))),
+            "defender across a deep river in forest" => builder.WithRiver(TestRulesets.DeepRiver, ((3, 3), (4, 3))).WithTerrain(TestRulesets.Forest, (4, 3)),
+            "archer shoots across a river" => builder.WithRiver(TestRulesets.River, ((4, 3), (5, 3))),
             _ => builder,
         };
 

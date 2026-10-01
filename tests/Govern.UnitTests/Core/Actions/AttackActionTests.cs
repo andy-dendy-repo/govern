@@ -209,6 +209,43 @@ public class AttackActionTests
     }
 
     [Fact]
+    public void Execute_UndefendedCityAcrossADeepRiver_ReturnsRiverInTheWay()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.DeepRiver, ((3, 3), (4, 3)));
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        builder.AddCity(P2, 4, 3);
+
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(4, 3)));
+
+        result.ShouldFailWith(RuleViolations.RiverInTheWay);
+    }
+
+    [Fact]
+    public void Execute_UndefendedCityAcrossARiver_CapturesIt()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((3, 3), (4, 3)));
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        var city = builder.AddCity(P2, 4, 3);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
+
+        update.State.FindCity(city)!.Owner.ShouldBe(P1);
+    }
+
+    [Fact]
+    public void Execute_UnitAcrossADeepRiver_FightsAndStaysPut()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.DeepRiver, ((3, 3), (4, 3)));
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        var defender = builder.AddUnit(P2, TestRulesets.Soldier, 4, 3);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
+
+        update.State.FindUnit(defender)!.Damage.ShouldBeGreaterThan(0);
+        update.State.FindUnit(attacker)!.Position.ShouldBe(At(3, 3));
+    }
+
+    [Fact]
     public void Execute_DefendedCity_FightsTheDefenderAndKeepsTheCity()
     {
         var builder = new GameStateBuilder().WithCapitals();

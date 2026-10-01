@@ -8,7 +8,7 @@ namespace Govern.Core.Map;
 /// listed terrain then grows in patches from random seeds until it covers its share. Every tile is written together with its
 /// mirror (<see cref="GameMap.MirrorOf"/>), so both halves are the same and neither player gets the better half. Reserved
 /// tiles (where units start) and their mirrors stay default terrain, and an impassable tile is only placed while every
-/// passable tile stays reachable from every other.
+/// passable tile stays reachable from every other. The rivers come last (<see cref="RiverGenerator"/>).
 /// </summary>
 internal static class MapGenerator
 {
@@ -22,7 +22,8 @@ internal static class MapGenerator
             LayPatches(layout, patch, random);
         }
 
-        return map with { Tiles = [.. map.Tiles.Select(tile => tile with { Terrain = layout.Terrains[layout.IndexOf(tile.Coord)] })] };
+        var terrain = map with { Tiles = [.. map.Tiles.Select(tile => tile with { Terrain = layout.Terrains[layout.IndexOf(tile.Coord)] })] };
+        return RiverGenerator.Generate(ruleset, terrain, random);
     }
 
     // Seeds patches until the terrain covers its share; a bounded number of seeds, so a crowded map still finishes.
