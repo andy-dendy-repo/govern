@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Govern.Client.Features.Games.Components.Board;
 using Govern.Client.Features.Games.Enums;
+using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
@@ -369,29 +370,46 @@ public partial class GameBoardTests : ClientTestContext
     }
 
     [Fact]
-    public void ZoomButtons_ChangeTheScaleAndFitRestoresIt()
+    public void ZoomButtons_ChangeTheScaleAndFitShowsTheWholeMap()
     {
         var cut = RenderBoard(Start());
-        var fitted = Transform(cut);
+        var start = Transform(cut);
 
         cut.Find("button.zoom-in").Click();
-        Transform(cut).Scale.ShouldBe(fitted.Scale * GameBoard.ZoomStep, 0.001);
+        Transform(cut).Scale.ShouldBe(start.Scale * GameBoard.ZoomStep, 0.001);
         cut.Find("button.zoom-out").Click();
         cut.Find("button.zoom-out").Click();
-        Transform(cut).Scale.ShouldBe(fitted.Scale / GameBoard.ZoomStep, 0.001);
+        Transform(cut).Scale.ShouldBe(start.Scale / GameBoard.ZoomStep, 0.001);
 
         cut.Find("button.zoom-fit").Click();
-        cut.WaitForAssertion(() => Transform(cut).ShouldBe(fitted));
+        cut.WaitForAssertion(() => ShouldShow(cut, HexLayout.Bounds(TestViews.Width, TestViews.Height)));
     }
 
     [Fact]
-    public void Render_FirstTime_AddsTheWheelListenerAndFitsTheMeasuredBoard()
+    public void Render_FirstTime_AddsTheWheelListenerAndOpensOnTheOwnPieces()
     {
-        var cut = RenderBoard(Start());
+        var cut = RenderBoard(Create([Settler(1, You, At(2, 2)), Soldier(3, Opponent, At(7, 5))], [City(7, You, At(4, 3))]));
 
-        cut.WaitForAssertion(() => JSInterop.Invocations.Count(static invocation => invocation.Identifier == "measure").ShouldBe(1));
         JSInterop.Invocations.Count(static invocation => invocation.Identifier == "init").ShouldBe(1);
-        Transform(cut).Scale.ShouldNotBe(1);
+        cut.WaitForAssertion(() => ShouldShow(cut, HexLayout.Around([At(2, 2), At(4, 3)], 3)));
+    }
+
+    [Fact]
+    public void Render_NoOwnPieces_FitsTheWholeMap()
+    {
+        var cut = RenderBoard(Create([Soldier(3, Opponent, At(5, 2))]));
+
+        cut.WaitForAssertion(() => ShouldShow(cut, HexLayout.Bounds(TestViews.Width, TestViews.Height)));
+    }
+
+    // The board's transform is the fit of the bounds into the measured 800 by 600 element (rounded in the attribute).
+    private static void ShouldShow(IRenderedComponent<GameBoard> cut, BoardRect bounds)
+    {
+        var expected = BoardViewport.Fit(bounds, 800, 600);
+        var actual = Transform(cut);
+        actual.Scale.ShouldBe(expected.Scale, 0.001);
+        actual.X.ShouldBe(expected.X, 0.01);
+        actual.Y.ShouldBe(expected.Y, 0.01);
     }
 
     private IRenderedComponent<GameBoard> RenderBoard(

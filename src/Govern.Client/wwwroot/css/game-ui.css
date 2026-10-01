@@ -41,6 +41,7 @@
 }
 
 .top-bar,
+.side-panel,
 .action-bar {
     padding: var(--gv-space-2) var(--gv-space-3);
     background: var(--gv-surface-raised);

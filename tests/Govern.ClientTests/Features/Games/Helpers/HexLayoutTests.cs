@@ -91,4 +91,23 @@ public class HexLayoutTests
 
         static double Distance((double X, double Y) a, (double X, double Y) b) => Math.Sqrt(((a.X - b.X) * (a.X - b.X)) + ((a.Y - b.Y) * (a.Y - b.Y)));
     }
+
+    [Fact]
+    public void Around_Hexes_SpansTheirCentresWithTheMargin()
+    {
+        var (a, b) = (HexLayout.Center(Govern.Core.Map.HexCoord.FromOffset(1, 1)), HexLayout.Center(Govern.Core.Map.HexCoord.FromOffset(4, 3)));
+
+        var bounds = HexLayout.Around([Govern.Core.Map.HexCoord.FromOffset(4, 3), Govern.Core.Map.HexCoord.FromOffset(1, 1)], 2);
+
+        bounds.Left.ShouldBe(a.X - (2 * HexLayout.Width), 1e-9);
+        bounds.Top.ShouldBe(a.Y - (3 * HexLayout.Size), 1e-9);
+        (bounds.Left + bounds.Width).ShouldBe(b.X + (2 * HexLayout.Width), 1e-9);
+        (bounds.Top + bounds.Height).ShouldBe(b.Y + (3 * HexLayout.Size), 1e-9);
+    }
+
+    [Fact]
+    public void Around_NoHexes_Throws()
+    {
+        Should.Throw<ArgumentException>(() => HexLayout.Around([], 1));
+    }
 }
