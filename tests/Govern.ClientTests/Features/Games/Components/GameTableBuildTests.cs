@@ -6,6 +6,7 @@ using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
+using Microsoft.AspNetCore.Components.Web;
 using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Components;
@@ -118,16 +119,73 @@ public class GameTableBuildTests : ClientTestContext
     }
 
     [Fact]
-    public void ProduceBuilding_Clicked_SendsIt()
+    public void ProduceBuilding_PickATileOfTheTerritory_SendsItWithTheSite()
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
+        Tile(cut, At(2, 2)).Click();
+
+        cut.Find("button.produce-building-campus").Click();
+        cut.FindAll("use.overlay.placeable").Count.ShouldBe(6);
+        cut.Find(".building-placing").TextContent.ShouldStartWith("Pick a highlighted tile");
+        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
+        Tile(cut, At(3, 2)).Click();
+
+        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
+            .ShouldBe($$$"""{"type":"produce_building","cityId":{"value":7},"building":"campus","site":{"q":{{{At(3, 2).Q}}},"r":{{{At(3, 2).R}}}}}"""));
+    }
+
+    [Fact]
+    public void ProduceBuilding_ClickOutsideOrTheButtonAgain_StopsPlacingWithoutSending()
+    {
+        var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
+        Tile(cut, At(2, 2)).Click();
+
+        cut.Find("button.produce-building-campus").Click();
+        Tile(cut, At(6, 4)).Click();
+        cut.FindAll("use.overlay.placeable").ShouldBeEmpty();
 
         Tile(cut, At(2, 2)).Click();
         cut.Find("button.produce-building-campus").Click();
+        cut.Find("button.produce-building-campus").Click();
+        cut.FindAll("use.overlay.placeable").ShouldBeEmpty();
+        cut.FindAll(".building-placing").ShouldBeEmpty();
+        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ProduceBuilding_MoveTheOneInProduction_SendsTheNewSiteAndItsCurrentSiteOnlyCancels()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
+        var city = City(7, You, At(2, 2)) with { ProducingBuilding = Campus, ProducingBuildingSite = At(3, 2) };
+        var cut = RenderTable(Create(cities: [city]));
+        Tile(cut, At(2, 2)).Click();
+
+        cut.Find("button.produce-building-campus").Click();
+        Tile(cut, At(3, 2)).Click();
+        cut.FindAll("use.overlay.placeable").ShouldBeEmpty();
+        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
+
+        cut.Find("button.produce-building-campus").Click();
+        Tile(cut, At(2, 3)).Click();
 
         cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
-            .ShouldBe("""{"type":"produce_building","cityId":{"value":7},"building":"campus"}"""));
+            .ShouldBe($$$"""{"type":"produce_building","cityId":{"value":7},"building":"campus","site":{"q":{{{At(2, 3).Q}}},"r":{{{At(2, 3).R}}}}}"""));
+    }
+
+    [Fact]
+    public void ProduceBuilding_PlacingStarts_FocusesTheScreenSoEscapeCancelsIt()
+    {
+        var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
+        Tile(cut, At(2, 2)).Click();
+        var focusesBefore = Focuses();
+
+        cut.Find("button.produce-building-campus").Click();
+
+        Focuses().ShouldBe(focusesBefore + 1, "the city panel's tabs keep Esc from the screen, so the screen takes focus back");
+        cut.Find(".game-screen").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        cut.FindAll("use.overlay.placeable").ShouldBeEmpty();
+        cut.Find("button.produce-building-campus").ShouldNotBeNull("the city stays selected");
     }
 
     [Fact]
@@ -138,22 +196,27 @@ public class GameTableBuildTests : ClientTestContext
         Tile(cut, At(2, 2)).Click();
 
         cut.Find("button.produce-building-harbour").HasAttribute("disabled").ShouldBeTrue();
-        cut.Find(".building-reason").TextContent.ShouldBe("This building needs a different terrain next to the city.");
+        cut.Find(".building-reason").TextContent.ShouldBe("This building needs a different terrain next to its tile.");
     }
 
     [Fact]
-    public void Render_CityWithBuildings_ListsThemAndShowsTheBuildingInProduction()
+    public void Render_CityWithBuildings_ListsThemAndDrawsThemOnTheirTiles()
     {
-        var city = City(7, You, At(2, 2)) with { ProducingBuilding = Harbour, Buildings = [Campus] };
-        var cut = RenderTable(Create(cities: [city], terrain: static coord => coord == At(1, 2) ? new TerrainType("lake") : Plains));
+        var city = City(7, You, At(2, 2)) with { ProducingBuilding = Harbour, ProducingBuildingSite = At(1, 1), Buildings = [Campus] };
+        var cut = RenderTable(Create(
+            cities: [city],
+            terrain: static coord => coord == At(1, 2) ? new TerrainType("lake") : Plains,
+            buildings: static coord => coord == At(2, 3) ? Campus : null));
 
         Tile(cut, At(2, 2)).Click();
 
         cut.Find(".buildings .building-campus").TextContent.ShouldContain("Campus");
         cut.FindAll("button.produce-building-campus").ShouldBeEmpty();
         cut.Find(".production").TextContent.ShouldBe($"Producing a Harbour: 2 of {Ruleset.Building(Harbour).Cost}");
-        cut.Find("button.produce-building-harbour").HasAttribute("disabled").ShouldBeTrue();
+        cut.Find("button.produce-building-harbour").TextContent.ShouldContain("Move Harbour");
         cut.Find("button.produce-settler").HasAttribute("disabled").ShouldBeFalse();
+        cut.Find("[data-layer='improvements'] use.tile-building-campus").GetAttribute("href").ShouldBe("#building-campus");
+        cut.Find("[data-layer='improvements'] use.tile-building-harbour.planned").GetAttribute("href").ShouldBe("#building-harbour");
     }
 
     [Fact]
@@ -209,6 +272,8 @@ public class GameTableBuildTests : ClientTestContext
 
     private static IElement Tile(IRenderedComponent<GameTable> cut, HexCoord coord) =>
         cut.Find($"use.tile[data-q='{coord.Q}'][data-r='{coord.R}']");
+
+    private int Focuses() => JSInterop.Invocations.Count(static call => call.Identifier.EndsWith("focus", StringComparison.Ordinal));
 
     private JsonNode Command(int index) => JsonNode.Parse(Api.RequestsTo(TestGames.CommandsPath())[index].Body!)!;
 }

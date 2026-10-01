@@ -171,7 +171,8 @@ public static class VisibilityCalculator
                 tile.Bridges,
                 tile.Improvement,
                 tile.Territory is { } city ? owners[city] : null,
-                tile.Territory is { } own && owners[own] == viewer ? own : null),
+                tile.Territory is { } own && owners[own] == viewer ? own : null,
+                tile.Building),
             var coord when explored.Contains(coord) => new TileView(TileVisibility.Explored, tile.Terrain, tile.Rivers),
             _ => new TileView(TileVisibility.Unexplored, null),
         };

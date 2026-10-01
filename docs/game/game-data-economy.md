@@ -112,7 +112,7 @@ Each resource needs a `resource.{id}.name` text. The order is the order of a cit
 
 ## Buildings (`buildings`)
 
-Unique per city: a city has each building at most once.
+Unique per city: a city has each building at most once. Each one stands on its own tile of the city's territory, picked by the player when ordering it ([game logic](game-logic.md#produce-a-building)).
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -122,7 +122,7 @@ Unique per city: a city has each building at most once.
 | `upkeep` | list of `{ "resource", "amount" }` | Resources the city pays every turn to keep it |
 | `yields` | list of `{ "resource", "amount" }` | Added to the city's stock every turn; may be empty |
 | `production` | int 0..100 | Added to the city's production per turn (for its own production and the jobs it feeds) |
-| `requiresAdjacentTerrain` | list of terrain ids | The city needs one of them next to it (empty: no need); no repeats |
+| `requiresAdjacentTerrain` | list of terrain ids | The building's tile needs one of them next to it (empty: no need); no repeats |
 
 ```json
 "buildings": [

@@ -149,6 +149,16 @@
     filter: drop-shadow(0 0 1px var(--gv-board-outline));
 }
 
+/* A building on its tile (BoardImprovements), where an improvement would be, in its owner's seat colour (the seat class sets
+   the fill); faded while its city is still producing it. */
+.tile-building {
+    filter: drop-shadow(0 0 1px var(--gv-board-outline));
+}
+
+.tile-building.planned {
+    opacity: 0.45;
+}
+
 .board .layer-rivers,
 .board .layer-improvements,
 .board .layer-borders,
@@ -273,6 +283,12 @@
 .board .overlay.bridgeable {
     fill: var(--gv-overlay-bridgeable);
     stroke: var(--gv-overlay-bridgeable-stroke);
+    stroke-dasharray: 4 3;
+}
+
+.board .overlay.placeable {
+    fill: var(--gv-overlay-placeable);
+    stroke: var(--gv-overlay-placeable-stroke);
     stroke-dasharray: 4 3;
 }
 

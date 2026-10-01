@@ -120,7 +120,7 @@ public partial class CityPanel
     // A unit button is pressed only while no building replaces the unit in production.
     private bool ProducingUnit(UnitType type) => City.ProducingBuilding is null && City.Producing == type;
 
-    // What a building gives: its yields each turn, any extra production, and the terrain it needs next to the city.
+    // What a building gives: its yields each turn, any extra production, and the terrain it needs next to its tile.
     private string Effect(BuildingDefinition building)
     {
         var parts = building.Yields.Select(amount => $"+{amount.Amount} {Ruleset.ResourceName(amount.Resource)}").ToList();
@@ -132,6 +132,6 @@ public partial class CityPanel
         var effect = $"{string.Join(", ", parts)} a turn";
         return building.RequiresAdjacentTerrain.IsEmpty
             ? effect
-            : $"{effect}; needs {string.Join(" or ", building.RequiresAdjacentTerrain.Select(Ruleset.TerrainName))} next to the city";
+            : $"{effect}; needs {string.Join(" or ", building.RequiresAdjacentTerrain.Select(Ruleset.TerrainName))} next to its tile";
     }
 }

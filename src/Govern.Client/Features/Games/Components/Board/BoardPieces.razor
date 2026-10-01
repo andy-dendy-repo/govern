@@ -22,6 +22,10 @@
     {
         <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay bridgeable"/>
     }
+    @foreach (var coord in Highlights.Placeable)
+    {
+        <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay placeable"/>
+    }
 </g>
 <g class="layer-cities" data-layer="@BoardLayers.Name(BoardLayer.Cities)">
     @foreach (var city in View.Cities)

@@ -35,7 +35,7 @@ internal static class SetProductionRule
 
         var changed = city.ProducingBuilding is null && city.Producing == command.UnitType
             ? city
-            : CityProduction.Refund(ruleset, city) with { Producing = command.UnitType, ProducingBuilding = null };
+            : CityProduction.Refund(ruleset, city) with { Producing = command.UnitType, ProducingBuilding = null, ProducingBuildingSite = null };
         return new GameUpdate(state.WithCity(changed), [new ProductionChangedEvent(city.Id, command.UnitType)]);
     }
 }

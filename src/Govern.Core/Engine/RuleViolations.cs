@@ -107,6 +107,21 @@ public static class RuleViolations
     /// <summary>The city already has the building.</summary>
     public static readonly RuleViolation BuildingExists = new("city.building_exists", "The city already has this building.");
 
-    /// <summary>The building needs a terrain next to the city that is not there.</summary>
-    public static readonly RuleViolation BuildingNeedsTerrain = new("city.building_needs_terrain", "This building needs a different terrain next to the city.");
+    /// <summary>The building needs a terrain next to its tile that is not there.</summary>
+    public static readonly RuleViolation BuildingNeedsTerrain = new("city.building_needs_terrain", "This building needs a different terrain next to its tile.");
+
+    /// <summary>The building's tile is not in the city's territory, or is the city's own tile.</summary>
+    public static readonly RuleViolation BuildingNotInTerritory = new("city.building_not_in_territory", "A building must stand on a tile of the city's territory, off the city tile.");
+
+    /// <summary>A building can't stand on the tile's terrain (it is impassable).</summary>
+    public static readonly RuleViolation BuildingWrongTerrain = new("city.building_wrong_terrain", "A building can't stand on this terrain.");
+
+    /// <summary>The building's tile already has an improvement or a building, or is reserved for another building.</summary>
+    public static readonly RuleViolation BuildingSiteTaken = new("city.building_site_taken", "This tile already has an improvement or a building.");
+
+    /// <summary>One of the actor's units is building an improvement on the building's tile.</summary>
+    public static readonly RuleViolation BuildingSiteBeingImproved = new("city.building_site_being_improved", "A unit is building an improvement on this tile.");
+
+    /// <summary>A building stands on the tile, or a city is producing one there.</summary>
+    public static readonly RuleViolation TileHasBuilding = new("build.tile_has_building", "A building stands, or is being produced, on this tile.");
 }

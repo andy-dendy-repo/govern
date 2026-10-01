@@ -210,28 +210,31 @@ public class ConstructionRuleTests
     }
 
     [Fact]
-    public void EndTurn_BuildingFinished_JoinsTheCityAndProductionGoesBackToTheUnit()
+    public void EndTurn_BuildingFinished_JoinsTheCityStandsOnItsSiteAndProductionGoesBackToTheUnit()
     {
-        var builder = new GameStateBuilder().WithCapitals();
-        var city = builder.AddCity(P1, 5, 5, TestRulesets.Archer, progress: 7, producingBuilding: TestRulesets.Campus, paid: true, buildings: [TestRulesets.TradePost]);
+        var builder = new GameStateBuilder().WithCapitals().WithBuilding(TestRulesets.TradePost, (6, 5));
+        var city = builder.AddCity(P1, 5, 5, TestRulesets.Archer, progress: 7, producingBuilding: TestRulesets.Campus, paid: true, buildingSite: (5, 4), buildings: [TestRulesets.TradePost]);
 
         var update = EndTurn(builder.Build());
 
         var finished = update.State.FindCity(city)!;
         finished.BuildingList.ShouldBe([TestRulesets.TradePost, TestRulesets.Campus]);
         finished.ProducingBuilding.ShouldBeNull();
+        finished.ProducingBuildingSite.ShouldBeNull();
         finished.Producing.ShouldBe(TestRulesets.Archer);
         finished.ProductionProgress.ShouldBe(0);
-        update.Events.ShouldContain(new BuildingCompletedEvent(city, TestRulesets.Campus));
+        update.State.Map.TileAt(At(5, 4)).Building.ShouldBe(TestRulesets.Campus);
+        update.State.Map.TileAt(At(5, 5)).Building.ShouldBeNull("the city tile never holds a building");
+        update.Events.ShouldContain(new BuildingCompletedEvent(city, TestRulesets.Campus, At(5, 4)));
         YieldCalculator.AmountOf(update.State.FindCity(city)!.StockList, TestRulesets.Gold).ShouldBe(2);
         YieldCalculator.AmountOf(update.State.FindCity(city)!.StockList, TestRulesets.Science).ShouldBe(0, "a new building yields from the next turn");
     }
 
     [Fact]
-    public void Capture_KeepsTheBuildingsAndStopsTheBuildingInProduction()
+    public void Capture_KeepsTheBuildingsOnTheirTilesAndStopsTheBuildingInProduction()
     {
-        var builder = new GameStateBuilder().WithCapitals();
-        var city = builder.AddCity(P2, 6, 5, progress: 3, producingBuilding: TestRulesets.Harbour, buildings: [TestRulesets.Campus]);
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Lake, (7, 4)).WithBuilding(TestRulesets.Campus, (7, 5));
+        var city = builder.AddCity(P2, 6, 5, progress: 3, producingBuilding: TestRulesets.Harbour, buildingSite: (6, 4), buildings: [TestRulesets.Campus]);
         var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5);
 
         var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(6, 5))).ShouldSucceed();
@@ -240,6 +243,9 @@ public class ConstructionRuleTests
         captured.Owner.ShouldBe(P1);
         captured.BuildingList.ShouldBe([TestRulesets.Campus]);
         captured.ProducingBuilding.ShouldBeNull();
+        captured.ProducingBuildingSite.ShouldBeNull();
+        update.State.Map.TileAt(At(7, 5)).Building.ShouldBe(TestRulesets.Campus);
+        update.State.Map.TileAt(At(7, 5)).Territory.ShouldBe(city);
     }
 
     private static GameUpdate EndTurn(Govern.Core.State.GameState state, Govern.Core.State.PlayerId? player = null) =>
