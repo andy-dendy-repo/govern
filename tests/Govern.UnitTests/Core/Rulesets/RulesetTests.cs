@@ -141,6 +141,11 @@ public class RulesetTests
         },
         ["no work area"] = json => json["cities"]!["workRadius"] = 0,
         ["overlapping work areas"] = json => json["cities"]!["workRadius"] = 2,
+        ["city sees less than its work area"] = json =>
+        {
+            json["cities"]!["workRadius"] = 3;
+            json["cities"]!["sight"] = 2;
+        },
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -265,6 +270,7 @@ public class RulesetTests
         { "bridge builder sees less than the work radius", "$.units[1].sight" },
         { "no work area", "$.cities.workRadius" },
         { "overlapping work areas", "$.cities.workRadius" },
+        { "city sees less than its work area", "$.cities.sight" },
     };
 
     [Fact]

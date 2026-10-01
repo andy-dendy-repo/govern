@@ -1,3 +1,4 @@
+using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Helpers;
 using Govern.Client.Models;
 using Govern.Core.Cities;
@@ -54,15 +55,16 @@ public partial class UnitPanel
         }
     }
 
-    // How much a turn adds to the job: the unit's own build production, plus the production of the own city whose land it
-    // stands on (if that city is not feeding an older job, which the view doesn't tell, the job may take longer).
+    // How much a turn adds to the job: the unit's own build production, plus the production of the own city that feeds it
+    // (the city whose ground it stands on, unless that city feeds an older job).
     private int JobPerTurn
     {
         get
         {
             var perTurn = Ruleset.Unit(Unit.Type).BuildProduction;
-            var city = View.Cities.FirstOrDefault(city => city.Owner == View.Viewer && WorkArea.Covers(Ruleset, city.Position, Unit.Position));
-            return city is null ? perTurn : perTurn + WorkArea.ProductionPerTurn(Ruleset, city.BuildingList);
+            return JobFundingResolver.FeedingCities(Ruleset, View).TryGetValue(Unit.Id, out var city)
+                ? perTurn + WorkArea.ProductionPerTurn(Ruleset, city.BuildingList)
+                : perTurn;
         }
     }
 

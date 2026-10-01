@@ -172,7 +172,7 @@ A unit with Build bridges can bridge the river between its tile and a neighbouri
 - The river edge must not already have a bridge, the far tile must be one a land unit can enter, and neither tile may be in an enemy city's work area.
 - A bridged edge costs nothing to cross, even over a deep river, and gives the defender no river bonus.
 - Bridges cost the "Bridge cost" under "Game numbers" and belong to nobody: both players can use them. There is no way to destroy one yet.
-- You see a bridge while you can see the tiles on both banks.
+- You see a bridge while you can see the bank that holds it (each river edge is kept by one of its two tiles).
 
 ## City buildings
 

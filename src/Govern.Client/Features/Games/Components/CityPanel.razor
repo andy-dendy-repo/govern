@@ -25,6 +25,10 @@
         @if (ProducingCost is { } cost)
         {
             <ProgressBar Value="@(City.ProductionProgress ?? 0)" Max="@cost" PerTurn="@PerTurn" Label="Production"/>
+            @if (FeedsAJob)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" class="lent-production rz-m-0">This turn the city's production goes to a unit building on its land.</RadzenText>
+            }
         }
         <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" Wrap="FlexWrap.Wrap">
             @foreach (var unit in Ruleset.Units)
