@@ -158,7 +158,7 @@ public partial class GameTable : IDisposable
     {
         if (args.Key == "Escape")
         {
-            _ui.Escape();
+            _ui.Escape(Ruleset, View);
         }
     }
 }

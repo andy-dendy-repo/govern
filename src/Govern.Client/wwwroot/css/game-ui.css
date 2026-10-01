@@ -139,6 +139,10 @@
     gap: var(--gv-space-1);
 }
 
+.stock .cost-label {
+    font-variant-numeric: tabular-nums;
+}
+
 .produce .cost-label {
     margin-inline-start: var(--gv-space-2);
 }

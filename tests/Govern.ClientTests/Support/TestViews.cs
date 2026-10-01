@@ -39,6 +39,16 @@ public static class TestViews
 
     public static readonly UnitType ArcherType = new("archer");
 
+    public static readonly UnitType BuilderType = new("builder");
+
+    public static readonly ImprovementType Farm = new("farm");
+
+    public static readonly BuildingType Campus = new("campus");
+
+    public static readonly BuildingType Harbour = new("harbour");
+
+    public static readonly ResourceType Science = new("science");
+
     public static readonly TerrainType Plains = new("plains");
 
     public static readonly TerrainType Forest = new("forest");

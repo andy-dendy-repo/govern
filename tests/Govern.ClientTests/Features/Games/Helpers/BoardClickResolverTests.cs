@@ -3,8 +3,10 @@ using Govern.Client.Features.Games.Models;
 using Govern.Core.Actions;
 using Govern.Core.Cities;
 using Govern.Core.Engine;
+using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.Core.Units;
+using Govern.Core.Visibility;
 using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Helpers;
@@ -196,4 +198,45 @@ public class BoardClickResolverTests
 
         BoardClickResolver.Highlights(Ruleset, view, BoardSelection.Of(YourSettler)).Reachable.ShouldBeEmpty();
     }
+
+    [Fact]
+    public void Resolve_BridgeModeAndATileAcrossTheRiver_BuildsTheBridgeAndLeavesBridgeMode()
+    {
+        var selection = BoardSelection.Of(YourSoldier) with { Bridge = true };
+
+        var click = BoardClickResolver.Resolve(Ruleset, RiverView(), selection, At(4, 2));
+
+        click.ShouldBe(new BoardClick(BoardSelection.Of(YourSoldier), new BuildBridgeCommand(YourSoldier, At(4, 2))));
+    }
+
+    [Fact]
+    public void Resolve_BridgeModeAndAnyOtherTile_OnlyLeavesBridgeMode()
+    {
+        var selection = BoardSelection.Of(YourSoldier) with { Bridge = true };
+
+        var click = BoardClickResolver.Resolve(Ruleset, RiverView(), selection, At(3, 1));
+
+        click.ShouldBe(new BoardClick(BoardSelection.Of(YourSoldier), null));
+    }
+
+    [Fact]
+    public void Highlights_BridgeMode_AreOnlyTheBridgeTargets()
+    {
+        var highlights = BoardClickResolver.Highlights(Ruleset, RiverView(), BoardSelection.Of(YourSoldier) with { Bridge = true });
+
+        highlights.Bridgeable.ShouldBe([At(4, 2)]);
+        highlights.Reachable.ShouldBeEmpty();
+        highlights.Attackable.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Prune_BridgeModeWithNothingToBridge_LeavesBridgeMode()
+    {
+        var selection = BoardSelection.Of(YourSoldier) with { Bridge = true };
+
+        BoardClickResolver.Prune(Ruleset, Create([Soldier(2, You, At(3, 2))]), selection).ShouldBe(BoardSelection.Of(YourSoldier));
+    }
+
+    private static PlayerView RiverView() =>
+        Create([Soldier(2, You, At(3, 2))], rivers: static coord => coord == At(3, 2) ? new TileRivers(East: River) : null);
 }

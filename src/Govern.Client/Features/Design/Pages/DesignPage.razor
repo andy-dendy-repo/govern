@@ -29,6 +29,18 @@ else
             {
                 <span class="design-swatch"><GameIcon Id="@Icons.Terrain(terrain.Id)" Class="@($"terrain terrain-{terrain.Id}")"/> @Ruleset.TerrainName(terrain.Id)</span>
             }
+            @foreach (var improvement in Ruleset.Improvements)
+            {
+                <span class="design-swatch"><GameIcon Id="@Icons.Improvement(improvement.Id)"/> @Ruleset.ImprovementName(improvement.Id)</span>
+            }
+            @foreach (var building in Ruleset.Buildings)
+            {
+                <span class="design-swatch"><GameIcon Id="@Icons.Building(building.Id)" Class="seat-1"/> @Ruleset.BuildingName(building.Id)</span>
+            }
+            @foreach (var resource in Ruleset.Resources)
+            {
+                <span class="design-swatch"><GameIcon Id="@Icons.Resource(resource.Id)"/> @Ruleset.ResourceName(resource.Id)</span>
+            }
             @foreach (var (id, name) in Glyphs)
             {
                 <span class="design-swatch"><GameIcon Id="@id"/> @name</span>
@@ -44,6 +56,10 @@ else
                     @Ruleset.RiverName(river.Id)
                 </span>
             }
+            <span class="design-swatch">
+                <svg width="48" height="16" aria-hidden="true"><line x1="6" y1="8" x2="42" y2="8" class="@($"river river-{Ruleset.Rivers[0].Id} visible")"/><line x1="24" y1="1" x2="24" y2="15" class="bridge"/></svg>
+                Bridge
+            </span>
         </RadzenStack>
 
         <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2">Seats</RadzenText>
@@ -72,7 +88,7 @@ else
 
 @code {
     private static readonly (string Id, string Name)[] Glyphs =
-        [(Icons.City, "City"), (Icons.Movement, "Movement"), (Icons.Sight, "Sight"), (Icons.Production, "Production"), (Icons.Health, "Health"), (Icons.Strength, "Strength"), (Icons.Turns, "Turns")];
+        [(Icons.City, "City"), (Icons.Movement, "Movement"), (Icons.Sight, "Sight"), (Icons.Production, "Production"), (Icons.Health, "Health"), (Icons.Strength, "Strength"), (Icons.Turns, "Turns"), (Icons.Bridge, "Bridge")];
 
     private static readonly StatRow[] SampleStats =
     [
