@@ -1,6 +1,6 @@
 @page "/design"
 @* The living catalog of the game's design system (docs/features/game-ui.md): every shared game component with sample data,
-   the icon set and the seat and terrain colours. Development only: elsewhere it shows the not-found text. Look here before
+   the icon set, the seat and terrain colours and the river kinds. Development only: elsewhere it shows the not-found text. Look here before
    building a new component, and add each new one here. *@
 @using Govern.Client.Features.Games.Services
 @using Govern.Core.Rulesets
@@ -32,6 +32,17 @@ else
             @foreach (var (id, name) in Glyphs)
             {
                 <span class="design-swatch"><GameIcon Id="@id"/> @name</span>
+            }
+        </RadzenStack>
+
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2">Rivers</RadzenText>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap" class="design-rivers">
+            @foreach (var river in Ruleset.Rivers)
+            {
+                <span class="design-swatch">
+                    <svg width="48" height="16" aria-hidden="true"><line x1="6" y1="8" x2="42" y2="8" class="@($"river river-{river.Id} visible")"/></svg>
+                    @Ruleset.RiverName(river.Id)
+                </span>
             }
         </RadzenStack>
 

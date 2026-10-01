@@ -37,6 +37,7 @@
     {
         CombatModifierKind.Health => $"{modifier.Value} for being hurt",
         CombatModifierKind.Counter => $"+{modifier.Value} against {Ruleset.ClassName(modifier.Subject!)}",
+        CombatModifierKind.River => $"+{modifier.Value} behind {Ruleset.RiverName(new(modifier.Subject!))}",
         _ => $"+{modifier.Value} on {Ruleset.TerrainName(new(modifier.Subject!))}",
     };
 
