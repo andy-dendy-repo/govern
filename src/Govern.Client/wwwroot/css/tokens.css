@@ -25,6 +25,12 @@
     --gv-overlay-attackable: rgba(214, 69, 69, 0.35);
     --gv-overlay-attackable-stroke: #d64545;
     --gv-overlay-target: rgba(214, 69, 69, 0.6);
+    --gv-overlay-bridgeable: rgba(176, 132, 74, 0.4);
+    --gv-overlay-bridgeable-stroke: #c9965a;
+    /* Bridges across river edges and tile improvements (their symbol strokes). */
+    --gv-bridge: #8a5a2b;
+    --gv-bridge-outline: #3b2614;
+    --gv-improvement: #fff3c4;
     --gv-health-track: #14171c;
     --gv-health-good: #4caf50;
     --gv-health-low: #e53935;
@@ -85,6 +91,7 @@
 @media (prefers-color-scheme: dark) {
     :root {
         --gv-board-background: #15181d;
+        --gv-bridge: #a06c38;
         --gv-tile-stroke: #15181d;
         --gv-tile-unexplored: #22262d;
         --gv-terrain-plains: #86ad6a;

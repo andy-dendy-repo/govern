@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Govern.Core.Cities;
+using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.Core.Units;
@@ -23,24 +24,63 @@ internal sealed class GameStateBuilder
     private readonly List<City> _cities = [];
     private readonly Dictionary<HexCoord, TerrainType> _terrain = [];
     private readonly Dictionary<HexEdge, RiverType> _rivers = [];
+    private readonly HashSet<HexEdge> _bridges = [];
+    private readonly Dictionary<HexCoord, ImprovementType> _improvements = [];
     private int _nextId = 1;
     private PlayerId _currentPlayer = P1;
     private int _turn = 1;
 
     public static HexCoord At(int column, int row) => HexCoord.FromOffset(column, row);
 
-    public UnitId AddUnit(PlayerId owner, UnitType type, int column, int row, int? movementLeft = null, int damage = 0)
+    public UnitId AddUnit(PlayerId owner, UnitType type, int column, int row, int? movementLeft = null, int damage = 0, UnitJob? job = null)
     {
         var id = new UnitId(_nextId++);
-        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? TestRulesets.Default.Unit(type).Movement, damage));
+        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? TestRulesets.Default.Unit(type).Movement, damage, job));
         return id;
     }
 
-    public CityId AddCity(PlayerId owner, int column, int row, UnitType? producing = null, int progress = 0)
+    public CityId AddCity(
+        PlayerId owner,
+        int column,
+        int row,
+        UnitType? producing = null,
+        int progress = 0,
+        BuildingType? producingBuilding = null,
+        params BuildingType[] buildings)
     {
         var id = new CityId(_nextId++);
-        _cities.Add(new City(id, owner, $"City {id.Value}", At(column, row), producing ?? TestRulesets.Soldier, progress));
+        _cities.Add(new City(
+            id,
+            owner,
+            $"City {id.Value}",
+            At(column, row),
+            producing ?? TestRulesets.Soldier,
+            progress,
+            producingBuilding,
+            buildings.Length == 0 ? null : [.. buildings]));
         return id;
+    }
+
+    // Puts an improvement on tiles, e.g. WithImprovement(TestRulesets.Farm, (5, 4)).
+    public GameStateBuilder WithImprovement(ImprovementType improvement, params (int Column, int Row)[] tiles)
+    {
+        foreach (var (column, row) in tiles)
+        {
+            _improvements[At(column, row)] = improvement;
+        }
+
+        return this;
+    }
+
+    // Puts a bridge on the edges between neighbouring tiles (normally over a river added with WithRiver).
+    public GameStateBuilder WithBridge(params ((int Column, int Row) A, (int Column, int Row) B)[] edges)
+    {
+        foreach (var (a, b) in edges)
+        {
+            _bridges.Add(HexEdge.Between(At(a.Column, a.Row), At(b.Column, b.Row)) ?? throw new ArgumentException($"{a} and {b} are not neighbours."));
+        }
+
+        return this;
     }
 
     // One city per player in opposite corners keeps both players alive and far from the action.
@@ -106,6 +146,11 @@ internal sealed class GameStateBuilder
             tile = tile with { Rivers = (tile.Rivers ?? new TileRivers()).With(edge.Side, river) };
         }
 
-        return tile;
+        foreach (var edge in _bridges.Where(edge => edge.Owner == tile.Coord))
+        {
+            tile = tile with { Bridges = (tile.Bridges ?? new TileBridges()).With(edge.Side) };
+        }
+
+        return _improvements.TryGetValue(tile.Coord, out var improvement) ? tile with { Improvement = improvement } : tile;
     }
 }

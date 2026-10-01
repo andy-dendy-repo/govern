@@ -60,3 +60,10 @@ Checks worth repeating:
 - Validator has no upper bounds on combat numbers (strength, maxHealth, damage.max, perStrengthPoint): `baseStrength * (maxHealth + health)` and `raw * rollPercent` can wrap. Ask for caps like the map bounds.
 - `Unit.Damage` is absolute while games aren't pinned: a later ruleset lowering maxHealth leaves live units at health <= 0.
 - v1/v2 ruleset files no longer parse with current Core (new required fields); matters when G3b pins games to versions.
+
+G10a review (2026-10-01, claude/project-thread-0njb5y: jobs, improvements, buildings, bridges, stockpile, ruleset v5). No critical. Verified, don't re-derive: work areas can't overlap (FoundCity forbids distance < minimumSpacing, validator wants spacing > 2*workRadius), so `FirstOrDefault` city per job is unique; bridge preview is exact because `build_bridge` sight >= workRadius + 1; bridges/improvements are only on Visible TileViews, so hidden enemy construction doesn't move the view fingerprint; all new state fields are WhenWritingNull/optional ctor params.
+Checks worth repeating:
+- **Client numbers that ignore cross-mechanic diversion:** CityPanel's turns-left used the full production while a job on the city's ground was consuming it. When a mechanic diverts a resource, check every panel that forecasts with it.
+- Docs drift on edge objects: bridges are stored on one owner tile, so "seen while both banks are visible" claims are wrong (only the owner tile matters).
+- Heal-gating keyed on hidden state (job) widens the accepted heal leak; the docs' "known leak" sentence must be kept in sync.
+- Validator gaps to ask about on new radius-like fields: is the owner guaranteed to see what the field covers (cities.sight vs workRadius)?

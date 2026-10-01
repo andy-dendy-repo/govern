@@ -42,12 +42,13 @@ internal static class RulesetValidator
         CheckTexts(document, problems);
         CombatRulesValidator.Validate(document, problems);
         RiverRulesValidator.Validate(document, rivers, terrains, problems);
+        EconomyRulesValidator.Validate(document, terrains, problems);
 
         return [.. problems];
     }
 
-    // Valid, unique ids; returns the set of them for reference checks.
-    private static HashSet<string> CheckIds(IEnumerable<string> ids, string path, List<RulesetProblem> problems)
+    // Valid, unique ids (at least one unless not required); returns the set of them for reference checks.
+    internal static HashSet<string> CheckIds(IEnumerable<string> ids, string path, List<RulesetProblem> problems, bool required = true)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var index = 0;
@@ -65,7 +66,7 @@ internal static class RulesetValidator
             index++;
         }
 
-        if (index == 0)
+        if (index == 0 && required)
         {
             problems.Add(new(path, "At least one entry is required."));
         }

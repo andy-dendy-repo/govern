@@ -15,7 +15,9 @@ public class DesignPageTests : ClientTestContext
         var cut = Render<DesignPage>();
 
         cut.Find("h1").TextContent.ShouldBe("Design system");
-        cut.FindAll(".design-icons use").Count.ShouldBeGreaterThanOrEqualTo(TestViews.Ruleset.Units.Length + TestViews.Ruleset.Terrains.Length);
+        cut.FindAll(".design-icons use").Count.ShouldBeGreaterThanOrEqualTo(
+            TestViews.Ruleset.Units.Length + TestViews.Ruleset.Terrains.Length + TestViews.Ruleset.Improvements.Length
+            + TestViews.Ruleset.Buildings.Length + TestViews.Ruleset.Resources.Length);
         cut.FindAll(".stat-table, .progress, .cost-label, .confirm-button").Count.ShouldBe(4);
     }
 

@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.Units;
@@ -6,12 +7,12 @@ using Govern.Core.Units;
 namespace Govern.UnitTests.Core.Builders;
 
 /// <summary>
-/// The real default ruleset (<c>rulesets/default/v4.json</c>, copied next to the tests) and variants of it for rules whose data
+/// The real default ruleset (<c>rulesets/default/v5.json</c>, copied next to the tests) and variants of it for rules whose data
 /// matters to a test.
 /// </summary>
 internal static class TestRulesets
 {
-    public static readonly string DefaultJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "rulesets", "default", "v4.json"));
+    public static readonly string DefaultJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "rulesets", "default", "v5.json"));
 
     public static readonly Ruleset Default = Ruleset.ParseValid(DefaultJson);
 
@@ -20,6 +21,7 @@ internal static class TestRulesets
     public static readonly UnitType Spearman = new("spearman");
     public static readonly UnitType Horseman = new("horseman");
     public static readonly UnitType Archer = new("archer");
+    public static readonly UnitType Builder = new("builder");
     public static readonly TerrainType Plains = new("plains");
     public static readonly TerrainType Forest = new("forest");
     public static readonly TerrainType Hills = new("hills");
@@ -28,6 +30,20 @@ internal static class TestRulesets
     public static readonly RiverType Stream = new("stream");
     public static readonly RiverType River = new("river");
     public static readonly RiverType DeepRiver = new("deep_river");
+    public static readonly ResourceType Food = new("food");
+    public static readonly ResourceType Wood = new("wood");
+    public static readonly ResourceType Stone = new("stone");
+    public static readonly ResourceType Gold = new("gold");
+    public static readonly ResourceType Science = new("science");
+    public static readonly ResourceType Culture = new("culture");
+    public static readonly ImprovementType Farm = new("farm");
+    public static readonly ImprovementType LumberCamp = new("lumber_camp");
+    public static readonly ImprovementType Mine = new("mine");
+    public static readonly BuildingType ArmyCamp = new("army_camp");
+    public static readonly BuildingType Campus = new("campus");
+    public static readonly BuildingType TradePost = new("trade_post");
+    public static readonly BuildingType CultureCentre = new("culture_centre");
+    public static readonly BuildingType Harbour = new("harbour");
 
     // The default document after a change, e.g. With(json => json["cities"]!["productionPerTurn"] = 2).
     public static JsonNode Document(Action<JsonNode>? change = null)

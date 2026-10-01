@@ -221,6 +221,20 @@ public class AttackActionTests
     }
 
     [Fact]
+    public void Execute_UndefendedCityAcrossABridgedDeepRiver_CapturesIt()
+    {
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithRiver(TestRulesets.DeepRiver, ((3, 3), (4, 3)))
+            .WithBridge(((3, 3), (4, 3)));
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        var city = builder.AddCity(P2, 4, 3);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
+
+        update.State.FindCity(city)!.Owner.ShouldBe(P1);
+    }
+
+    [Fact]
     public void Execute_UndefendedCityAcrossARiver_CapturesIt()
     {
         var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((3, 3), (4, 3)));

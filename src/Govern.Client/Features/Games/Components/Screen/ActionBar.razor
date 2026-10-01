@@ -1,5 +1,7 @@
 @* The bottom zone of the game screen: what the selected own unit can do. Each action is a button (keyboard-reachable), disabled
-   with the reason when the rules forbid it. A new ability adds its button here. Moves and attacks are board clicks. *@
+   with the reason when the rules forbid it. A new ability adds its button here. Moves and attacks are board clicks; Build
+   bridge turns on bridge mode, where a click on a marked neighbour starts the bridge. *@
+@using Govern.Core.Economy
 @using Govern.Client.Features.Games.Services
 @using Govern.Core.Actions
 @using Govern.Core.Engine
@@ -13,7 +15,7 @@
     var definition = Ruleset.Unit(unit.Type);
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap" class="action-bar">
         <GameIcon Id="@Icons.Unit(unit.Type)" Class="@Seats.Class(View, unit.Owner)"/>
-        <RadzenText TextStyle="TextStyle.Body2" TagName="TagName.Span" class="action-hint rz-m-0">@Hint(definition)</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body2" TagName="TagName.Span" class="action-hint rz-m-0">@Hint(unit, definition)</RadzenText>
         @if (definition.CanFoundCity)
         {
             var problem = GameEngine.CheckFoundCity(Ruleset, View, unit.Id);
@@ -22,6 +24,43 @@
             @if (problem is not null)
             {
                 <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="found-city-reason">@problem.Message</RadzenText>
+            }
+        }
+        @if (definition.CanBuildImprovements)
+        {
+            var fitting = Fitting(unit).ToList();
+            @foreach (var improvement in fitting)
+            {
+                var problem = GameEngine.CheckBuildImprovement(Ruleset, View, unit.Id, improvement.Id);
+                <RadzenButton Disabled="@(Busy || problem is not null)" ButtonStyle="ButtonStyle.Secondary"
+                              Click="@(() => Command.InvokeAsync(new BuildImprovementCommand(unit.Id, improvement.Id)))"
+                              class="@($"build-improvement build-{improvement.Id.Id}")">
+                    <GameIcon Id="@Icons.Improvement(improvement.Id)"/>
+                    <span>Build @Ruleset.ImprovementName(improvement.Id)</span>
+                    <CostLabel Amount="@improvement.Cost"/>
+                </RadzenButton>
+                @if (problem is not null)
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="build-improvement-reason">@problem.Message</RadzenText>
+                }
+            }
+            @if (fitting.Count == 0)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="no-improvement">No improvement fits this terrain.</RadzenText>
+            }
+        }
+        @if (definition.CanBuildBridges)
+        {
+            var targets = GameEngine.BridgeTargets(Ruleset, View, unit.Id);
+            <RadzenButton Disabled="@(Busy || targets.IsEmpty)" ButtonStyle="@(Ui.Selection.Bridge ? ButtonStyle.Primary : ButtonStyle.Secondary)"
+                          Click="@(() => Ui.ToggleBridge(Ruleset, View))" aria-pressed="@(Ui.Selection.Bridge ? "true" : "false")" class="build-bridge">
+                <GameIcon Id="@Icons.Bridge"/>
+                <span>@(Ui.Selection.Bridge ? "Cancel bridge" : "Build bridge")</span>
+                <CostLabel Amount="@Ruleset.Bridges.Cost"/>
+            </RadzenButton>
+            @if (targets.IsEmpty)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="build-bridge-reason">No river next to this unit can be bridged now.</RadzenText>
             }
         }
     </RadzenStack>
@@ -40,7 +79,18 @@
 
     private UnitView? Unit => View.Status == GameStatus.InProgress && Ui.Selection.Unit is { } id ? View.FindOwnUnit(id) : null;
 
-    private static string Hint(UnitDefinition definition) => definition.AttackRange > 0
-        ? "Click a highlighted tile to move, or an enemy to see the attack forecast."
-        : "Click a highlighted tile to move.";
+    private string Hint(UnitView unit, UnitDefinition definition) => (Ui.Selection.Bridge, unit.Job) switch
+    {
+        (true, _) => "Click a marked tile across the river to build a bridge to it. Esc cancels.",
+        (_, { Improvement: { } improvement }) => $"Building a {Ruleset.ImprovementName(improvement)}. Moving or starting another job stops it.",
+        (_, { BridgeTo: not null }) => "Building a bridge. Moving or starting another job stops it.",
+        _ when definition.AttackRange > 0 => "Click a highlighted tile to move, or an enemy to see the attack forecast.",
+        _ => "Click a highlighted tile to move.",
+    };
+
+    // The improvements that can go on the unit's terrain; their other checks show as the button's reason.
+    private IEnumerable<ImprovementDefinition> Fitting(UnitView unit) =>
+        View.TileAt(unit.Position).Terrain is { } terrain
+            ? Ruleset.Improvements.Where(improvement => improvement.Terrains.Contains(terrain))
+            : [];
 }

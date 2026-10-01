@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Govern.Core.Actions;
 using Govern.Core.Cities;
+using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Serialization;
@@ -33,6 +34,9 @@ public class GameSerializerTests
         { new AttackCommand(new UnitId(1), At(2, 3)), "attack" },
         { new FoundCityCommand(new UnitId(1)), "found_city" },
         { new SetProductionCommand(new CityId(4), TestRulesets.Settler), "set_production" },
+        { new BuildImprovementCommand(new UnitId(1), TestRulesets.Farm), "build_improvement" },
+        { new BuildBridgeCommand(new UnitId(1), At(2, 3)), "build_bridge" },
+        { new ProduceBuildingCommand(new CityId(4), TestRulesets.Harbour), "produce_building" },
         { new EndTurnCommand(), "end_turn" },
         { new ResignCommand(), "resign" },
     };
@@ -129,6 +133,41 @@ public class GameSerializerTests
         tiles.Count(static tile => tile.TryGetProperty("rivers", out _)).ShouldBe(1);
         json.ShouldContain("\"rivers\":{\"east\":\"deep_river\",\"northWest\":\"deep_river\"}");
         restored.Map.Tiles.ShouldBe(state.Map.Tiles);
+    }
+
+    [Fact]
+    public void DeserializeState_BuildingsJobsAndStockpile_RoundTripAndAreLeftOutWhileEmpty()
+    {
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithRiver(TestRulesets.River, ((3, 3), (4, 3)))
+            .WithBridge(((3, 3), (4, 3)))
+            .WithImprovement(TestRulesets.Farm, (5, 5));
+        var working = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3, job: new UnitJob(2, 1, BridgeTo: At(4, 3)));
+        var idle = builder.AddUnit(P1, TestRulesets.Builder, 5, 5);
+        var city = builder.AddCity(P1, 6, 4, producingBuilding: TestRulesets.Campus, buildings: [TestRulesets.Harbour]);
+        var state = builder.Build();
+        state = state with { Players = [state.Players[0] with { Resources = [new(TestRulesets.Food, 4)] }, state.Players[1]] };
+
+        var json = GameSerializer.Serialize(state);
+        var restored = GameSerializer.DeserializeState(json);
+
+        GameSerializer.Serialize(restored).ShouldBe(json);
+        restored.FindUnit(working)!.Job.ShouldBe(new UnitJob(2, 1, BridgeTo: At(4, 3)));
+        restored.FindUnit(idle)!.Job.ShouldBeNull();
+        restored.FindCity(city)!.BuildingList.ShouldBe([TestRulesets.Harbour]);
+        restored.FindPlayer(P1)!.Stockpile.ShouldBe([new(TestRulesets.Food, 4)]);
+        restored.Map.BridgeBetween(At(4, 3), At(3, 3)).ShouldBeTrue();
+        restored.Map.TileAt(At(5, 5)).Improvement.ShouldBe(TestRulesets.Farm);
+
+        // Games saved before G10 have none of these fields; empty ones stay out of the JSON.
+        var root = JsonDocument.Parse(json).RootElement;
+        root.GetProperty("units").EnumerateArray().Count(static unit => unit.TryGetProperty("job", out _)).ShouldBe(1);
+        root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("buildings", out _)).ShouldBe(1);
+        root.GetProperty("players").EnumerateArray().Count(static player => player.TryGetProperty("resources", out _)).ShouldBe(1);
+        root.GetProperty("map").GetProperty("tiles").EnumerateArray().Count(static tile => tile.TryGetProperty("bridges", out _)).ShouldBe(1);
+        root.GetProperty("map").GetProperty("tiles").EnumerateArray().Count(static tile => tile.TryGetProperty("improvement", out _)).ShouldBe(1);
+        json.ShouldContain("\"bridges\":{\"east\":true}");
+        json.ShouldContain("\"job\":{\"progress\":2,\"startedTurn\":1,\"bridgeTo\":");
     }
 
     [Fact]

@@ -41,7 +41,9 @@ public class GameEnginePreviewTests
         "partial movement facing rivers",
         "deep river wall",
         "enemies across rivers",
-        "horseman along a river");
+        "horseman along a river",
+        "bridged deep river wall",
+        "enemies across bridges");
 
     [Theory]
     [MemberData(nameof(Scenarios))]
@@ -289,6 +291,8 @@ public class GameEnginePreviewTests
             // An enemy unit across a deep river (a target), an undefended enemy city across one (not a target) and an enemy
             // unit across a river.
             "enemies across rivers" => (Soldier(builder, 5, 5), EnemyCity(builder, 6, 5, Blocker(builder, P2, 4, 5, Blocker(builder, P2, 5, 4)))),
+            // An undefended enemy city over a bridged deep river (a target) and an enemy unit over a bridged river.
+            "enemies across bridges" => (Soldier(builder, 5, 5), EnemyCity(builder, 6, 5, Blocker(builder, P2, 4, 5))),
             "horseman along a river" => (builder.AddUnit(P1, TestRulesets.Horseman, 5, 5), At(5, 5)),
             _ => (Soldier(builder, 5, 5), At(5, 5)),
         };
@@ -331,6 +335,16 @@ public class GameEnginePreviewTests
             "enemies across rivers" => builder
                 .WithRiver(TestRulesets.DeepRiver, ((5, 5), (6, 5)), ((5, 5), (5, 4)))
                 .WithRiver(TestRulesets.River, ((5, 5), (4, 5))),
+            // The wall above with a bridge in the middle and one at its north end.
+            "bridged deep river wall" => builder
+                .WithRiver(
+                    TestRulesets.DeepRiver,
+                    ((5, 3), (6, 3)), ((6, 3), (6, 4)), ((6, 4), (6, 5)), ((5, 5), (6, 5)), ((6, 5), (6, 6)), ((6, 6), (6, 7)), ((5, 7), (6, 7)))
+                .WithBridge(((5, 5), (6, 5)), ((5, 3), (6, 3))),
+            "enemies across bridges" => builder
+                .WithRiver(TestRulesets.DeepRiver, ((5, 5), (6, 5)), ((5, 5), (5, 4)))
+                .WithRiver(TestRulesets.River, ((5, 5), (4, 5)))
+                .WithBridge(((5, 5), (6, 5)), ((5, 5), (4, 5))),
             "horseman along a river" => builder.WithRiver(
                 TestRulesets.River,
                 ((5, 5), (6, 5)), ((6, 4), (6, 5)), ((6, 4), (7, 4)), ((6, 6), (6, 5)), ((6, 6), (7, 6))),

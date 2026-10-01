@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Govern.Client.Features.Games.Services;
 using Govern.Core.Cities;
+using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.State;
@@ -38,6 +39,16 @@ public static class TestViews
 
     public static readonly UnitType ArcherType = new("archer");
 
+    public static readonly UnitType BuilderType = new("builder");
+
+    public static readonly ImprovementType Farm = new("farm");
+
+    public static readonly BuildingType Campus = new("campus");
+
+    public static readonly BuildingType Harbour = new("harbour");
+
+    public static readonly ResourceType Science = new("science");
+
     public static readonly TerrainType Plains = new("plains");
 
     public static readonly TerrainType Forest = new("forest");
@@ -61,21 +72,26 @@ public static class TestViews
         IEnumerable<CityView>? cities = null,
         Func<HexCoord, TileVisibility>? visibility = null,
         Func<HexCoord, TerrainType>? terrain = null,
-        Func<HexCoord, TileRivers?>? rivers = null)
+        Func<HexCoord, TileRivers?>? rivers = null,
+        IEnumerable<ResourceAmount>? resources = null,
+        Func<HexCoord, ImprovementType?>? improvements = null,
+        Func<HexCoord, TileBridges?>? bridges = null)
     {
         var tiles = Enumerable.Range(0, Width * Height)
             .Select(index => HexCoord.FromOffset(index % Width, index / Width))
             .Select(coord => (visibility?.Invoke(coord) ?? TileVisibility.Visible) switch
             {
                 TileVisibility.Unexplored => new TileView(TileVisibility.Unexplored, null),
-                var seen => new TileView(seen, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord)),
+                TileVisibility.Explored => new TileView(TileVisibility.Explored, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord)),
+                var seen => new TileView(seen, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord), bridges?.Invoke(coord), improvements?.Invoke(coord)),
             });
 
         return new PlayerView(
             You, Version, Turn: 3, CurrentPlayer: You, GameStatus.InProgress, Winner: null, Width, Height, [.. tiles],
             [.. (units ?? []).OrderBy(static unit => unit.Id.Value)],
             [.. (cities ?? []).OrderBy(static city => city.Id.Value)],
-            [new PlayerSummary(You, PlayerStatus.Active), new PlayerSummary(Opponent, PlayerStatus.Active)]);
+            [new PlayerSummary(You, PlayerStatus.Active), new PlayerSummary(Opponent, PlayerStatus.Active)],
+            [.. resources ?? []]);
     }
 
     public static HexCoord At(int column, int row) => HexCoord.FromOffset(column, row);

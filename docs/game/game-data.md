@@ -1,13 +1,13 @@
 ---
 title: Game data (the loadable ruleset)
-tags: [game, core, ruleset, map-generation, terrain, rivers, sight-bonus, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
+tags: [game, core, ruleset, map-generation, builders, buildings, improvements, bridges, resources, terrain, rivers, sight-bonus, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
 code: [rulesets, src/Govern.Core/Rulesets, src/Govern.Application/Games/Services/DefaultRulesetService.cs, src/Govern.Client/Features/Games/Services/RulesetService.cs]
 updated: 2026-10-01
 ---
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v4.json`](../../rulesets/default/v4.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4; [`v1.json`](../../rulesets/default/v1.json), [`v2.json`](../../rulesets/default/v2.json) and [`v3.json`](../../rulesets/default/v3.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v5.json`](../../rulesets/default/v5.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5; [`v1.json`](../../rulesets/default/v1.json) to [`v4.json`](../../rulesets/default/v4.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -47,13 +47,13 @@ updated: 2026-10-01
 | `created_at` | `timestamptz` | When it was published; no `updated_at`, because a version is immutable |
 | `created_by` | `uuid`, nullable | The admin who published it; null when a migration did |
 
-- **The document holds only game content.** `key`, `version` and `name` live only in the row; the migration (or the admin) supplies them, and a repository file's path names them (`rulesets/default/v4.json`).
+- **The document holds only game content.** `key`, `version` and `name` live only in the row; the migration (or the admin) supplies them, and a repository file's path names them (`rulesets/default/v5.json`).
 - **Core and the rulesets are always consistent.** A started game is pinned to one version for good. There's no `schemaVersion` and no upgrading of old rulesets: when a Core change needs new fields, the rulesets are updated with it. Handling older rulesets is deferred until it matters.
 - **New games** use the highest `version` of the ruleset. Retiring a version and a lobby description are deferred with Ruleset B ([question 6 there](../plans/deferred/ruleset-b-store-and-pin.md#decisions-and-questions-for-part-b): one ruleset or several).
 
 ## Versions in the repository
 
-*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9), and `v3.json` when `rivers` and `map.generation.rivers` arrived (G6); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
+*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9), `v3.json` when `rivers` and `map.generation.rivers` arrived (G6), and `v4.json` when `bridges`, `resources`, `improvements`, `buildings` and `cities.workRadius` arrived (G10a); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
 
 ## Format conventions
 
@@ -71,11 +71,11 @@ updated: 2026-10-01
 | `Ruleset.Parse(json)` | Parses and validates; returns the `Ruleset` or every `RulesetProblem` (`Path`, `Message`) |
 | `Ruleset.ParseValid(json)` | For a document known to be valid (an embedded or published one); throws `FormatException` listing every problem |
 | `Ruleset.ComputeHash(json)`, `Hash` | SHA-256 of the exact text, lowercase hex; any change, even whitespace, changes it |
-| `Unit(type)`, `Terrain(type)`, `FindUnit(type)` | Definitions by id; `FindUnit` returns `null` for an id from an untrusted command |
-| `Text(key)`, `UnitName(type)`, `TerrainName(type)`, `ClassName(class)`, `CityName(n)` | Texts |
-| `Setup`, `Map`, `Terrains`, `Units`, `Cities`, `Combat`, `Texts` | The sections, in the document's order |
+| `Unit(type)`, `Terrain(type)`, `Improvement(type)`, `Building(type)`, `FindUnit(type)`, `FindImprovement(type)`, `FindBuilding(type)`, `FindResource(type)` | Definitions by id; the `Find…` members return `null` for an id from an untrusted command |
+| `Text(key)`, `UnitName(type)`, `TerrainName(type)`, `ClassName(class)`, `CityName(n)`, `ResourceName`, `ImprovementName`, `BuildingName` | Texts |
+| `Setup`, `Map`, `Terrains`, `Units`, `Cities`, `Combat`, `Bridges`, `Resources`, `Improvements`, `Buildings`, `Texts` | The sections, in the document's order |
 
-Reading is strict, so a typo fails loading instead of silently taking a default: property names are camelCase only, every field is required (except a unit's `strength` and `ranged`, whose absence means "can't fight" and "no ranged attack"), unknown fields and duplicate keys are rejected, numbers must be JSON numbers and abilities JSON strings. `UnitType`, `TerrainType` and `RiverType` are ids (`readonly record struct`s) written to JSON as the plain id, so a saved game still reads `"settler"`, `"plains"` and `"river"`.
+Reading is strict, so a typo fails loading instead of silently taking a default: property names are camelCase only, every field is required (except a unit's `strength`, `ranged` and `buildProduction`, whose absence means "can't fight", "no ranged attack" and "doesn't build"), unknown fields and duplicate keys are rejected, numbers must be JSON numbers and abilities JSON strings. `UnitType`, `TerrainType`, `RiverType`, `ResourceType`, `ImprovementType` and `BuildingType` are ids (`readonly record struct`s) written to JSON as the plain id, so a saved game still reads `"settler"`, `"plains"` and `"river"`.
 
 ## Top-level structure
 
@@ -88,9 +88,15 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
   "units": [ ],
   "cities": { },
   "combat": { },
+  "bridges": { },
+  "resources": [ ],
+  "improvements": [ ],
+  "buildings": [ ],
   "texts": { }
 }
 ```
+
+The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus `units[].buildProduction` and `cities.workRadius`) are described in [game data: building sections](game-data-economy.md).
 
 ## Setup (`setup`)
 
@@ -248,15 +254,17 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 | `productionCost` | int ≥ 1 | Production a city needs to build it | 4 |
 | `strength` | int 1..1000, optional | Strength in melee and when attacked; left out for a civilian, which any attack destroys | 20 |
 | `ranged` | object, optional | `{ "strength": 1..1000, "range": 1..sight }`; set exactly when the unit has `ranged_attack` | — |
-| `abilities` | list of abilities | What it can do | `attack` |
+| `buildProduction` | int 0..100, optional | Production it adds to its job each turn; ≥ 1 exactly when it has a build ability ([building sections](game-data-economy.md)) | 1 |
+| `abilities` | list of abilities | What it can do | `attack`, `build_bridge` |
 
 ```json
 "units": [
   { "id": "settler", "class": "civilian", "movement": 2, "sight": 2, "productionCost": 6, "abilities": ["found_city"] },
-  { "id": "soldier", "class": "melee", "movement": 2, "sight": 2, "productionCost": 4, "strength": 20, "abilities": ["attack"] },
+  { "id": "soldier", "class": "melee", "movement": 2, "sight": 2, "productionCost": 4, "strength": 20, "buildProduction": 1, "abilities": ["attack", "build_bridge"] },
   { "id": "spearman", "class": "anti_cavalry", "movement": 2, "sight": 2, "productionCost": 4, "strength": 18, "abilities": ["attack"] },
   { "id": "horseman", "class": "cavalry", "movement": 3, "sight": 3, "productionCost": 6, "strength": 20, "abilities": ["attack"] },
-  { "id": "archer", "class": "ranged", "movement": 2, "sight": 2, "productionCost": 5, "strength": 10, "ranged": { "strength": 22, "range": 2 }, "abilities": ["ranged_attack"] }
+  { "id": "archer", "class": "ranged", "movement": 2, "sight": 2, "productionCost": 5, "strength": 10, "ranged": { "strength": 22, "range": 2 }, "abilities": ["ranged_attack"] },
+  { "id": "builder", "class": "civilian", "movement": 2, "sight": 2, "productionCost": 5, "buildProduction": 2, "abilities": ["build_improvement", "build_bridge"] }
 ]
 ```
 
@@ -267,6 +275,8 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 | `found_city` | Founds a city on its tile and is consumed; a player who has no city and no unit with it is eliminated |
 | `attack` | Attacks adjacent enemy units in melee (both take damage) and captures undefended enemy cities |
 | `ranged_attack` | Shoots an enemy unit within `ranged.range` (no damage back); can't capture a city |
+| `build_improvement` | Builds an improvement on its tile in an own work area, with its `buildProduction` plus the city's production |
+| `build_bridge` | Bridges the river between its tile and a neighbour, from either bank |
 
 - A unit with `attack` or `ranged_attack` needs a `strength`; a unit can't have both attacks.
 - `ranged.range` ≤ `sight`, so every target in range is visible and the attack preview stays exact.
@@ -282,6 +292,7 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 | `initialProduction` | `soldier` | What a new city builds first |
 | `nameTemplate` | `city.default_name` | The text key of a new city's name; the text must contain `{n}`, the founder's city count |
 | `captureResetsProduction` | true | A captured city's progress goes back to 0 |
+| `workRadius` | 1 | How far the city's work area reaches ([building sections](game-data-economy.md)) |
 
 ```json
 "cities": {
@@ -290,7 +301,8 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
   "productionPerTurn": 1,
   "initialProduction": "soldier",
   "nameTemplate": "city.default_name",
-  "captureResetsProduction": true
+  "captureResetsProduction": true,
+  "workRadius": 1
 }
 ```
 
@@ -335,6 +347,7 @@ Everything a player reads about the game's content comes from here: unit, class 
   "unit.spearman.name": "Spearman",
   "unit.horseman.name": "Horseman",
   "unit.archer.name": "Archer",
+  "unit.builder.name": "Builder",
   "class.civilian.name": "Civilian",
   "class.melee.name": "Melee",
   "class.anti_cavalry.name": "Anti-cavalry",
@@ -345,12 +358,15 @@ Everything a player reads about the game's content comes from here: unit, class 
   "terrain.hills.name": "Hills",
   "terrain.mountains.name": "Mountains",
   "terrain.lake.name": "Lake",
+  "resource.food.name": "Food",
+  "improvement.farm.name": "Farm",
+  "building.campus.name": "Campus",
   "city.default_name": "City {n}"
 }
 ```
 
 - **Decided 2026-09-30:** texts are their own top-level section (not inside `setup`), English only for now, so there is no per-language level. Other languages are deferred.
-- The validator requires `unit.{id}.name` for every unit, `class.{id}.name` for every unit class, `terrain.{id}.name` for every terrain, `river.{id}.name` for every river and the `nameTemplate` key, and rejects empty texts.
+- The validator requires `unit.{id}.name` for every unit, `class.{id}.name` for every unit class, `terrain.{id}.name` for every terrain, `river.{id}.name` for every river, `resource.{id}.name`, `improvement.{id}.name` and `building.{id}.name` for every resource, improvement and building (the example above shows one of each) and the `nameTemplate` key, and rejects empty texts.
 - Core returns rule violation **codes**; the Api or the client looks up the message. *To discuss:* which language the Api uses for the ProblemDetails `title` (the `Accept-Language` header, or always `en` with the client translating).
 
 ## Validation (at load time)
@@ -363,10 +379,11 @@ Everything a player reads about the game's content comes from here: unit, class 
 - `sightBonus` ≥ 0; `defenceBonus` 0..100.
 - Rivers: `crossingCost` and `defenceBonus` 0..100; at least one kind crossable; generation `count` 0..20, `1 ≤ minLength ≤ maxLength ≤ 100`, `sources` and `mouths` not empty and without repeats, `stages` not empty, starting at 0, strictly increasing, the first one crossable.
 - Units and combat: see [Units](#units-units) and [Combat](#combat-combat).
+- Bridges, resources, improvements, buildings, build production and the work area: see [game data: building sections](game-data-economy.md#validation-of-the-building-sections).
 - Numbers are in range: movement, sight, costs, city sight, spacing and production ≥ 1; `8 ≤ minSize ≤ maxSize ≤ 40`; the default size within them; `players` = 2.
 - Spawn: `zoneColumnsPerMille` 1–250; `edgeMargin` ≥ 1 and less than the zone on the smallest map; `startingUnits` no more than that zone.
 - At least one terrain is passable, and `defaultTerrain` is.
-- **Fog invariants:** every unit's `sight` ≥ `movement` ÷ the cheapest passable terrain cost, every unit with `found_city` has `sight` ≥ `cities.minimumSpacing` − 1, and a ranged unit's `range` ≤ `sight`. The view previews are exact only while these hold.
+- **Fog invariants:** every unit's `sight` ≥ `movement` ÷ the cheapest passable terrain cost, every unit with `found_city` has `sight` ≥ `cities.minimumSpacing` − 1, a ranged unit's `range` ≤ `sight`, and a unit with `build_bridge` has `sight` ≥ `cities.workRadius` + 1. The view previews are exact only while these hold.
 - At least one starting unit has `found_city`.
 - The texts listed in [Texts and languages](#texts-and-languages) exist and aren't empty.
 
@@ -386,10 +403,10 @@ Each [roadmap](design-roadmap.md) item adds a section here, with fields, example
 |---|---|
 | `terrains` gains elevation and features (layers), yields | G5 |
 | `resources` (groups, yields, reserves, reveal tech) | G5 |
-| `rivers` gains bridges (G10), ship navigation (G15), seasonal kinds (G14) | G10, G15, G14 |
+| `rivers` gains ship navigation (G15), seasonal kinds (G14) | G15, G14 |
 | `cities` gains territory, growth, housing, loyalty, yields | G7, G8 |
 | `units` gains attacks per turn (deferred from G9 until a unit differs), resource costs (G5) | G9, G5 |
-| `buildings` (cost, health, housing, yields, upgrade chains), builder charges | G10 |
+| `buildings` gains health, housing, upgrade chains and their own mechanics (traders, faster army production, ships) | G10b |
 | `techs` and `civics` trees (cost, upkeep, prerequisites, unlocks) | G11 |
 | `civilizations` and `governors` (skill trees) | G12, G13 |
 | `seasons` (length, per-season modifiers) | G14 |

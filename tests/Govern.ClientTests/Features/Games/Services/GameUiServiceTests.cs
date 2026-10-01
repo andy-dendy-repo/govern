@@ -2,6 +2,7 @@ using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.Core.Cities;
+using Govern.Core.Map;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
 using static Govern.ClientTests.Support.TestViews;
@@ -52,7 +53,7 @@ public class GameUiServiceTests
     {
         _ui.Select(Ruleset, Start(), BoardSelection.Of(new UnitId(1)));
 
-        _ui.Escape().ShouldBeTrue();
+        _ui.Escape(Ruleset, Start()).ShouldBeTrue();
 
         _ui.Selection.ShouldBe(BoardSelection.None);
         _ui.Highlights.ShouldBe(BoardHighlights.None);
@@ -62,7 +63,7 @@ public class GameUiServiceTests
     [Fact]
     public void Escape_NothingSelected_ChangesNothing()
     {
-        _ui.Escape().ShouldBeFalse();
+        _ui.Escape(Ruleset, Start()).ShouldBeFalse();
 
         _changes.ShouldBe(0);
     }
@@ -108,7 +109,7 @@ public class GameUiServiceTests
         _ui.ToggleLens(lens);
         _ui.Select(Ruleset, Start(), BoardSelection.Of(new UnitId(1)));
 
-        _ui.Escape();
+        _ui.Escape(Ruleset, Start());
 
         _ui.ActiveLens.ShouldBeSameAs(lens);
     }
@@ -130,10 +131,34 @@ public class GameUiServiceTests
         var view = Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
         _ui.Select(Ruleset, view, BoardSelection.Of(new UnitId(2)) with { Target = At(4, 2) });
 
-        _ui.Escape().ShouldBeTrue();
+        _ui.Escape(Ruleset, view).ShouldBeTrue();
 
         _ui.Selection.ShouldBe(BoardSelection.Of(new UnitId(2)));
         _ui.Highlights.Attackable.ShouldBe([At(4, 2)]);
+    }
+
+    [Fact]
+    public void ToggleBridge_SelectedUnit_MarksTheBridgeTargetsAndEscapeLeavesBridgeMode()
+    {
+        var view = Create([Soldier(2, You, At(3, 2))], rivers: static coord => coord == At(3, 2) ? new TileRivers(East: River) : null);
+        _ui.Select(Ruleset, view, BoardSelection.Of(new UnitId(2)));
+
+        _ui.ToggleBridge(Ruleset, view);
+        _ui.Highlights.Bridgeable.ShouldBe([At(4, 2)]);
+
+        _ui.Escape(Ruleset, view).ShouldBeTrue();
+        _ui.Selection.ShouldBe(BoardSelection.Of(new UnitId(2)));
+        _ui.Highlights.Bridgeable.ShouldBeEmpty();
+        _ui.Highlights.Reachable.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void ToggleBridge_NothingSelected_DoesNothing()
+    {
+        _ui.ToggleBridge(Ruleset, Start());
+
+        _ui.Selection.ShouldBe(BoardSelection.None);
+        _changes.ShouldBe(0);
     }
 
     [Fact]

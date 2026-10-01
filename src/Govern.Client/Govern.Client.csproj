@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <EmbeddedResource Include="..\..\rulesets\default\v4.json" LogicalName="Govern.Rulesets.default.v4.json" />
+        <EmbeddedResource Include="..\..\rulesets\default\v5.json" LogicalName="Govern.Rulesets.default.v5.json" />
     </ItemGroup>
 
 </Project>
