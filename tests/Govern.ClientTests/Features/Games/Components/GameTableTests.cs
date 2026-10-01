@@ -314,6 +314,35 @@ public class GameTableTests : ClientTestContext
     }
 
     [Fact]
+    public void NextUnit_Clicked_SelectsTheUnitsThatCanStillMoveInTurn()
+    {
+        var cut = RenderTable(TestGames.Started());
+
+        cut.Find("button.next-unit").TextContent.ShouldContain("2 units can still move");
+        cut.Find("button.next-unit").Click();
+        cut.Find(".unit-panel .unit-name").TextContent.ShouldContain("Settler");
+        cut.Find("button.next-unit").Click();
+
+        cut.Find(".unit-panel .unit-name").TextContent.ShouldContain("Soldier");
+    }
+
+    [Fact]
+    public void Render_NoUnitCanMove_HidesNextUnit()
+    {
+        var cut = RenderTable(TestGames.Started(view: Create([Settler(1, You, At(2, 2), movementLeft: 0)])));
+
+        cut.FindAll("button.next-unit").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_OpponentsTurn_HidesNextUnit()
+    {
+        var cut = RenderTable(TestGames.Started(view: Start() with { CurrentPlayer = Opponent }));
+
+        cut.FindAll("button.next-unit").ShouldBeEmpty();
+    }
+
+    [Fact]
     public void Render_OpponentsTurn_DisablesFoundCity()
     {
         var cut = RenderTable(TestGames.Started(view: Start() with { CurrentPlayer = Opponent }));

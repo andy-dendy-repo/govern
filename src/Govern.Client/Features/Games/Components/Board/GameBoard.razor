@@ -1,4 +1,4 @@
-@* The hex board: terrain, rivers and bridges, improvements, the active map lens, cities, units and the selected unit's moves, attacks and bridge sites. Drag to pan; the wheel or the buttons zoom.
+@* The hex board: terrain, rivers and bridges, improvements, the active map lens, cities, units and the selected unit's moves, attacks and bridge sites. It opens on the player's own units and cities; Fit shows the whole map. Drag to pan; the wheel or the buttons zoom.
    Unit and city symbols come from the game's icon set (Components/Game/GameSprite), rendered once by the game screen. *@
 @using Govern.Client.Features.Games.Helpers
 
@@ -25,6 +25,6 @@
         <RadzenButton Icon="remove" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom out"
                       Click="@(() => ZoomAtCentre(1 / ZoomStep))" class="zoom-out"/>
         <RadzenButton Icon="fit_screen" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Fit the map"
-                      Click="@FitAsync" class="zoom-fit"/>
+                      Click="@FitMapAsync" class="zoom-fit"/>
     </RadzenStack>
 </div>
