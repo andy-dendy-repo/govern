@@ -1,8 +1,8 @@
 ---
 title: Game logic (Core algorithms)
-tags: [game, core, rules, algorithms, engine, turns, movement, pathfinding, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, determinism]
+tags: [game, core, rules, algorithms, engine, turns, movement, pathfinding, rivers, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, determinism]
 code: [src/Govern.Core]
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Game logic: Core algorithms
@@ -15,6 +15,7 @@ updated: 2026-09-30
 |---|---|
 | Hex, coordinate | A pointy-top hexagon addressed by axial `(q, r)`. The map is a rectangle in odd-r offset layout: tile index = `row × width + column` |
 | Neighbours, distance | Each hex has 6 neighbours; distance is the number of hex steps |
+| Edge, corner | The side two neighbouring hexes share, and the point three hexes share. A river runs along edges; each tile stores its east, north-east and north-west edges |
 | Player | A seat in the game: active, eliminated or resigned |
 | Current player | The one player who may act now (turns alternate) |
 | Round (turn number) | Increases by 1 each time play wraps around to the first player |
@@ -46,7 +47,16 @@ The map's two halves are always the same: every tile is written together with it
    1. The target is [`map.generation.patches.*.sharePerMille`] thousandths of the map's tiles (mirrors included).
    2. Until the target is reached, or after as many seeds as the map has tiles: pick a random tile as a seed and **grow a patch** from it. The patch keeps a list of candidate tiles (first the seed); it takes a random candidate, places the terrain on it and on its mirror when both are still [`map.defaultTerrain`] and not reserved, and adds that tile's neighbours to the candidates. It stops at [`map.generation.patches.*.patchSize`] tiles, at the target, or when no candidate is left.
    3. **Impassable terrain keeps the map connected:** a tile of impassable terrain [`terrains.*.isPassable`] is placed only if every passable tile can still reach every other; otherwise the placement is undone and the next candidate is tried.
-3. The generator draws from the game's random generator after the spawns, so the same seed always gives the same map.
+3. Lay down the rivers (see [Rivers](#rivers)).
+4. The generator draws from the game's random generator after the spawns, so the same seed always gives the same map.
+
+### Rivers
+
+Rivers run along edges and are mirrored like the terrain: an edge is written together with the edge between the mirrors of its two tiles. Up to [`map.generation.rivers.count`] times (with a bounded number of attempts):
+1. **Source:** pick a random tile whose terrain is in [`map.generation.rivers.sources`], a random one of its six edges and a random one of that edge's two corners to flow towards.
+2. **Walk:** the next edge shares that corner: it is one of the two other edges meeting there. Keep only those whose next corner is no closer to the source (the sum of the corner's three tiles' distances to the source doesn't drop), whose two tiles are on the map and not both impassable, whose mirror is an edge too, and which neither this river nor another (or their mirrors) already uses. Take one at random; stop the river when none is left.
+3. **Mouth:** the river ends at the first corner that touches a tile in [`map.generation.rivers.mouths`] or the map's border. A river that has no mouth after [`map.generation.rivers.maxLength`] edges, or is shorter than [`map.generation.rivers.minLength`], is dropped.
+4. **Kinds:** edge number i (from 0 at the source) gets the river of the last [`map.generation.rivers.stages`] entry with `fromSegment` ≤ i, so rivers deepen downstream. An edge of an uncrossable kind [`rivers.*.isCrossable`] is laid only if every passable tile can still reach every other without crossing an uncrossable edge; otherwise it gets the last crossable kind before it.
 
 ## Executing a command
 
@@ -68,7 +78,8 @@ Every player action is a command sent by one player (the actor). The engine runs
 3. If the target holds a unit **the actor can see** → `move.occupied`. A hidden blocker is not revealed; it just makes the tile unreachable.
 4. Find the cheapest paths (Dijkstra) from the unit's tile, spending at most its movement left:
    - a tile can be entered if it is on the map, its terrain is passable [`terrains.*.isPassable`], no unit stands on it, and no enemy city stands on it;
-   - entering a tile costs its terrain's [`terrains.*.movementCost`] (default ruleset: plains 1, forest and hills 2), and a path may not cost more than the movement left, so a unit with 1 movement left can't enter a cost-2 tile;
+   - a step from one tile to a neighbour costs the entered tile's [`terrains.*.movementCost`] (default ruleset: plains 1, forest and hills 2) plus, when a river runs along the edge between them, its [`rivers.*.crossingCost`] (default: stream 0, river 1); a river whose [`rivers.*.isCrossable`] is false (the deep river) can't be stepped over;
+   - a path may not cost more than the movement left, so a unit with 1 movement left can't enter a cost-2 tile;
    - equal costs are broken by row, then column, so the path is always the same.
 5. The target isn't among the reachable tiles → `move.unreachable`.
 6. Move the unit to the target and subtract the path's cost from its movement.
@@ -79,7 +90,7 @@ Every player action is a command sent by one player (the actor). The engine runs
 2. Its type must have the `attack` or `ranged_attack` ability [`units.*.abilities`] → `unit.cannot_attack`.
 3. It must have movement left → `unit.no_movement`.
 4. The target must be on the map and within the unit's range: 1 for `attack`, [`units.*.ranged.range`] for `ranged_attack` → `attack.not_adjacent` (melee) or `attack.out_of_range` (ranged).
-5. The target must hold a unit or a city → `attack.no_target`, and it must not be the actor's own → `attack.own_target`. A ranged unit's target must hold a unit → `attack.no_target`.
+5. The target must hold a unit or a city → `attack.no_target`, and it must not be the actor's own → `attack.own_target`. A ranged unit's target must hold a unit → `attack.no_target`. A melee unit can't capture an undefended city across an uncrossable river [`rivers.*.isCrossable`] → `attack.river_in_the_way` (it can still fight a unit there).
 6. **If a unit stands there:** they fight (see [Combat](#combat)). The attacker stays where it is, and its movement drops to 0.
 7. **Otherwise (an undefended city, melee only):** the city is captured: its owner becomes the actor, its production progress resets to 0 when [`cities.captureResetsProduction`] is true (it is by default), and the attacker moves into it with movement 0.
 
@@ -89,7 +100,7 @@ All integer maths, so the server and the browser get identical numbers.
 1. **Base strength:** the attacker's [`units.*.strength`], or its [`units.*.ranged.strength`] when it shoots; the defender's [`units.*.strength`]. A defender with no strength (a civilian) skips to step 6.
 2. **Health:** each side fights at `strength × (maxHealth + health) ÷ (2 × maxHealth)` (rounded down) [`combat.maxHealth`]; the loss is the "health" modifier.
 3. **Counters:** each side adds the `bonus` of every [`combat.counters`] entry whose `class` is its own class and `against` the opponent's [`units.*.class`], attacking or defending.
-4. **Terrain:** the defender adds the [`terrains.*.defenceBonus`] of its tile. Strength never goes below 0.
+4. **Terrain and river:** the defender adds the [`terrains.*.defenceBonus`] of its tile and, against a melee attack across a river edge, that river's [`rivers.*.defenceBonus`] (ranged attacks ignore rivers). Strength never goes below 0.
 5. **Damage before the roll** a side takes: `base + (dealer's strength − receiver's strength) × perStrengthPoint`, kept within `[min, max]` [`combat.damage.*`]. A ranged attacker takes none.
 6. **Roll:** for each side that can take a varying amount, draw a percentage in `100 ± spreadPercent` from the game's generator (hashed draws, `NextHashed`: damage is shown to both players, and raw draws would expose the generator's state), defender first. Damage = `max(1, raw × percent ÷ 100)`, at most the receiver's health. A civilian defender takes its whole health and deals none.
 7. **Apply:** each side's damage is added; a unit at 0 health is removed (`unit_destroyed`); both can be removed. The event `unit_attacked` carries both amounts.
@@ -139,7 +150,7 @@ After every successful command:
 1. **Visible tiles** of a player: every tile within [`units.*.sight`] of each of their units, and within [`cities.sight`] of each of their cities, each plus the [`terrains.*.sightBonus`] of the tile the unit or city stands on (hills: +1).
 2. **Explored tiles:** after every command, each active player's newly visible tiles are added to their explored set, which only grows.
 3. **The view** a player receives:
-   - every tile, as unexplored (no terrain), explored (terrain, as last seen) or visible;
+   - every tile, as unexplored (no terrain), explored (terrain, as last seen) or visible; an explored or visible tile also shows the rivers on the edges it stores (rivers never change). An edge stored by an unexplored neighbour shows once that tile is explored;
    - their own units and cities, plus enemy units and cities on currently visible tiles;
    - enemy cities without their production, and enemy units without their movement left (their health is shown). A known, accepted leak: a hurt unit heals only when it kept all its movement, so an opponent who sees a hurt unit on the same tile before and after its owner's turn learns whether it moved (one bit per hurt, visible unit per turn);
    - units and cities ordered by id, so the order reveals nothing about when they were created;
@@ -149,7 +160,7 @@ After every successful command:
 ## View previews (what the client can check)
 
 The client never has the full game state, only its view. From the view alone, Core answers, for one of the player's units:
-- **Reachable tiles:** the same Dijkstra as [Move a unit](#move-a-unit), where only visible tiles can be entered.
+- **Reachable tiles:** the same Dijkstra as [Move a unit](#move-a-unit), where only visible tiles can be entered; both ends of a step are then visible, so the view knows the river between them.
 - **Attack targets:** tiles in range holding an enemy unit (or, for melee, an enemy city), with the same checks as [Attack](#attack).
 - **Combat forecast:** for a target holding an enemy unit, both strengths with their modifiers and the damage range each side takes, from the same calculation as [Combat](#combat).
 - **Can found a city here:** the same checks as [Found a city](#found-a-city).
@@ -171,7 +182,7 @@ These answers are **exactly** what the engine would decide, because they share t
 
 ## Future mechanics
 
-Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), yields and resources (G5), river crossing (G6), territory growth (G7), city growth, loyalty and the production queue (G8), builders and building upgrades (G10), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
+Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), yields and resources (G5), bridges (G10, with builders), territory growth (G7), city growth, loyalty and the production queue (G8), builders and building upgrades (G10), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
 
 ## Open questions
 

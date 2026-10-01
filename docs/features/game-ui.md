@@ -1,8 +1,8 @@
 ---
 title: Game UI design system
-tags: [client, game-ui, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
+tags: [client, game-ui, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
 code: [src/Govern.Client/Components/Game, src/Govern.Client/Features/Games/Components/Screen, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/Features/Games/Services/GameUiService.cs, src/Govern.Client/Features/Design/Pages/DesignPage.razor, src/Govern.Client/Helpers, src/Govern.Client/wwwroot/css, tests/Govern.ArchitectureTests/GameUiTests.cs]
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Game UI design system
@@ -89,7 +89,7 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | `YieldList`, `ResourceBadge` | planned by G5/G8 | Yield and resource rows and badges |
 | `QueueList` | planned by G8/G10 | A reorderable build queue |
 | `TreeView` | planned by G11/G12 | Tech, culture and governor skill trees in a full-screen view |
-| `LensToolbar`, `BoardLens` and `IMapLens` | built (G4) | Toggleable map overlays, one at a time ([map lenses](#map-lenses)); the first is movement cost. Later lenses: resources (G5), rivers (G6), territory (G7), yields and loyalty (G8), seasons (G14) |
+| `LensToolbar`, `BoardLens` and `IMapLens` | built (G4) | Toggleable map overlays, one at a time ([map lenses](#map-lenses)); the first is movement cost. Edge marks for river crossings (G6). Later lenses: resources (G5), territory (G7), yields and loyalty (G8), seasons (G14) |
 
 ## Map lenses
 
@@ -97,8 +97,15 @@ A lens marks every known tile with one kind of information, instead of clutterin
 - **A lens** is a sealed `Features/Games/Lenses/XxxLens` implementing `IMapLens` (id, name, toolbar icon, and `MarkFor(TileView)` → a `Models/LensMark` with a label, a tint class and a sentence), registered in `DependencyInjection` as `IMapLens`. `NamingConventionTests.ClientMapLenses_AreSealedLensesImplementingIMapLens` and `FolderStructureTests` (`*Lens.cs` only) keep the folder to that.
 - **State:** `GameUiService.ActiveLens`, changed by `ToggleLens` (one on at a time; toggling the active one turns it off). Escape clears the selection, not the lens.
 - **Toolbar:** `Components/Board/LensToolbar` in the map zone's top-left corner, one toggle button per registered lens (`aria-pressed`, keyboard reachable). It reads the cascaded `GameUiService`, so it renders nothing outside a game screen.
-- **Drawing:** `Components/Board/BoardLens` draws the active lens in the `BoardLayer.Lens` slot: per marked tile a tinted hex (`.lens-mark.<class>` in `board.css`, colours from `--gv-lens-*` tokens), a label and a `<title>` with the sentence. Unexplored tiles are never marked.
-- **Movement cost** (`MovementCostLens`): each explored or visible tile shows its terrain's movement cost (tint `cheap` for 1, `costly` above), and ✕ (`blocked`) where land units can't go.
+- **Edges:** a lens may also mark the edges a tile stores (`IMapLens.EdgeMarksFor(TileView)` → `Models/EdgeMark`, none by default), drawn after the tiles as a small badge at the edge's middle (`.lens-edge-mark.<class>`).
+- **Drawing:** `Components/Board/BoardLens` draws the active lens in the `BoardLayer.Lens` slot: per marked tile a tinted hex (`.lens-mark.<class>` in `board.css`, colours from `--gv-lens-*` tokens), a label and a `<title>` with the sentence, then the edge badges. Unexplored tiles are never marked.
+- **Movement cost** (`MovementCostLens`): each explored or visible tile shows its terrain's movement cost (tint `cheap` for 1, `costly` above), and ✕ (`blocked`) where land units can't go. River edges show their extra crossing cost (`+1`, `costly`) or ✕ (`blocked`) where land units can't cross; a free stream shows nothing.
+
+## Rivers
+
+- **Layer:** `Components/Board/BoardRivers` draws every known river edge in the `BoardLayer.Rivers` slot as a `<line class="river river-<id> visible|explored">` between the edge's two corners (`HexLayout.EdgeEnds`), with a `<title>` sentence (`Helpers/RiverDescription`). It renders nothing when no river is known, and again only for a new view, like the terrain.
+- **Style:** `board.css` has one `.river-<id>` rule per ruleset river (its width: stream 2.5, river 5, deep river 8, so the kinds differ by more than colour); colours come from the `--gv-river*` tokens, darker for the deep river and when explored. `GameUiTests.BoardCss_StylesEveryRiver` checks a rule exists for every ruleset river. The rules aren't scoped to `.board`, so the `/design` gallery shows each kind.
+- **Forecast:** the river bonus appears in the defender's strength breakdown ("+3 behind River").
 
 ## Design gallery (/design)
 
