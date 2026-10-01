@@ -63,4 +63,4 @@ Every accepted command already produces engine events (`GameUpdate.Events`, 19 k
 
 ## Risks & open questions
 - **Leaks are the main risk.** The filter must never add information the two views don't already give; the unit tests check each event type for both seats. Dropping hidden events rather than counting them is deliberate.
-- **Open (owner):** where the log lives. Default in this plan: a collapsible list at the bottom of the side panel. The alternative is a Log button in the top bar that opens it as a popup.
+- **Decided (Andrii, 2026-10-01):** the log lives in the side panel, as a collapsible list below the selection panel (not a top bar popup).

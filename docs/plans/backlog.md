@@ -40,7 +40,7 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 
 | # | Id | Item | Area | Size | Notes |
 |---|---|---|---|---|---|
-| 1 | F11a | Game log: engine events filtered by visibility (`VisibilityCalculator.EventsFor`), stored per player, shown in the side panel | core, server, client | M | Planned: [plan](active/F11a-game-log.md). Open: where the log sits (side panel by default) |
+| 1 | F11a | Game log: engine events filtered by visibility (`VisibilityCalculator.EventsFor`), stored per player, shown in the side panel | core, server, client | M | Planned: [plan](active/F11a-game-log.md). Log sits in the side panel (decided 2026-10-01) |
 | 2 | F11b | Board animations from those events (moves, attacks, losses, new cities and builds) | client | M | Planned: [plan](active/F11b-animations.md). Blocked by F11a |
 | 3 | F12 | Player-chosen city names | core, client | S–M | Also closes a small leak: `City N` counts the founder's cities at founding, hidden ones included ([game-core](../features/game-core.md)) |
 | 4 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
