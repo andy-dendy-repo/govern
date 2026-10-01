@@ -10,12 +10,13 @@ using Govern.Core.Units;
 namespace Govern.Core.Actions;
 
 /// <summary>
-/// Ends the actor's turn: their cities produce, and the next active player moves.
+/// Ends the actor's turn: their resting units heal, their cities produce, and the next active player moves.
 /// </summary>
 public sealed record EndTurnCommand : GameCommand;
 
 /// <summary>
-/// Ends the actor's turn: their cities produce, then the next active player moves with full movement.
+/// Ends the actor's turn: their hurt units that neither moved nor attacked heal, their cities produce, then the next active
+/// player moves with full movement.
 /// </summary>
 internal static class EndTurnRule
 {
@@ -25,7 +26,7 @@ internal static class EndTurnRule
         var produced = state.Cities
             .Where(city => city.Owner == actor)
             .Select(static city => city.Id)
-            .Aggregate(state, (current, cityId) => Produce(ruleset, current, current.FindCity(cityId)!, events));
+            .Aggregate(Heal(ruleset, state, actor), (current, cityId) => Produce(ruleset, current, current.FindCity(cityId)!, events));
 
         return new GameUpdate(PassTurn(ruleset, produced, events), events.ToImmutable());
     }
@@ -83,6 +84,17 @@ internal static class EndTurnRule
 
         return null;
     }
+
+    // A unit rested when its movement is still full: it neither moved nor attacked this turn.
+    private static GameState Heal(Ruleset ruleset, GameState state, PlayerId actor) => state with
+    {
+        Units = [.. state.Units.Select(unit => unit.Owner == actor && unit.Damage > 0 && unit.MovementLeft >= ruleset.Unit(unit.Type).Movement
+            ? unit with { Damage = Math.Max(0, unit.Damage - HealAmount(ruleset, state, unit)) }
+            : unit)],
+    };
+
+    private static int HealAmount(Ruleset ruleset, GameState state, Unit unit) =>
+        state.CityAt(unit.Position)?.Owner == unit.Owner ? ruleset.Combat.Healing.InOwnCity : ruleset.Combat.Healing.PerTurn;
 
     private static GameState ResetMovement(Ruleset ruleset, GameState state, PlayerId player) => state with
     {

@@ -43,12 +43,30 @@ public sealed class GameUiService
     /// <summary>Keeps the state valid for a new view: drops a selection that is no longer in it and recomputes the highlights.</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The new view.</param>
-    public void Refresh(Ruleset ruleset, PlayerView view) => Select(ruleset, view, BoardClickResolver.Prune(view, Selection));
+    public void Refresh(Ruleset ruleset, PlayerView view) => Select(ruleset, view, BoardClickResolver.Prune(ruleset, view, Selection));
 
-    /// <summary>Handles Escape: clears the selection.</summary>
+    /// <summary>Drops the pending attack target and keeps the unit selected (the forecast's Cancel).</summary>
+    public void CancelAttack()
+    {
+        if (Selection.Target is null)
+        {
+            return;
+        }
+
+        Selection = Selection with { Target = null };
+        Changed?.Invoke();
+    }
+
+    /// <summary>Handles Escape: cancels a pending attack, otherwise clears the selection.</summary>
     /// <returns>Whether anything changed.</returns>
     public bool Escape()
     {
+        if (Selection.Target is not null)
+        {
+            CancelAttack();
+            return true;
+        }
+
         if (Selection == BoardSelection.None)
         {
             return false;

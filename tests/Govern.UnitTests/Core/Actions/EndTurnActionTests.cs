@@ -170,4 +170,50 @@ public class EndTurnActionTests
 
         update.State.FindUnit(enemy)!.MovementLeft.ShouldBe(3);
     }
+
+    [Fact]
+    public void Execute_HurtUnitThatRested_Heals()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var rested = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4, damage: 40);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new EndTurnCommand()).ShouldSucceed();
+
+        update.State.FindUnit(rested)!.Damage.ShouldBe(30);
+    }
+
+    [Fact]
+    public void Execute_HurtUnitRestingInOwnCity_HealsMore()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var rested = builder.AddUnit(P1, TestRulesets.Soldier, 0, 0, damage: 40);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new EndTurnCommand()).ShouldSucceed();
+
+        update.State.FindUnit(rested)!.Damage.ShouldBe(20);
+    }
+
+    [Fact]
+    public void Execute_NearlyHealedUnit_HealsOnlyToFullHealth()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var rested = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4, damage: 5);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new EndTurnCommand()).ShouldSucceed();
+
+        update.State.FindUnit(rested)!.Damage.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Execute_UnitThatMovedOrAttacked_DoesNotHeal()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var moved = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4, movementLeft: 1, damage: 40);
+        var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 8, 4, damage: 40);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new EndTurnCommand()).ShouldSucceed();
+
+        update.State.FindUnit(moved)!.Damage.ShouldBe(40);
+        update.State.FindUnit(enemy)!.Damage.ShouldBe(40, "only the player ending the turn heals");
+    }
 }

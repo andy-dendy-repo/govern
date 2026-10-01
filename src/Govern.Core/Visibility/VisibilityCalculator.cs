@@ -92,7 +92,7 @@ public static class VisibilityCalculator
             [.. state.Units
                 .Where(unit => unit.Owner == viewer || visible.Contains(unit.Position))
                 .OrderBy(static unit => unit.Id.Value)
-                .Select(unit => UnitView.From(unit, viewer))],
+                .Select(unit => UnitView.From(ruleset, unit, viewer))],
             [.. state.Cities
                 .Where(city => city.Owner == viewer || visible.Contains(city.Position))
                 .OrderBy(static city => city.Id.Value)

@@ -25,6 +25,19 @@ public class VisibilityCalculatorTests
     }
 
     [Fact]
+    public void ViewFor_VisibleEnemy_ShowsItsHealth()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var own = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4, damage: 10);
+        var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 5, 4, damage: 35);
+
+        var view = GameEngine.ViewFor(TestRulesets.Default, builder.Build(), P1);
+
+        view.Units.Single(unit => unit.Id == own).Health.ShouldBe(90);
+        view.Units.Single(unit => unit.Id == enemy).Health.ShouldBe(65);
+    }
+
+    [Fact]
     public void ViewFor_SameState_GivesTheSameNonNegativeVersion()
     {
         var state = new GameStateBuilder().WithCapitals().Build();
@@ -196,7 +209,7 @@ public class VisibilityCalculatorTests
         var p1View = GameEngine.ViewFor(TestRulesets.Default, state, P1);
         var p2View = GameEngine.ViewFor(TestRulesets.Default, state, P2);
 
-        p1View.Units.Single(unit => unit.Id == enemy).ShouldBe(new UnitView(enemy, P2, TestRulesets.Soldier, At(5, 4), MovementLeft: null));
+        p1View.Units.Single(unit => unit.Id == enemy).ShouldBe(new UnitView(enemy, P2, TestRulesets.Soldier, At(5, 4), MovementLeft: null, Health: 100));
         p1View.Units.Single(unit => unit.Id == own).MovementLeft.ShouldBe(1);
         p2View.Units.Single(unit => unit.Id == enemy).MovementLeft.ShouldBe(1);
         p2View.Units.Single(unit => unit.Id == own).MovementLeft.ShouldBeNull();

@@ -12,7 +12,13 @@ public enum UnitAbility
     [JsonStringEnumMemberName("found_city")]
     FoundCity,
 
-    /// <summary>Attacks adjacent enemy units and captures undefended enemy cities.</summary>
+    /// <summary>Attacks adjacent enemy units in melee and captures undefended enemy cities.</summary>
     [JsonStringEnumMemberName("attack")]
     Attack,
+
+    /// <summary>
+    /// Shoots an enemy unit within range (<see cref="UnitDefinition.Ranged"/>) without taking damage back; can't capture cities.
+    /// </summary>
+    [JsonStringEnumMemberName("ranged_attack")]
+    RangedAttack,
 }

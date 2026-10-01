@@ -32,6 +32,12 @@ public static class TestViews
 
     public static readonly UnitType SoldierType = new("soldier");
 
+    public static readonly UnitType SpearmanType = new("spearman");
+
+    public static readonly UnitType HorsemanType = new("horseman");
+
+    public static readonly UnitType ArcherType = new("archer");
+
     public static readonly TerrainType Plains = new("plains");
 
     public static readonly TerrainType Forest = new("forest");
@@ -68,12 +74,16 @@ public static class TestViews
     public static HexCoord At(int column, int row) => HexCoord.FromOffset(column, row);
 
     /// <summary>A settler; an enemy unit's movement is hidden, as in the Api's views.</summary>
-    public static UnitView Settler(int id, PlayerId owner, HexCoord at, int movementLeft = 2) =>
-        new(new UnitId(id), owner, SettlerType, at, owner == You ? movementLeft : null);
+    public static UnitView Settler(int id, PlayerId owner, HexCoord at, int movementLeft = 2, int health = 100) =>
+        new(new UnitId(id), owner, SettlerType, at, owner == You ? movementLeft : null, health);
 
     /// <summary>A soldier; an enemy unit's movement is hidden, as in the Api's views.</summary>
-    public static UnitView Soldier(int id, PlayerId owner, HexCoord at, int movementLeft = 2) =>
-        new(new UnitId(id), owner, SoldierType, at, owner == You ? movementLeft : null);
+    public static UnitView Soldier(int id, PlayerId owner, HexCoord at, int movementLeft = 2, int health = 100) =>
+        new(new UnitId(id), owner, SoldierType, at, owner == You ? movementLeft : null, health);
+
+    /// <summary>Any unit type; an enemy unit's movement is hidden, as in the Api's views.</summary>
+    public static UnitView Unit(int id, PlayerId owner, UnitType type, HexCoord at, int movementLeft = 2, int health = 100) =>
+        new(new UnitId(id), owner, type, at, owner == You ? movementLeft : null, health);
 
     /// <summary>A city; an enemy city's production is hidden, as in the Api's views.</summary>
     public static CityView City(int id, PlayerId owner, HexCoord at, string name = "City 1") =>
