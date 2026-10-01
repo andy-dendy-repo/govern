@@ -1,5 +1,6 @@
 using Govern.Application.Games.Services;
 using Govern.ArchitectureTests.Support;
+using Govern.Core.Economy;
 using Govern.Core.Rulesets;
 using Govern.Core.Units;
 
@@ -7,7 +8,7 @@ namespace Govern.ArchitectureTests;
 
 /// <summary>
 /// The player-facing rules reference (<c>docs/game/rules.md</c>) documents the ruleset the game is played with: every terrain,
-/// river kind and unit has one row with the ruleset's numbers, every class counter has one row, and the "Game numbers" table matches the
+/// river kind, unit, improvement and building has one row with the ruleset's numbers, every class counter has one row, and the "Game numbers" table matches the
 /// setup, map, city and combat sections.
 /// </summary>
 public class RulesReferenceTests
@@ -24,6 +25,8 @@ public class RulesReferenceTests
         [UnitAbility.FoundCity] = "Found city",
         [UnitAbility.Attack] = "Attack",
         [UnitAbility.RangedAttack] = "Ranged attack",
+        [UnitAbility.BuildImprovement] = "Build improvements",
+        [UnitAbility.BuildBridge] = "Build bridges",
     };
 
     [Fact]
@@ -69,10 +72,42 @@ public class RulesReferenceTests
                 unit.Movement,
                 unit.Sight,
                 unit.ProductionCost,
+                unit.BuildProduction == 0 ? "—" : $"{unit.BuildProduction}",
                 string.Join(", ", unit.Abilities.Select(static ability => AbilityLabels[ability]))))
             .ToList();
 
         Table("Unit types").ShouldBe(expected, ignoreOrder: true, Because);
+    }
+
+    [Fact]
+    public void ImprovementTable_MatchesTheRuleset()
+    {
+        var expected = Ruleset.Improvements
+            .Select(static improvement => Row(
+                Ruleset.ImprovementName(improvement.Id),
+                string.Join(", ", improvement.Terrains.Select(static terrain => Ruleset.TerrainName(terrain))),
+                improvement.Cost,
+                Yields(improvement.Yields)))
+            .ToList();
+
+        Table("Improvements").ShouldBe(expected, ignoreOrder: true, Because);
+    }
+
+    [Fact]
+    public void BuildingTable_MatchesTheRuleset()
+    {
+        var expected = Ruleset.Buildings
+            .Select(static building => Row(
+                Ruleset.BuildingName(building.Id),
+                building.Cost,
+                Yields(building.Yields),
+                building.Production == 0 ? "—" : $"+{building.Production}",
+                building.RequiresAdjacentTerrain.IsEmpty
+                    ? "—"
+                    : string.Join(" or ", building.RequiresAdjacentTerrain.Select(static terrain => Ruleset.TerrainName(terrain)))))
+            .ToList();
+
+        Table("City buildings").ShouldBe(expected, ignoreOrder: true, Because);
     }
 
     [Fact]
@@ -97,6 +132,8 @@ public class RulesReferenceTests
             Row("City sight", Ruleset.Cities.Sight),
             Row("Minimum distance between cities", Ruleset.Cities.MinimumSpacing),
             Row("Production per turn", Ruleset.Cities.ProductionPerTurn),
+            Row("Work area radius", Ruleset.Cities.WorkRadius),
+            Row("Bridge cost", Ruleset.Bridges.Cost),
             Row("First unit a new city produces", Ruleset.UnitName(Ruleset.Cities.InitialProduction)),
             Row("Capturing a city resets its production", YesNo(Ruleset.Cities.CaptureResetsProduction)),
             Row("Full health", Ruleset.Combat.MaxHealth),
@@ -113,6 +150,9 @@ public class RulesReferenceTests
     }
 
     private static string Row(params object[] cells) => string.Join(" | ", cells);
+
+    private static string Yields(IEnumerable<ResourceAmount> yields) =>
+        yields.Any() ? string.Join(", ", yields.Select(static amount => $"{amount.Amount} {Ruleset.ResourceName(amount.Resource)}")) : "—";
 
     private static string YesNo(bool value) => value ? "Yes" : "No";
 

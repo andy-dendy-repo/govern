@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using Govern.Core.Actions;
+using Govern.Core.Cities;
+using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.State;
 using Govern.Domain.Enums;
@@ -60,6 +62,35 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var moved = (await GamesApi.ReadGameAsync(response, Ct)).View!.Units.Single(u => u.Id == unit.Id);
         moved.Position.ShouldBe(target);
+    }
+
+    [Fact]
+    public async Task Post_ProduceBuilding_Returns200AndTheCityProducesIt()
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var (city, version) = await FoundCityAsync(game.Id, creator);
+        var json = $$"""
+            { "expectedVersion": {{version}},
+              "command": { "type": "produce_building", "cityId": { "value": {{city.Value}} }, "building": "campus" } }
+            """;
+
+        var response = await GamesApi.SendCommandJsonAsync(Client, creator.AccessToken, game.Id, json, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var produced = (await GamesApi.ReadGameAsync(response, Ct)).View!.Cities.Single(c => c.Id == city);
+        produced.ProducingBuilding.ShouldBe(new BuildingType("campus"));
+    }
+
+    [Fact]
+    public async Task Post_ProduceUnknownBuilding_Returns409WithTheRuleViolationCode()
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var (city, version) = await FoundCityAsync(game.Id, creator);
+
+        var response = await GamesApi.SendCommandAsync(
+            Client, creator.AccessToken, game.Id, version, new ProduceBuildingCommand(city, new BuildingType("castle")), Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, RuleViolations.UnknownBuilding.Code, Ct);
     }
 
     [Fact]
@@ -277,6 +308,17 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
 
         limited.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
         await other.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.stale_version", Ct);
+    }
+
+    // The creator's settler founds a city; returns the city and the creator's view version after it.
+    private async Task<(CityId City, long Version)> FoundCityAsync(Guid gameId, GamesApi.Player creator)
+    {
+        var view = (await GamesApi.GetGameAsync(Client, creator, gameId, Ct)).View!;
+        var settler = view.Units.First(u => u.Owner == view.Viewer && TestRulesets.Default.Unit(u.Type).CanFoundCity);
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, gameId, view.Version, new FoundCityCommand(settler.Id), Ct);
+        response.EnsureSuccessStatusCode();
+        var after = (await GamesApi.ReadGameAsync(response, Ct)).View!;
+        return (after.Cities.Single(c => c.Owner == after.Viewer).Id, after.Version);
     }
 
     private async Task<GameState> StoredStateAsync(Guid gameId)
