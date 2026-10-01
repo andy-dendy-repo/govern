@@ -115,6 +115,15 @@ public class CombatForecastTests
     }
 
     [Fact]
+    public void Forecast_MeleeOverABridge_GivesNoRiverBonus()
+    {
+        var forecast = Forecast("defender across a bridged deep river");
+
+        forecast.Defender.Modifiers.ShouldBeEmpty();
+        forecast.Defender.Strength.ShouldBe(20);
+    }
+
+    [Fact]
     public void Forecast_RangedAcrossARiver_GivesNoRiverBonus()
     {
         var forecast = Forecast("archer shoots across a river");
@@ -223,6 +232,7 @@ public class CombatForecastTests
             "defender across a river" => builder.WithRiver(TestRulesets.River, ((3, 3), (4, 3))),
             "defender across a deep river in forest" => builder.WithRiver(TestRulesets.DeepRiver, ((3, 3), (4, 3))).WithTerrain(TestRulesets.Forest, (4, 3)),
             "archer shoots across a river" => builder.WithRiver(TestRulesets.River, ((4, 3), (5, 3))),
+            "defender across a bridged deep river" => builder.WithRiver(TestRulesets.DeepRiver, ((3, 3), (4, 3))).WithBridge(((4, 3), (3, 3))),
             _ => builder,
         };
 

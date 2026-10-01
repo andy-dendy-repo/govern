@@ -84,7 +84,7 @@ public class VictoryRuleTests
     [Fact]
     public void Execute_LastUnitCanFoundCitiesByRuleset_KeepsThePlayerInTheGame()
     {
-        var ruleset = TestRulesets.With(json => json["units"]![1]!["abilities"] = new JsonArray("attack", "found_city"));
+        var ruleset = TestRulesets.With(json => json["units"]![1]!["abilities"] = new JsonArray("attack", "build_bridge", "found_city"));
         var builder = new GameStateBuilder();
         builder.AddCity(P1, 0, 0);
         var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);

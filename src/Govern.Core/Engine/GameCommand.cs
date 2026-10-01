@@ -12,6 +12,9 @@ namespace Govern.Core.Engine;
 [JsonDerivedType(typeof(AttackCommand), "attack")]
 [JsonDerivedType(typeof(FoundCityCommand), "found_city")]
 [JsonDerivedType(typeof(SetProductionCommand), "set_production")]
+[JsonDerivedType(typeof(BuildImprovementCommand), "build_improvement")]
+[JsonDerivedType(typeof(BuildBridgeCommand), "build_bridge")]
+[JsonDerivedType(typeof(ProduceBuildingCommand), "produce_building")]
 [JsonDerivedType(typeof(EndTurnCommand), "end_turn")]
 [JsonDerivedType(typeof(ResignCommand), "resign")]
 public abstract record GameCommand;

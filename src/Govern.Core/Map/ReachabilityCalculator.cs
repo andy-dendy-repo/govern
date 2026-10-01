@@ -7,7 +7,7 @@ namespace Govern.Core.Map;
 /// <summary>
 /// Dijkstra over the hex grid, bounded by the unit's remaining movement. Units never pass through other units or enemy cities.
 /// A step costs the entered tile's movement cost plus the crossing cost of a river on the edge between the two tiles, and a
-/// river that can't be crossed blocks the step.
+/// river that can't be crossed blocks the step. A bridged edge is crossed as if it had no river.
 /// </summary>
 internal static class ReachabilityCalculator
 {
@@ -16,7 +16,7 @@ internal static class ReachabilityCalculator
         (from, to) => state.Map.IsPassable(ruleset, to)
             && state.UnitAt(to) is null
             && (state.CityAt(to) is not { } city || city.Owner == unit.Owner)
-                ? StepCost(ruleset, state.Map.TileAt(to).Terrain, state.Map.RiverBetween(from, to))
+                ? StepCost(ruleset, state.Map.TileAt(to).Terrain, state.Map.CrossedRiverBetween(from, to))
                 : null);
 
     // The cost of stepping onto a passable tile with the given terrain over an edge with the given river; null when the

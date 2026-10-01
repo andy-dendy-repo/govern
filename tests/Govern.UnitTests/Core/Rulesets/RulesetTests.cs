@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.Units;
@@ -108,6 +109,38 @@ public class RulesetTests
         ["first stage after the source"] = json => json["map"]!["generation"]!["rivers"]!["stages"]![0]!["fromSegment"] = 1,
         ["stages out of order"] = json => json["map"]!["generation"]!["rivers"]!["stages"]![2]!["fromSegment"] = 3,
         ["uncrossable first stage"] = json => json["map"]!["generation"]!["rivers"]!["stages"]![0]!["river"] = "deep_river",
+        ["no resources"] = json => json["resources"] = new JsonArray(),
+        ["resource listed twice"] = json => json["resources"]![1]!["id"] = "food",
+        ["missing resource name"] = json => json["texts"]!.AsObject().Remove("resource.gold.name"),
+        ["improvement id not snake_case"] = json => json["improvements"]![0]!["id"] = "Farm",
+        ["free improvement"] = json => json["improvements"]![0]!["cost"] = 0,
+        ["improvement without terrains"] = json => json["improvements"]![0]!["terrains"] = new JsonArray(),
+        ["unknown improvement terrain"] = json => json["improvements"]![0]!["terrains"] = new JsonArray("plains", "desert"),
+        ["improvement terrain listed twice"] = json => json["improvements"]![0]!["terrains"] = new JsonArray("plains", "plains"),
+        ["improvement on impassable terrain"] = json => json["improvements"]![2]!["terrains"] = new JsonArray("mountains"),
+        ["unknown yield resource"] = json => json["improvements"]![0]!["yields"]![0]!["resource"] = "iron",
+        ["empty yield"] = json => json["improvements"]![1]!["yields"]![0]!["amount"] = 0,
+        ["yield resource listed twice"] = json => json["buildings"]![1]!["yields"] = new JsonArray(
+            new JsonObject { ["resource"] = "science", ["amount"] = 1 }, new JsonObject { ["resource"] = "science", ["amount"] = 1 }),
+        ["missing improvement name"] = json => json["texts"]!.AsObject().Remove("improvement.mine.name"),
+        ["free building"] = json => json["buildings"]![0]!["cost"] = 0,
+        ["negative building production"] = json => json["buildings"]![0]!["production"] = -1,
+        ["unknown adjacent terrain"] = json => json["buildings"]![4]!["requiresAdjacentTerrain"] = new JsonArray("sea"),
+        ["missing building name"] = json => json["texts"]!.AsObject().Remove("building.harbour.name"),
+        ["free bridge"] = json => json["bridges"]!["cost"] = 0,
+        ["builder without build production"] = json => json["units"]![5]!.AsObject().Remove("buildProduction"),
+        ["build production without an ability"] = json => json["units"]![2]!["buildProduction"] = 1,
+        ["bridge builder sees less than the work radius"] = json =>
+        {
+            json["cities"]!["workRadius"] = 2;
+            json["cities"]!["minimumSpacing"] = 5;
+            foreach (var unit in json["units"]!.AsArray().Where(unit => unit!["id"]!.GetValue<string>() is "settler"))
+            {
+                unit!["sight"] = 4;
+            }
+        },
+        ["no work area"] = json => json["cities"]!["workRadius"] = 0,
+        ["overlapping work areas"] = json => json["cities"]!["workRadius"] = 2,
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -209,6 +242,29 @@ public class RulesetTests
         { "first stage after the source", "$.map.generation.rivers.stages[0].fromSegment" },
         { "stages out of order", "$.map.generation.rivers.stages[2].fromSegment" },
         { "uncrossable first stage", "$.map.generation.rivers.stages[0].river" },
+        { "no resources", "$.resources" },
+        { "resource listed twice", "$.resources[1].id" },
+        { "missing resource name", "$.texts" },
+        { "improvement id not snake_case", "$.improvements[0].id" },
+        { "free improvement", "$.improvements[0].cost" },
+        { "improvement without terrains", "$.improvements[0].terrains" },
+        { "unknown improvement terrain", "$.improvements[0].terrains[1]" },
+        { "improvement terrain listed twice", "$.improvements[0].terrains[1]" },
+        { "improvement on impassable terrain", "$.improvements[2].terrains" },
+        { "unknown yield resource", "$.improvements[0].yields[0].resource" },
+        { "empty yield", "$.improvements[1].yields[0].amount" },
+        { "yield resource listed twice", "$.buildings[1].yields[1].resource" },
+        { "missing improvement name", "$.texts" },
+        { "free building", "$.buildings[0].cost" },
+        { "negative building production", "$.buildings[0].production" },
+        { "unknown adjacent terrain", "$.buildings[4].requiresAdjacentTerrain[0]" },
+        { "missing building name", "$.texts" },
+        { "free bridge", "$.bridges.cost" },
+        { "builder without build production", "$.units[5].buildProduction" },
+        { "build production without an ability", "$.units[2].buildProduction" },
+        { "bridge builder sees less than the work radius", "$.units[1].sight" },
+        { "no work area", "$.cities.workRadius" },
+        { "overlapping work areas", "$.cities.workRadius" },
     };
 
     [Fact]
@@ -221,7 +277,24 @@ public class RulesetTests
         var ruleset = result.Ruleset;
         ruleset.Setup.Players.ShouldBe(2);
         ruleset.Setup.StartingUnits.ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
-        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer]);
+        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder]);
+        ruleset.Unit(TestRulesets.Builder).CanBuildImprovements.ShouldBeTrue();
+        ruleset.Unit(TestRulesets.Builder).CanBuildBridges.ShouldBeTrue();
+        ruleset.Unit(TestRulesets.Builder).BuildProduction.ShouldBe(2);
+        ruleset.Unit(TestRulesets.Soldier).CanBuildImprovements.ShouldBeFalse();
+        ruleset.Unit(TestRulesets.Soldier).CanBuildBridges.ShouldBeTrue();
+        ruleset.Unit(TestRulesets.Soldier).BuildProduction.ShouldBe(1);
+        ruleset.Unit(TestRulesets.Archer).BuildProduction.ShouldBe(0);
+        ruleset.Cities.WorkRadius.ShouldBe(1);
+        ruleset.Bridges.Cost.ShouldBe(6);
+        ruleset.Resources.Select(static resource => resource.Id.Id).ShouldBe(["food", "wood", "stone", "gold", "science", "culture"]);
+        ruleset.Improvements.Select(static improvement => improvement.Id).ShouldBe([TestRulesets.Farm, TestRulesets.LumberCamp, TestRulesets.Mine]);
+        ruleset.Improvement(TestRulesets.Mine).Terrains.ShouldBe([TestRulesets.Hills]);
+        ruleset.Improvement(TestRulesets.Farm).Yields.ShouldHaveSingleItem().ShouldBe(new ResourceAmount(TestRulesets.Food, 2));
+        ruleset.Buildings.Select(static building => building.Id)
+            .ShouldBe([TestRulesets.ArmyCamp, TestRulesets.Campus, TestRulesets.TradePost, TestRulesets.CultureCentre, TestRulesets.Harbour]);
+        ruleset.Building(TestRulesets.ArmyCamp).Production.ShouldBe(1);
+        ruleset.Building(TestRulesets.Harbour).RequiresAdjacentTerrain.ShouldBe([TestRulesets.Lake]);
         ruleset.Unit(TestRulesets.Settler).CanFoundCity.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Settler).CanAttack.ShouldBeFalse();
         ruleset.Unit(TestRulesets.Soldier).CanAttack.ShouldBeTrue();
@@ -335,6 +408,11 @@ public class RulesetTests
         Should.Throw<ArgumentException>(() => ruleset.Terrain(new TerrainType("desert")));
         Should.Throw<ArgumentException>(() => ruleset.River(new RiverType("canal")));
         Should.Throw<ArgumentException>(() => ruleset.Text("unit.knight.name"));
+        ruleset.FindImprovement(new ImprovementType("plantation")).ShouldBeNull();
+        ruleset.FindBuilding(new BuildingType("bank")).ShouldBeNull();
+        ruleset.FindResource(new ResourceType("iron")).ShouldBeNull();
+        Should.Throw<ArgumentException>(() => ruleset.Improvement(new ImprovementType("plantation")));
+        Should.Throw<ArgumentException>(() => ruleset.Building(new BuildingType("bank")));
     }
 
     [Fact]
@@ -345,6 +423,9 @@ public class RulesetTests
         ruleset.UnitName(TestRulesets.Settler).ShouldBe("Settler");
         ruleset.TerrainName(TestRulesets.Plains).ShouldBe("Plains");
         ruleset.RiverName(TestRulesets.DeepRiver).ShouldBe("Deep river");
+        ruleset.ResourceName(TestRulesets.Food).ShouldBe("Food");
+        ruleset.ImprovementName(TestRulesets.LumberCamp).ShouldBe("Lumber camp");
+        ruleset.BuildingName(TestRulesets.CultureCentre).ShouldBe("Culture centre");
         ruleset.CityName(12).ShouldBe("Town 12 of 12");
     }
 }

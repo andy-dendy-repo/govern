@@ -301,4 +301,29 @@ public class MoveUnitActionTests
         update.State.FindUnit(soldier)!.MovementLeft.ShouldBe(0);
         update.Events.ShouldHaveSingleItem().ShouldBeOfType<UnitMovedEvent>().Path.Length.ShouldBe(2);
     }
+
+    [Fact]
+    public void Execute_OverABridgedDeepRiver_CostsTheTileOnly()
+    {
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithRiver(TestRulesets.DeepRiver, ((2, 2), (3, 2)))
+            .WithBridge(((3, 2), (2, 2)));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2))).ShouldSucceed();
+
+        update.State.FindUnit(soldier)!.MovementLeft.ShouldBe(1);
+        update.Events.ShouldHaveSingleItem().ShouldBeOfType<UnitMovedEvent>().Path.Length.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Execute_OverABridgedRiver_CostsNoExtraMovement()
+    {
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithRiver(TestRulesets.River, ((2, 2), (3, 2)))
+            .WithBridge(((2, 2), (3, 2)));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2, movementLeft: 1);
+
+        GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2))).ShouldSucceed();
+    }
 }

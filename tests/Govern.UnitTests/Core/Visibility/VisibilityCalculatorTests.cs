@@ -1,4 +1,5 @@
 using Govern.Core.Actions;
+using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Map;
 using Govern.Core.State;
@@ -130,6 +131,56 @@ public class VisibilityCalculatorTests
         view.RiverBetween(At(3, 2), At(2, 2)).ShouldBe(TestRulesets.River);
         view.TileAt(At(9, 5)).Rivers.ShouldBeNull();
         view.RiverBetween(At(9, 5), At(10, 5)).ShouldBeNull();
+    }
+
+    [Fact]
+    public void ViewFor_ImprovementsAndBridges_ShowOnVisibleTilesOnly()
+    {
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithRiver(TestRulesets.River, ((2, 2), (3, 2)), ((6, 2), (7, 2)))
+            .WithBridge(((2, 2), (3, 2)), ((6, 2), (7, 2)))
+            .WithImprovement(TestRulesets.Farm, (2, 3), (7, 2));
+        var scout = builder.AddUnit(P1, TestRulesets.Soldier, 5, 2);
+        builder.AddUnit(P1, TestRulesets.Soldier, 2, 3);
+        var state = builder.Build();
+
+        // The scout explored (7, 2) and walks away, so the tile stays explored but no longer visible.
+        var moved = GameEngine.Execute(TestRulesets.Default, state, P1, new MoveUnitCommand(scout, At(3, 2))).ShouldSucceed().State;
+        var view = GameEngine.ViewFor(TestRulesets.Default, moved, P1);
+
+        view.TileAt(At(2, 3)).Improvement.ShouldBe(TestRulesets.Farm);
+        view.BridgeBetween(At(3, 2), At(2, 2)).ShouldBeTrue();
+        view.CrossedRiverBetween(At(3, 2), At(2, 2)).ShouldBeNull();
+        view.TileAt(At(7, 2)).Visibility.ShouldBe(TileVisibility.Explored);
+        view.TileAt(At(7, 2)).Improvement.ShouldBeNull();
+        view.TileAt(At(6, 2)).Visibility.ShouldBe(TileVisibility.Explored);
+        view.BridgeBetween(At(6, 2), At(7, 2)).ShouldBeFalse();
+        view.RiverBetween(At(6, 2), At(7, 2)).ShouldBe(TestRulesets.River);
+    }
+
+    [Fact]
+    public void ViewFor_JobsBuildingsAndStockpile_ShowOnlyTheViewersOwn()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((4, 4), (5, 4)));
+        var own = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4, job: UnitJob.ForBridge(At(5, 4), 1));
+        var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 5, 4, job: UnitJob.ForBridge(At(4, 4), 1));
+        var ownCity = builder.AddCity(P1, 3, 3, buildings: [TestRulesets.Campus]);
+        var enemyCity = builder.AddCity(P2, 6, 4, producingBuilding: TestRulesets.Harbour, buildings: [TestRulesets.TradePost]);
+        var state = builder.Build();
+        state = state with
+        {
+            Players = [state.Players[0] with { Resources = [new(TestRulesets.Food, 3)] }, state.Players[1] with { Resources = [new(TestRulesets.Gold, 9)] }],
+        };
+
+        var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
+
+        view.Units.Single(unit => unit.Id == own).Job.ShouldBe(UnitJob.ForBridge(At(5, 4), 1));
+        view.Units.Single(unit => unit.Id == enemy).Job.ShouldBeNull();
+        view.Cities.Single(city => city.Id == ownCity).BuildingList.ShouldBe([TestRulesets.Campus]);
+        var seen = view.Cities.Single(city => city.Id == enemyCity);
+        seen.Buildings.ShouldBeNull();
+        seen.ProducingBuilding.ShouldBeNull();
+        view.Resources.ShouldBe([new(TestRulesets.Food, 3)]);
     }
 
     [Fact]
