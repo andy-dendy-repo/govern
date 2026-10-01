@@ -148,6 +148,39 @@ public partial class GameBoardTests : ClientTestContext
     }
 
     [Fact]
+    public void Render_Territories_DrawABorderInEachOwnersColourWhereTheTerritoryEnds()
+    {
+        var view = Create(cities: [City(7, You, At(2, 2)), City(8, Opponent, At(5, 2))]);
+
+        var cut = RenderBoard(view);
+
+        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "borders", "highlights", "cities", "units"]);
+        // Each city owns its tile and 6 neighbours: the outline of 7 hexes has 18 edges. Where the two touch, both draw the edge.
+        cut.FindAll("g[data-layer=borders] line.border.seat-1").Count.ShouldBe(18);
+        cut.FindAll("g[data-layer=borders] line.border.seat-2").Count.ShouldBe(18);
+    }
+
+    [Fact]
+    public void Render_NoTerritoryInSight_DrawsNoBorderLayer()
+    {
+        var cut = RenderBoard(Start());
+
+        cut.FindAll("g[data-layer=borders]").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_YieldLens_MarksEveryKnownTileWithItsTotal()
+    {
+        var view = Create(terrain: static coord => coord.Column == 3 ? new TerrainType("desert") : Plains);
+
+        var cut = RenderBoard(view, lens: new YieldLens(new RulesetService()));
+
+        cut.Find("g[data-layer=lens]").ClassList.ShouldContain("lens-yields");
+        cut.FindAll("g.lens-mark.barren").Count.ShouldBe(Height);
+        cut.FindAll("g.lens-mark.poor text").Select(static text => text.TextContent).ShouldAllBe(label => label == "3");
+    }
+
+    [Fact]
     public void Render_NoLens_DrawsNoLensLayer()
     {
         var cut = RenderBoard(Start());

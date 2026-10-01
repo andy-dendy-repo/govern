@@ -74,18 +74,18 @@ public class BuildBridgeActionTests
     [InlineData(7, 5)]
     [InlineData(4, 5)]
     [InlineData(6, 5)]
-    public void Execute_EnemyWorkAreaOnEitherSide_IsRefused(int cityColumn, int cityRow)
+    public void Execute_EnemyTerritoryOnEitherSide_IsRefused(int cityColumn, int cityRow)
     {
         var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((5, 5), (6, 5)));
         builder.AddCity(P2, cityColumn, cityRow);
         var unit = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5);
 
         GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new BuildBridgeCommand(unit, At(6, 5)))
-            .ShouldFailWith(RuleViolations.EnemyWorkArea);
+            .ShouldFailWith(RuleViolations.EnemyTerritory);
     }
 
     [Fact]
-    public void Execute_InOwnWorkArea_IsAllowed()
+    public void Execute_InOwnTerritory_IsAllowed()
     {
         var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((5, 5), (6, 5)));
         builder.AddCity(P1, 4, 5);

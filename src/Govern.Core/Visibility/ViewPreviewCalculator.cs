@@ -71,7 +71,7 @@ internal static class ViewPreviewCalculator
         }
 
         return OwnUnit(ruleset, view, unitId) is { } settler
-            ? FoundCityRule.Check(ruleset, settler, view.Cities.Select(static city => city.Position))
+            ? FoundCityRule.Check(ruleset, settler, view.Cities.Select(static city => city.Position), view.TileAt(settler.Position).TerritoryOwner is not null)
             : RuleViolations.UnitNotFound;
     }
 
@@ -87,10 +87,10 @@ internal static class ViewPreviewCalculator
             return RuleViolations.UnitNotFound;
         }
 
-        // The unit's own tile is visible, and every one of the viewer's cities is in the view.
+        // The unit's own tile is visible, with its territory, and every one of the viewer's cities is in the view.
         var tile = view.TileAt(unit.Position);
-        var inWorkArea = view.Cities.Any(city => city.Owner == view.Viewer && WorkArea.Contains(ruleset, city.Position, unit.Position));
-        return BuildImprovementRule.Check(ruleset, unit, improvement, new ImprovementSite(tile.Terrain!.Value, tile.Improvement, inWorkArea));
+        var inTerritory = tile.TerritoryCity is not null && view.CityAt(unit.Position) is null;
+        return BuildImprovementRule.Check(ruleset, unit, improvement, new ImprovementSite(tile.Terrain!.Value, tile.Improvement, inTerritory));
     }
 
     public static ImmutableArray<HexCoord> BridgeTargets(Ruleset ruleset, PlayerView view, UnitId unitId)
@@ -104,6 +104,25 @@ internal static class ViewPreviewCalculator
             .Where(target => BuildBridgeRule.Check(ruleset, unit, target, BridgeSiteOf(ruleset, view, unit, target)) is null)
             .OrderBy(static coord => coord.Row)
             .ThenBy(static coord => coord.Column)];
+    }
+
+    public static ImmutableArray<ResourceAmount> CityIncome(Ruleset ruleset, PlayerView view, CityId cityId)
+    {
+        if (view.Cities.FirstOrDefault(city => city.Id == cityId && city.Owner == view.Viewer) is not { } city)
+        {
+            return [];
+        }
+
+        // Every tile of the viewer's own territory is visible, with its terrain and improvement, and every neighbour is at least
+        // explored, so the rivers on the territory's outer edges are known too.
+        var tileYields = Enumerable.Range(0, view.Tiles.Length)
+            .Where(index => view.Tiles[index].TerritoryCity == cityId)
+            .SelectMany(index =>
+            {
+                var tile = view.Tiles[index];
+                return YieldCalculator.TileYields(ruleset, tile.Terrain!.Value, view.RiversAround(view.CoordAt(index)), tile.Improvement);
+            });
+        return YieldCalculator.CityIncome(ruleset, tileYields, city.BuildingList);
     }
 
     public static RuleViolation? CheckProduceBuilding(Ruleset ruleset, PlayerView view, CityId cityId, BuildingType building)
@@ -127,8 +146,7 @@ internal static class ViewPreviewCalculator
         return ProduceBuildingRule.Check(ruleset, city, building, [.. neighbors]);
     }
 
-    // Both tiles are in sight (the target is a neighbour), and so is every city whose work area could cover either of them: the
-    // validator keeps a bridge builder's sight above the work radius.
+    // Both tiles are in sight (the target is a neighbour), and the view shows the territory of every visible tile.
     private static BridgeSite BridgeSiteOf(Ruleset ruleset, PlayerView view, Unit unit, HexCoord target)
     {
         if (HexEdge.Between(unit.Position, target) is null || !view.Contains(target))
@@ -136,11 +154,13 @@ internal static class ViewPreviewCalculator
             return new BridgeSite(false, null, false, false, false);
         }
 
-        var touchesEnemy = view.Cities.Any(city => city.Owner != unit.Owner
-            && (WorkArea.Covers(ruleset, city.Position, unit.Position) || WorkArea.Covers(ruleset, city.Position, target)));
+        var touchesEnemy = IsEnemyTerritory(view, unit.Position) || IsEnemyTerritory(view, target);
         var passable = view.TileAt(target).Terrain is { } terrain && ruleset.Terrain(terrain).IsPassable;
         return new BridgeSite(true, view.RiverBetween(unit.Position, target), view.BridgeBetween(unit.Position, target), passable, touchesEnemy);
     }
+
+    private static bool IsEnemyTerritory(PlayerView view, HexCoord coord) =>
+        view.TileAt(coord).TerritoryOwner is { } owner && owner != view.Viewer;
 
     // Only visible tiles can be entered. That loses nothing, because a unit's sight is at least its movement (checked by
     // RulesetValidator), so every tile it could reach is visible and shows every unit and city on it. Both ends of a step are

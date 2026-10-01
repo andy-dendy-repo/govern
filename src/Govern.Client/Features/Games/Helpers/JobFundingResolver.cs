@@ -29,7 +29,7 @@ public static class JobFundingResolver
             .ThenBy(static unit => unit.Id.Value);
         foreach (var unit in working)
         {
-            var city = view.Cities.FirstOrDefault(city => city.Owner == view.Viewer && WorkArea.Covers(ruleset, city.Position, unit.Position));
+            var city = view.TileAt(unit.Position).TerritoryCity is { } territory ? view.Cities.FirstOrDefault(city => city.Id == territory) : null;
             if (city is not null && used.Add(city.Id))
             {
                 fed[unit.Id] = city;

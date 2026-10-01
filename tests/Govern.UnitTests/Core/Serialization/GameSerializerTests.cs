@@ -146,7 +146,7 @@ public class GameSerializerTests
         var idle = builder.AddUnit(P1, TestRulesets.Builder, 5, 5);
         var city = builder.AddCity(P1, 6, 4, producingBuilding: TestRulesets.Campus, buildings: [TestRulesets.Harbour]);
         var state = builder.Build();
-        state = state with { Players = [state.Players[0] with { Resources = [new(TestRulesets.Food, 4)] }, state.Players[1]] };
+        state = state with { Cities = [.. state.Cities.Select(c => c.Id == city ? c with { Stock = [new(TestRulesets.Food, 4)], TilesGained = 2 } : c)] };
 
         var json = GameSerializer.Serialize(state);
         var restored = GameSerializer.DeserializeState(json);
@@ -155,7 +155,9 @@ public class GameSerializerTests
         restored.FindUnit(working)!.Job.ShouldBe(new UnitJob(2, 1, BridgeTo: At(4, 3)));
         restored.FindUnit(idle)!.Job.ShouldBeNull();
         restored.FindCity(city)!.BuildingList.ShouldBe([TestRulesets.Harbour]);
-        restored.FindPlayer(P1)!.Stockpile.ShouldBe([new(TestRulesets.Food, 4)]);
+        restored.FindCity(city)!.StockList.ShouldBe([new(TestRulesets.Food, 4)]);
+        restored.FindCity(city)!.TilesGained.ShouldBe(2);
+        restored.Map.TileAt(At(6, 4)).Territory.ShouldBe(city);
         restored.Map.BridgeBetween(At(4, 3), At(3, 3)).ShouldBeTrue();
         restored.Map.TileAt(At(5, 5)).Improvement.ShouldBe(TestRulesets.Farm);
 
@@ -163,7 +165,10 @@ public class GameSerializerTests
         var root = JsonDocument.Parse(json).RootElement;
         root.GetProperty("units").EnumerateArray().Count(static unit => unit.TryGetProperty("job", out _)).ShouldBe(1);
         root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("buildings", out _)).ShouldBe(1);
-        root.GetProperty("players").EnumerateArray().Count(static player => player.TryGetProperty("resources", out _)).ShouldBe(1);
+        root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("stock", out _)).ShouldBe(1);
+        root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("tilesGained", out _)).ShouldBe(1);
+        root.GetProperty("map").GetProperty("tiles").EnumerateArray().Count(static tile => tile.TryGetProperty("territory", out _))
+            .ShouldBe(restored.Map.Tiles.Count(static tile => tile.Territory is not null));
         root.GetProperty("map").GetProperty("tiles").EnumerateArray().Count(static tile => tile.TryGetProperty("bridges", out _)).ShouldBe(1);
         root.GetProperty("map").GetProperty("tiles").EnumerateArray().Count(static tile => tile.TryGetProperty("improvement", out _)).ShouldBe(1);
         json.ShouldContain("\"bridges\":{\"east\":true}");
@@ -200,6 +205,32 @@ public class GameSerializerTests
 
         upgraded.SchemaVersion.ShouldBe(GameState.CurrentSchemaVersion);
         GameSerializer.Serialize(upgraded).ShouldBe(GameSerializer.Serialize(state));
+    }
+
+    [Fact]
+    public void DeserializeState_SchemaVersionTwo_MovesStockpilesIntoTheFirstCityAndClaimsTheOldWorkAreas()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var second = builder.AddCity(P1, 5, 5);
+        var state = builder.Build();
+        var node = JsonNode.Parse(GameSerializer.Serialize(state))!.AsObject();
+        node["schemaVersion"] = 2;
+        foreach (var tile in node["map"]!["tiles"]!.AsArray())
+        {
+            tile!.AsObject().Remove("territory");
+        }
+
+        node["players"]![0]!["resources"] = JsonNode.Parse("""[{"resource":"food","amount":6},{"resource":"gold","amount":2}]""");
+
+        var upgraded = GameSerializer.DeserializeState(node.ToJsonString());
+
+        upgraded.SchemaVersion.ShouldBe(GameState.CurrentSchemaVersion);
+        var capital = upgraded.Cities.Single(city => city.Owner == P1 && city.Id != second);
+        capital.StockList.ShouldBe([new(TestRulesets.Food, 6), new(TestRulesets.Gold, 2)]);
+        upgraded.FindCity(second)!.Stock.ShouldBeNull();
+        upgraded.Map.Tiles.Where(tile => tile.Territory == second).Select(static tile => tile.Coord).ShouldBe(At(5, 5).WithinRadius(1), ignoreOrder: true);
+        upgraded.Map.TileAt(At(0, 0)).Territory.ShouldBe(capital.Id);
+        GameSerializer.Serialize(upgraded).ShouldNotContain("\"resources\"");
     }
 
     [Fact]
@@ -251,7 +282,8 @@ public class GameSerializerTests
         var json = GameSerializer.Serialize(view);
         var root = JsonDocument.Parse(json).RootElement;
 
-        root.GetProperty("tiles")[0].EnumerateObject().Select(static p => p.Name).ShouldBe(["visibility", "terrain"]);
+        // The soldier's tile: visible, owned by no city.
+        root.GetProperty("tiles")[(4 * GameStateBuilder.Width) + 4].EnumerateObject().Select(static p => p.Name).ShouldBe(["visibility", "terrain"]);
         var enemy = root.GetProperty("cities").EnumerateArray().Single(city => city.GetProperty("owner").GetProperty("value").GetGuid() == P2.Value);
         enemy.GetProperty("producing").ValueKind.ShouldBe(JsonValueKind.Null);
         enemy.GetProperty("productionProgress").ValueKind.ShouldBe(JsonValueKind.Null);

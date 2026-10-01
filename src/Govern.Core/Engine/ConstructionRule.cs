@@ -10,12 +10,12 @@ using Govern.Core.Units;
 
 namespace Govern.Core.Engine;
 
-// The end-of-turn economy of one player (EndTurnRule): their units' jobs advance, then their cities' improvements and buildings
-// add to their stockpile.
+// The end-of-turn economy of one player (EndTurnRule): their units' jobs advance, then each of their cities adds the yields of
+// its territory and buildings to its own stock.
 internal static class ConstructionRule
 {
     // Advances every job of the player's units, oldest first (then by unit id). A job gains its unit's build production, plus
-    // the production of the player's city whose ground (its tile or work area) the job is on, which that city then doesn't spend
+    // the production of the player's city whose territory the job is on, which that city then doesn't spend
     // on its own production this turn; each city feeds one job. A job whose site no longer allows it is dropped. Returns the
     // state and the cities whose production was used.
     public static (GameState State, IReadOnlySet<CityId> UsedCities) AdvanceJobs(
@@ -43,10 +43,12 @@ internal static class ConstructionRule
             }
 
             var progress = job.Progress + ruleset.Unit(unit.Type).BuildProduction;
-            if (state.Cities.FirstOrDefault(city => city.Owner == player && WorkArea.Covers(ruleset, city.Position, unit.Position)) is { } city
+            if (state.Map.TileAt(unit.Position).Territory is { } territory
+                && state.FindCity(territory) is { } city
+                && city.Owner == player
                 && used.Add(city.Id))
             {
-                progress += WorkArea.ProductionPerTurn(ruleset, city.BuildingList);
+                progress += CityProduction.PerTurn(ruleset, city.BuildingList);
             }
 
             state = progress >= cost
@@ -57,44 +59,29 @@ internal static class ConstructionRule
         return (state, used);
     }
 
-    // Adds the yields of every city of the player (its buildings and the improvements in its work area) to their stockpile.
+    // Adds each of the player's cities' income (its territory's tiles, its own yields and its buildings) to its stock.
     public static GameState CollectYields(Ruleset ruleset, GameState state, PlayerId player)
     {
-        var totals = new Dictionary<ResourceType, int>();
-        foreach (var city in state.Cities.Where(city => city.Owner == player))
+        foreach (var city in state.Cities.Where(city => city.Owner == player).ToList())
         {
-            var buildingYields = city.BuildingList.SelectMany(building => ruleset.Building(building).Yields);
-            var improvementYields = city.Position.WithinRadius(ruleset.Cities.WorkRadius)
-                .Where(coord => state.Map.Contains(coord) && WorkArea.Contains(ruleset, city.Position, coord))
-                .Select(coord => state.Map.TileAt(coord).Improvement)
-                .OfType<ImprovementType>()
-                .SelectMany(improvement => ruleset.Improvement(improvement).Yields);
-            foreach (var amount in buildingYields.Concat(improvementYields))
-            {
-                totals[amount.Resource] = totals.GetValueOrDefault(amount.Resource) + amount.Amount;
-            }
+            var income = Income(ruleset, state.Map, city);
+            var stock = YieldCalculator.Sum(ruleset, city.StockList.Concat(income));
+            state = state.WithCity(city with { Stock = stock.IsEmpty ? null : stock });
         }
 
-        if (totals.Count == 0)
-        {
-            return state;
-        }
+        return state;
+    }
 
-        var owner = state.FindPlayer(player)!;
-        foreach (var amount in owner.Stockpile)
-        {
-            totals[amount.Resource] = totals.GetValueOrDefault(amount.Resource) + amount.Amount;
-        }
-
-        // In the ruleset's order, so the stockpile (and the view's fingerprint) never depends on dictionary order.
-        ImmutableArray<ResourceAmount> stockpile = [.. ruleset.Resources
-            .Where(resource => totals.ContainsKey(resource.Id))
-            .Select(resource => new ResourceAmount(resource.Id, totals[resource.Id]))];
-        return state.WithPlayer(owner with { Resources = stockpile });
+    // What a city adds to its stock this turn.
+    public static ImmutableArray<ResourceAmount> Income(Ruleset ruleset, GameMap map, City city)
+    {
+        var tileYields = TerritoryRule.TilesOf(map, city.Id)
+            .SelectMany(tile => YieldCalculator.TileYields(ruleset, tile.Terrain, map.RiversAround(tile.Coord), tile.Improvement));
+        return YieldCalculator.CityIncome(ruleset, tileYields, city.BuildingList);
     }
 
     // The job's cost while its site still allows it; null when it doesn't any more (a bridge finished from the other bank, or
-    // the city whose work area it was in changed hands).
+    // the city whose territory it was in changed hands).
     private static int? CostOf(Ruleset ruleset, GameState state, Unit unit, UnitJob job)
     {
         if (job.Improvement is { } improvement)

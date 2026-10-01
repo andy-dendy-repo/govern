@@ -4,5 +4,5 @@ using Govern.Core.Map;
 namespace Govern.Core.Engine;
 
 // What BuildImprovementRule.Check needs to know about the builder's tile; the rule builds it from the state, the preview from
-// the view. InOwnWorkArea is whether the tile is in a work area of one of the builder owner's cities.
-internal sealed record ImprovementSite(TerrainType Terrain, ImprovementType? Existing, bool InOwnWorkArea);
+// the view. InOwnTerritory is whether the tile is in the territory of one of the builder owner's cities and is not a city's tile.
+internal sealed record ImprovementSite(TerrainType Terrain, ImprovementType? Existing, bool InOwnTerritory);

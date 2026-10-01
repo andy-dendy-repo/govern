@@ -17,7 +17,7 @@ public sealed record BuildBridgeCommand(UnitId UnitId, HexCoord Target) : GameCo
 
 /// <summary>
 /// Gives a unit the job of bridging the river between its tile and a neighbour (see <see cref="UnitJob"/>). The edge must have a
-/// river and no bridge, the far side must be passable, and neither tile may be an enemy city's tile or in its work area. Starting
+/// river and no bridge, the far side must be passable, and neither tile may be in an enemy city's territory. Starting
 /// uses the unit's remaining movement and replaces any job it had.
 /// </summary>
 internal static class BuildBridgeRule
@@ -38,8 +38,8 @@ internal static class BuildBridgeRule
         return new GameUpdate(state.WithUnit(unit with { MovementLeft = 0, Job = job }), [new BuildStartedEvent(unit.Id, job)]);
     }
 
-    // Shared with the view-based preview (ViewPreviewCalculator): both tiles are in sight, and so is every city whose work area
-    // could reach them (the validator keeps the sight of bridge builders above the work radius).
+    // Shared with the view-based preview (ViewPreviewCalculator): both tiles are in sight (the target is a neighbour), and the view
+    // shows the territory of every visible tile.
     public static RuleViolation? Check(Ruleset ruleset, Unit unit, HexCoord target, BridgeSite site)
     {
         if (!ruleset.Unit(unit.Type).CanBuildBridges)
@@ -78,7 +78,7 @@ internal static class BuildBridgeRule
             return RuleViolations.BridgeLeadsNowhere;
         }
 
-        return site.TouchesEnemyWorkArea ? RuleViolations.EnemyWorkArea : null;
+        return site.TouchesEnemyTerritory ? RuleViolations.EnemyTerritory : null;
     }
 
     public static BridgeSite SiteOf(Ruleset ruleset, GameState state, Unit unit, HexCoord target)
@@ -89,8 +89,7 @@ internal static class BuildBridgeRule
             return new BridgeSite(false, null, false, false, false);
         }
 
-        var touchesEnemy = state.Cities.Any(city => city.Owner != unit.Owner
-            && (WorkArea.Covers(ruleset, city.Position, unit.Position) || WorkArea.Covers(ruleset, city.Position, target)));
+        var touchesEnemy = IsEnemyTerritory(state, unit, unit.Position) || IsEnemyTerritory(state, unit, target);
         return new BridgeSite(
             true,
             state.Map.RiverBetween(unit.Position, target),
@@ -98,4 +97,7 @@ internal static class BuildBridgeRule
             state.Map.IsPassable(ruleset, target),
             touchesEnemy);
     }
+
+    private static bool IsEnemyTerritory(GameState state, Unit unit, HexCoord coord) =>
+        state.Map.TileAt(coord).Territory is { } territory && state.FindCity(territory) is { } city && city.Owner != unit.Owner;
 }

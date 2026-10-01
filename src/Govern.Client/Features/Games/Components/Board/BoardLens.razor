@@ -12,7 +12,7 @@
     <g class="@($"layer-lens lens-{Lens.Id}")" data-layer="@BoardLayers.Name(BoardLayer.Lens)">
         @for (var index = 0; index < View.Tiles.Length; index++)
         {
-            if (Lens.MarkFor(View.Tiles[index]) is not { } mark)
+            if (Lens.MarkFor(View, index) is not { } mark)
             {
                 continue;
             }

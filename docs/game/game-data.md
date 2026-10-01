@@ -7,7 +7,7 @@ updated: 2026-10-01
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v5.json`](../../rulesets/default/v5.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5; [`v1.json`](../../rulesets/default/v1.json) to [`v4.json`](../../rulesets/default/v4.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v6.json`](../../rulesets/default/v6.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6; [`v1.json`](../../rulesets/default/v1.json) to [`v5.json`](../../rulesets/default/v5.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -47,13 +47,13 @@ updated: 2026-10-01
 | `created_at` | `timestamptz` | When it was published; no `updated_at`, because a version is immutable |
 | `created_by` | `uuid`, nullable | The admin who published it; null when a migration did |
 
-- **The document holds only game content.** `key`, `version` and `name` live only in the row; the migration (or the admin) supplies them, and a repository file's path names them (`rulesets/default/v5.json`).
+- **The document holds only game content.** `key`, `version` and `name` live only in the row; the migration (or the admin) supplies them, and a repository file's path names them (`rulesets/default/v6.json`).
 - **Core and the rulesets are always consistent.** A started game is pinned to one version for good. There's no `schemaVersion` and no upgrading of old rulesets: when a Core change needs new fields, the rulesets are updated with it. Handling older rulesets is deferred until it matters.
 - **New games** use the highest `version` of the ruleset. Retiring a version and a lobby description are deferred with Ruleset B ([question 6 there](../plans/deferred/ruleset-b-store-and-pin.md#decisions-and-questions-for-part-b): one ruleset or several).
 
 ## Versions in the repository
 
-*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9), `v3.json` when `rivers` and `map.generation.rivers` arrived (G6), and `v4.json` when `bridges`, `resources`, `improvements`, `buildings` and `cities.workRadius` arrived (G10a); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
+*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9), `v3.json` when `rivers` and `map.generation.rivers` arrived (G6), `v4.json` when `bridges`, `resources`, `improvements`, `buildings` and `cities.workRadius` arrived (G10a), and `v5.json` when terrain and river `yields`, `cities.yields`, `cities.startingStock` and `territory` arrived and `cities.workRadius` left (G5, G7); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
 
 ## Format conventions
 
@@ -96,7 +96,7 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 }
 ```
 
-The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus `units[].buildProduction` and `cities.workRadius`) are described in [game data: building sections](game-data-economy.md).
+The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus `units[].buildProduction`, terrain and river `yields`, `cities.yields`, `cities.startingStock` and `territory`) are described in [game data: building sections](game-data-economy.md).
 
 ## Setup (`setup`)
 
@@ -275,7 +275,7 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 | `found_city` | Founds a city on its tile and is consumed; a player who has no city and no unit with it is eliminated |
 | `attack` | Attacks adjacent enemy units in melee (both take damage) and captures undefended enemy cities |
 | `ranged_attack` | Shoots an enemy unit within `ranged.range` (no damage back); can't capture a city |
-| `build_improvement` | Builds an improvement on its tile in an own work area, with its `buildProduction` plus the city's production |
+| `build_improvement` | Builds an improvement on its tile in its cities' territory (not a city tile), with its `buildProduction` plus the city's production |
 | `build_bridge` | Bridges the river between its tile and a neighbour, from either bank |
 
 - A unit with `attack` or `ranged_attack` needs a `strength`; a unit can't have both attacks.
@@ -292,7 +292,8 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 | `initialProduction` | `soldier` | What a new city builds first |
 | `nameTemplate` | `city.default_name` | The text key of a new city's name; the text must contain `{n}`, the founder's city count |
 | `captureResetsProduction` | true | A captured city's progress goes back to 0 |
-| `workRadius` | 1 | How far the city's work area reaches ([building sections](game-data-economy.md)) |
+| `yields` | 1 culture | What every city makes a turn on top of its tiles ([building sections](game-data-economy.md)) |
+| `startingStock` | 5 food, water, wood and stone | The stock a new city starts with |
 
 ```json
 "cities": {
@@ -302,7 +303,8 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
   "initialProduction": "soldier",
   "nameTemplate": "city.default_name",
   "captureResetsProduction": true,
-  "workRadius": 1
+  "yields": [{ "resource": "culture", "amount": 1 }],
+  "startingStock": [{ "resource": "food", "amount": 5 }, { "resource": "water", "amount": 5 }, { "resource": "wood", "amount": 5 }, { "resource": "stone", "amount": 5 }]
 }
 ```
 
@@ -379,11 +381,11 @@ Everything a player reads about the game's content comes from here: unit, class 
 - `sightBonus` ≥ 0; `defenceBonus` 0..100.
 - Rivers: `crossingCost` and `defenceBonus` 0..100; at least one kind crossable; generation `count` 0..20, `1 ≤ minLength ≤ maxLength ≤ 100`, `sources` and `mouths` not empty and without repeats, `stages` not empty, starting at 0, strictly increasing, the first one crossable.
 - Units and combat: see [Units](#units-units) and [Combat](#combat-combat).
-- Bridges, resources, improvements, buildings, build production and the work area: see [game data: building sections](game-data-economy.md#validation-of-the-building-sections).
+- Bridges, resources, improvements, buildings, build production, tile yields, city stock and territory: see [game data: building sections](game-data-economy.md#validation-of-the-building-sections).
 - Numbers are in range: movement, sight, costs, city sight, spacing and production ≥ 1; `8 ≤ minSize ≤ maxSize ≤ 40`; the default size within them; `players` = 2.
 - Spawn: `zoneColumnsPerMille` 1–250; `edgeMargin` ≥ 1 and less than the zone on the smallest map; `startingUnits` no more than that zone.
 - At least one terrain is passable, and `defaultTerrain` is.
-- **Fog invariants:** every unit's `sight` ≥ `movement` ÷ the cheapest passable terrain cost, every unit with `found_city` has `sight` ≥ `cities.minimumSpacing` − 1, a ranged unit's `range` ≤ `sight`, and a unit with `build_bridge` has `sight` ≥ `cities.workRadius` + 1. The view previews are exact only while these hold.
+- **Fog invariants:** every unit's `sight` ≥ `movement` ÷ the cheapest passable terrain cost, every unit with `found_city` has `sight` ≥ `cities.minimumSpacing` − 1, and a ranged unit's `range` ≤ `sight`. The view previews are exact only while these hold.
 - At least one starting unit has `found_city`.
 - The texts listed in [Texts and languages](#texts-and-languages) exist and aren't empty.
 

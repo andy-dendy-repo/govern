@@ -46,6 +46,7 @@ public static class DependencyInjection
             services.AddScoped<BoardInteropService>();
             services.AddSingleton<RulesetService>();
             services.AddSingleton<IMapLens, MovementCostLens>();
+            services.AddSingleton<IMapLens, YieldLens>();
             services.AddScoped<ClipboardService>();
 
             // AddHttpClient also registers a plain HttpClient; components must use typed clients instead.

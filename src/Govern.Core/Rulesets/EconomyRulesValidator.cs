@@ -4,14 +4,15 @@ using Govern.Core.Map;
 
 namespace Govern.Core.Rulesets;
 
-// The building checks of RulesetValidator: resources, tile improvements, city buildings, bridges, the units that build and the
-// cities' work areas. Kept apart so each validator stays small; problems go into the same list, with JSON paths.
+// The economy checks of RulesetValidator: resources, tile, river and city yields, territory, tile improvements, city buildings,
+// bridges and the units that build. Kept apart so each validator stays small; problems go into the same list, with JSON paths.
 internal static class EconomyRulesValidator
 {
     // Keeps per-turn sums far from overflowing over a long game.
     private const int MaxCost = 1000;
     private const int MaxYield = 100;
-    private const int MaxWorkRadius = 5;
+    private const int MaxRadius = 10;
+    private const int MaxStock = 1000;
 
     public static void Validate(RulesetDocument document, HashSet<string> terrains, List<RulesetProblem> problems)
     {
@@ -23,7 +24,8 @@ internal static class EconomyRulesValidator
         CheckBuildings(document, terrains, resources, problems);
         RulesetValidator.InRange(document.Bridges.Cost, 1, MaxCost, "$.bridges.cost", problems);
         CheckBuilders(document, problems);
-        CheckWorkArea(document.Cities, problems);
+        CheckTileYields(document, resources, problems);
+        CheckCityEconomy(document, resources, problems);
         CheckTexts(document, problems);
     }
 
@@ -78,32 +80,46 @@ internal static class EconomyRulesValidator
             {
                 problems.Add(new($"{path}.buildProduction", "Must be 0 (or left out) for a unit that can't build."));
             }
-
-            // A bridge is refused next to an enemy city's work area, so the unit must see every city that could cover the far
-            // side of the river, or the preview could differ from the rule.
-            if (unit.CanBuildBridges && unit.Sight < document.Cities.WorkRadius + 1)
-            {
-                problems.Add(new($"{path}.sight", $"Must be at least {document.Cities.WorkRadius + 1} (work radius + 1), so the unit sees every work area a bridge could touch."));
-            }
         }
     }
 
-    private static void CheckWorkArea(CityRules cities, List<RulesetProblem> problems)
+    private static void CheckTileYields(RulesetDocument document, HashSet<string> resources, List<RulesetProblem> problems)
     {
-        RulesetValidator.InRange(cities.WorkRadius, 1, MaxWorkRadius, "$.cities.workRadius", problems);
-        if (cities.MinimumSpacing <= 2 * cities.WorkRadius)
+        for (var index = 0; index < document.Terrains.Length; index++)
         {
-            problems.Add(new("$.cities.workRadius", $"Must be less than half of minimumSpacing ({cities.MinimumSpacing}), so two work areas never overlap."));
+            CheckYields(document.Terrains[index].Yields, resources, $"$.terrains[{index}].yields", problems);
         }
 
-        // Improvements show only on visible tiles, so a city must see its whole work area.
-        if (cities.Sight < cities.WorkRadius)
+        for (var index = 0; index < document.Rivers.Length; index++)
         {
-            problems.Add(new("$.cities.sight", $"Must be at least workRadius ({cities.WorkRadius}), so a city sees the improvements in its work area."));
+            CheckYields(document.Rivers[index].Yields, resources, $"$.rivers[{index}].yields", problems);
         }
     }
 
-    private static void CheckYields(ImmutableArray<ResourceAmount> yields, HashSet<string> resources, string path, List<RulesetProblem> problems)
+    private static void CheckCityEconomy(RulesetDocument document, HashSet<string> resources, List<RulesetProblem> problems)
+    {
+        var cities = document.Cities;
+        CheckYields(cities.Yields, resources, "$.cities.yields", problems);
+        CheckYields(cities.StartingStock, resources, "$.cities.startingStock", problems, MaxStock);
+
+        var territory = document.Territory;
+        RulesetValidator.InRange(territory.InitialRadius, 0, MaxRadius, "$.territory.initialRadius", problems);
+        RulesetValidator.InRange(territory.MaxRadius, territory.InitialRadius, MaxRadius, "$.territory.maxRadius", problems);
+        RulesetValidator.InRange(territory.TileCost, 1, MaxCost, "$.territory.tileCost", problems);
+        RulesetValidator.InRange(territory.TileCostIncrease, 0, MaxCost, "$.territory.tileCostIncrease", problems);
+        if (!resources.Contains(territory.GrowthResource.Id))
+        {
+            problems.Add(new("$.territory.growthResource", $"The resource '{territory.GrowthResource.Id}' does not exist."));
+        }
+
+        // Founding claims only unowned tiles, but two new cities' first claims should never compete.
+        if (cities.MinimumSpacing <= 2 * territory.InitialRadius)
+        {
+            problems.Add(new("$.territory.initialRadius", $"Must be less than half of cities.minimumSpacing ({cities.MinimumSpacing}), so two new cities' territories never overlap."));
+        }
+    }
+
+    private static void CheckYields(ImmutableArray<ResourceAmount> yields, HashSet<string> resources, string path, List<RulesetProblem> problems, int max = MaxYield)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         for (var index = 0; index < yields.Length; index++)
@@ -118,7 +134,7 @@ internal static class EconomyRulesValidator
                 problems.Add(new($"{path}[{index}].resource", $"'{amount.Resource.Id}' is listed twice."));
             }
 
-            RulesetValidator.InRange(amount.Amount, 1, MaxYield, $"{path}[{index}].amount", problems);
+            RulesetValidator.InRange(amount.Amount, 1, max, $"{path}[{index}].amount", problems);
         }
     }
 

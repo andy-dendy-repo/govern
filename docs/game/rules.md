@@ -1,6 +1,6 @@
 ---
 title: Game rules reference (for players)
-tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, stockpile, work-area, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
+tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
 code: [rulesets/default/v5.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
 updated: 2026-10-01
 ---
@@ -19,7 +19,7 @@ Govern is a turn-based strategy game for the number of players under "Game numbe
 ## The map
 
 - The map is a rectangle of hexagonal tiles. Each tile has 6 neighbours, and distances are counted in hex steps.
-- A new game's map size is in the table under "Game numbers". Each new map is different: mostly plains, with patches of forest, hills, mountains and lakes (see "Terrain types").
+- A new game's map size is in the table under "Game numbers". Each new map is different: mostly plains, with patches of forest, hills, mountains, lakes and desert (see "Terrain types").
 - **Both halves of the map are the same.** The map turned half a turn around its centre looks exactly like itself, so neither player gets the better side. Once you have explored your own half you know the terrain of your opponent's half too. Starts are not mirrored, though: the map only hints that your opponent started on plains in their zone.
 - Rivers run along the edges between tiles (see "Rivers").
 - Mountains, lakes and deep rivers never cut the map in two: every tile you can walk on can be reached from every other.
@@ -27,29 +27,31 @@ Govern is a turn-based strategy game for the number of players under "Game numbe
 
 ## Terrain types
 
-A tile's terrain decides how many movement points it costs to enter, whether land units can enter it at all, whether a unit or city standing on it sees further, and how much it helps a unit defending on it.
+A tile's terrain decides how many movement points it costs to enter, whether land units can enter it at all, whether a unit or city standing on it sees further, how much it helps a unit defending on it, and what it gives every turn.
 
-| Terrain | Movement cost | Passable | Sight bonus | Defence bonus |
-|---|---|---|---|---|
-| Plains | 1 | Yes | — | — |
-| Forest | 2 | Yes | — | +3 |
-| Hills | 2 | Yes | +1 | +3 |
-| Mountains | — | No | — | — |
-| Lake | — | No | — | — |
+| Terrain | Movement cost | Passable | Sight bonus | Defence bonus | Yield per turn |
+|---|---|---|---|---|---|
+| Plains | 1 | Yes | — | — | 2 Food, 1 Water |
+| Forest | 2 | Yes | — | +3 | 1 Food, 1 Water, 2 Wood |
+| Hills | 2 | Yes | +1 | +3 | 1 Food, 2 Stone |
+| Mountains | — | No | — | — | 2 Stone |
+| Lake | — | No | — | — | 1 Food, 3 Water |
+| Desert | 1 | Yes | — | — | — |
 
 - **Sight bonus:** a unit or city standing on the tile sees this many tiles further than its own sight.
 - **Defence bonus:** a unit attacked on the tile fights with this much extra strength (see "Combat"). Attacking from it gives nothing.
+- **Yield per turn:** what the tile gives (see "Tile yields").
 - The board's **Movement cost** lens (the toolbar at the top left of the map) writes each known tile's cost on it, and ✕ where land units can't go.
 
 ## Rivers
 
 Rivers run along the edges between tiles, not across tiles. Each one starts next to hills or mountains and flows to a lake or the edge of the map, getting deeper as it goes: a stream first, then a river, then a deep river. Like the terrain, rivers are the same on both halves of the map.
 
-| River | Crossing | Defence bonus |
-|---|---|---|
-| Stream | Free | — |
-| River | +1 | +3 |
-| Deep river | Can't cross | +5 |
+| River | Crossing | Defence bonus | Gives the tiles beside it |
+|---|---|---|---|
+| Stream | Free | — | 1 Water |
+| River | +1 | +3 | 1 Water |
+| Deep river | Can't cross | +5 | 1 Water |
 
 - **Crossing:** the movement points a step over the river costs on top of the tile it enters. A step over a river onto plains costs 2. Land units can't cross a deep river at all; they walk round it, or build a bridge (see "Bridges").
 - **Defence bonus:** a unit attacked in melee from across the river fights with this much extra strength, on top of its terrain's defence bonus. Ranged attacks ignore rivers.
@@ -84,7 +86,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - **Found city:** the unit can turn into a city (see "Founding a city").
 - **Attack:** the unit can attack an enemy unit or city on a neighbouring tile (see "Attacking").
 - **Ranged attack:** the unit can shoot an enemy unit within its range (see "Attacking").
-- **Build improvements:** the unit can build an improvement on its tile in your work area (see "Improvements").
+- **Build improvements:** the unit can build an improvement on its tile in your cities' territory, but not on a city (see "Improvements").
 - **Build bridges:** the unit can bridge the river between its tile and a neighbouring one (see "Bridges").
 
 ## Moving a unit
@@ -129,7 +131,8 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 ## Founding a city
 
 - A unit with the Found city ability that still has movement left can found a city on its own tile. The unit is used up.
-- A city can't be founded on another city, or closer to any city (yours or the enemy's, seen or not) than the minimum distance under "Game numbers".
+- A city can't be founded on another city, closer to any city (yours or the enemy's, seen or not) than the minimum distance under "Game numbers", or on a tile that already belongs to a city's territory.
+- A new city owns its own tile and the tiles around it that no city owns yet, up to the radius in "Territory of a new city (radius)" under "Game numbers" (see "Territory"), and starts with a few resources: 5 Food, 5 Water, 5 Wood and 5 Stone.
 - A new city is named "City n", where n is the number of cities you own, including the new one. It starts producing the unit in "First unit a new city produces" under "Game numbers".
 
 ## Cities and production
@@ -143,19 +146,34 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 
 Builders and soldiers build things with their own **build production** (under "Unit types"). There are no charges: a unit can build as often as you like.
 - To start, select the unit and pick what to build in the action bar. Starting uses up the unit's movement for the turn, and the unit needs movement left to start.
-- At the end of each of your turns, the job gains the unit's build production. **On your city's ground** (the city's tile or its work area), the city's production is added too, and that city then doesn't spend it on its own production that turn. A city feeds one job a turn: the oldest job on its ground first.
-- Outside your cities' ground, a unit builds with its own build production only. For now that only matters for bridges.
+- At the end of each of your turns, the job gains the unit's build production. **In your city's territory**, the city's production is added too, and that city then doesn't spend it on its own production that turn. A city feeds one job a turn: the oldest job in its territory first.
+- Outside your cities' territory, a unit builds with its own build production only. For now that only matters for bridges.
 - When the progress reaches the cost, the improvement or bridge is finished at once.
 - Moving the unit, attacking with it or starting another job stops the job, and its progress is lost.
-- A job whose site no longer allows it (the city whose work area it was in was captured, or someone bridged that river first) stops.
+- A job whose site no longer allows it (the city whose territory it was in was captured, or someone bridged that river first) stops.
 
-## Work areas
+## Tile yields
 
-Each city works the tiles around it, up to the work area radius under "Game numbers". Cities never share a tile, because the minimum distance between cities is more than twice the radius. Improvements can only be built in your own work areas, and your cities collect what they yield.
+Every tile gives resources every turn: its terrain's yield (see "Terrain types"), **plus 1 Water when a river runs along any of its edges** (however many rivers touch it), plus its improvement's yield. Desert gives nothing.
+- Inside a city's territory, the city gathers the yield of every tile it owns (see "City resources").
+- The board's **Yields** lens writes each known tile's total yield on it, tinted green when rich (4 or more), yellow when poor and red when barren; hover a tile for each resource.
+
+## Territory
+
+Each city owns a set of tiles: its territory. A tile belongs to at most one city, and a captured city keeps its territory.
+- A new city owns its own tile and the free tiles around it (see "Founding a city").
+- Every city makes 1 Culture a turn on its own. **When a city holds the price of a new tile in Culture**, it pays it at the end of your turn and takes one more tile. The first tile costs the "Price of the first new tile" under "Game numbers", and each tile it has taken since its founding adds the "Price increase per tile gained".
+- The new tile is always a free tile next to the territory, no further from the city than the "Largest territory (radius)". The city takes the one with the highest total yield; when several are equal, the nearest to the city, then the top-most, then the left-most. A city with no free tile left keeps its Culture.
+- Improvements can only be built in your own cities' territory, and bridges can't touch an enemy city's territory.
+- Your cities see all of their territory. You see the borders of enemy territory on tiles you can see.
+
+## City resources
+
+Each city keeps its own resources. At the end of each of your turns, every one of your cities adds to its own stock the yield of every tile in its territory, its own 1 Culture and its buildings' yields. The city panel shows a city's resources with what each gains per turn, and what its next tile costs. The top bar shows the total over all your cities. For now only Culture is spent (on territory); later items will spend the rest.
 
 ## Improvements
 
-A builder builds an improvement on the tile it stands on, in one of your cities' work areas (not on the city's own tile). A tile holds one improvement. From the end of the turn it is finished, the city whose work area it is in adds its yield to your stockpile every turn.
+A builder builds an improvement on the tile it stands on, in one of your cities' territory (not on a city's own tile). A tile holds one improvement. From the end of the turn it is finished, the city whose territory it is in adds the improvement's yield to its resources every turn, on top of the tile's own yield.
 
 | Improvement | Terrain | Cost | Yield per turn |
 |---|---|---|---|
@@ -169,7 +187,7 @@ A builder builds an improvement on the tile it stands on, in one of your cities'
 ## Bridges
 
 A unit with Build bridges can bridge the river between its tile and a neighbouring tile, from either bank.
-- The river edge must not already have a bridge, the far tile must be one a land unit can enter, and neither tile may be in an enemy city's work area.
+- The river edge must not already have a bridge, the far tile must be one a land unit can enter, and neither tile may be in an enemy city's territory.
 - A bridged edge costs nothing to cross, even over a deep river, and gives the defender no river bonus.
 - Bridges cost the "Bridge cost" under "Game numbers" and belong to nobody: both players can use them. There is no way to destroy one yet.
 - You see a bridge while you can see the bank that holds it (each river edge is kept by one of its two tiles).
@@ -186,17 +204,19 @@ Each city can build each building once. A city produces either a unit or a build
 | Culture centre | 8 | 2 Culture | — | — |
 | Harbour | 8 | 2 Food | — | Lake |
 
-- **Yield per turn:** added to your stockpile at the end of every one of your turns, from the turn after the building is finished.
-- **Extra production:** added to the city's production per turn, for its own production and for jobs on its ground.
+- **Yield per turn:** added to the city's resources at the end of every one of your turns, from the turn after the building is finished.
+- **Extra production:** added to the city's production per turn, for its own production and for jobs in its territory.
 - For now buildings only give their yield. Later, trade posts will train traders, army camps will speed up army production and harbours will build ships.
 
-## Stockpile
+## Resources in the top bar
 
-Your resources (food, wood, stone, gold, science, culture) are counted in the top bar. Nothing spends them yet. You never see your opponent's stockpile, improvements or bridges outside your sight, or what their units are building.
+The top bar counts your resources (food, water, wood, stone, gold, science, culture) over all your cities. You never see your opponent's resources, their improvements, bridges or borders outside your sight, or what their units are building.
 
 ## Fog of war
 
 - You see every tile within sight of your units and cities. Tiles you have seen before stay explored: you see their terrain, but not what is on them now.
+- You always see every tile of your territory, and you know the terrain and rivers of the tiles right next to it.
+- You see which player's territory a tile is in when you can see the tile.
 - You see enemy units and cities only on tiles you can see right now.
 - You see the health of every enemy unit you can see.
 - You never see an enemy unit's movement left or job, what an enemy city is producing, or which buildings it has.
@@ -213,7 +233,10 @@ Your resources (food, wood, stone, gold, science, culture) are counted in the to
 | City sight | 2 |
 | Minimum distance between cities | 3 |
 | Production per turn | 1 |
-| Work area radius | 1 |
+| Territory of a new city (radius) | 1 |
+| Largest territory (radius) | 3 |
+| Price of the first new tile | 4 culture |
+| Price increase per tile gained | 2 |
 | Bridge cost | 6 |
 | First unit a new city produces | Soldier |
 | Capturing a city resets its production | Yes |
