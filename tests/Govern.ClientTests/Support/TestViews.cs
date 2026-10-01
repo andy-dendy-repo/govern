@@ -46,6 +46,12 @@ public static class TestViews
 
     public static readonly TerrainType Mountains = new("mountains");
 
+    public static readonly RiverType StreamRiver = new("stream");
+
+    public static readonly RiverType River = new("river");
+
+    public static readonly RiverType DeepRiver = new("deep_river");
+
     /// <summary>Your settler (id 1) at (2,2), your soldier (id 2) at (3,2), and an enemy soldier (id 3) at (5,2).</summary>
     public static PlayerView Start() =>
         Create([Settler(1, You, At(2, 2)), Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(5, 2))]);
@@ -54,14 +60,15 @@ public static class TestViews
         IEnumerable<UnitView>? units = null,
         IEnumerable<CityView>? cities = null,
         Func<HexCoord, TileVisibility>? visibility = null,
-        Func<HexCoord, TerrainType>? terrain = null)
+        Func<HexCoord, TerrainType>? terrain = null,
+        Func<HexCoord, TileRivers?>? rivers = null)
     {
         var tiles = Enumerable.Range(0, Width * Height)
             .Select(index => HexCoord.FromOffset(index % Width, index / Width))
             .Select(coord => (visibility?.Invoke(coord) ?? TileVisibility.Visible) switch
             {
                 TileVisibility.Unexplored => new TileView(TileVisibility.Unexplored, null),
-                var seen => new TileView(seen, terrain?.Invoke(coord) ?? Plains),
+                var seen => new TileView(seen, terrain?.Invoke(coord) ?? Plains, rivers?.Invoke(coord)),
             });
 
         return new PlayerView(

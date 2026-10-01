@@ -1,4 +1,5 @@
 using Govern.Client.Features.Games.Lenses;
+using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.Client.Helpers;
 using Govern.Core.Map;
@@ -42,5 +43,24 @@ public class MovementCostLensTests
     public void Lens_Button_UsesTheMovementIcon()
     {
         (_lens.Id, _lens.Name, _lens.Icon).ShouldBe(("movement-cost", "Movement cost", Icons.Movement));
+    }
+
+    [Fact]
+    public void EdgeMarksFor_Rivers_MarkCostlyAndBlockedCrossingsButNotFreeOnes()
+    {
+        var tile = new TileView(TileVisibility.Visible, Plains, new TileRivers(East: StreamRiver, NorthEast: River, NorthWest: DeepRiver));
+
+        var marks = _lens.EdgeMarksFor(tile).ToList();
+
+        marks.ShouldBe([
+            new EdgeMark(HexSide.NorthEast, "+1", "costly", "River: costs 1 more movement to cross"),
+            new EdgeMark(HexSide.NorthWest, "✕", "blocked", "Deep river: land units can't cross"),
+        ]);
+    }
+
+    [Fact]
+    public void EdgeMarksFor_TileWithoutRivers_IsEmpty()
+    {
+        _lens.EdgeMarksFor(new TileView(TileVisibility.Visible, Plains)).ShouldBeEmpty();
     }
 }

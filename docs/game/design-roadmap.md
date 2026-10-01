@@ -130,6 +130,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G6. Rivers and bridges
 
+- **Status:** rivers done 2026-10-01 ([plan](../plans/done/G6-rivers.md)). Shipped: three river kinds along hex edges in ruleset v4 (stream: free; river: +1 movement, +3 defence; deep river: can't cross, +5 defence), a river defence bonus against melee attacks only, mirrored river generation from hills and mountains to lakes or the border that never cuts the map in two, the rivers board layer and river crossings on the movement-cost lens. Decided by the owner: map generation places **no bridges**, so a deep river is a wall to walk round until builders build bridges (moved to G10). Still open from the list below: bridges (G10), ships on rivers and under bridges (G15), seasonal states (G14), fresh water and housing (G5, G8).
 - **Model:** rivers run **along hex edges** (as in Civ), with flow from high ground to the sea.
 - **River states (requested):**
 
@@ -187,7 +188,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G10. Builders and buildings (with upgrades)
 
-- **Builder (requested):** a unit that lets a city apply its production to create, upgrade or remove buildings on tiles in its territory. It also builds bridges (G6).
+- **Builder (requested):** a unit that lets a city apply its production to create, upgrade or remove buildings on tiles in its territory. It also builds bridges on river edges (moved here from G6, 2026-10-01): a bridge flag on the river edge, crossed as a stream, which makes the step check accept a bridged deep river and the generator's connectivity check count it; pillaging and repairing bridges too.
   - *(Suggested)* A builder has a number of charges, or works for n turns per building. Decide which; Civ 6 uses charges.
 - **Building parameters (requested):** health, room for living (housing), resources produced, production needed to build it.
 - **Upgrades (requested):** some buildings upgrade into the next kind. *Suggested* chains:

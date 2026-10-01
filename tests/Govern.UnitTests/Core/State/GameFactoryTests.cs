@@ -120,11 +120,11 @@ public class GameFactoryTests
         GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, setup)).ShouldBe(GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, setup)));
     }
 
-    // Recorded with ruleset v2 (G4 map generation): the same ruleset and setup must always give exactly the same new game.
+    // Recorded with ruleset v4 (G6 rivers): the same ruleset and setup must always give exactly the same new game.
     [Theory]
-    [InlineData(1UL, "23c358634f56c5b0c33ea29ea9fb6f8b7584f4528facd1b511a91ce9a3218f9a")]
-    [InlineData(42UL, "e6746696b02ed70baff27a2b464dc09ceef3224c47346ef69e4e5093592e8ec5")]
-    [InlineData(987_654_321UL, "a37bc4ec8a0d9f8b8fc0aae14c1d0611ac43e89c18ef598b5ce23f94806c39e4")]
+    [InlineData(1UL, "a8de9b12605cc4054d5a3e234339251e76d1430a3113e4184d3b83bf43644c12")]
+    [InlineData(42UL, "6a926c7fb55478278001d1446d46178c033a42ba1ba4f2b80af215b11d41b0ed")]
+    [InlineData(987_654_321UL, "50e3decd0e06f0c7c865cc9304d370105538d7feb7616979582c26fa0f67461a")]
     public void Create_KnownSeed_GivesTheRecordedState(ulong seed, string expectedSha256)
     {
         var json = GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, new GameSetup([P1, P2], seed)));

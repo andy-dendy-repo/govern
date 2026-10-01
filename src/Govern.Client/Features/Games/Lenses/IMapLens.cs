@@ -23,4 +23,9 @@ public interface IMapLens
     /// <param name="tile">The tile as the player sees it.</param>
     /// <returns>The mark, or <see langword="null"/> to leave the tile alone (always for an unexplored tile).</returns>
     LensMark? MarkFor(TileView tile);
+
+    /// <summary>What the lens shows on the edges a tile owns (<see cref="Core.Map.HexSide"/>), such as river crossings.</summary>
+    /// <param name="tile">The tile as the player sees it.</param>
+    /// <returns>The marks; none by default.</returns>
+    IEnumerable<EdgeMark> EdgeMarksFor(TileView tile) => [];
 }

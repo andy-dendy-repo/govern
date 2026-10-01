@@ -462,6 +462,20 @@ public class GameTableTests : ClientTestContext
     }
 
     [Fact]
+    public void Attack_AcrossARiver_ShowsTheDefendersRiverBonus()
+    {
+        var view = Create(
+            [Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))],
+            rivers: static coord => coord == At(3, 2) ? new TileRivers(East: River) : null);
+        var cut = RenderTable(TestGames.Started(view: view));
+        Tile(cut, At(3, 2)).Click();
+
+        Tile(cut, At(4, 2)).Click();
+
+        cut.Find(".combat-defender .combat-strength .number-tooltip").GetAttribute("title").ShouldBe("20 base, +3 behind River = 23.");
+    }
+
+    [Fact]
     public void Render_FinishedWithOwnUnitSelected_ShowsNoActionBar()
     {
         var cut = RenderTable(TestGames.Started());

@@ -11,13 +11,14 @@ internal static class CombatCalculator
 {
     private const int Percent = 100;
 
-    public static CombatForecast Forecast(Ruleset ruleset, Combatant attacker, Combatant defender)
+    // river: the river on the edge between the two units, if any; it helps the defender against a melee attack only.
+    public static CombatForecast Forecast(Ruleset ruleset, Combatant attacker, Combatant defender, RiverType? river)
     {
         var attackerUnit = ruleset.Unit(attacker.Type);
         var defenderUnit = ruleset.Unit(defender.Type);
         var isRanged = attackerUnit.CanRangedAttack;
         var attackerBase = isRanged ? attackerUnit.Ranged!.Strength : attackerUnit.Strength ?? 0;
-        var attackerSide = Side(ruleset, attackerBase, attacker, defenderUnit.Class, terrain: null);
+        var attackerSide = Side(ruleset, attackerBase, attacker, defenderUnit.Class, defence: []);
 
         if (defenderUnit.Strength is not { } defenderBase)
         {
@@ -26,7 +27,8 @@ internal static class CombatCalculator
             return new CombatForecast(attackerSide, civilian, isRanged);
         }
 
-        var defenderSide = Side(ruleset, defenderBase, defender, attackerUnit.Class, ruleset.Terrain(defender.Terrain));
+        var crossed = isRanged || river is not { } type ? null : ruleset.River(type);
+        var defenderSide = Side(ruleset, defenderBase, defender, attackerUnit.Class, Defence(ruleset.Terrain(defender.Terrain), crossed));
         var damage = ruleset.Combat.Damage;
         var dealt = RawDamage(damage, attackerSide.Strength, defenderSide.Strength);
         var taken = isRanged ? 0 : RawDamage(damage, defenderSide.Strength, attackerSide.Strength);
@@ -51,8 +53,25 @@ internal static class CombatCalculator
         return side with { MinDamage = Damage(raw, min, side.Health), MaxDamage = Damage(raw, maxExclusive - 1, side.Health) };
     }
 
-    // Health first (a hurt unit fights at strength × (max + health) / (2 × max)), then counters, then the defender's terrain.
-    private static CombatSide Side(Ruleset ruleset, int baseStrength, Combatant self, string opponentClass, TerrainDefinition? terrain)
+    // The defender's own bonuses: its tile's terrain, then the river the attack crosses.
+    private static ImmutableArray<CombatModifier> Defence(TerrainDefinition terrain, RiverDefinition? river)
+    {
+        var modifiers = ImmutableArray.CreateBuilder<CombatModifier>();
+        if (terrain.DefenceBonus > 0)
+        {
+            modifiers.Add(new CombatModifier(CombatModifierKind.Terrain, terrain.DefenceBonus, terrain.Id.Id));
+        }
+
+        if (river is { DefenceBonus: > 0 })
+        {
+            modifiers.Add(new CombatModifier(CombatModifierKind.River, river.DefenceBonus, river.Id.Id));
+        }
+
+        return modifiers.ToImmutable();
+    }
+
+    // Health first (a hurt unit fights at strength × (max + health) / (2 × max)), then counters, then the defence bonuses.
+    private static CombatSide Side(Ruleset ruleset, int baseStrength, Combatant self, string opponentClass, ImmutableArray<CombatModifier> defence)
     {
         var modifiers = ImmutableArray.CreateBuilder<CombatModifier>();
         var maxHealth = ruleset.Combat.MaxHealth;
@@ -68,10 +87,7 @@ internal static class CombatCalculator
             modifiers.Add(new CombatModifier(CombatModifierKind.Counter, counter.Bonus, opponentClass));
         }
 
-        if (terrain is { DefenceBonus: > 0 })
-        {
-            modifiers.Add(new CombatModifier(CombatModifierKind.Terrain, terrain.DefenceBonus, terrain.Id.Id));
-        }
+        modifiers.AddRange(defence);
 
         var strength = Math.Max(0, baseStrength + modifiers.Sum(static modifier => modifier.Value));
         return new CombatSide(baseStrength, strength, modifiers.ToImmutable(), self.Health, 0, 0);

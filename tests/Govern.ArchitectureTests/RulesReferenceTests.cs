@@ -6,8 +6,8 @@ using Govern.Core.Units;
 namespace Govern.ArchitectureTests;
 
 /// <summary>
-/// The player-facing rules reference (<c>docs/game/rules.md</c>) documents the ruleset the game is played with: every terrain
-/// and unit has one row with the ruleset's numbers, every class counter has one row, and the "Game numbers" table matches the
+/// The player-facing rules reference (<c>docs/game/rules.md</c>) documents the ruleset the game is played with: every terrain,
+/// river kind and unit has one row with the ruleset's numbers, every class counter has one row, and the "Game numbers" table matches the
 /// setup, map, city and combat sections.
 /// </summary>
 public class RulesReferenceTests
@@ -39,6 +39,19 @@ public class RulesReferenceTests
             .ToList();
 
         Table("Terrain types").ShouldBe(expected, ignoreOrder: true, Because);
+    }
+
+    [Fact]
+    public void RiverTable_MatchesTheRuleset()
+    {
+        var expected = Ruleset.Rivers
+            .Select(static river => Row(
+                Ruleset.RiverName(river.Id),
+                !river.IsCrossable ? "Can't cross" : river.CrossingCost == 0 ? "Free" : $"+{river.CrossingCost}",
+                river.DefenceBonus == 0 ? "—" : $"+{river.DefenceBonus}"))
+            .ToList();
+
+        Table("Rivers").ShouldBe(expected, ignoreOrder: true, Because);
     }
 
     [Fact]

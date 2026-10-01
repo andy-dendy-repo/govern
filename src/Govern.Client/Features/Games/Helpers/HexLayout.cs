@@ -21,14 +21,42 @@ public static class HexLayout
     /// </summary>
     public static readonly string Corners = string.Join(' ', Enumerable.Range(0, 6).Select(static corner =>
     {
-        var angle = Math.PI / 180 * ((60 * corner) - 30);
-        return string.Create(CultureInfo.InvariantCulture, $"{Size * Math.Cos(angle):0.###},{Size * Math.Sin(angle):0.###}");
+        var (x, y) = Corner(corner);
+        return string.Create(CultureInfo.InvariantCulture, $"{x:0.###},{y:0.###}");
     }));
 
     /// <summary>The centre of a hex.</summary>
     /// <param name="coord">The hex.</param>
     /// <returns>The centre's x and y.</returns>
     public static (double X, double Y) Center(HexCoord coord) => (Width * (coord.Q + (coord.R / 2.0)), Size * 1.5 * coord.R);
+
+    /// <summary>The two corners at the ends of a tile edge (where a river runs).</summary>
+    /// <param name="edge">The edge.</param>
+    /// <returns>Both corners' x and y.</returns>
+    public static (double X1, double Y1, double X2, double Y2) EdgeEnds(HexEdge edge)
+    {
+        // Corner k sits at angle 60k − 30 degrees (y grows downwards): 0 upper right, 1 lower right, 4 upper left, 5 top.
+        var (first, second) = edge.Side switch
+        {
+            HexSide.East => (0, 1),
+            HexSide.NorthEast => (5, 0),
+            HexSide.NorthWest => (4, 5),
+            _ => throw new ArgumentOutOfRangeException(nameof(edge), edge.Side, "Unknown side."),
+        };
+        var (x, y) = Center(edge.Owner);
+        var (x1, y1) = Corner(first);
+        var (x2, y2) = Corner(second);
+        return (x + x1, y + y1, x + x2, y + y2);
+    }
+
+    /// <summary>The middle of a tile edge.</summary>
+    /// <param name="edge">The edge.</param>
+    /// <returns>The midpoint's x and y.</returns>
+    public static (double X, double Y) EdgeMiddle(HexEdge edge)
+    {
+        var (x1, y1, x2, y2) = EdgeEnds(edge);
+        return ((x1 + x2) / 2, (y1 + y2) / 2);
+    }
 
     /// <summary>The smallest rectangle holding every hex of a map.</summary>
     /// <param name="width">Map columns; at least 1.</param>
@@ -43,6 +71,13 @@ public static class HexLayout
         // Odd rows are shifted half a hex to the right.
         var columns = height > 1 ? width + 0.5 : width;
         return new BoardRect(-Width / 2, -Size, Width * columns, (Size * 1.5 * (height - 1)) + (2 * Size));
+    }
+
+    // A hex corner relative to the centre.
+    private static (double X, double Y) Corner(int corner)
+    {
+        var angle = Math.PI / 180 * ((60 * corner) - 30);
+        return (Size * Math.Cos(angle), Size * Math.Sin(angle));
     }
 
     /// <summary>Formats a number for an SVG attribute (always with <c>.</c> decimals).</summary>

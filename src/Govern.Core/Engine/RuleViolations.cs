@@ -53,6 +53,9 @@ public static class RuleViolations
     /// <summary>There is no enemy unit or city on the target tile, or a ranged unit targets a city with no unit on it.</summary>
     public static readonly RuleViolation NoTarget = new("attack.no_target", "There is nothing to attack on that tile.");
 
+    /// <summary>A melee unit would capture a city across a river it can't cross.</summary>
+    public static readonly RuleViolation RiverInTheWay = new("attack.river_in_the_way", "A river the unit can't cross is in the way.");
+
     /// <summary>The target belongs to the attacker.</summary>
     public static readonly RuleViolation OwnTarget = new("attack.own_target", "You cannot attack your own unit or city.");
 }

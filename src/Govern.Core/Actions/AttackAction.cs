@@ -20,8 +20,8 @@ public sealed record AttackCommand(UnitId UnitId, HexCoord Target) : GameCommand
 /// <summary>
 /// An attack. Against a unit, both sides take damage rolled within <see cref="CombatCalculator"/>'s ranges (a ranged attacker
 /// and a civilian defender take none) and a unit at 0 health is destroyed; the attacker stays where it is. An undefended enemy
-/// city is captured by a melee attacker, which moves in (its production progress goes back to 0 when the ruleset says so).
-/// Attacking uses all remaining movement.
+/// city is captured by a melee attacker, which moves in (its production progress goes back to 0 when the ruleset says so), unless
+/// a river it can't cross is in the way. Attacking uses all remaining movement.
 /// </summary>
 internal static class AttackRule
 {
@@ -34,13 +34,17 @@ internal static class AttackRule
 
         var defender = state.UnitAt(command.Target);
         var city = state.CityAt(command.Target);
-        var target = new AttackTarget(state.Map.Contains(command.Target), defender?.Owner ?? city?.Owner, defender is not null);
+        var target = new AttackTarget(
+            state.Map.Contains(command.Target),
+            defender?.Owner ?? city?.Owner,
+            defender is not null,
+            state.Map.RiverBetween(attacker.Position, command.Target));
         if (Check(ruleset, attacker, command.Target, target) is { } violation)
         {
             return violation;
         }
 
-        return defender is not null ? Fight(ruleset, state, attacker, defender) : Capture(ruleset, state, attacker, city!);
+        return defender is not null ? Fight(ruleset, state, attacker, defender, target.River) : Capture(ruleset, state, attacker, city!);
     }
 
     // Shared with the view-based previews (ViewPreviewCalculator): every tile in range is in sight (the validator keeps range
@@ -69,6 +73,7 @@ internal static class AttackRule
             null => RuleViolations.NoTarget,
             var owner when owner == attacker.Owner => RuleViolations.OwnTarget,
             _ when definition.CanRangedAttack && !targetInfo.HasUnit => RuleViolations.NoTarget,
+            _ when !targetInfo.HasUnit && targetInfo.River is { } river && !ruleset.River(river).IsCrossable => RuleViolations.RiverInTheWay,
             _ => null,
         };
     }
@@ -76,9 +81,9 @@ internal static class AttackRule
     public static Combatant CombatantOf(GameState state, Ruleset ruleset, Unit unit) =>
         new(unit.Type, unit.Health(ruleset), state.Map.TileAt(unit.Position).Terrain);
 
-    private static GameUpdate Fight(Ruleset ruleset, GameState state, Unit attacker, Unit defender)
+    private static GameUpdate Fight(Ruleset ruleset, GameState state, Unit attacker, Unit defender, RiverType? river)
     {
-        var forecast = CombatCalculator.Forecast(ruleset, CombatantOf(state, ruleset, attacker), CombatantOf(state, ruleset, defender));
+        var forecast = CombatCalculator.Forecast(ruleset, CombatantOf(state, ruleset, attacker), CombatantOf(state, ruleset, defender), river);
         var random = new DeterministicRandom(state.RngState);
         var dealt = Roll(ruleset, random, forecast.Defender, forecast.Attacker);
         var taken = Roll(ruleset, random, forecast.Attacker, forecast.Defender);

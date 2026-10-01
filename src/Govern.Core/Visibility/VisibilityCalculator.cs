@@ -115,8 +115,8 @@ public static class VisibilityCalculator
 
     private static TileView ToView(Tile tile, IReadOnlySet<HexCoord> visible, HashSet<HexCoord> explored) => tile.Coord switch
     {
-        var coord when visible.Contains(coord) => new TileView(TileVisibility.Visible, tile.Terrain),
-        var coord when explored.Contains(coord) => new TileView(TileVisibility.Explored, tile.Terrain),
+        var coord when visible.Contains(coord) => new TileView(TileVisibility.Visible, tile.Terrain, tile.Rivers),
+        var coord when explored.Contains(coord) => new TileView(TileVisibility.Explored, tile.Terrain, tile.Rivers),
         _ => new TileView(TileVisibility.Unexplored, null),
     };
 }
