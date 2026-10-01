@@ -106,6 +106,18 @@ public class GameTableBuildTests : ClientTestContext
     }
 
     [Fact]
+    public void Render_CityFeedingAJob_SaysItsProductionIsLent()
+    {
+        var builder = Unit(1, You, BuilderType, At(3, 2), movementLeft: 0) with { Job = new UnitJob(0, 3, Improvement: Farm) };
+        var cut = RenderTable(Create([builder], [City(7, You, At(2, 2))]));
+
+        Tile(cut, At(2, 2)).Click();
+
+        cut.Find(".lent-production").TextContent.ShouldContain("goes to a unit building on its land");
+        cut.Find(".city-panel .progress-turns").TextContent.ShouldBe("Never at this rate");
+    }
+
+    [Fact]
     public void ProduceBuilding_Clicked_SendsIt()
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));

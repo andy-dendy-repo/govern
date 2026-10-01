@@ -1,3 +1,4 @@
+using Govern.Client.Features.Games.Helpers;
 using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Engine;
@@ -37,7 +38,10 @@ public partial class CityPanel
 
     private bool CanAct => View.Status == GameStatus.InProgress && View.CurrentPlayer == View.Viewer;
 
-    private int PerTurn => WorkArea.ProductionPerTurn(Ruleset, City.BuildingList);
+    // While the city lends its production to a job on its ground, its own production gets nothing.
+    private bool FeedsAJob => JobFundingResolver.FeedingCities(Ruleset, View).Values.Any(city => city.Id == City.Id);
+
+    private int PerTurn => FeedsAJob ? 0 : WorkArea.ProductionPerTurn(Ruleset, City.BuildingList);
 
     private int? ProducingCost => City.ProducingBuilding is { } building
         ? Ruleset.Building(building).Cost

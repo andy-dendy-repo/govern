@@ -90,5 +90,5 @@ Later items give the buildings their own mechanics (traders from trade posts, fa
 - Every resource and terrain reference resolves; improvement terrains are passable.
 - `buildProduction` ≥ 1 exactly for units with `build_improvement` or `build_bridge`.
 - **Fog invariant:** a unit with `build_bridge` has `sight` ≥ `cities.workRadius` + 1, so it sees every city whose work area could touch a bridge it builds, and the bridge preview stays exact.
-- `cities.workRadius` is 1..5 and less than half of `cities.minimumSpacing`, so two cities' work areas never overlap.
+- `cities.workRadius` is 1..5 and less than half of `cities.minimumSpacing`, so two cities' work areas never overlap, and at most `cities.sight`, so a city sees the improvements in its work area (they show on visible tiles only).
 - The name texts of every resource, improvement and building exist.

@@ -95,6 +95,12 @@ internal static class EconomyRulesValidator
         {
             problems.Add(new("$.cities.workRadius", $"Must be less than half of minimumSpacing ({cities.MinimumSpacing}), so two work areas never overlap."));
         }
+
+        // Improvements show only on visible tiles, so a city must see its whole work area.
+        if (cities.Sight < cities.WorkRadius)
+        {
+            problems.Add(new("$.cities.sight", $"Must be at least workRadius ({cities.WorkRadius}), so a city sees the improvements in its work area."));
+        }
     }
 
     private static void CheckYields(ImmutableArray<ResourceAmount> yields, HashSet<string> resources, string path, List<RulesetProblem> problems)
