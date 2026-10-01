@@ -101,6 +101,53 @@ public partial class GameBoardTests : ClientTestContext
     }
 
     [Fact]
+    public void Render_KnownRivers_DrawALinePerEdgeWithItsKindAndATitle()
+    {
+        var view = Create(
+            visibility: static coord => coord.R == 0 ? TileVisibility.Unexplored : coord.R == 1 ? TileVisibility.Explored : TileVisibility.Visible,
+            rivers: static coord => coord.Column == 2 ? new TileRivers(East: River, NorthEast: DeepRiver) : null);
+
+        var cut = RenderBoard(view);
+
+        // Column 2 of rows 1–5 is known: two edges each; the unexplored row 0 shows none.
+        cut.FindAll("g[data-layer=rivers] line.river").Count.ShouldBe(2 * (Height - 1));
+        cut.FindAll("line.river-river.explored").Count.ShouldBe(1);
+        cut.FindAll("line.river-deep_river.visible").Count.ShouldBe(Height - 2);
+        cut.Find("line.river-river title").TextContent.ShouldBe("River: +1 movement to cross, +3 defence against melee attacks across it");
+        cut.Find("line.river-deep_river title").TextContent.ShouldBe("Deep river: land units can't cross, +5 defence against melee attacks across it");
+    }
+
+    [Fact]
+    public void Render_NoKnownRivers_DrawsNoRiversLayer()
+    {
+        var cut = RenderBoard(Start());
+
+        cut.FindAll("g[data-layer=rivers]").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_Rivers_SitBetweenTheTerrainAndTheLens()
+    {
+        var view = Create(rivers: static coord => coord == At(2, 2) ? new TileRivers(East: StreamRiver) : null);
+
+        var cut = RenderBoard(view, lens: new MovementCostLens(new RulesetService()));
+
+        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "rivers", "lens", "highlights", "cities", "units"]);
+    }
+
+    [Fact]
+    public void Render_MovementCostLens_MarksRiverCrossings()
+    {
+        var view = Create(rivers: static coord => coord == At(2, 2) ? new TileRivers(East: StreamRiver, NorthEast: River, NorthWest: DeepRiver) : null);
+
+        var cut = RenderBoard(view, lens: new MovementCostLens(new RulesetService()));
+
+        cut.FindAll("g.lens-edge-mark").Count.ShouldBe(2);
+        cut.Find("g.lens-edge-mark.costly text").TextContent.ShouldBe("+1");
+        cut.Find("g.lens-edge-mark.blocked title").TextContent.ShouldBe("Deep river: land units can't cross");
+    }
+
+    [Fact]
     public void Render_NoLens_DrawsNoLensLayer()
     {
         var cut = RenderBoard(Start());

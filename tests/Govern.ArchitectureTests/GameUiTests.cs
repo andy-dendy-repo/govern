@@ -6,7 +6,8 @@ namespace Govern.ArchitectureTests;
 
 /// <summary>
 /// The game UI design system (<c>docs/features/game-ui.md</c>, <c>.claude/rules/game-ui.md</c>): colours are written only as
-/// tokens in <c>wwwroot/css/tokens.css</c>, and every ruleset terrain has its palette, so a new terrain can't ship uncoloured.
+/// tokens in <c>wwwroot/css/tokens.css</c>, and every ruleset terrain has its palette and every river kind its style, so a new
+/// terrain or river can't ship unstyled.
 /// Icons per ruleset id are checked by <c>Govern.ClientTests</c> (<c>GameSpriteTests</c>), which can render the sprite.
 /// </summary>
 public partial class GameUiTests
@@ -69,16 +70,29 @@ public partial class GameUiTests
         missing.ShouldBeEmpty("every ruleset terrain needs its .terrain-<id> rule in wwwroot/css/board.css");
     }
 
-    private static List<string> RulesetTerrainIds()
+    [Fact]
+    public void BoardCss_StylesEveryRiver()
+    {
+        var board = File.ReadAllText(Path.Combine(CssRoot, "board.css"));
+
+        var missing = RulesetIds("rivers").Where(id => !board.Contains($".river-{id} {{", StringComparison.Ordinal)).ToList();
+
+        missing.ShouldBeEmpty("every ruleset river needs its .river-<id> rule (its width) in wwwroot/css/board.css");
+    }
+
+    private static List<string> RulesetTerrainIds() => RulesetIds("terrains");
+
+    // The ids of one section (terrains, rivers) across every ruleset file; older versions may lack a section.
+    private static List<string> RulesetIds(string section)
     {
         var rulesets = Path.Combine(SourceTree.RepositoryRoot, "rulesets");
         return Directory.EnumerateFiles(rulesets, "*.json", SearchOption.AllDirectories)
-            .SelectMany(static file =>
+            .SelectMany(file =>
             {
                 using var document = JsonDocument.Parse(File.ReadAllText(file));
-                return document.RootElement.GetProperty("terrains").EnumerateArray()
-                    .Select(static terrain => terrain.GetProperty("id").GetString()!)
-                    .ToList();
+                return document.RootElement.TryGetProperty(section, out var entries)
+                    ? entries.EnumerateArray().Select(static entry => entry.GetProperty("id").GetString()!).ToList()
+                    : [];
             })
             .Distinct(StringComparer.Ordinal)
             .ToList();

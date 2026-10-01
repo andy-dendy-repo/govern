@@ -1,4 +1,4 @@
-@* The hex board: terrain, the active map lens, cities, units and the selected unit's moves and attacks. Drag to pan; the wheel or the buttons zoom.
+@* The hex board: terrain, rivers, the active map lens, cities, units and the selected unit's moves and attacks. Drag to pan; the wheel or the buttons zoom.
    Unit and city symbols come from the game's icon set (Components/Game/GameSprite), rendered once by the game screen. *@
 @using Govern.Client.Features.Games.Helpers
 
@@ -11,6 +11,7 @@
         </defs>
         <g class="layer" transform="@_viewport.Transform">
             <BoardTerrain View="@View" TileClicked="@OnTileClickedAsync"/>
+            <BoardRivers View="@View"/>
             <BoardLens View="@View" Lens="@Lens"/>
             <BoardPieces View="@View" Selection="@Selection" Highlights="@Highlights" MaxHealth="@MaxHealth"/>
         </g>
