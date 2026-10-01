@@ -8,7 +8,8 @@ using Govern.Core.Units;
 namespace Govern.Core.Actions;
 
 /// <summary>
-/// Chooses which unit a city builds (and stops producing a building, if it was); accumulated progress is kept.
+/// Chooses which unit a city builds (and stops producing a building, if it was); accumulated progress is kept. A resource cost
+/// already paid for the item it leaves goes back to the city's stock.
 /// </summary>
 /// <param name="CityId">The actor's city.</param>
 /// <param name="UnitType">Unit type to build: a unit id of the game's ruleset.</param>
@@ -32,7 +33,9 @@ internal static class SetProductionRule
             return RuleViolations.UnknownUnitType;
         }
 
-        var changed = city with { Producing = command.UnitType, ProducingBuilding = null };
+        var changed = city.ProducingBuilding is null && city.Producing == command.UnitType
+            ? city
+            : CityProduction.Refund(ruleset, city) with { Producing = command.UnitType, ProducingBuilding = null };
         return new GameUpdate(state.WithCity(changed), [new ProductionChangedEvent(city.Id, command.UnitType)]);
     }
 }

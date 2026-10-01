@@ -1,6 +1,7 @@
-@* The selected city: its name in its owner's colour and, for the player's own city, its resources with what they gain each turn,
-   what its next territory tile costs, what it produces, how long that takes, the buttons to change it (units and buildings,
-   each with its cost; a building the city can't have says why), and the buildings it has. *@
+@* The selected city: its name in its owner's colour and, for the player's own city, its resources with what they gain or lose
+   each turn, its upkeep and upkeep order, what its next territory tile costs, what it produces, whether its resource cost is
+   paid, how long it takes, the buttons to change it (units and buildings, each with its production and resource cost; a
+   building the city can't have says why), and the buildings it has with their health. *@
 @using Govern.Core.Cities
 @using Govern.Core.Actions
 @using Govern.Core.Economy
@@ -21,11 +22,11 @@
     }
     else
     {
-        var income = Income;
+        var forecast = Forecast;
         <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" Wrap="FlexWrap.Wrap" class="city-stock" role="group" aria-label="City resources">
             @foreach (var resource in Ruleset.Resources)
             {
-                var (amount, gain) = (YieldCalculator.AmountOf(City.StockList, resource.Id), YieldCalculator.AmountOf(income, resource.Id));
+                var (amount, gain) = (YieldCalculator.AmountOf(City.StockList, resource.Id), Net(forecast, resource.Id));
                 @if (amount != 0 || gain != 0)
                 {
                     <span class="@($"city-resource city-resource-{resource.Id.Id}")">
@@ -35,11 +36,16 @@
                 }
             }
         </RadzenStack>
+        <CityUpkeep View="@View" City="@City" Ruleset="@Ruleset" Forecast="@forecast" Busy="@Busy" CanAct="@CanAct" Command="@Command"/>
         <RadzenText TextStyle="TextStyle.Caption" class="territory-growth rz-m-0">@TerritoryText</RadzenText>
         <RadzenText TextStyle="TextStyle.Body2" class="production">@ProductionText</RadzenText>
+        @if (CostText(forecast) is { } costText)
+        {
+            <RadzenText TextStyle="TextStyle.Caption" class="production-cost rz-m-0">@costText</RadzenText>
+        }
         @if (ProducingCost is { } cost)
         {
-            <ProgressBar Value="@(City.ProductionProgress ?? 0)" Max="@cost" PerTurn="@PerTurn" Label="Production"/>
+            <ProgressBar Value="@(City.ProductionProgress ?? 0)" Max="@cost" PerTurn="@PerTurn(forecast)" Label="Production"/>
             @if (FeedsAJob)
             {
                 <RadzenText TextStyle="TextStyle.Caption" class="lent-production rz-m-0">This turn the city's production goes to a unit building on its land.</RadzenText>
@@ -55,6 +61,7 @@
                               class="@($"produce produce-{unit.Id.Id}")">
                     <span class="produce-name">Build @Ruleset.UnitName(unit.Id)</span>
                     <CostLabel Amount="@unit.ProductionCost"/>
+                    <ResourceCostLabels Ruleset="@Ruleset" Amounts="@unit.ResourceCost"/>
                 </RadzenButton>
             }
         </RadzenStack>
@@ -67,6 +74,10 @@
                     <span class="@($"building building-{building.Id}")">
                         <GameIcon Id="@Icons.Building(building)" Label="@Ruleset.BuildingName(building)"/>
                         @Ruleset.BuildingName(building)
+                        @if (City.DamageOf(building) is > 0 and var damage)
+                        {
+                            <span class="building-health">(@(Ruleset.Upkeep.BuildingHealth - damage) of @Ruleset.Upkeep.BuildingHealth health)</span>
+                        }
                     </span>
                 }
                 @if (City.BuildingList.IsEmpty)
@@ -87,6 +98,7 @@
                             <GameIcon Id="@Icons.Building(building.Id)"/>
                             <span class="produce-name">Build @Ruleset.BuildingName(building.Id)</span>
                             <CostLabel Amount="@building.Cost"/>
+                            <ResourceCostLabels Ruleset="@Ruleset" Amounts="@building.ResourceCost"/>
                         </RadzenButton>
                         <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="building-effect">@Effect(building)</RadzenText>
                         @if (problem is not null)

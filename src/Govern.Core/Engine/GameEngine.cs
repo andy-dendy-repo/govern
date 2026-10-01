@@ -202,6 +202,38 @@ public static class GameEngine
         return ViewPreviewCalculator.CityIncome(ruleset, view, cityId);
     }
 
+    /// <summary>
+    /// What one of the viewer's cities will do at the end of their turn: its income, the upkeep it pays (and can't) for its
+    /// buildings and the units on its territory, what it lacks to pay the resource cost of what it produces, and the production
+    /// its item gains. The same decisions the end of turn makes, from the view alone, unless the city's production goes to a
+    /// unit's job this turn (then it neither pays nor produces).
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="cityId">One of the viewer's cities.</param>
+    /// <returns>The forecast, or <see langword="null"/> when the city is not the viewer's.</returns>
+    public static CityForecast? CityForecast(Ruleset ruleset, PlayerView view, CityId cityId)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return UpkeepPreviewCalculator.CityForecast(ruleset, view, cityId);
+    }
+
+    /// <summary>
+    /// Whether one of the viewer's units gets its upkeep at the end of their turn: from the city whose territory it stands on, or
+    /// from the land around it elsewhere. An unsupplied unit loses health instead of healing.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="unitId">One of the viewer's units.</param>
+    /// <returns>The supply, or <see langword="null"/> when the unit is not the viewer's.</returns>
+    public static UnitSupply? UnitSupply(Ruleset ruleset, PlayerView view, UnitId unitId)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return UpkeepPreviewCalculator.UnitSupply(ruleset, view, unitId);
+    }
+
     /// <summary>What one participant may see of the game (fog of war applied).</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="state">Current state.</param>
@@ -220,6 +252,7 @@ public static class GameEngine
         BuildImprovementCommand build => BuildImprovementRule.Apply(ruleset, state, actor, build),
         BuildBridgeCommand bridge => BuildBridgeRule.Apply(ruleset, state, actor, bridge),
         ProduceBuildingCommand building => ProduceBuildingRule.Apply(ruleset, state, actor, building),
+        SetUpkeepPriorityCommand priority => SetUpkeepPriorityRule.Apply(state, actor, priority),
         EndTurnCommand => EndTurnRule.Apply(ruleset, state, actor),
         ResignCommand => ResignRule.Apply(state, actor),
         _ => throw new ArgumentOutOfRangeException(nameof(command), command.GetType().Name, "Unknown command."),

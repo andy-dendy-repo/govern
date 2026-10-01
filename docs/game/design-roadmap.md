@@ -17,10 +17,10 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 | G2 | [Game rules reference](#g2-game-rules-reference) *(done)* | — | S, then ongoing |
 | G3 | [Data-driven catalogs and a new state schema](#g3-data-driven-catalogs-and-a-new-state-schema-suggested) *(part A done; part B deferred)* | — | M |
 | G4 | [Terrain: more tile types](#g4-terrain-more-tile-types) | G3 | M |
-| G5 | [Resources and tile yields](#g5-resources-and-tile-yields) *(first part in progress)* | G4 | L |
+| G5 | [Resources and tile yields](#g5-resources-and-tile-yields) *(first part done)* | G4 | L |
 | G6 | [Rivers and bridges](#g6-rivers-and-bridges) | G4 | M |
-| G7 | [City territory and growth](#g7-city-territory-and-growth) *(in progress)* | G5 | L |
-| G8 | [City stats and the production queue](#g8-city-stats-and-the-production-queue): G8a (costs, upkeep) planned, G8b deferred | G7 | L |
+| G7 | [City territory and growth](#g7-city-territory-and-growth) *(done)* | G5 | L |
+| G8 | [City stats and the production queue](#g8-city-stats-and-the-production-queue): G8a (costs, upkeep) done, G8b deferred | G7 | L |
 | G9 | [Army units and combat](#g9-army-units-and-combat) | G3, G5 | L |
 | G10 | [Builders and buildings (with upgrades)](#g10-builders-and-buildings-with-upgrades): G10a done, G10b open | G7, G8 | L |
 | G11 | [Science and culture trees](#g11-science-and-culture-trees) | G8 | L |
@@ -111,7 +111,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G5. Resources and tile yields
 
-- **Status:** first part in progress 2026-10-01 ([plan](../plans/active/G5-G7-G8-economy.md), with G7 and G8a). Every terrain gives default yields (plains 2 food 1 water, forest 1 food 1 water 2 wood, hills 1 food 2 stone, mountains 2 stone, lake 1 food 3 water), a new desert gives nothing, a river on any edge of a tile adds 1 water (ruleset v6, [rules](rules.md#tile-yields)). Still open from the list below: sea water, metals, luxuries, strategic resources placed on the map, terrain layers.
+- **Status:** first part done 2026-10-01 (PR #34, [plan](../plans/done/G5-G7-G8-economy.md), with G7 and G8a). Every terrain gives default yields (plains 2 food 1 water, forest 1 food 1 water 2 wood, hills 1 food 2 stone, mountains 2 stone, lake 1 food 3 water), a new desert gives nothing, a river on any edge of a tile adds 1 water (ruleset v6, [rules](rules.md#tile-yields)). Still open from the list below: sea water, metals, luxuries, strategic resources placed on the map, terrain layers.
 
 - **Requested:** water, sea water, food, metals (gold, silver, etc.), wood, rock, coal, oil, uranium.
 - **Suggested additions and grouping:**
@@ -150,7 +150,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G7. City territory and growth
 
-- **Status:** in progress 2026-10-01 ([plan](../plans/active/G5-G7-G8-economy.md)). Decided by the owner, not the Civ 6 model: a city claims the tiles within 1 when founded, then pays culture (4, +2 per tile gained) for one more tile at a time, chosen without randomness (highest total yield, then nearest, then row and column), up to radius 3; cities never take each other's tiles; own territory is always visible; each city keeps its own stock. Still open from the list below: buying tiles with gold, loyalty pressure from enemy units.
+- **Status:** done 2026-10-01 (PR #34, [plan](../plans/done/G5-G7-G8-economy.md)). Decided by the owner, not the Civ 6 model: a city claims the tiles within 1 when founded, then pays culture (4, +2 per tile gained) for one more tile at a time, chosen without randomness (highest total yield, then nearest, then row and column), up to radius 3; cities never take each other's tiles; own territory is always visible; each city keeps its own stock. Still open from the list below: buying tiles with gold, loyalty pressure from enemy units.
 
 - **Territory (requested):** a city owns tiles around it, up to a **maximum number of tiles** (or a maximum radius). New tiles are acquired over time at a speed driven by culture, as in Civ 6. Each time the growth counter fills, the city takes the "best" free adjacent tile, with weighted random choice from `DeterministicRandom`.
 - *(Suggested)* A player can also buy a tile with gold; a territory lens (G1) shows ownership and the next tile.
@@ -159,7 +159,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G8. City stats and the production queue
 
-- **Status:** split on 2026-10-01. **G8a** is planned ([plan](../plans/active/G5-G7-G8-economy.md)), the owner's model: every unit and building has a production cost, a resource cost paid in full when production begins, and a resource upkeep; a city keeps up what stands on its territory, with a per-city switch for buildings or units first; a unit outside territory is supplied by the 7 tiles around it; a shortage costs 10 HP a turn down to 1 HP, and HP come back once supplied; bridges and improvements cost no resources. **G8b** is deferred: population, housing, loyalty and the production queue.
+- **Status:** split on 2026-10-01. **G8a** is done 2026-10-01 (ruleset v7, [plan](../plans/done/G5-G7-G8-economy.md), [rules](rules.md#costs-and-upkeep)), the owner's model: every unit and building has a production cost, a resource cost paid in full when production begins, and a resource upkeep; a city keeps up what stands on its territory, with a per-city switch for buildings or units first; a unit outside territory is supplied by the 7 tiles around it; a shortage costs 10 HP a turn down to 1 HP, and HP come back once supplied; a building has 100 HP, gives nothing at 0 and recovers 10 a paid turn; bridges and improvements cost no resources and have no upkeep. **G8b** is deferred: population, housing, loyalty and the production queue.
 
 - **City parameters (requested):** gathered amount of each resource, population, room for population (housing), loyalty, production, science points, culture points, diplomacy points.
 - **Growth:** food surplus grows population until housing is full; population works tiles (automatically at first; *suggested* later, manual focus: food, production, science, culture).
@@ -170,7 +170,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G9. Army units and combat
 
-- **Status:** done 2026-09-30 ([plan](../plans/done/G9-units-and-combat.md)). Shipped: health (100), five units (settler, soldier, spearman, horseman, archer) with classes and a counter table (melee > anti-cavalry > cavalry > ranged, ranged shoots from range 2 without damage back), strength scaled by health, integer damage with a hashed ±20 % roll, terrain defence (forest and hills +3), healing for resting units, a combat forecast that `Execute` always respects, health bars and a two-step attack in the client. Still open from the list below: attacks per turn and moving after attacking (until a unit differs), siege and city defence, recon, later eras, resource costs (G5), river defence (G6).
+- **Status:** done 2026-09-30 ([plan](../plans/done/G9-units-and-combat.md)). Shipped: health (100), five units (settler, soldier, spearman, horseman, archer) with classes and a counter table (melee > anti-cavalry > cavalry > ranged, ranged shoots from range 2 without damage back), strength scaled by health, integer damage with a hashed ±20 % roll, terrain defence (forest and hills +3), healing for resting units, a combat forecast that `Execute` always respects, health bars and a two-step attack in the client. Still open from the list below: attacks per turn and moving after attacking (until a unit differs), siege and city defence, recon, later eras. Resource costs and upkeep came with G8a, river defence with G6.
 - **Unit parameters (requested):** type, health, moves per turn, attacks per turn, production cost, resource cost (G5). Defence is **computed from the attacker's type and the defender's health**.
 - **Suggested roster (by era):**
 

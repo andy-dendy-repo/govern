@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
+using Govern.Core.Economy;
 using Govern.Core.Rulesets;
 
 namespace Govern.Core.Units;
@@ -15,6 +16,8 @@ namespace Govern.Core.Units;
 /// <param name="Sight">Radius, in tiles, the unit reveals around itself.</param>
 /// <param name="ProductionCost">Production points a city needs to build the unit.</param>
 /// <param name="Abilities">What the unit can do.</param>
+/// <param name="ResourceCost">Resources its city pays in full when it begins producing the unit (may be empty).</param>
+/// <param name="Upkeep">Resources the unit needs each turn (may be empty): from its city on own territory, from the land elsewhere.</param>
 /// <param name="Strength">
 /// Combat strength when attacking in melee or defending; <see langword="null"/> for a civilian, which any attack destroys and
 /// which never fights back.
@@ -31,6 +34,8 @@ public sealed record UnitDefinition(
     int Sight,
     int ProductionCost,
     ImmutableArray<UnitAbility> Abilities,
+    ImmutableArray<ResourceAmount> ResourceCost,
+    ImmutableArray<ResourceAmount> Upkeep,
     int? Strength = null,
     RangedRules? Ranged = null,
     int BuildProduction = 0)

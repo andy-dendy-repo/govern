@@ -17,17 +17,20 @@ namespace Govern.Core.Actions;
 public sealed record EndTurnCommand : GameCommand;
 
 /// <summary>
-/// Ends the actor's turn: their hurt units that neither moved, attacked nor worked heal, their units' jobs advance (see
-/// <see cref="ConstructionRule"/>), their cities add their income to their stock, grow their territory
-/// (see <see cref="TerritoryRule"/>) and produce (except a city whose production a job used), then the next active player moves with full movement.
+/// Ends the actor's turn: their units' jobs advance (see <see cref="ConstructionRule"/>), their cities add their income to their
+/// stock, pay upkeep (see <see cref="UpkeepRule"/>: unsupplied units and buildings lose health, supplied units that rested heal),
+/// grow their territory (see <see cref="TerritoryRule"/>) and produce (except a city whose production a job used; an item begins
+/// once its resource cost is paid), then the next active player moves with full movement.
 /// </summary>
 internal static class EndTurnRule
 {
     public static CommandResult Apply(Ruleset ruleset, GameState state, PlayerId actor)
     {
         var events = ImmutableArray.CreateBuilder<GameEvent>();
-        var (built, usedCities) = ConstructionRule.AdvanceJobs(ruleset, Heal(ruleset, state, actor), actor, events);
-        var grown = TerritoryRule.Grow(ruleset, ConstructionRule.CollectYields(ruleset, built, actor), actor, events);
+        var resting = UpkeepRule.RestingUnits(ruleset, state, actor);
+        var (built, usedCities) = ConstructionRule.AdvanceJobs(ruleset, state, actor, events);
+        var kept = UpkeepRule.Apply(ruleset, ConstructionRule.CollectYields(ruleset, built, actor), actor, resting, events);
+        var grown = TerritoryRule.Grow(ruleset, kept, actor, events);
         var produced = grown.Cities
             .Where(city => city.Owner == actor && !usedCities.Contains(city.Id))
             .Select(static city => city.Id)
@@ -60,10 +63,23 @@ internal static class EndTurnRule
 
     private static GameState Produce(Ruleset ruleset, GameState state, City city, ImmutableArray<GameEvent>.Builder events)
     {
-        var perTurn = CityProduction.PerTurn(ruleset, city.BuildingList);
-        if (city.ProducingBuilding is { } building)
+        // An item begins when the city pays its whole resource cost; until then it waits and gains nothing.
+        if (!city.ProductionPaid)
         {
-            return ProduceBuilding(ruleset, state, city, building, events);
+            var resourceCost = CityProduction.ResourceCost(ruleset, city.ProducingBuilding, city.Producing);
+            if (!UpkeepCalculator.Missing(ruleset, city.StockList, resourceCost).IsEmpty)
+            {
+                return state;
+            }
+
+            var stock = UpkeepCalculator.Subtract(ruleset, city.StockList, resourceCost);
+            city = city with { Stock = stock.IsEmpty ? null : stock, ProductionPaid = true };
+        }
+
+        var perTurn = CityProduction.PerTurn(ruleset, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth));
+        if (city.ProducingBuilding is not null)
+        {
+            return ProduceBuilding(ruleset, state, city, perTurn, events);
         }
 
         var cost = ruleset.Unit(city.Producing).ProductionCost;
@@ -77,21 +93,22 @@ internal static class EndTurnRule
         var unit = new Unit(new UnitId(id), city.Owner, city.Producing, tile, MovementLeft: 0);
         events.Add(new UnitCreatedEvent(unit, city.Id));
 
-        var reset = allocated.WithCity(city with { ProductionProgress = 0 });
+        var reset = allocated.WithCity(city with { ProductionProgress = 0, ProductionPaid = false });
         return reset with { Units = reset.Units.Add(unit) };
     }
 
     // A finished building joins the city, which goes back to producing its unit from scratch.
-    private static GameState ProduceBuilding(Ruleset ruleset, GameState state, City city, BuildingType building, ImmutableArray<GameEvent>.Builder events)
+    private static GameState ProduceBuilding(Ruleset ruleset, GameState state, City city, int perTurn, ImmutableArray<GameEvent>.Builder events)
     {
-        var progress = city.ProductionProgress + CityProduction.PerTurn(ruleset, city.BuildingList);
+        var building = city.ProducingBuilding!.Value;
+        var progress = city.ProductionProgress + perTurn;
         if (progress < ruleset.Building(building).Cost)
         {
             return state.WithCity(city with { ProductionProgress = progress });
         }
 
         events.Add(new BuildingCompletedEvent(city.Id, building));
-        return state.WithCity(city with { ProducingBuilding = null, ProductionProgress = 0, Buildings = [.. city.BuildingList, building] });
+        return state.WithCity(city with { ProducingBuilding = null, ProductionProgress = 0, ProductionPaid = false, Buildings = [.. city.BuildingList, building] });
     }
 
     // The city tile when free, otherwise the first free neighbour a unit could stand on; null when surrounded.
@@ -108,17 +125,6 @@ internal static class EndTurnRule
 
         return null;
     }
-
-    // A unit rested when its movement is still full and it has no job: it neither moved, attacked nor worked this turn.
-    private static GameState Heal(Ruleset ruleset, GameState state, PlayerId actor) => state with
-    {
-        Units = [.. state.Units.Select(unit => unit.Owner == actor && unit.Damage > 0 && unit.Job is null && unit.MovementLeft >= ruleset.Unit(unit.Type).Movement
-            ? unit with { Damage = Math.Max(0, unit.Damage - HealAmount(ruleset, state, unit)) }
-            : unit)],
-    };
-
-    private static int HealAmount(Ruleset ruleset, GameState state, Unit unit) =>
-        state.CityAt(unit.Position)?.Owner == unit.Owner ? ruleset.Combat.Healing.InOwnCity : ruleset.Combat.Healing.PerTurn;
 
     private static GameState ResetMovement(Ruleset ruleset, GameState state, PlayerId player) => state with
     {
