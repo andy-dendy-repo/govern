@@ -1,6 +1,6 @@
 ---
 title: Game Core engine
-tags: [game, core, engine, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
+tags: [game, core, engine, upkeep, resource-cost, supply, building-health, upkeep-priority, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
 updated: 2026-10-01
 ---
@@ -19,7 +19,7 @@ updated: 2026-10-01
 | `GameFactory.Create(ruleset, GameSetup)` | New game: a generated map of the ruleset's size (or the setup's size, within the ruleset's limits) whose two halves mirror each other ([map generation](#map-generation)); each player gets the ruleset's starting units (by default a settler plus an adjacent soldier) on the default terrain. Turn 1, first player, version 0 |
 | `GameEngine.Execute(ruleset, state, actor, command)` | Validates and applies one `GameCommand`. Returns `CommandResult`: a `GameUpdate` (new `GameState` + ordered `GameEvent`s) or a `RuleViolation`. A rejected command never changes the state |
 | `GameEngine.ReachableTiles(ruleset, state, viewer, unitId)` | Tiles one of the viewer's units can move to this turn, for UI highlights. Another player's unit always returns an empty list |
-| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CombatForecast(ruleset, view, unitId, target)`, `CheckFoundCity(ruleset, view, unitId)`, `CheckBuildImprovement(ruleset, view, unitId, improvement)`, `BridgeTargets(ruleset, view, unitId)`, `CheckProduceBuilding(ruleset, view, cityId, building)` | What `Execute` would decide for a move, an attack (and the damage range of a fight), founding a city, starting an improvement or a bridge, or producing a building, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
+| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CombatForecast(ruleset, view, unitId, target)`, `CheckFoundCity(ruleset, view, unitId)`, `CheckBuildImprovement(ruleset, view, unitId, improvement)`, `BridgeTargets(ruleset, view, unitId)`, `CheckProduceBuilding(ruleset, view, cityId, building)`, `CityIncome(ruleset, view, cityId)`, `CityForecast(ruleset, view, cityId)`, `UnitSupply(ruleset, view, unitId)` | What `Execute` would decide for a move, an attack (and the damage range of a fight), founding a city, starting an improvement or a bridge, producing a building, or a city's income, upkeep and a unit's supply at the end of the turn, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
 | `GameEngine.ViewFor(ruleset, state, player)` | The fog-of-war `PlayerView`: the only shape a client may receive |
 | `GameSerializer` | The one JSON format for storage (jsonb), the Api and the client |
 
@@ -99,11 +99,11 @@ Andrii's model, not a copy of another game: units have no build charges; a build
 - **State, all optional in the JSON (no schema bump):** `Unit.Job` (`UnitJob`: progress, the round it started, and an `Improvement` or a `BridgeTo` target), `Tile.Improvement`, `Tile.Bridges` (`TileBridges`, one flag per stored side, like `TileRivers`), `City.ProducingBuilding` and `City.Buildings`.
 - **City production:** `Cities/CityProduction.PerTurn` (`productionPerTurn` plus the buildings' `production`).
 - **Commands:** `BuildImprovementCommand` (`build_improvement`), `BuildBridgeCommand` (`build_bridge`), `ProduceBuildingCommand` (`produce_building`). Starting a job sets movement to 0 (`BuildStartedEvent`); moving or attacking drops the job; `SetProductionCommand` clears a building in production.
-- **End turn** (`EndTurnRule`): heal (units without a job), then `Engine/ConstructionRule.AdvanceJobs` (oldest job first; each city feeds one job and then skips its own production; a job whose placement check fails is dropped; `ImprovementBuiltEvent`, `BridgeBuiltEvent`), then `ConstructionRule.CollectYields` (each city's income into its stock, see below), then `TerritoryRule.Grow`, then production (`BuildingCompletedEvent` for a building).
+- **End turn** (`EndTurnRule`): note the resting units, then `Engine/ConstructionRule.AdvanceJobs` (oldest job first; each city feeds one job and then skips its own production; a job whose placement check fails is dropped; `ImprovementBuiltEvent`, `BridgeBuiltEvent`), then `ConstructionRule.CollectYields` (each city's income into its stock, see below), then `UpkeepRule.Apply` ([G8a](#costs-and-upkeep-g8a)), then `TerritoryRule.Grow`, then production (`BuildingCompletedEvent` for a building).
 - **Bridges** are only seen through `GameMap.CrossedRiverBetween` / `PlayerView.CrossedRiverBetween` (null when the edge is bridged), used by the step cost, the combat river modifier and the capture check, so a bridged edge is like no river.
 - **View:** `TileView.Bridges` and `Improvement` for visible tiles only (they change); `UnitView.Job` for own units only; `CityView.ProducingBuilding` and `Buildings` for own cities only.
 - **Previews:** `BuildImprovementRule.Check`, `BuildBridgeRule.Check` and `ProduceBuildingRule.Check` are shared by the rules and `ViewPreviewCalculator`; `Engine/BuildPreviewTests` checks parity with `Execute`.
-- Algorithms: [game logic](../game/game-logic.md#building-with-units-jobs). Later (G10b): upgrades, building health, pillage and repair, and the buildings' own mechanics.
+- Algorithms: [game logic](../game/game-logic.md#building-with-units-jobs). Later (G10b): upgrades, pillage and repair, and the buildings' own mechanics.
 
 ## Tile yields and territory (G5, G7)
 
@@ -113,7 +113,19 @@ Andrii's model: every tile gives resources, a city owns the tiles of its territo
 - **Territory:** `Engine/TerritoryRule` (internal). `ClaimAround` runs when a city is founded (`initialRadius`, unowned tiles only); `Grow` runs at the end of the owner's turn: each city, by id, that holds `TerritoryRules.NextTileCost(TilesGained)` of the growth resource pays it and claims `NextTile` (unowned, touching the territory, within `maxRadius`; highest total yield, then nearest, then row, then column), emitting `TerritoryGrewEvent` (`territory_grew`). No randomness, so no draw changes.
 - **Rules that read territory:** founding on any territory tile is `city.in_territory`; an improvement needs a tile in an own city's territory that is not a city tile (`build.not_in_territory`); a bridge end in enemy territory is `bridge.enemy_territory`; a job is fed by the own city whose territory holds the unit's tile. A captured city keeps its territory and stock.
 - **View:** own territory is always visible; `TileView.TerritoryOwner` (visible tiles only) and `TerritoryCity` (the viewer's own territory only); `CityView.Stock` and `TilesGained` for own cities only. `GameEngine.CityIncome(ruleset, view, cityId)` previews a city's income and equals what the end of turn adds (`TerritoryRuleTests`).
-- Algorithms: [game logic](../game/game-logic.md#territory). Costs, upkeep and supply come next (G8a).
+- Algorithms: [game logic](../game/game-logic.md#territory).
+
+## Costs and upkeep (G8a)
+
+Andrii's model: everything a city makes costs resources once and upkeep every turn, a city keeps up what stands on its territory, and a shortage hurts instead of killing (ruleset v7, [game data](../game/game-data-economy.md#resource-costs-and-upkeep-resourcecost-upkeep-upkeep-section)).
+- **Ruleset:** `UnitDefinition.ResourceCost`/`Upkeep`, `BuildingDefinition.ResourceCost`/`Upkeep`, and `Rulesets/UpkeepRules` (`supplyRadius`, `shortageDamage`, `buildingHealth`, `buildingRecovery`), checked by `Rulesets/UpkeepRulesValidator`.
+- **State, all optional in the JSON (no schema bump):** `City.ProductionPaid` (the item's resource cost is paid), `City.UpkeepPriority` (`Cities/UpkeepPriority`: `buildingsFirst`, the default, or `unitsFirst`) and `City.BuildingDamage` (`Cities/BuildingDamage` per hurt building; `DamageOf`, `WorkingBuildings`). A unit's shortage is ordinary `Unit.Damage`.
+- **Paying:** `Economy/UpkeepCalculator` (public, used by the client): `Pay` (buildings in ruleset order and units most hurt first, in the city's priority, each all or nothing), `Missing`, `Subtract` and `DamageAfter` (each building's damage after the upkeep, shared by the rule and the forecast). `Cities/CityProduction.ResourceCost` and `Refund`.
+- **End turn:** `Engine/UpkeepRule.Apply` (internal) runs after the income: each city pays from its stock; an unpaid building takes `shortageDamage` (`BuildingDamagedEvent`, `building_damaged`) and stops yielding and producing at full damage; a paid one recovers `buildingRecovery`; a unit off its owner's territory is supplied by `LandYields` within `supplyRadius` (nothing taken, tiles not split); an unpaid or unsupplied unit takes `shortageDamage` down to 1 health (`UnitStarvedEvent`, `unit_starved`); a supplied unit that rested heals. Production then pays the item's cost first and waits while the stock can't cover it.
+- **Changing production:** `SetProductionCommand` and `ProduceBuildingCommand` refund a paid cost when the item really changes (the same item is a no-op); a captured city's item is unpaid again.
+- **Command:** `SetUpkeepPriorityCommand` (`set_upkeep_priority`): own city, a known priority (`UpkeepPrioritySetEvent`, `upkeep_priority_set`).
+- **View:** `CityView.ProductionPaid`, `UpkeepPriority` and `BuildingDamage` for own cities only. Previews (`Visibility/UpkeepPreviewCalculator`): `GameEngine.CityForecast` (`CityForecast`: income, the `UpkeepResult`, what is missing to begin and the production per turn after upkeep, both assuming the city doesn't feed a job) and `GameEngine.UnitSupply` (`UnitSupply`: the paying city or the land's shortfall). `Engine/UpkeepPreviewTests` checks both against `Execute`.
+- Algorithms: [game logic](../game/game-logic.md#costs-and-upkeep).
 
 ## Combat (G9)
 
@@ -121,7 +133,7 @@ Andrii's model: every tile gives resources, a city owns the tiles of its territo
 - **`Engine/CombatCalculator`** (internal) works out a fight from two `Combatant`s (type, health, terrain) and the river between them: strengths with their `CombatModifier`s (health, counter, terrain, river), and each side's damage range. `AttackRule` rolls within those ranges; `GameEngine.CombatForecast` returns them to the client. Integer maths only.
 - **Rolls** use `DeterministicRandom.NextHashed`, defender first, and only for a side whose range isn't a single value (a ranged attacker and a civilian take fixed damage).
 - **Events:** `UnitAttackedEvent` (`unit_attacked`: both units, both positions, damage dealt and taken), then a `UnitDestroyedEvent` for each unit brought to 0.
-- **Healing** is part of `EndTurnRule`, before production: a hurt unit with full movement left rested.
+- **Healing** is part of `UpkeepRule` at the end of the turn: a hurt unit with full movement left and no job rested, and heals when it is supplied.
 - Algorithm and numbers: [game logic](../game/game-logic.md#combat), [game data](../game/game-data.md#combat-combat).
 
 ## Game rules v1 (commands)
@@ -130,12 +142,13 @@ Andrii's model: every tile gives resources, a city owns the tiles of its territo
 |---|---|
 | `MoveUnitCommand` (`move_unit`) | Cheapest path (Dijkstra) to an empty tile within `MovementLeft`. Never through units or enemy cities. Emits `UnitMovedEvent` with the path |
 | `FoundCityCommand` (`found_city`) | Settler with movement left, not on a city, spacing respected. The settler is removed and a city created (`CityFoundedEvent`) |
-| `SetProductionCommand` (`set_production`) | Own city; changes what it builds and keeps its progress (`ProductionChangedEvent`) |
+| `SetProductionCommand` (`set_production`) | Own city; changes what it builds and keeps its progress, refunding a paid resource cost (`ProductionChangedEvent`) |
 | `AttackCommand` (`attack`) | A unit with `attack` or `ranged_attack` and movement left; a target in range (adjacent for melee). Against a unit, both fight ([combat](#combat-g9)): `UnitAttackedEvent`, then `UnitDestroyedEvent` for each unit at 0 health; an undefended enemy city is captured by a melee attacker, which moves in (`CityCapturedEvent`). Movement drops to 0 |
 | `BuildImprovementCommand` (`build_improvement`) | A builder with movement left in its cities' territory starts an improvement job ([G10a](#builders-improvements-buildings-and-bridges-g10a)) |
 | `BuildBridgeCommand` (`build_bridge`) | A unit with `build_bridge` and movement left starts a bridge job over the river towards a neighbour |
 | `ProduceBuildingCommand` (`produce_building`) | Own city; produces a building it doesn't have yet (needs the adjacent terrain if any), keeps its progress (`ProductionChangedEvent` with `Building`) |
-| `EndTurnCommand` (`end_turn`) | Units heal, jobs advance, yields are collected, then the actor's cities produce. A finished unit spawns on the city or its first free neighbour with 0 movement; if the city is surrounded, it waits. The next active player gets full movement; the round (`Turn`) increases on wrap (`TurnEndedEvent`) |
+| `SetUpkeepPriorityCommand` (`set_upkeep_priority`) | Own city; pays buildings first or units first from the next end of turn (`UpkeepPrioritySetEvent`) |
+| `EndTurnCommand` (`end_turn`) | Jobs advance, yields are collected, upkeep is paid (units heal or starve), territory grows, then the actor's cities pay resource costs and produce. A finished unit spawns on the city or its first free neighbour with 0 movement; if the city is surrounded, it waits. The next active player gets full movement; the round (`Turn`) increases on wrap (`TurnEndedEvent`) |
 | `ResignCommand` (`resign`) | Any active player, any time (`PlayerResignedEvent`) |
 
 **Turn guard:** every command except Resign requires a running game and `actor == CurrentPlayer`. The unit or city must exist and belong to the actor.
@@ -166,6 +179,7 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `build.already_building` / `build.unknown_improvement` / `build.not_in_territory` / `build.wrong_terrain` / `build.tile_improved` | Improvement job problems |
 | `bridge.not_adjacent` / `bridge.no_river` / `bridge.exists` / `bridge.impassable` / `bridge.enemy_territory` | Bridge job problems |
 | `city.unknown_building` / `city.building_exists` / `city.building_needs_terrain` | Building production problems |
+| `city.unknown_upkeep_priority` | An upkeep priority Core doesn't know |
 
 Exceptions are reserved for programming errors: an invalid `GameSetup`, an unknown command type, or `ViewFor` for a non-participant.
 
@@ -180,7 +194,7 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - `PlayerView.Players` lists ids and statuses without the opponents' exploration.
 - **Rejections leak nothing:** a hidden unit on a move target gives `move.unreachable`, not `move.occupied`. Another player's unit or city id gives `*.not_found`.
 - **Invariants that keep rejections leak-free:** unit sight ≥ movement / cheapest step, and the sight of every unit with `found_city` ≥ city spacing − 1. `RulesetValidator` enforces both, so a ruleset that breaks them is rejected at load time until the rules filter by visibility.
-- **Known residual leaks** (deferred, [game delivery plan](../plans/done/game-delivery.md#deferred-ideas)): a city's name (`City N`, counting the founder's cities at founding) shows how many cities its founder had then, hidden ones included.
+- **Known residual leaks** (deferred, [game delivery plan](../plans/done/game-delivery.md#deferred-ideas)): a city's name (`City N`, counting the founder's cities at founding) shows how many cities its founder had then, hidden ones included. A unit that loses health without a fight, or doesn't heal while resting, shows its owner's land or city is short of its upkeep (accepted, [game logic](../game/game-logic.md#fog-of-war)).
 - `PlayerId` values are chosen by the host. Govern uses the per-game seat id (`GamePlayer.Id`), never a user id, so the view reveals no account ids ([games](games.md)).
 - Hosts must send clients `PlayerView`, never `GameState`.
 - Nothing in a view counts the opponent's activity: `PlayerView.Version` is a fingerprint of the view itself, unit and city ids are hashed random draws (see below), and `Units`/`Cities` are ordered by id rather than creation. Raw `GameEvent`s describe the full state and must be filtered by visibility before being sent to a player.
@@ -198,9 +212,11 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 | `GameEngine.CheckBuildImprovement(view, unitId, improvement)` / `CheckProduceBuilding(view, cityId, building)` | `null`, or the `RuleViolation` | what a `BuildImprovementCommand` / `ProduceBuildingCommand` would return |
 | `GameEngine.BridgeTargets(view, unitId)` | The neighbours the unit can bridge to, row then column | the targets a `BuildBridgeCommand` would be accepted for |
 | `GameEngine.CityIncome(ruleset, view, cityId)` | What the viewer's own city adds to its stock at the end of the turn (empty for another player's city) | what `EndTurnCommand` adds |
+| `GameEngine.CityForecast(ruleset, view, cityId)` | The income, the upkeep paid, the unpaid buildings and units, and what the item still needs to begin; `null` for another player's city | what `EndTurnCommand` pays and charges |
+| `GameEngine.UnitSupply(ruleset, view, unitId)` | The own city that keeps the unit up, or, outside territory, what the land around it lacks | whether `EndTurnCommand` starves the unit |
 
 - All three give nothing (or the violation) when the game is over, it isn't the viewer's turn, or the unit isn't the viewer's, the same as the command guard.
-- **Why a view is enough:** unit sight ≥ movement, founder sight ≥ city spacing − 1, and ranged range ≤ sight (enforced by `RulesetValidator`). Every tile a unit could reach, attack or be blocked by is therefore visible, and the view shows every unit and city on it. Reachability over a view enters only visible tiles.
+- **Why a view is enough:** unit sight ≥ movement, founder sight ≥ city spacing − 1, ranged range ≤ sight, and the sight of a unit with upkeep ≥ `upkeep.supplyRadius` + 1 (enforced by `RulesetValidator`). Every tile a unit could reach, attack or be blocked by is therefore visible, and the view shows every unit and city on it. Reachability over a view enters only visible tiles.
 - **They can't drift from the rules:** `AttackRule.Check` and `FoundCityRule.Check` are shared by the rule and the preview, as are the turn check (`CommandGuardRule.CheckTurn`) and the Dijkstra in `ReachabilityCalculator`. `GameEnginePreviewTests` compares each preview with `Execute` for every tile within 3 of the unit, over scenarios covering own and enemy blockers, an own city in reach, enemies just outside sight (where the view and the state differ), the map edge, no movement, the opponent's turn, an enemy unit id, a finished game, terrain: forest around the unit (with full and with 1 movement left), mountains and lake around it, a path around a lake, a unit on hills that sees further, an archer with targets in and out of range, and a horseman, and rivers: a stream, a river and a deep river around the unit (with full and with 1 movement left), a deep river wall, enemies across rivers, and a horseman along a river. `CombatForecastTests` checks over 1000 seeds that `Execute` rolls exactly the forecast's lowest and highest damage for each kind of fight. A new terrain type with a new cost or blocker adds its own parity scenarios.
 
 ## View version
@@ -245,11 +261,12 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - fog of war, including hidden enemy production and the tile index ↔ coordinate mapping;
 - the view previews' parity with `Execute` (`Engine/GameEnginePreviewTests`), including rivers of each kind and bridges around the unit, and the build previews (`Engine/BuildPreviewTests`);
 - builders, jobs, yields and buildings (`Actions/BuildImprovementActionTests`, `BuildBridgeActionTests`, `ProduceBuildingActionTests`, `Engine/ConstructionRuleTests`);
+- costs and upkeep (`Economy/UpkeepCalculatorTests`, `Engine/UpkeepRuleTests`, `Engine/ProductionCostTests`, `Engine/UpkeepPreviewTests`);
 - river generation: mirrored, from a source to a mouth, never splitting the passable map (`Map/MapGeneratorTests`);
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v6.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge` an improvement or a bridge; `AddUnit` takes a `UnitJob` and `AddCity` a building in production, a stock, tiles gained and built buildings; every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v7.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge` an improvement or a bridge; `AddUnit` takes a `UnitJob` and `AddCity` a building in production, a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`

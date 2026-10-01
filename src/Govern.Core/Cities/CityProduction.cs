@@ -1,5 +1,7 @@
+using System.Collections.Immutable;
 using Govern.Core.Economy;
 using Govern.Core.Rulesets;
+using Govern.Core.Units;
 
 namespace Govern.Core.Cities;
 
@@ -10,12 +12,39 @@ public static class CityProduction
 {
     /// <summary>A city's production per turn.</summary>
     /// <param name="ruleset">The game's ruleset.</param>
-    /// <param name="buildings">The city's buildings.</param>
+    /// <param name="buildings">The city's working buildings (<see cref="City.WorkingBuildings"/>).</param>
     /// <returns><see cref="CityRules.ProductionPerTurn"/> plus each building's <see cref="BuildingDefinition.Production"/>.</returns>
     public static int PerTurn(Ruleset ruleset, IEnumerable<BuildingType> buildings)
     {
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(buildings);
         return ruleset.Cities.ProductionPerTurn + buildings.Sum(building => ruleset.Building(building).Production);
+    }
+
+    /// <summary>The resources a city pays when it begins producing an item.</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="building">The building it produces, if any (it comes before the unit).</param>
+    /// <param name="unit">The unit it produces otherwise.</param>
+    /// <returns>The item's resource cost (may be empty).</returns>
+    public static ImmutableArray<ResourceAmount> ResourceCost(Ruleset ruleset, BuildingType? building, UnitType unit)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        return building is { } produced ? ruleset.Building(produced).ResourceCost : ruleset.Unit(unit).ResourceCost;
+    }
+
+    /// <summary>A city leaving its item before it is done: the resource cost it paid goes back to its stock.</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="city">The city.</param>
+    /// <returns>The city with the cost back in its stock and nothing paid; the city itself when nothing was paid.</returns>
+    public static City Refund(Ruleset ruleset, City city)
+    {
+        ArgumentNullException.ThrowIfNull(city);
+        if (!city.ProductionPaid)
+        {
+            return city;
+        }
+
+        var stock = YieldCalculator.Sum(ruleset, city.StockList.Concat(ResourceCost(ruleset, city.ProducingBuilding, city.Producing)));
+        return city with { Stock = stock.IsEmpty ? null : stock, ProductionPaid = false };
     }
 }

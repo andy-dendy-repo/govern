@@ -15,6 +15,7 @@ internal sealed record RulesetDocument(
     ImmutableArray<UnitDefinition> Units,
     CityRules Cities,
     TerritoryRules Territory,
+    UpkeepRules Upkeep,
     ImmutableArray<ResourceDefinition> Resources,
     ImmutableArray<ImprovementDefinition> Improvements,
     ImmutableArray<BuildingDefinition> Buildings,

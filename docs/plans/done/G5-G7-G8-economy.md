@@ -1,13 +1,13 @@
 ---
 title: "Plan: G5 tile yields, G7 city territory, G8a city stock, costs and upkeep"
 tags: [plan, game, core, economy, tile-yields, territory, city-stock, water, desert, culture, resource-cost, upkeep, supply, shortage, building-health]
-code: [rulesets/default/v6.json, src/Govern.Core/Economy/YieldCalculator.cs, src/Govern.Core/Engine/TerritoryRule.cs, src/Govern.Core/Engine/ConstructionRule.cs]
+code: [rulesets/default/v6.json, rulesets/default/v7.json, src/Govern.Core/Engine/UpkeepRule.cs, src/Govern.Core/Economy/UpkeepCalculator.cs, src/Govern.Core/Economy/YieldCalculator.cs, src/Govern.Core/Engine/TerritoryRule.cs, src/Govern.Core/Engine/ConstructionRule.cs]
 updated: 2026-10-01
 ---
 
 # Plan: G5 tile yields, G7 city territory, G8a city stock, costs and upkeep
 
-**Status:** approved by Andrii 2026-10-01 ("Lets leave it free" after the questions below); PR 1 in progress. Built around the owner's model (2026-10-01): every produced item has a production and a resource cost and a resource upkeep; a city keeps up what stands on its territory; a shortage costs HP; units outside territory live off the tiles around them; bridges have no upkeep. G10b (upgrades, pillage, repair) stays deferred.
+**Status:** done 2026-10-01: PR 1 (G5, G7) merged as #34, PR 2 (G8a, ruleset v7) is #35. Approved by Andrii 2026-10-01 ("Lets leave it free" after the questions below). Built around the owner's model (2026-10-01): every produced item has a production and a resource cost and a resource upkeep; a city keeps up what stands on its territory; a shortage costs HP; units outside territory live off the tiles around them; bridges have no upkeep. G10b (upgrades, pillage, repair) stays deferred.
 
 ## Context
 G10a (PR #33, merged) left two stand-ins: a city's "work area" is the ring next to it, and resources pile up in a per-player stockpile that nothing spends. This slice gives every tile a default yield (G5), turns the work area into real, growing territory (G7), and gives each city its own resource stock that pays for what it produces and keeps up (the economy part of G8). Resources and buildings start to matter, and an army far from home has to be placed where the land can feed it.

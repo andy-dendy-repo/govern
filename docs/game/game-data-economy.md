@@ -1,13 +1,13 @@
 ---
-title: Game data, building and economy sections (yields, territory, bridges, resources, improvements, buildings)
-tags: [game, core, ruleset, json, builders, build-production, territory, tile-yields, city-stock, water, desert, culture, bridges, resources, improvements, farm, mine, lumber-camp, buildings, campus, harbour, army-camp, validation]
-code: [rulesets/default/v6.json, src/Govern.Core/Rulesets, src/Govern.Core/Economy, src/Govern.Core/Rulesets/EconomyRulesValidator.cs]
+title: Game data, building and economy sections (yields, territory, costs, upkeep, bridges, resources, improvements, buildings)
+tags: [game, core, ruleset, json, resource-cost, upkeep, supply, building-health, builders, build-production, territory, tile-yields, city-stock, water, desert, culture, bridges, resources, improvements, farm, mine, lumber-camp, buildings, campus, harbour, army-camp, validation]
+code: [rulesets/default/v7.json, src/Govern.Core/Rulesets, src/Govern.Core/Economy, src/Govern.Core/Rulesets/EconomyRulesValidator.cs, src/Govern.Core/Rulesets/UpkeepRulesValidator.cs]
 updated: 2026-10-01
 ---
 
 # Game data: building sections of the ruleset
 
-*Decided 2026-10-01 (G10a), first published in [`rulesets/default/v5.json`](../../rulesets/default/v5.json); tile yields and territory (G5, G7) arrived in [`v6.json`](../../rulesets/default/v6.json).* The sections and fields of the ruleset that tile yields, city territory, builders, tile improvements, city buildings and bridges use. The rest of the format (conventions, strict reading, versions, texts) is in [game data](game-data.md); the algorithms are in [game logic](game-logic.md#building-with-units) and the player's view in the [rules reference](rules.md#building-with-units).
+*Decided 2026-10-01 (G10a), first published in [`rulesets/default/v5.json`](../../rulesets/default/v5.json); tile yields and territory (G5, G7) arrived in [`v6.json`](../../rulesets/default/v6.json), resource costs, upkeep and building health (G8a) in [`v7.json`](../../rulesets/default/v7.json).* The sections and fields of the ruleset that tile yields, city territory, resource costs and upkeep, builders, tile improvements, city buildings and bridges use. The rest of the format (conventions, strict reading, versions, texts) is in [game data](game-data.md); the algorithms are in [game logic](game-logic.md#building-with-units) and the player's view in the [rules reference](rules.md#building-with-units).
 
 ## Building fields on units and cities
 
@@ -55,6 +55,24 @@ Each city keeps its own stock (`City.Stock`). At the end of its owner's turn it 
 
 The k-th tile a city gains costs `tileCost + tileCostIncrease × (k − 1)`. Which tile it takes is a Core rule ([game logic](game-logic.md#territory)).
 
+## Resource costs and upkeep (`resourceCost`, `upkeep`, `upkeep` section)
+
+| Field | Type | Meaning | Default ruleset |
+|---|---|---|---|
+| `units[].resourceCost`, `buildings[].resourceCost` | list of `{ "resource", "amount" }`, may be empty; amount 1..1000 | Paid in full from the city's stock at the end of the turn production of the item begins; the item waits while the stock can't cover it | settler 4 food 2 water, soldier and builder 2 food, spearman and archer 2 wood, horseman 3 food 2 water; army camp 4 stone 2 wood, campus 4 stone, trade post 4 wood, culture centre 3 stone, harbour 6 wood |
+| `units[].upkeep`, `buildings[].upkeep` | list, may be empty; amount 1..100 | Paid every turn by the city that keeps the item up | every unit 1 food 1 water, horseman 2 food 2 water; army camp 1 food, campus and culture centre 1 gold, trade post and harbour nothing |
+| `upkeep.supplyRadius` | int 0..3 | A unit outside its owner's territory is supplied by the land within this distance | 1 (the 7 tiles around it) |
+| `upkeep.shortageDamage` | int 1..`combat.maxHealth` − 1 | Health a unit, or a building, loses in a turn its upkeep isn't paid | 10 |
+| `upkeep.buildingHealth` | int 1..1000 | A building's full health; at no health it gives no yield and no production | 100 |
+| `upkeep.buildingRecovery` | int 1..`buildingHealth` | Health a building regains in a turn its upkeep is paid | 10 |
+
+```json
+"upkeep": { "supplyRadius": 1, "shortageDamage": 10, "buildingHealth": 100, "buildingRecovery": 10 }
+```
+
+- Bridges and tile improvements have no cost in resources and no upkeep; they are paid with production only.
+- A unit never dies of a shortage: its health stops at 1. How a city pays, in which order, and what a unit outside territory takes from the land are Core rules ([game logic](game-logic.md#costs-and-upkeep)).
+
 ## Bridges (`bridges`)
 
 | Field | Type | Meaning | Default |
@@ -67,7 +85,7 @@ The k-th tile a city gains costs `tileCost + tileCostIncrease × (k − 1)`. Whi
 
 ## Resources (`resources`)
 
-The resources a city keeps in its stock. Only an id for now; territory growth spends culture, and later sections (costs, upkeep, trade) will spend the rest.
+The resources a city keeps in its stock. Only an id for now; territory growth spends culture, resource costs and upkeep spend the rest, and trade will later.
 
 ```json
 "resources": [ { "id": "food" }, { "id": "water" }, { "id": "wood" }, { "id": "stone" }, { "id": "gold" }, { "id": "science" }, { "id": "culture" } ]
@@ -100,25 +118,27 @@ Unique per city: a city has each building at most once.
 |---|---|---|
 | `id` | id | Needs a `building.{id}.name` text |
 | `cost` | int 1..1000 | Production the city needs |
+| `resourceCost` | list of `{ "resource", "amount" }` | Resources paid when production begins ([costs and upkeep](#resource-costs-and-upkeep-resourcecost-upkeep-upkeep-section)) |
+| `upkeep` | list of `{ "resource", "amount" }` | Resources the city pays every turn to keep it |
 | `yields` | list of `{ "resource", "amount" }` | Added to the city's stock every turn; may be empty |
 | `production` | int 0..100 | Added to the city's production per turn (for its own production and the jobs it feeds) |
 | `requiresAdjacentTerrain` | list of terrain ids | The city needs one of them next to it (empty: no need); no repeats |
 
 ```json
 "buildings": [
-  { "id": "army_camp", "cost": 8, "yields": [], "production": 1, "requiresAdjacentTerrain": [] },
-  { "id": "campus", "cost": 8, "yields": [{ "resource": "science", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
-  { "id": "trade_post", "cost": 8, "yields": [{ "resource": "gold", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
-  { "id": "culture_centre", "cost": 8, "yields": [{ "resource": "culture", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
-  { "id": "harbour", "cost": 8, "yields": [{ "resource": "food", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": ["lake"] }
+  { "id": "army_camp", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 4 }, { "resource": "wood", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }], "yields": [], "production": 1, "requiresAdjacentTerrain": [] },
+  { "id": "campus", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 4 }], "upkeep": [{ "resource": "gold", "amount": 1 }], "yields": [{ "resource": "science", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
+  { "id": "trade_post", "cost": 8, "resourceCost": [{ "resource": "wood", "amount": 4 }], "upkeep": [], "yields": [{ "resource": "gold", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
+  { "id": "culture_centre", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 3 }], "upkeep": [{ "resource": "gold", "amount": 1 }], "yields": [{ "resource": "culture", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
+  { "id": "harbour", "cost": 8, "resourceCost": [{ "resource": "wood", "amount": 6 }], "upkeep": [], "yields": [{ "resource": "food", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": ["lake"] }
 ]
 ```
 
-Later items give the buildings their own mechanics (traders from trade posts, faster army production in army camps, ships from harbours), upgrades, health and pillage ([design roadmap](design-roadmap.md), G10b).
+Later items give the buildings their own mechanics (traders from trade posts, faster army production in army camps, ships from harbours), upgrades, pillage and repair ([design roadmap](design-roadmap.md), G10b).
 
 ## Validation of the building sections
 
-`EconomyRulesValidator` (called by `RulesetValidator`) adds these checks; `RulesetTests` has a case for each:
+`EconomyRulesValidator` and `UpkeepRulesValidator` (called by `RulesetValidator`) add these checks; `RulesetTests` has a case for each:
 - `resources` is not empty; `improvements` and `buildings` may be empty; ids are valid and unique per list.
 - Costs 1..1000, yields 1..100 per resource, building `production` 0..100, `bridges.cost` 1..1000.
 - Every resource and terrain reference resolves; improvement terrains are passable.
@@ -126,4 +146,7 @@ Later items give the buildings their own mechanics (traders from trade posts, fa
 - Terrain, river and `cities.yields` amounts 1..100 per resource, each resource once; `cities.startingStock` amounts 1..1000.
 - `territory`: `initialRadius` 0..10, `maxRadius` `initialRadius`..10, `tileCost` 1..1000, `tileCostIncrease` 0..1000, `growthResource` exists, and `cities.minimumSpacing` > 2 × `initialRadius`, so two new cities never claim the same tile.
 - No sight invariant for bridges any more: a unit sees enemy territory on the tiles it sees, and the bridge check only looks at the two tiles beside the edge, which the unit always sees.
+- Resource costs: amounts 1..1000, each resource once, and never `territory.growthResource` (territory growth spends it just before production pays, so the city panel could not tell for sure whether production can begin). Upkeep: amounts 1..100, each resource once.
+- `upkeep`: `supplyRadius` 0..3, `shortageDamage` 1..`combat.maxHealth` − 1, `buildingHealth` 1..1000, `buildingRecovery` 1..`buildingHealth`.
+- **Fog invariant:** a unit with upkeep has `sight` ≥ `upkeep.supplyRadius` + 1, so it sees every tile that supplies it and the rivers on their edges, and the supply preview is exact.
 - The name texts of every resource, improvement and building exist.

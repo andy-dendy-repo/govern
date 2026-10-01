@@ -49,6 +49,7 @@ internal sealed class GameStateBuilder
         BuildingType? producingBuilding = null,
         ImmutableArray<ResourceAmount>? stock = null,
         int tilesGained = 0,
+        bool paid = false,
         params BuildingType[] buildings)
     {
         var id = new CityId(_nextId++);
@@ -62,8 +63,17 @@ internal sealed class GameStateBuilder
             producingBuilding,
             buildings.Length == 0 ? null : [.. buildings],
             stock,
-            tilesGained));
+            tilesGained,
+            paid));
         return id;
+    }
+
+    // Changes a city added before, e.g. its upkeep priority or its buildings' damage.
+    public GameStateBuilder WithCity(CityId id, Func<City, City> change)
+    {
+        var index = _cities.FindIndex(city => city.Id == id);
+        _cities[index] = change(_cities[index]);
+        return this;
     }
 
     // Gives tiles to a city's territory (null: to no city), on top of the tiles every city claims around itself when it is built

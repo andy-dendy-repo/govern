@@ -1,7 +1,10 @@
+using System.Collections.Immutable;
 using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Helpers;
 using Govern.Client.Models;
 using Govern.Core.Cities;
+using Govern.Core.Economy;
+using Govern.Core.Engine;
 using Govern.Core.Rulesets;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -10,8 +13,8 @@ using Microsoft.AspNetCore.Components;
 namespace Govern.Client.Features.Games.Components;
 
 /// <summary>
-/// The selected unit's panel: its combat stats for any unit the player sees, and its movement, sight, cost, build production
-/// and job for their own.
+/// The selected unit's panel: its combat stats for any unit the player sees, and its movement, sight, cost, build production,
+/// job, upkeep and supply for their own.
 /// </summary>
 public partial class UnitPanel
 {
@@ -28,6 +31,22 @@ public partial class UnitPanel
     public Ruleset Ruleset { get; set; } = null!;
 
     private bool IsOwn => Unit.Owner == View.Viewer;
+
+    private ImmutableArray<ResourceAmount> Upkeep => Ruleset.Unit(Unit.Type).Upkeep;
+
+    // Who keeps the unit up at the end of the turn, or what it will lack and what that costs it.
+    private string SupplyText(UnitSupply supply)
+    {
+        var city = supply.City is { } id ? View.Cities.FirstOrDefault(city => city.Id == id)?.Name : null;
+        var loss = $"it loses {Ruleset.Upkeep.ShortageDamage} health at the end of the turn";
+        return (supply.Supplied, city) switch
+        {
+            (true, { } name) => $"Kept up by {name}.",
+            (true, null) => "Fed by the land around it.",
+            (false, { } name) => $"{name} can't pay its upkeep: {loss}.",
+            (false, null) => $"The land around it lacks {ResourceFormatter.Describe(Ruleset, supply.Shortfall)}: {loss}.",
+        };
+    }
 
     private StatRow[] Rows
     {
@@ -63,7 +82,7 @@ public partial class UnitPanel
         {
             var perTurn = Ruleset.Unit(Unit.Type).BuildProduction;
             return JobFundingResolver.FeedingCities(Ruleset, View).TryGetValue(Unit.Id, out var city)
-                ? perTurn + CityProduction.PerTurn(Ruleset, city.BuildingList)
+                ? perTurn + CityProduction.PerTurn(Ruleset, city.WorkingBuildings(Ruleset.Upkeep.BuildingHealth))
                 : perTurn;
         }
     }

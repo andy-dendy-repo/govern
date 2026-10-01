@@ -1,6 +1,6 @@
 ---
 title: Game logic (Core algorithms)
-tags: [game, core, rules, algorithms, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, determinism]
+tags: [game, core, rules, algorithms, upkeep, resource-cost, supply, shortage, building-health, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, determinism]
 code: [src/Govern.Core]
 updated: 2026-10-01
 ---
@@ -96,7 +96,7 @@ Every player action is a command sent by one player (the actor). The engine runs
 4. The target must be on the map and within the unit's range: 1 for `attack`, [`units.*.ranged.range`] for `ranged_attack` → `attack.not_adjacent` (melee) or `attack.out_of_range` (ranged).
 5. The target must hold a unit or a city → `attack.no_target`, and it must not be the actor's own → `attack.own_target`. A ranged unit's target must hold a unit → `attack.no_target`. A melee unit can't capture an undefended city across an uncrossable, unbridged river [`rivers.*.isCrossable`] → `attack.river_in_the_way` (it can still fight a unit there).
 6. **If a unit stands there:** they fight (see [Combat](#combat)). The attacker stays where it is, its movement drops to 0 and its job, if any, is dropped.
-7. **Otherwise (an undefended city, melee only):** the city is captured: its owner becomes the actor, its production progress resets to 0 when [`cities.captureResetsProduction`] is true (it is by default), it stops producing a building (back to its unit), it keeps its buildings, and the attacker moves into it with movement 0.
+7. **Otherwise (an undefended city, melee only):** the city is captured: its owner becomes the actor, its production progress resets to 0 when [`cities.captureResetsProduction`] is true (it is by default), it stops producing a building (back to its unit), its item is unpaid again (a resource cost the old owner paid is lost), it keeps its buildings, and the attacker moves into it with movement 0.
 
 ### Combat
 
@@ -126,7 +126,8 @@ The **forecast** (see [View previews](#view-previews-what-the-client-can-check))
 
 1. The city must be the actor's → `city.not_found`.
 2. The unit type must exist → `city.unknown_unit_type`.
-3. The city now produces that type, and stops producing a building. Its progress is kept.
+3. If it already produces that type (and no building), nothing changes.
+4. Otherwise, when the resource cost of what it produced was already paid, it goes back to the stock (`ProductionPaid` clears). The city now produces that type, and stops producing a building. Its progress is kept.
 
 ### Produce a building
 
@@ -134,7 +135,7 @@ The **forecast** (see [View previews](#view-previews-what-the-client-can-check))
 2. The building must exist [`buildings`] → `city.unknown_building`.
 3. The city must not have it yet → `city.building_exists`.
 4. If the building has [`buildings.*.requiresAdjacentTerrain`], one of the city's neighbours must have one of those terrains → `city.building_needs_terrain`.
-5. The city now produces the building instead of its unit. Its progress is kept.
+5. If it already produces this building, nothing changes. Otherwise a paid resource cost goes back to the stock, as in [Set production](#set-production), and the city now produces the building instead of its unit. Its progress is kept.
 
 ### Build an improvement
 
@@ -155,6 +156,12 @@ The **forecast** (see [View previews](#view-previews-what-the-client-can-check))
 5. The target must be a neighbour on the map → `bridge.not_adjacent`; a river must run along the edge between them → `bridge.no_river`; the edge must not be bridged → `bridge.exists`; the target must be passable → `bridge.impassable`; and neither tile may be in an enemy city's territory → `bridge.enemy_territory`.
 6. The unit's job becomes this bridge with progress 0 (any other job is dropped), and its movement drops to 0.
 
+### Set the upkeep priority
+
+1. The city must be the actor's → `city.not_found`.
+2. The priority must be "buildings first" or "units first" → `city.unknown_upkeep_priority` (an unknown name in the JSON is already a 400).
+3. The city pays its upkeep in that order from the next end of turn (`upkeep_priority_set`). New cities pay buildings first.
+
 ### Building with units (jobs)
 
 Run at the end of the owner's turn (see [End turn](#end-turn)), for the owner's units that have a job, oldest job first (the round it started, then the unit id):
@@ -165,17 +172,32 @@ Run at the end of the owner's turn (see [End turn](#end-turn)), for the owner's 
 
 ### End turn
 
-1. **Heal:** each of the actor's hurt units whose movement left is still full and that has no job (it neither moved, attacked nor worked this turn) loses [`combat.healing.perTurn`] damage, or [`combat.healing.inOwnCity`] on one of the actor's cities, down to 0.
+1. **Resting units:** note the actor's hurt units whose movement left is still full and that have no job (they neither moved, attacked nor worked this turn). They heal in step 4.
 2. **Jobs:** advance the actor's unit jobs (see [Building with units](#building-with-units-jobs)).
-3. **Income:** each of the actor's cities adds to its stock the tile yield of every tile in its territory, [`cities.yields`] and its buildings' [`buildings.*.yields`].
-4. **Territory:** each of the actor's cities, by id, whose stock holds the price of its next tile in [`territory.growthResource`] (see [Territory](#territory)) pays it and claims that tile (`territory_grew`).
-5. **Produce**, for each of the actor's cities that didn't feed a job this turn, with its production per turn = [`cities.productionPerTurn`] plus each of its buildings' [`buildings.*.production`]:
-   1. If it produces a building: add the production; when the progress reaches [`buildings.*.cost`], the city gains the building (`building_completed`), its progress resets to 0 and it goes back to producing its unit. A new building therefore yields from the next turn.
-   2. Otherwise add the production to its progress, capped at the unit's [`units.*.productionCost`].
-   3. If the progress has reached the cost, find a spawn tile: the city's tile if free, otherwise the first free neighbour (in fixed direction order) that is passable and has no unit and no enemy city.
-   4. If a spawn tile exists, create the unit there with a new random id and **0 movement**, and reset the progress to 0. If none exists (the city is surrounded), the progress stays full and the unit appears in a later turn.
-6. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
-7. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
+3. **Income:** each of the actor's cities adds to its stock the tile yield of every tile in its territory, [`cities.yields`] and the yields of its working buildings [`buildings.*.yields`] (a building at 0 health gives nothing).
+4. **Upkeep:** see [Costs and upkeep](#costs-and-upkeep): cities pay for their buildings and the units on their territory, units outside territory live off the land, unpaid items lose health, paid buildings recover, and a supplied resting unit loses [`combat.healing.perTurn`] damage, or [`combat.healing.inOwnCity`] on one of the actor's cities, down to 0.
+5. **Territory:** each of the actor's cities, by id, whose stock holds the price of its next tile in [`territory.growthResource`] (see [Territory](#territory)) pays it and claims that tile (`territory_grew`).
+6. **Produce**, for each of the actor's cities that didn't feed a job this turn, with its production per turn = [`cities.productionPerTurn`] plus each working building's [`buildings.*.production`]:
+   1. If the item's resource cost [`units.*.resourceCost`, `buildings.*.resourceCost`] isn't paid yet: when the stock holds all of it, pay it and go on; otherwise the item waits and gains no production this turn.
+   2. If it produces a building: add the production; when the progress reaches [`buildings.*.cost`], the city gains the building (`building_completed`) at full health, its progress resets to 0, the next item is unpaid, and it goes back to producing its unit. A new building therefore yields from the next turn.
+   3. Otherwise add the production to its progress, capped at the unit's [`units.*.productionCost`].
+   4. If the progress has reached the cost, find a spawn tile: the city's tile if free, otherwise the first free neighbour (in fixed direction order) that is passable and has no unit and no enemy city.
+   5. If a spawn tile exists, create the unit there with a new random id and **0 movement**, and reset the progress to 0; the next unit is unpaid. If none exists (the city is surrounded), the progress stays full and the unit appears in a later turn.
+7. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
+8. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
+
+### Costs and upkeep
+
+**Resource cost.** A city pays the whole [`resourceCost`] of what it produces once, at the end of the turn production of it begins (step 6 of [End turn](#end-turn)), and only then does progress grow. A city that changes to a different item gets an already paid cost back; a captured city's item is unpaid again. Bridges and improvements cost only production.
+
+**Upkeep**, step 4 of [End turn](#end-turn), for the actor only:
+1. Each of the actor's cities, by id, pays from its stock (after this turn's income) for its buildings, in the ruleset's order, and for the actor's units on its territory, the most hurt first, then by id. With the priority "buildings first" (the default) the buildings come first; with "units first" the units do.
+2. Each item's [`buildings.*.upkeep`] or [`units.*.upkeep`] is paid all or nothing: when the stock left holds all of it, it is paid; otherwise nothing is taken and the next item is tried.
+3. An unpaid building loses [`upkeep.shortageDamage`] health down to 0 (`building_damaged`); at 0 it gives no yield and no production until it recovers. A paid, hurt building regains [`upkeep.buildingRecovery`].
+4. A unit outside the actor's territory (neutral or enemy land) is supplied when the tiles within [`upkeep.supplyRadius`] of it, its own tile included, give at least its upkeep. Their tile yields count whoever owns them, and each unit counts them on its own: two units may live off the same tiles. Nothing is taken from any stock.
+5. An unpaid or unsupplied unit loses [`upkeep.shortageDamage`] health but never goes below 1 (`unit_starved`), and doesn't heal. A supplied unit that rested this turn heals (step 4 of [End turn](#end-turn)).
+
+Bridges and improvements have no upkeep. Upkeep is paid before territory growth, so culture spent on borders is what is left after upkeep.
 
 ### Resign
 
@@ -191,7 +213,7 @@ After every successful command:
 
 ### Territory
 
-A new city claims the unowned tiles within [`territory.initialRadius`]. Afterwards, at the end of its owner's turn (step 4 of [End turn](#end-turn)), a city whose stock holds `tileCost + tileCostIncrease × tiles gained so far` [`territory.*`] of [`territory.growthResource`] pays it and claims one more tile. The tile is chosen without randomness among the tiles no city owns that touch the city's territory and are within [`territory.maxRadius`] of the city:
+A new city claims the unowned tiles within [`territory.initialRadius`]. Afterwards, at the end of its owner's turn (step 5 of [End turn](#end-turn)), after upkeep, a city whose stock holds `tileCost + tileCostIncrease × tiles gained so far` [`territory.*`] of [`territory.growthResource`] pays it and claims one more tile. The tile is chosen without randomness among the tiles no city owns that touch the city's territory and are within [`territory.maxRadius`] of the city:
 1. the highest total tile yield (all resources added up);
 2. then the nearest to the city;
 3. then the lowest row, then the lowest column.
@@ -205,7 +227,7 @@ If no tile qualifies, nothing is paid and the stock keeps growing. Cities never 
 3. **The view** a player receives:
    - every tile, as unexplored (no terrain), explored (terrain, as last seen) or visible; an explored or visible tile also shows the rivers on the edges it stores (rivers never change). An edge stored by an unexplored neighbour shows once that tile is explored. Improvements and bridges (stored like rivers) and which player's territory a tile is in are shown on visible tiles only, since they change; which of the player's own cities owns a tile is shown for their own territory only;
    - their own units and cities, plus enemy units and cities on currently visible tiles;
-   - enemy cities without their production or buildings, and enemy units without their movement left or job (their health is shown). The stock and tiles gained of the player's own cities, never the opponent's. A known, accepted leak: a hurt unit heals only when it kept all its movement and has no job, so an opponent who sees a hurt unit on the same tile before and after its owner's turn learns whether it moved, or, when it stayed and didn't heal, that it is working on a job (one bit per hurt, visible unit per turn). A second accepted leak: a visible enemy territory tile shows that an enemy city is within [`territory.maxRadius`], and watching when enemy borders grow shows roughly that city's culture income (and so whether it has a culture building);
+   - enemy cities without their production or buildings, and enemy units without their movement left or job (their health is shown). The stock and tiles gained of the player's own cities, never the opponent's. A known, accepted leak: a hurt unit heals only when it kept all its movement and has no job, so an opponent who sees a hurt unit on the same tile before and after its owner's turn learns whether it moved, or, when it stayed and didn't heal, that it is working on a job (one bit per hurt, visible unit per turn). A second accepted leak: a visible enemy territory tile shows that an enemy city is within [`territory.maxRadius`], and watching when enemy borders grow shows roughly that city's culture income (and so whether it has a culture building). A third accepted leak: a unit that loses health without a fight, or doesn't heal while resting, at the end of its owner's turn shows that it was not supplied, so the land around it, or the stock of the city whose territory it stands on, is short;
    - units and cities ordered by id, so the order reveals nothing about when they were created;
    - the round, the current player, the status, the winner and each player's status.
 4. **The view version** is a fingerprint (SHA-256) of everything in the view. It changes only when something the player can see changes, so it can't be used to count the opponent's hidden actions. A command must quote the version it was based on (the server rejects it with `game.stale_version` if the view changed since).
@@ -219,8 +241,10 @@ The client never has the full game state, only its view. From the view alone, Co
 - **Can found a city here:** the same checks as [Found a city](#found-a-city).
 - **Can build this improvement here**, **the tiles it can bridge to** and **can this city produce this building:** the same checks as [Build an improvement](#build-an-improvement), [Build a bridge](#build-a-bridge) and [Produce a building](#produce-a-building).
 - **A city's income:** for one of the player's own cities, what step 3 of [End turn](#end-turn) will add to its stock (its territory is always visible to its owner).
+- **A city's forecast:** its income, the upkeep it will pay, the buildings and units it can't pay for (step 4), what is still missing before its item can begin (step 6.1), and the production its item gains (from the buildings still working after step 4; none while it can't begin). Costs never use [`territory.growthResource`], so territory growth between the two steps can't change the answer. The last two assume the city's production doesn't go to a job this turn; the client checks that from the units' jobs (step 3 of [Building with units](#building-with-units-jobs)).
+- **A unit's supply:** which own city keeps it up, or, outside territory, what the land around it lacks.
 
-These answers are **exactly** what the engine would decide, because they share the rules' own checks and because of three fog invariants: every unit sees at least as far as it moves [`units.*.sight` ≥ `units.*.movement`], a founding unit sees every city closer than the spacing [`sight` ≥ `cities.minimumSpacing` − 1], and a ranged unit sees every tile in its range [`units.*.ranged.range` ≤ `sight`]. The ruleset validator enforces all three. The territory checks (founding, improvements, bridges) look only at the unit's own tile and a neighbour, which it always sees.
+These answers are **exactly** what the engine would decide, because they share the rules' own checks and because of three fog invariants: every unit sees at least as far as it moves [`units.*.sight` ≥ `units.*.movement`], a founding unit sees every city closer than the spacing [`sight` ≥ `cities.minimumSpacing` − 1], a ranged unit sees every tile in its range [`units.*.ranged.range` ≤ `sight`], and a unit with upkeep sees every tile that supplies it and the rivers on their edges [`sight` ≥ `upkeep.supplyRadius` + 1]. The ruleset validator enforces all four. The territory checks (founding, improvements, bridges) look only at the unit's own tile and a neighbour, which it always sees.
 
 ## Randomness and ids
 
@@ -231,7 +255,8 @@ These answers are **exactly** what the engine would decide, because they share t
 
 - At most one unit stands on a tile; at most one city stands on a tile.
 - A unit's movement left is between 0 and its type's movement.
-- A unit on the map has health between 1 and [`combat.maxHealth`].
+- A unit on the map has health between 1 and [`combat.maxHealth`]; upkeep never kills it.
+- A building has health between 0 and [`upkeep.buildingHealth`].
 - A city's progress is between 0 and the cost of what it produces.
 - A tile belongs to at most one city's territory, and a city's own tile is in its territory.
 - A tile has at most one improvement, a city each building at most once, an edge at most one bridge, and only river edges have bridges.
@@ -239,7 +264,7 @@ These answers are **exactly** what the engine would decide, because they share t
 
 ## Future mechanics
 
-Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), resource costs, upkeep and supply (G8a), city growth, housing, loyalty and the production queue (G8b), building upgrades, health, pillage and the buildings' own mechanics (G10b), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
+Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), city growth, housing, loyalty and the production queue (G8b), building upgrades, pillage, repair and the buildings' own mechanics (G10b), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
 
 ## Open questions
 

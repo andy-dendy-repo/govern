@@ -9,10 +9,10 @@ namespace Govern.Core.Rulesets;
 internal static class EconomyRulesValidator
 {
     // Keeps per-turn sums far from overflowing over a long game.
-    private const int MaxCost = 1000;
-    private const int MaxYield = 100;
+    public const int MaxCost = 1000;
+    public const int MaxYield = 100;
     private const int MaxRadius = 10;
-    private const int MaxStock = 1000;
+    public const int MaxStock = 1000;
 
     public static void Validate(RulesetDocument document, HashSet<string> terrains, List<RulesetProblem> problems)
     {
@@ -26,6 +26,7 @@ internal static class EconomyRulesValidator
         CheckBuilders(document, problems);
         CheckTileYields(document, resources, problems);
         CheckCityEconomy(document, resources, problems);
+        UpkeepRulesValidator.Validate(document, resources, problems);
         CheckTexts(document, problems);
     }
 
@@ -119,7 +120,7 @@ internal static class EconomyRulesValidator
         }
     }
 
-    private static void CheckYields(ImmutableArray<ResourceAmount> yields, HashSet<string> resources, string path, List<RulesetProblem> problems, int max = MaxYield)
+    public static void CheckYields(ImmutableArray<ResourceAmount> yields, HashSet<string> resources, string path, List<RulesetProblem> problems, int max = MaxYield)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         for (var index = 0; index < yields.Length; index++)

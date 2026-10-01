@@ -43,10 +43,40 @@ public partial class CityPanel
     // While the city lends its production to a job on its ground, its own production gets nothing.
     private bool FeedsAJob => JobFundingResolver.FeedingCities(Ruleset, View).Values.Any(city => city.Id == City.Id);
 
-    private int PerTurn => FeedsAJob ? 0 : CityProduction.PerTurn(Ruleset, City.BuildingList);
+    // The production the city's item gains at the end of the turn: none while it feeds a job or can't pay to begin.
+    private int PerTurn(CityForecast? forecast) => FeedsAJob ? 0 : forecast?.ProductionPerTurn ?? 0;
 
-    // What the city adds to its stock at the end of the turn (its territory, its own yields and its buildings).
-    private ImmutableArray<ResourceAmount> Income => GameEngine.CityIncome(Ruleset, View, City.Id);
+    // What the city will do at the end of the turn: its income, its upkeep, and whether its production can begin.
+    private CityForecast? Forecast => GameEngine.CityForecast(Ruleset, View, City.Id);
+
+    private ImmutableArray<ResourceAmount> ResourceCost =>
+        City.Producing is { } unit ? CityProduction.ResourceCost(Ruleset, City.ProducingBuilding, unit) : [];
+
+    // Whether the city pays its item's resource cost at the end of this turn.
+    private bool PaysThisTurn(CityForecast? forecast) =>
+        !City.ProductionPaid && !FeedsAJob && forecast is { MissingToBegin.IsEmpty: true } && !ResourceCost.IsEmpty;
+
+    // What a resource gains (or loses) at the end of the turn: the city's income less the upkeep it pays and any resource
+    // cost it pays to begin its item.
+    private int Net(CityForecast? forecast, ResourceType resource) => forecast is null
+        ? 0
+        : YieldCalculator.AmountOf(forecast.Income, resource)
+            - YieldCalculator.AmountOf(forecast.Upkeep.Paid, resource)
+            - (PaysThisTurn(forecast) ? YieldCalculator.AmountOf(ResourceCost, resource) : 0);
+
+    // Whether the resource cost of what the city produces is paid, will be paid at the end of the turn, or what is missing.
+    private string? CostText(CityForecast? forecast)
+    {
+        var cost = ResourceCost;
+        return (cost.IsEmpty, City.ProductionPaid, forecast?.MissingToBegin) switch
+        {
+            (true, _, _) => null,
+            (false, true, _) => $"Resources paid: {ResourceFormatter.Describe(Ruleset, cost)}.",
+            _ when FeedsAJob => $"Pays {ResourceFormatter.Describe(Ruleset, cost)} to begin once its production is free of the job.",
+            (false, false, { IsEmpty: false } missing) => $"Waiting for {ResourceFormatter.Describe(Ruleset, missing)} more to begin.",
+            _ => $"Pays {ResourceFormatter.Describe(Ruleset, cost)} at the end of the turn to begin.",
+        };
+    }
 
     // The price of the next tile in the growth resource, against what the city holds of it.
     private string TerritoryText

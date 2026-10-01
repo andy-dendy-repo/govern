@@ -9,6 +9,8 @@ namespace Govern.Core.Economy;
 /// </summary>
 /// <param name="Id">The building this definition describes.</param>
 /// <param name="Cost">Production points needed to produce it.</param>
+/// <param name="ResourceCost">Resources the city pays in full when it begins producing it (may be empty).</param>
+/// <param name="Upkeep">Resources its city pays each turn to keep it working (may be empty).</param>
 /// <param name="Yields">What it adds to its city's stock at the end of each of their turns.</param>
 /// <param name="Production">Extra production points per turn for its city (0 for none).</param>
 /// <param name="RequiresAdjacentTerrain">
@@ -17,6 +19,8 @@ namespace Govern.Core.Economy;
 public sealed record BuildingDefinition(
     BuildingType Id,
     int Cost,
+    ImmutableArray<ResourceAmount> ResourceCost,
+    ImmutableArray<ResourceAmount> Upkeep,
     ImmutableArray<ResourceAmount> Yields,
     int Production,
     ImmutableArray<TerrainType> RequiresAdjacentTerrain);

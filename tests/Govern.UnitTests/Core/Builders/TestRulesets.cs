@@ -7,12 +7,12 @@ using Govern.Core.Units;
 namespace Govern.UnitTests.Core.Builders;
 
 /// <summary>
-/// The real default ruleset (<c>rulesets/default/v6.json</c>, copied next to the tests) and variants of it for rules whose data
+/// The real default ruleset (<c>rulesets/default/v7.json</c>, copied next to the tests) and variants of it for rules whose data
 /// matters to a test.
 /// </summary>
 internal static class TestRulesets
 {
-    public static readonly string DefaultJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "rulesets", "default", "v6.json"));
+    public static readonly string DefaultJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "rulesets", "default", "v7.json"));
 
     public static readonly Ruleset Default = Ruleset.ParseValid(DefaultJson);
 
@@ -67,6 +67,8 @@ internal static class TestRulesets
             ["movement"] = movement,
             ["sight"] = sight,
             ["productionCost"] = cost,
+            ["resourceCost"] = new JsonArray(),
+            ["upkeep"] = new JsonArray(),
             ["abilities"] = new JsonArray([.. abilities.Select(static ability => (JsonNode)ability)]),
         });
         if (abilities.Contains("attack"))

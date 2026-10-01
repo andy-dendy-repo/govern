@@ -15,6 +15,7 @@ namespace Govern.Core.Engine;
 [JsonDerivedType(typeof(BuildImprovementCommand), "build_improvement")]
 [JsonDerivedType(typeof(BuildBridgeCommand), "build_bridge")]
 [JsonDerivedType(typeof(ProduceBuildingCommand), "produce_building")]
+[JsonDerivedType(typeof(SetUpkeepPriorityCommand), "set_upkeep_priority")]
 [JsonDerivedType(typeof(EndTurnCommand), "end_turn")]
 [JsonDerivedType(typeof(ResignCommand), "resign")]
 public abstract record GameCommand;

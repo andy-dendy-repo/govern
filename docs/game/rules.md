@@ -1,7 +1,7 @@
 ---
 title: Game rules reference (for players)
-tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
-code: [rulesets/default/v5.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
+tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
+code: [rulesets/default/v7.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
 updated: 2026-10-01
 ---
 
@@ -116,7 +116,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
   - **River:** against a melee attack across a river, the defender also gets the river's defence bonus (see "Rivers").
 - **Damage** each side takes: the damage between equal units, plus the extra damage per point by which the other side is stronger (less when it is weaker), kept between the least and the most damage under "Game numbers". A random roll then moves it up or down by up to the random spread, but never below 1, and never more than the health left.
 - **Civilians** (the settler and the builder) are destroyed by any attack and do no damage back.
-- **Healing:** at the end of your turn, each of your hurt units that neither moved, attacked nor worked on a job this turn heals, more in one of your cities (under "Game numbers"), up to full health.
+- **Healing:** at the end of your turn, each of your hurt units that neither moved, attacked nor worked on a job this turn heals, more in one of your cities (under "Game numbers"), up to full health, as long as it gets its upkeep (see "Costs and upkeep").
 
 ## Class counters
 
@@ -138,6 +138,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 ## Cities and production
 
 - Each city produces one unit type at a time. You can change it at any time during your turn; progress is kept.
+- A unit or building also costs resources, which the city pays in full when it starts producing it; until it can pay, it waits (see "Costs and upkeep").
 - When you end your turn, each of your cities adds its production per turn (under "Game numbers") to its progress. When the progress reaches the unit's production cost, the unit appears on the city's tile, or on the first free neighbouring tile a unit can stand on if the city's tile is taken, with 0 movement. Progress then starts again from 0.
 - If every tile around the city is taken, the finished unit waits and appears in a later turn.
 - Cities see as far as the city sight under "Game numbers", plus the sight bonus of their tile.
@@ -169,7 +170,31 @@ Each city owns a set of tiles: its territory. A tile belongs to at most one city
 
 ## City resources
 
-Each city keeps its own resources. At the end of each of your turns, every one of your cities adds to its own stock the yield of every tile in its territory, its own 1 Culture and its buildings' yields. The city panel shows a city's resources with what each gains per turn, and what its next tile costs. The top bar shows the total over all your cities. For now only Culture is spent (on territory); later items will spend the rest.
+Each city keeps its own resources. At the end of each of your turns, every one of your cities adds to its own stock the yield of every tile in its territory, its own 1 Culture and its buildings' yields, then pays its upkeep (see "Costs and upkeep"). Territory is paid in Culture, and units and buildings in the other resources. The city panel shows a city's resources with what each gains or loses per turn, its upkeep, and what its next tile costs. The top bar shows the total over all your cities.
+
+## Costs and upkeep
+
+Units and buildings cost resources as well as production, and need resources every turn to stay healthy. Improvements and bridges cost only production and need nothing afterwards.
+
+| Item | Resource cost | Upkeep per turn |
+|---|---|---|
+| Settler | 4 Food, 2 Water | 1 Food, 1 Water |
+| Soldier | 2 Food | 1 Food, 1 Water |
+| Spearman | 2 Wood | 1 Food, 1 Water |
+| Horseman | 3 Food, 2 Water | 2 Food, 2 Water |
+| Archer | 2 Wood | 1 Food, 1 Water |
+| Builder | 2 Food | 1 Food, 1 Water |
+| Army camp | 4 Stone, 2 Wood | 1 Food |
+| Campus | 4 Stone | 1 Gold |
+| Trade post | 4 Wood | — |
+| Culture centre | 3 Stone | 1 Gold |
+| Harbour | 6 Wood | — |
+
+- **Resource cost:** paid in full by the city at the end of the turn it starts producing the item; production then adds up until it is done. If the city can't pay yet, the item waits and gains no production; the city panel says what is missing. A city producing the same unit again pays again for each one. Switching to something else before it is done gives the resources back (the production progress is kept, as always). A captured city's paid cost is lost.
+- **Upkeep on your territory:** each city pays, from its own stock, for its buildings and for your units standing in its territory. An item is paid in full or not at all. A city pays its buildings first (in the order of the table) and then its units, the most hurt first; a switch in the city panel makes it pay its units first instead.
+- **Upkeep outside your territory:** a unit in neutral or enemy land lives off the land: the tiles around it (see "Land that supplies a unit outside your territory" under "Game numbers"), its own included, must together yield at least its upkeep of each resource. Units sharing those tiles don't compete for them: each gets the full yield. Plains and forests feed an army; in deep desert it starves.
+- **A unit without upkeep** loses health at the end of your turn instead of healing ("Health lost in a turn without upkeep"), but never drops below 1: hunger alone never kills, it leaves the unit easy to finish off. Once supplied again it heals as usual.
+- **A building without upkeep** loses health the same way. At 0 it stays but gives no yield and no production until it is paid again; a paid, hurt building regains health every turn.
 
 ## Improvements
 
@@ -206,7 +231,7 @@ Each city can build each building once. A city produces either a unit or a build
 
 - **Yield per turn:** added to the city's resources at the end of every one of your turns, from the turn after the building is finished.
 - **Extra production:** added to the city's production per turn, for its own production and for jobs in its territory.
-- For now buildings only give their yield. Later, trade posts will train traders, army camps will speed up army production and harbours will build ships.
+- Buildings also cost resources and upkeep (see "Costs and upkeep"). For now they only give their yield. Later, trade posts will train traders, army camps will speed up army production and harbours will build ships.
 
 ## Resources in the top bar
 
@@ -219,7 +244,7 @@ The top bar counts your resources (food, water, wood, stone, gold, science, cult
 - You see which player's territory a tile is in when you can see the tile.
 - You see enemy units and cities only on tiles you can see right now.
 - You see the health of every enemy unit you can see.
-- You never see an enemy unit's movement left or job, what an enemy city is producing, or which buildings it has.
+- You never see an enemy unit's movement left or job, what an enemy city is producing, which buildings it has, or its stock. An enemy unit you watch losing health, or not healing, between turns may still tell you that it moved, or that the land or the city keeping it up is short.
 - The order in which units and cities are listed, and their ids, reveal nothing about when they were created.
 
 ## Game numbers
@@ -248,6 +273,10 @@ The top bar counts your resources (food, water, wood, stone, gold, science, cult
 | Random spread of damage | ±20% |
 | Healing per turn of rest | 10 |
 | Healing per turn of rest in your city | 20 |
+| Land that supplies a unit outside your territory (radius) | 1 |
+| Health lost in a turn without upkeep | 10 |
+| Full health of a building | 100 |
+| Health a building regains per paid turn | 10 |
 
 ## Maintaining this page
 
