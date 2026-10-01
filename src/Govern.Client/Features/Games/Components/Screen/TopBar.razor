@@ -1,5 +1,7 @@
 @* The top zone of the game screen: the player's seat, the turn and whose turn it is, the resources in all their cities together
-   (one counter per ruleset resource; each city keeps and spends its own), End turn, and Resign (asks first). Later counters (season) are added here, before the actions. *@
+   (one counter per ruleset resource; each city keeps and spends its own), on the player's turn how many of their units can
+   still move (a click selects the next one), End turn, and Resign (asks first). Later counters (season) are added here, before the actions. *@
+@using Govern.Client.Features.Games.Services
 @using Govern.Core.Actions
 @using Govern.Core.Engine
 @using Govern.Core.Economy
@@ -28,6 +30,11 @@
     @if (View.Status == GameStatus.InProgress)
     {
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+            @if (IsYourTurn && GameUiService.IdleUnits(View).Count is > 0 and var idle)
+            {
+                <RadzenButton Text="@(idle == 1 ? "1 unit can still move" : $"{idle} units can still move")" Icon="directions_walk"
+                              ButtonStyle="ButtonStyle.Light" Click="@(() => Ui.SelectNextIdleUnit(Ruleset, View))" class="next-unit"/>
+            }
             <RadzenButton Text="End turn" Icon="skip_next" Disabled="@(Busy || !IsYourTurn)"
                           Click="@(() => Command.InvokeAsync(new EndTurnCommand()))" class="end-turn"/>
             <ConfirmButton Text="Resign" Icon="flag" Question="Resign the game? Your opponent wins." ConfirmText="Yes, resign"
@@ -38,6 +45,8 @@
 </RadzenStack>
 
 @code {
+    [CascadingParameter] public GameUiService Ui { get; set; } = null!;
+
     [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
 
     [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;

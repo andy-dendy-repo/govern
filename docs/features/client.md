@@ -2,7 +2,7 @@
 title: Blazor client
 tags: [client, blazor, webassembly, radzen, csp, static-web-apps, security-headers, bunit, configuration, auth, jwt, refresh-token, web-locks, login, games, lobby, invite-link, sse, server-sent-events, reconnect, backoff, board, hex, svg, pan, zoom, commands, stale-version]
 code: [src/Govern.Client, src/Govern.Client/Auth, src/Govern.Client/Features/Games, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/wwwroot/js/board.js, tests/Govern.ClientTests, tests/Govern.ArchitectureTests/ClientSecurityTests.cs, tests/Govern.ArchitectureTests/ClientContractTests.cs, .github/scripts/configure-client.sh, .github/workflows/release.yml]
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Blazor client
@@ -147,14 +147,14 @@ A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the
 
 | Part | What it does |
 |---|---|
-| `Board/GameBoard` | An `<svg>` with the hex `<symbol>`, pieces drawn from the game's icon set (`Components/Game/GameSprite`), layers in `BoardLayer` order, and one `<g transform>` for pan and zoom (`Helpers/BoardViewport`: scale 0.4–3, zoom keeps the point under the cursor). It is fitted to the measured element on first render |
+| `Board/GameBoard` | An `<svg>` with the hex `<symbol>`, pieces drawn from the game's icon set (`Components/Game/GameSprite`), layers in `BoardLayer` order, and one `<g transform>` for pan and zoom (`Helpers/BoardViewport`: scale 0.4–3, zoom keeps the point under the cursor). On first render it is fitted to the player's own units and cities with 3 hexes of room (`HexLayout.Around`), or to the whole map when they have none |
 | `Board/BoardTerrain` | One `<use>` per tile, classed by visibility (`unexplored`, `explored`, `visible`) and terrain, placed by `Helpers/HexLayout` (pointy-top, odd-r). Each tile has its own click handler, so picking is exact. It renders again only for a new view, so panning never re-diffs the tiles |
 | `Board/BoardPieces` | Reachable and attackable overlays, cities (name as SVG text, which Blazor encodes) and units, classed by seat (`seat-1`, `seat-2`: turn order), `own`/`enemy` and `selected`, each in its `BoardLayer` group. `pointer-events: none`, so clicks reach the tile below |
 | `Screen/TopBar` | Your seat colour, "Turn n: your turn" or "opponent's turn" ("game over" once finished), End turn (your turn only), Resign with an inline confirm (`ConfirmButton`, allowed at any time) |
 | `Screen/ActionBar` | For your selected unit: a hint for board moves and, for a unit with the `found_city` ability, Found city, disabled with the rule's message from `CheckFoundCity` |
 | `Screen/SidePanel` | The stale notice and Api error, the result once finished, and the panel for the selection (or a hint) |
 | `UnitPanel` | The selected unit in its owner's seat colour, named from the ruleset ("Your Settler"); for your own unit a `StatTable` with movement left of the ruleset's movement, sight and production cost |
-| `CityPanel` | The selected city; for your own city, what it produces (progress of the ruleset's cost, and a `ProgressBar` with the turns left at the ruleset's production per turn) and one Build button per ruleset unit with its cost, in the ruleset's order (Build Settler, Build Soldier). An enemy city shows its name only (its production is hidden in the view) |
+| `CityPanel` | The selected city; for your own city, what it produces (progress of the ruleset's cost, and a `ProgressBar` with the turns left at the ruleset's production per turn) and its Units, Buildings and Economy tabs (the Units tab has one Build button per ruleset unit with its cost, in the ruleset's order; details in [game UI](game-ui.md)). An enemy city shows its name only (its production is hidden in the view) |
 | `GameOverPanel` | "You won!", "You lost." or "Nobody won.", how each player ended (won, resigned, eliminated), and a link back to `/games` |
 
 ### Board interactions
@@ -164,7 +164,7 @@ A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the
 | Click a tile | `Helpers/BoardClickResolver.Resolve`: with your unit selected, a reachable tile sends `move_unit` and an attackable one sends `attack` (both from the Core previews, so only moves the server accepts are offered); otherwise the click selects the unit on the tile (clicking your selected unit again selects your city under it), else the city, else nothing. Enemy units and cities can be selected to inspect them. No command is built while it isn't your turn or the game is over |
 | Drag (press and move more than 4 px) | Pans; the click that follows the drag is ignored. Only the primary pointer pans (a second finger is ignored). No pointer capture, so a drag that leaves the board ends there |
 | Wheel over the board | Zooms at the pointer by 1.2 per mouse notch (100 px or 3 lines; a trackpad's small deltas zoom proportionally, at most 3 notches per event); the page does not scroll |
-| +, −, Fit buttons | Zoom at the centre, or fit the whole map again (re-measuring the element) |
+| +, −, Fit buttons | Zoom at the centre, or fit the whole map (re-measuring the element) |
 
 `wwwroot/js/board.js` exists for two things Blazor can't do: a **non-passive** `wheel` listener that calls `preventDefault` (Blazor's may be passive, and a passive listener can't stop the page scrolling), and `getBoundingClientRect` to fit the map and anchor the wheel zoom. It is imported lazily by `Features/Games/Services/BoardInteropService` (scoped); if the module fails, the board keeps working at a default size.
 

@@ -21,6 +21,9 @@ public partial class GameBoard
     /// <summary>The zoom factor of one wheel notch or button press.</summary>
     public const double ZoomStep = 1.2;
 
+    // Hexes of room left around the player's units and cities when the board first opens.
+    private const int StartMargin = 3;
+
     // The size assumed until the element is measured (e.g. when JavaScript is unavailable).
     private static readonly BoardRect DefaultSize = new(0, 0, 800, 560);
 
@@ -82,14 +85,29 @@ public partial class GameBoard
         if (firstRender)
         {
             await Interop.InitAsync(_board, CancellationToken.None);
-            await FitAsync();
+            await FitAsync(StartBounds());
         }
     }
 
-    private async Task FitAsync()
+    // The board opens on the player's own units and cities (the rest is mostly fog); without any, on the whole map.
+    private BoardRect StartBounds()
+    {
+        HexCoord[] own =
+        [
+            .. View.Units.Where(unit => unit.Owner == View.Viewer).Select(static unit => unit.Position),
+            .. View.Cities.Where(city => city.Owner == View.Viewer).Select(static city => city.Position),
+        ];
+        return own.Length > 0 ? HexLayout.Around(own, StartMargin) : MapBounds;
+    }
+
+    private BoardRect MapBounds => HexLayout.Bounds(View.Width, View.Height);
+
+    private Task FitMapAsync() => FitAsync(MapBounds);
+
+    private async Task FitAsync(BoardRect bounds)
     {
         _size = await Interop.MeasureAsync(_board, CancellationToken.None) ?? _size;
-        SetViewport(BoardViewport.Fit(HexLayout.Bounds(View.Width, View.Height), _size.Width, _size.Height));
+        SetViewport(BoardViewport.Fit(bounds, _size.Width, _size.Height));
         StateHasChanged();
     }
 

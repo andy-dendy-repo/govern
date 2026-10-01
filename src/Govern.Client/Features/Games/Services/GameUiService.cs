@@ -23,6 +23,12 @@ public sealed class GameUiService
     /// <summary>The map lens drawn over the board, or <see langword="null"/> when none is on.</summary>
     public IMapLens? ActiveLens { get; private set; }
 
+    /// <summary>
+    /// The index of the open tab of the player's city panel (0 Units, 1 Buildings, 2 Economy). It stays open when another city
+    /// is selected, so the player can go through their cities on the same tab.
+    /// </summary>
+    public int CityTab { get; set; }
+
     /// <summary>Raised after the state changed.</summary>
     public event Action? Changed;
 
@@ -68,6 +74,35 @@ public sealed class GameUiService
         }
 
         Select(ruleset, view, Selection with { Target = null, Bridge = !Selection.Bridge });
+    }
+
+    /// <summary>
+    /// The player's units that can still act this turn: movement left and no job running, in id order (the top bar's
+    /// "units can still move").
+    /// </summary>
+    /// <param name="view">The view on screen.</param>
+    /// <returns>The units; empty when none can move.</returns>
+    public static IReadOnlyList<UnitView> IdleUnits(PlayerView view)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        return [.. view.Units
+            .Where(unit => unit.Owner == view.Viewer && unit.MovementLeft > 0 && unit.Job is null)
+            .OrderBy(static unit => unit.Id.Value)];
+    }
+
+    /// <summary>Selects the next of <see cref="IdleUnits"/> after the selected unit (the first when none is), wrapping round.</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The view on screen.</param>
+    public void SelectNextIdleUnit(Ruleset ruleset, PlayerView view)
+    {
+        var idle = IdleUnits(view);
+        if (idle.Count == 0)
+        {
+            return;
+        }
+
+        var next = idle.FirstOrDefault(unit => Selection.Unit is { } selected && unit.Id.Value > selected.Value) ?? idle[0];
+        Select(ruleset, view, BoardSelection.Of(next.Id));
     }
 
     /// <summary>Handles Escape: cancels a pending attack or bridge mode, otherwise clears the selection.</summary>

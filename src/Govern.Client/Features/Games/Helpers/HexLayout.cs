@@ -88,6 +88,27 @@ public static class HexLayout
         return new BoardRect(-Width / 2, -Size, Width * columns, (Size * 1.5 * (height - 1)) + (2 * Size));
     }
 
+    /// <summary>The rectangle around the centres of some hexes, widened by <paramref name="margin"/> hexes on every side.</summary>
+    /// <param name="coords">The hexes; at least one.</param>
+    /// <param name="margin">Hexes of room around them; 0 or more.</param>
+    /// <returns>The rectangle.</returns>
+    /// <exception cref="ArgumentException"><paramref name="coords"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="margin"/> is negative.</exception>
+    public static BoardRect Around(IEnumerable<HexCoord> coords, int margin)
+    {
+        ArgumentNullException.ThrowIfNull(coords);
+        ArgumentOutOfRangeException.ThrowIfNegative(margin);
+        var centres = coords.Select(Center).ToList();
+        if (centres.Count == 0)
+        {
+            throw new ArgumentException("At least one hex is needed.", nameof(coords));
+        }
+
+        var (left, top) = (centres.Min(static centre => centre.X) - (Width * margin), centres.Min(static centre => centre.Y) - (Size * 1.5 * margin));
+        var (right, bottom) = (centres.Max(static centre => centre.X) + (Width * margin), centres.Max(static centre => centre.Y) + (Size * 1.5 * margin));
+        return new BoardRect(left, top, right - left, bottom - top);
+    }
+
     // A hex corner relative to the centre.
     private static (double X, double Y) Corner(int corner)
     {

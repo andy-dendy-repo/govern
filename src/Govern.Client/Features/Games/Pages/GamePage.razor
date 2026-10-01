@@ -5,8 +5,10 @@
 
 <PageTitle>@Title - Govern</PageTitle>
 
-<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
-    <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">@Title</RadzenText>
+@* A started game keeps its title small and drops the player list (the top bar shows your colour and whose turn it is), so
+   the board starts high on the page. *@
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap" class="game-heading">
+    <RadzenText TextStyle="@(OnBoard ? TextStyle.H6 : TextStyle.H4)" TagName="TagName.H1" class="@(OnBoard ? "rz-m-0" : null)">@Title</RadzenText>
     @if (_watch is not null)
     {
         <ConnectionBadge Update="@_watch"/>
@@ -26,10 +28,10 @@
 }
 else if (_game is not null)
 {
-    <RadzenStack Gap="1rem" class="rz-mt-4">
-        <PlayerList Players="@_game.Players"/>
+    <RadzenStack Gap="1rem" class="@(OnBoard ? "rz-mt-2" : "rz-mt-4")">
         @if (_game.Phase == GamePhase.Lobby)
         {
+            <PlayerList Players="@_game.Players"/>
             @if (_game.InviteCode is { } inviteCode)
             {
                 <InviteShare Code="@inviteCode"/>
