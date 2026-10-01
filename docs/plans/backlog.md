@@ -24,9 +24,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 ## Now
 
-| # | Id | Item | Status | Why now |
-|---|---|---|---|---|
-| 1 | G10c | [Buildings stand on a tile of the city's territory](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades): the player picks a free tile when ordering a building, it is reserved while produced, and the building stands there; the tile keeps its yield and takes no improvement. [Plan](active/G10c-building-sites.md) | in progress (PR #38) | The owner asked for it on 2026-10-01 |
+Empty: G10c is done (see Recently done). The owner picks the next item from Next or Deferred.
 
 ### Content slice C1: G2, G4, G9
 
@@ -77,6 +75,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| G10c | Buildings stand on a tile of the city's territory: the player picks a free tile when ordering a building, it is reserved while produced, and the building stands there in its owner's colour; the tile keeps its yield and takes no improvement ([rules](../game/rules.md#city-buildings)) | 2026-10-01, PR #38 | [G10c](done/G10c-building-sites.md) |
 | F11b | Board animations from the game log: units walk their path, attacks lunge with floating damage, destroyed units fade, new cities and builds pulse; a click or a newer view finishes them, reduced motion respected ([game UI](../features/game-ui.md#board-animations)) | 2026-10-01, PR #37 | [F11b](done/F11b-animations.md) |
 | F11a | Game log: engine events filtered per player by visibility (`VisibilityCalculator.EventsFor`), stored per seat, sent in every snapshot and shown in the side panel ([games](../features/games.md#game-log)) | 2026-10-01, PR #37 | [F11a](done/F11a-game-log.md) |
 | G8a | City stats, part a: resource costs paid in full when production begins (refunded on a change), upkeep for units and buildings paid by the city whose territory holds them with a per-city order switch, units outside territory supplied by the land within 1, shortage damage of 10 a turn down to 1 health, building health 100 (nothing at 0, 10 back per paid turn); bridges and improvements free (ruleset v7, [rules](../game/rules.md#costs-and-upkeep)) | 2026-10-01, PR #35 | [G5, G7, G8a](done/G5-G7-G8-economy.md) |

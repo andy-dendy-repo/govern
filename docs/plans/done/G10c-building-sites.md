@@ -1,4 +1,13 @@
+---
+title: "Plan: G10c buildings stand on a tile of the city's territory"
+tags: [plan, game, buildings, territory, placement, preview, fog-of-war, client, board]
+code: [src/Govern.Core/Actions/ProduceBuildingAction.cs, src/Govern.Core/Engine/BuildingSite.cs, src/Govern.Core/Visibility/ViewPreviewCalculator.cs, src/Govern.Client/Features/Games/Helpers/BoardClickResolver.cs, src/Govern.Client/Features/Games/Components/Board/BoardImprovements.razor]
+updated: 2026-10-01
+---
+
 # Plan: G10c — buildings stand on a tile of the city's territory
+
+**Status:** done 2026-10-01, PR #38.
 
 ## Context
 Today a finished building (army camp, campus, trade post, culture centre, harbour) is only added to `City.Buildings`, so it sits "inside" the city tile. The owner wants each building placed on its own tile in the city's territory. Decisions made by the owner:
