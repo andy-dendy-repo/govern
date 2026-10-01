@@ -26,7 +26,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 | # | Id | Item | Status | Why now |
 |---|---|---|---|---|
-| 1 | G10c | [Buildings stand on a tile of the city's territory](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades): the player picks a free tile when ordering a building, it is reserved while produced, and the building stands there; the tile keeps its yield and takes no improvement. [Plan](active/G10c-building-sites.md) | in progress (`feature/G10c-building-sites`) | The owner asked for it on 2026-10-01 |
+| 1 | G10c | [Buildings stand on a tile of the city's territory](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades): the player picks a free tile when ordering a building, it is reserved while produced, and the building stands there; the tile keeps its yield and takes no improvement. [Plan](active/G10c-building-sites.md) | in progress (PR #38) | The owner asked for it on 2026-10-01 |
 
 ### Content slice C1: G2, G4, G9
 
