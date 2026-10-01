@@ -50,7 +50,7 @@ internal static class VictoryRule
     {
         var departed = state.Players.Where(static player => player.Status != PlayerStatus.Active).Select(static player => player.Id).ToHashSet();
         var removed = state.Units.Where(unit => departed.Contains(unit.Owner)).ToList();
-        events.AddRange(removed.Select(static unit => new UnitDestroyedEvent(unit.Id, unit.Owner, unit.Position)));
+        events.AddRange(removed.Select(static unit => new UnitDestroyedEvent(unit.Id, unit.Owner, unit.Type, unit.Position)));
 
         return removed.Count == 0 ? state : state with { Units = [.. state.Units.Except(removed)] };
     }

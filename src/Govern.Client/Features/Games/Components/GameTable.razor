@@ -10,13 +10,13 @@
             <TopBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
         </div>
         <div class="zone-map">
-            <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+            <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
         </div>
         <div class="zone-actions">
             <ActionBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
         </div>
         <aside class="zone-side">
-            <SidePanel View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync">
+            <SidePanel View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync" Log="@Game.Log">
                 @if (_stale)
                 {
                     <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="stale">

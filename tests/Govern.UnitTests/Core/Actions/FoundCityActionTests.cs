@@ -28,7 +28,7 @@ public class FoundCityActionTests
         state.Units.ShouldNotContain(unit => unit.Id.Value == city.Id.Value);
         state.Cities.ShouldNotContain(existing => existing.Id.Value == city.Id.Value);
         update.State.RngState.ShouldNotBe(state.RngState);
-        update.Events.ShouldHaveSingleItem().ShouldBe(new CityFoundedEvent(city, settler));
+        update.Events.ShouldHaveSingleItem().ShouldBe(new CityFoundedEvent(city.Id, P1, At(5, 5), "City 2", settler));
     }
 
     [Fact]

@@ -24,6 +24,9 @@ internal sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext
     public DbSet<GamePlayer> GamePlayers => Set<GamePlayer>();
 
     /// <inheritdoc />
+    public DbSet<GameLogEntry> GameLogEntries => Set<GameLogEntry>();
+
+    /// <inheritdoc />
     public async Task<IApplicationDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken) =>
         new ApplicationDbContextTransaction(await Database.BeginTransactionAsync(cancellationToken));
 

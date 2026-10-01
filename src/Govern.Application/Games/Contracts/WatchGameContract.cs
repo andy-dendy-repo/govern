@@ -68,7 +68,7 @@ internal sealed class WatchGameHandler(
     {
         // Subscribe before the first read, so a change saved in between still wakes the loop.
         using var subscription = gameChanges.Subscribe(gameId);
-        (GamePhase Phase, int Players, long? View)? sent = null;
+        (GamePhase Phase, int Players, long? View, int? Log)? sent = null;
 
         while (true)
         {
@@ -77,8 +77,9 @@ internal sealed class WatchGameHandler(
                 yield break;
             }
 
-            // Only what the caller sees counts: a change hidden by the fog of war leaves all three unchanged.
-            var seen = (snapshot.Phase, snapshot.Players.Count, snapshot.View?.Version);
+            // Only what the caller sees counts: a change hidden by the fog of war leaves all four unchanged. The log counts too,
+            // since an enemy move seen only in passing (it starts and ends in fog) adds an entry without changing the view.
+            var seen = (snapshot.Phase, snapshot.Players.Count, snapshot.View?.Version, snapshot.Log.Count == 0 ? (int?)null : snapshot.Log[^1].Sequence);
             if (seen != sent)
             {
                 sent = seen;
@@ -103,6 +104,12 @@ internal sealed class WatchGameHandler(
             .Where(candidate => candidate.Id == gameId && candidate.Players.Any(player => player.UserId == userId))
             .FirstOrDefaultAsync(cancellationToken);
 
-        return game?.FindPlayer(userId) is { } caller ? GetGameResponse.From(game, caller, rulesets.Ruleset) : null;
+        if (game?.FindPlayer(userId) is not { } caller)
+        {
+            return null;
+        }
+
+        var log = await GameLogService.RecentAsync(db, game, caller, cancellationToken);
+        return GetGameResponse.From(game, caller, rulesets.Ruleset, log);
     }
 }

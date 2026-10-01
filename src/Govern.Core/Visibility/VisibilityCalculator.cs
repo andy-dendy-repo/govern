@@ -3,6 +3,8 @@ using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Govern.Core.Cities;
+using Govern.Core.Engine;
+using Govern.Core.Events;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.Serialization;
@@ -112,6 +114,26 @@ public static class VisibilityCalculator
             [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status))]);
 
         return view with { Version = Fingerprint(view) };
+    }
+
+    /// <summary>
+    /// The events of an accepted command that one player may see, in order: everything about their own units and cities, the
+    /// turn, resignations and the result, and another player's events only on tiles they could see when the command began or
+    /// after it ended (a move is cut to those tiles; an attacker on an unseen tile loses its id and tile). Another player's
+    /// production, jobs and upkeep never pass. Hosts store or send only these, never <see cref="GameUpdate.Events"/>.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="before">The state the command was applied to.</param>
+    /// <param name="update">The command's outcome.</param>
+    /// <param name="viewer">A participant (active or not).</param>
+    /// <returns>The events the player may see; empty when they saw nothing.</returns>
+    public static ImmutableArray<GameEvent> EventsFor(Ruleset ruleset, GameState before, GameUpdate update, PlayerId viewer)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(before);
+        ArgumentNullException.ThrowIfNull(update);
+
+        return EventVisibilityCalculator.EventsFor(ruleset, before, update, viewer);
     }
 
     // The first 8 bytes of the view's SHA-256 (non-negative). It depends only on what the viewer sees, so changes hidden from

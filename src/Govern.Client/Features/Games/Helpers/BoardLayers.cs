@@ -18,6 +18,7 @@ public static class BoardLayers
         BoardLayer.Highlights => "highlights",
         BoardLayer.Cities => "cities",
         BoardLayer.Units => "units",
+        BoardLayer.Effects => "effects",
         _ => throw new ArgumentOutOfRangeException(nameof(layer), layer, "Unknown board layer."),
     };
 }

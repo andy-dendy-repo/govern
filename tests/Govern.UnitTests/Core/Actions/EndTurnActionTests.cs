@@ -70,9 +70,12 @@ public class EndTurnActionTests
 
         var created = update.Events.OfType<UnitCreatedEvent>().ShouldHaveSingleItem();
         created.CityId.ShouldBe(city);
-        created.Unit.Position.ShouldBe(At(2, 2));
-        created.Unit.MovementLeft.ShouldBe(0);
-        update.State.UnitAt(At(2, 2)).ShouldBe(created.Unit);
+        created.Position.ShouldBe(At(2, 2));
+        created.Owner.ShouldBe(P1);
+        var unit = update.State.UnitAt(At(2, 2)).ShouldNotBeNull();
+        unit.Id.ShouldBe(created.UnitId);
+        unit.Type.ShouldBe(created.UnitType);
+        unit.MovementLeft.ShouldBe(0);
         update.State.FindCity(city)!.ProductionProgress.ShouldBe(0);
     }
 
@@ -86,7 +89,7 @@ public class EndTurnActionTests
         var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new EndTurnCommand()).ShouldSucceed();
 
         var created = update.Events.OfType<UnitCreatedEvent>().ShouldHaveSingleItem();
-        created.Unit.Type.ShouldBe(TestRulesets.Settler);
+        created.UnitType.ShouldBe(TestRulesets.Settler);
         created.CityId.ShouldBe(city);
     }
 
@@ -100,7 +103,7 @@ public class EndTurnActionTests
 
         var update = GameEngine.Execute(TestRulesets.Default, switched, P1, new EndTurnCommand()).ShouldSucceed();
 
-        update.Events.OfType<UnitCreatedEvent>().ShouldHaveSingleItem().Unit.Type.ShouldBe(TestRulesets.Soldier);
+        update.Events.OfType<UnitCreatedEvent>().ShouldHaveSingleItem().UnitType.ShouldBe(TestRulesets.Soldier);
         update.State.FindCity(city)!.ProductionProgress.ShouldBe(0);
     }
 
@@ -116,7 +119,7 @@ public class EndTurnActionTests
 
         var created = update.Events.OfType<UnitCreatedEvent>().ShouldHaveSingleItem();
         created.CityId.ShouldBe(city);
-        created.Unit.Position.DistanceTo(At(4, 4)).ShouldBe(1);
+        created.Position.DistanceTo(At(4, 4)).ShouldBe(1);
     }
 
     [Fact]

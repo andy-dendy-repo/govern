@@ -11,3 +11,8 @@ export function measure(element) {
     const rect = element.getBoundingClientRect();
     return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
 }
+
+// Whether the player asked for reduced motion, so the board's animations skip moving units.
+export function prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}

@@ -1,6 +1,6 @@
 ---
 title: Game Core engine
-tags: [game, core, engine, upkeep, resource-cost, supply, building-health, upkeep-priority, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
+tags: [game, core, engine, upkeep, resource-cost, supply, building-health, upkeep-priority, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, game-log, events-for, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
 updated: 2026-10-01
 ---
@@ -197,7 +197,23 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - **Known residual leaks** (deferred, [game delivery plan](../plans/done/game-delivery.md#deferred-ideas)): a city's name (`City N`, counting the founder's cities at founding) shows how many cities its founder had then, hidden ones included. A unit that loses health without a fight, or doesn't heal while resting, shows its owner's land or city is short of its upkeep (accepted, [game logic](../game/game-logic.md#fog-of-war)).
 - `PlayerId` values are chosen by the host. Govern uses the per-game seat id (`GamePlayer.Id`), never a user id, so the view reveals no account ids ([games](games.md)).
 - Hosts must send clients `PlayerView`, never `GameState`.
-- Nothing in a view counts the opponent's activity: `PlayerView.Version` is a fingerprint of the view itself, unit and city ids are hashed random draws (see below), and `Units`/`Cities` are ordered by id rather than creation. Raw `GameEvent`s describe the full state and must be filtered by visibility before being sent to a player.
+- Nothing in a view counts the opponent's activity: `PlayerView.Version` is a fingerprint of the view itself, unit and city ids are hashed random draws (see below), and `Units`/`Cities` are ordered by id rather than creation. Raw `GameEvent`s may only reach a player through `VisibilityCalculator.EventsFor` ([below](#events-a-player-may-see-eventsfor)).
+
+## Events a player may see (EventsFor)
+
+`VisibilityCalculator.EventsFor(ruleset, before, update, viewer)` returns, in order, the events of one accepted command that a player may see; the server stores them as that player's [game log](games.md#game-log) (F11a). Events carry public fields only (`CityFoundedEvent` and `UnitCreatedEvent` name the owner, type and tile, never a whole city or unit). The **seen tiles** are the viewer's visible tiles before the command plus those after it. The owner of a thing always sees its events.
+
+| Event | The other player sees it |
+|---|---|
+| `turn_ended`, `player_resigned`, `player_eliminated`, `game_won` | always |
+| `unit_moved` | the path cut to the seen tiles; dropped when none is seen |
+| `unit_attacked` | when either tile is seen or the defender is theirs; an attacker on an unseen tile has a null `attackerId` and `from` (written as null, so stored entries read back) |
+| `city_captured` | when the city's tile is seen or the city was theirs |
+| `unit_destroyed`, `city_founded`, `unit_created`, `improvement_built`, `territory_grew` | when the tile is seen; `unit_created` and `territory_grew` without their `cityId` (the view never says which enemy city a tile belongs to) |
+| `bridge_built` | when the builder's tile (`from`) is seen, since the builder stays there |
+| `production_changed`, `build_started`, `building_completed`, `building_damaged`, `upkeep_priority_set`, `unit_starved` | never: the view already shows what the opponent may know |
+
+Hidden events are dropped, never counted, so the log adds nothing the two views don't already give (`EventVisibilityTests` checks every event type for both players).
 
 ## View previews for the client
 

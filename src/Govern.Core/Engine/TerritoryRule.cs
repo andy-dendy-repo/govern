@@ -45,7 +45,7 @@ internal static class TerritoryRule
             var tile = state.Map.TileAt(coord);
             state = state.WithCity(city with { Stock = stock.IsEmpty ? null : stock, TilesGained = city.TilesGained + 1 });
             state = state with { Map = state.Map.WithTile(tile with { Territory = city.Id }) };
-            events.Add(new TerritoryGrewEvent(city.Id, coord));
+            events.Add(new TerritoryGrewEvent(city.Id, city.Owner, coord));
         }
 
         return state;

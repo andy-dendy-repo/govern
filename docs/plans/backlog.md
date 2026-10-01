@@ -40,10 +40,9 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 
 | # | Id | Item | Area | Size | Notes |
 |---|---|---|---|---|---|
-| 1 | F11 | Game log and animations from engine events filtered by visibility (`VisibilityCalculator.EventsFor`) | core, client | M–L | Core first, then client UI |
-| 2 | F12 | Player-chosen city names | core, client | S–M | Also closes a small leak: `City N` counts the founder's cities at founding, hidden ones included ([game-core](../features/game-core.md)) |
-| 3 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
-| 4 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
+| 1 | F12 | Player-chosen city names | core, client | S–M | Also closes a small leak: `City N` counts the founder's cities at founding, hidden ones included ([game-core](../features/game-core.md)) |
+| 2 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
+| 3 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
 
 ## Deferred
 
@@ -76,6 +75,8 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| F11b | Board animations from the game log: units walk their path, attacks lunge with floating damage, destroyed units fade, new cities and builds pulse; a click or a newer view finishes them, reduced motion respected ([game UI](../features/game-ui.md#board-animations)) | 2026-10-01, PR #37 | [F11b](done/F11b-animations.md) |
+| F11a | Game log: engine events filtered per player by visibility (`VisibilityCalculator.EventsFor`), stored per seat, sent in every snapshot and shown in the side panel ([games](../features/games.md#game-log)) | 2026-10-01, PR #37 | [F11a](done/F11a-game-log.md) |
 | G8a | City stats, part a: resource costs paid in full when production begins (refunded on a change), upkeep for units and buildings paid by the city whose territory holds them with a per-city order switch, units outside territory supplied by the land within 1, shortage damage of 10 a turn down to 1 health, building health 100 (nothing at 0, 10 back per paid turn); bridges and improvements free (ruleset v7, [rules](../game/rules.md#costs-and-upkeep)) | 2026-10-01, PR #35 | [G5, G7, G8a](done/G5-G7-G8-economy.md) |
 | G7 | City territory and growth: a city claims the tiles within 1, then buys one tile at a time with culture up to radius 3; each city keeps its own stock (ruleset v6, [rules](../game/rules.md#territory)) | 2026-10-01, PR #34 | [G5, G7, G8a](done/G5-G7-G8-economy.md) |
 | G5 | Resources and tile yields, first part: every terrain yields, desert gives nothing, rivers give water (ruleset v6, [rules](../game/rules.md#tile-yields)) | 2026-10-01, PR #34 | [G5, G7, G8a](done/G5-G7-G8-economy.md) |

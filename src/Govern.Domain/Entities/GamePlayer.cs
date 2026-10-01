@@ -38,6 +38,14 @@ public sealed class GamePlayer : BaseEntity
     /// </summary>
     public PlayerId PlayerId => new(Id);
 
+    /// <summary>
+    /// How many <see cref="GameLogEntry"/> rows this seat has; the next entry's <see cref="GameLogEntry.Sequence"/> is one more.
+    /// </summary>
+    public int LogLength { get; private set; }
+
+    // Numbers the next log entry for this seat.
+    internal int NextLogSequence() => ++LogLength;
+
     internal static GamePlayer Create(Guid gameId, Guid userId, int seat, DateTimeOffset now)
     {
         if (userId == Guid.Empty)
