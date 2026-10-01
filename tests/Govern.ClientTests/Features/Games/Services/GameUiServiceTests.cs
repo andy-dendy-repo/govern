@@ -181,4 +181,44 @@ public class GameUiServiceTests
 
         _ui.Selection.ShouldBe(BoardSelection.Of(new UnitId(2)));
     }
+
+    [Fact]
+    public void IdleUnits_LeavesOutEnemiesSpentUnitsAndWorkers()
+    {
+        var view = Create(
+        [
+            Soldier(4, You, At(1, 1)),
+            Settler(2, You, At(2, 2)),
+            Soldier(3, You, At(3, 2), movementLeft: 0),
+            Settler(5, You, At(4, 2)) with { Job = new UnitJob(0, 3, Improvement: Farm) },
+            Soldier(6, Opponent, At(5, 2)),
+        ]);
+
+        GameUiService.IdleUnits(view).Select(static unit => unit.Id.Value).ShouldBe([2, 4]);
+    }
+
+    [Fact]
+    public void SelectNextIdleUnit_GoesThroughThemAndWrapsRound()
+    {
+        var view = Create([Settler(1, You, At(2, 2)), Soldier(2, You, At(3, 2), movementLeft: 0), Soldier(3, You, At(4, 2))]);
+
+        _ui.SelectNextIdleUnit(Ruleset, view);
+        _ui.Selection.Unit.ShouldBe(new UnitId(1));
+        _ui.SelectNextIdleUnit(Ruleset, view);
+        _ui.Selection.Unit.ShouldBe(new UnitId(3));
+        _ui.SelectNextIdleUnit(Ruleset, view);
+        _ui.Selection.Unit.ShouldBe(new UnitId(1));
+    }
+
+    [Fact]
+    public void SelectNextIdleUnit_NoneLeft_KeepsTheSelection()
+    {
+        _ui.Select(Ruleset, Start(), BoardSelection.Of(new CityId(7)));
+        _changes = 0;
+
+        _ui.SelectNextIdleUnit(Ruleset, Create([Settler(1, You, At(2, 2), movementLeft: 0)]));
+
+        _ui.Selection.ShouldBe(BoardSelection.Of(new CityId(7)));
+        _changes.ShouldBe(0);
+    }
 }

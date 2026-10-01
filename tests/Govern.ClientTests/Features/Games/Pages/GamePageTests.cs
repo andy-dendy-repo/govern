@@ -63,6 +63,7 @@ public class GamePageTests : ClientTestContext
 
         cut.WaitForAssertion(() => cut.FindAll("use.tile").Count.ShouldBe(TestViews.Width * TestViews.Height));
         cut.Find("h1").TextContent.ShouldBe("Game in progress");
+        cut.FindAll(".player-list").ShouldBeEmpty("the top bar shows the seat and the turn");
         cut.Find(".turn").TextContent.ShouldContain("your turn");
         cut.FindAll(".lobby-actions, .invite-share").ShouldBeEmpty();
     }

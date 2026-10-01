@@ -17,13 +17,13 @@ A started game (`Features/Games/Components/GameTable`) is a CSS grid with fixed 
 
 | Zone | Component | Holds | Grows with |
 |---|---|---|---|
-| Top bar | `Screen/TopBar` | Your seat colour, "Turn n: your turn", the resources in all your cities (one `CostLabel` per ruleset resource, the sum of your cities' stock), End turn, Resign (inline confirm) | season (G14): one element each, before the actions |
-| Map | `Board/GameBoard` | The hex board, pan and zoom, zoom buttons | map lenses (toolbar in this zone), new board layers |
+| Top bar | `Screen/TopBar` | Your seat colour, "Turn n: your turn", the resources in all your cities (one `CostLabel` per ruleset resource, the sum of your cities' stock), on your turn "n units can still move" (`.next-unit`: own units with movement left and no job, from `GameUiService.IdleUnits`; a click selects the next one, wrapping round), End turn, Resign (inline confirm) | season (G14): one element each, before the actions |
+| Map | `Board/GameBoard` | The hex board, pan and zoom, zoom buttons. It opens fitted to your units and cities with 3 hexes of room (`HexLayout.Around`), or the whole map when you have none; Fit shows the whole map. The lens toolbar stops short of the zoom buttons and wraps on narrow boards | map lenses (toolbar in this zone), new board layers |
 | Action bar | `Screen/ActionBar`, floating over the bottom of the map | The selected own unit's actions (Found city; Build <improvement> for each improvement that fits the unit's terrain; Build bridge, which turns on bridge mode; each with the rule's reason when disabled) and a hint for board moves or the unit's job | one button per new ability |
 | Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel` with its Units, Buildings and Economy tabs), the combat forecast of a pending attack (`CombatForecastPanel`) or a hint | one panel per new selection kind (tile, building) |
 | Full-screen view | (added with its first user) | Large content: tech and culture trees (G11), the city screen, governors (G12) | |
 
-The action bar floats over the bottom-left of the map, so a unit's actions sit next to the board without scrolling; it covers a few tiles in that corner, which the player reaches by panning. On screens narrower than 60rem the zones stack: top bar, map (with its action bar), side panel (map first, panels below).
+Above the zones, a started game's page shows only a small title and the connection badge (no player list: the top bar has your colour and whose turn it is), so the board starts high. The top bar, side panel and action bar are cards (raised surface, border, radius). The action bar floats over the bottom-left of the map, so a unit's actions sit next to the board without scrolling; it covers a few tiles in that corner, which the player reaches by panning. On screens narrower than 60rem the zones stack: top bar, map (with its action bar), side panel (map first, panels below).
 
 ## Interaction rules
 

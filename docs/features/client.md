@@ -147,7 +147,7 @@ A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the
 
 | Part | What it does |
 |---|---|
-| `Board/GameBoard` | An `<svg>` with the hex `<symbol>`, pieces drawn from the game's icon set (`Components/Game/GameSprite`), layers in `BoardLayer` order, and one `<g transform>` for pan and zoom (`Helpers/BoardViewport`: scale 0.4–3, zoom keeps the point under the cursor). It is fitted to the measured element on first render |
+| `Board/GameBoard` | An `<svg>` with the hex `<symbol>`, pieces drawn from the game's icon set (`Components/Game/GameSprite`), layers in `BoardLayer` order, and one `<g transform>` for pan and zoom (`Helpers/BoardViewport`: scale 0.4–3, zoom keeps the point under the cursor). On first render it is fitted to the player's own units and cities with 3 hexes of room (`HexLayout.Around`), or to the whole map when they have none |
 | `Board/BoardTerrain` | One `<use>` per tile, classed by visibility (`unexplored`, `explored`, `visible`) and terrain, placed by `Helpers/HexLayout` (pointy-top, odd-r). Each tile has its own click handler, so picking is exact. It renders again only for a new view, so panning never re-diffs the tiles |
 | `Board/BoardPieces` | Reachable and attackable overlays, cities (name as SVG text, which Blazor encodes) and units, classed by seat (`seat-1`, `seat-2`: turn order), `own`/`enemy` and `selected`, each in its `BoardLayer` group. `pointer-events: none`, so clicks reach the tile below |
 | `Screen/TopBar` | Your seat colour, "Turn n: your turn" or "opponent's turn" ("game over" once finished), End turn (your turn only), Resign with an inline confirm (`ConfirmButton`, allowed at any time) |
@@ -164,7 +164,7 @@ A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the
 | Click a tile | `Helpers/BoardClickResolver.Resolve`: with your unit selected, a reachable tile sends `move_unit` and an attackable one sends `attack` (both from the Core previews, so only moves the server accepts are offered); otherwise the click selects the unit on the tile (clicking your selected unit again selects your city under it), else the city, else nothing. Enemy units and cities can be selected to inspect them. No command is built while it isn't your turn or the game is over |
 | Drag (press and move more than 4 px) | Pans; the click that follows the drag is ignored. Only the primary pointer pans (a second finger is ignored). No pointer capture, so a drag that leaves the board ends there |
 | Wheel over the board | Zooms at the pointer by 1.2 per mouse notch (100 px or 3 lines; a trackpad's small deltas zoom proportionally, at most 3 notches per event); the page does not scroll |
-| +, −, Fit buttons | Zoom at the centre, or fit the whole map again (re-measuring the element) |
+| +, −, Fit buttons | Zoom at the centre, or fit the whole map (re-measuring the element) |
 
 `wwwroot/js/board.js` exists for two things Blazor can't do: a **non-passive** `wheel` listener that calls `preventDefault` (Blazor's may be passive, and a passive listener can't stop the page scrolling), and `getBoundingClientRect` to fit the map and anchor the wheel zoom. It is imported lazily by `Features/Games/Services/BoardInteropService` (scoped); if the module fails, the board keeps working at a default size.
 

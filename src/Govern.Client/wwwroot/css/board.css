@@ -220,12 +220,20 @@
     paint-order: stroke;
 }
 
+/* Stops short of the zoom buttons on the right and wraps on narrow boards (phones) instead of running under them. */
 .lens-toolbar {
     position: absolute;
     top: var(--gv-space-2);
     left: var(--gv-space-2);
+    right: 8rem;
     display: flex;
+    flex-wrap: wrap;
     gap: var(--gv-space-1);
+    pointer-events: none;
+}
+
+.lens-toolbar > * {
+    pointer-events: auto;
 }
 
 .lens-toggle {
