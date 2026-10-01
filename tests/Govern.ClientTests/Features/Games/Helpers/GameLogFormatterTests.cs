@@ -44,12 +44,12 @@ public class GameLogFormatterTests
     }
 
     [Fact]
-    public void Describe_OwnCityEvents_UseTheCityName()
+    public void Describe_BuildingCompleted_UsesTheCityNameAndPointsAtTheBuildingsTile()
     {
-        var line = GameLogFormatter.Describe(Ruleset, View, new BuildingCompletedEvent(new CityId(7), Campus))!;
+        var line = GameLogFormatter.Describe(Ruleset, View, new BuildingCompletedEvent(new CityId(7), Campus, At(3, 2)))!;
 
         line.Text.ShouldBe("Rome finished a Campus");
-        line.Tile.ShouldBe(At(3, 3));
+        line.Tile.ShouldBe(At(3, 2));
     }
 
     [Fact]

@@ -237,6 +237,52 @@ public class BoardClickResolverTests
         BoardClickResolver.Prune(Ruleset, Create([Soldier(2, You, At(3, 2))]), selection).ShouldBe(BoardSelection.Of(YourSoldier));
     }
 
+    [Fact]
+    public void Resolve_PlacingAndAFreeTileOfTheTerritory_OrdersTheBuildingThereAndStopsPlacing()
+    {
+        var selection = BoardSelection.Of(YourCity) with { Placing = Campus };
+
+        var click = BoardClickResolver.Resolve(Ruleset, CityView(), selection, At(3, 2));
+
+        click.ShouldBe(new BoardClick(BoardSelection.Of(YourCity), new ProduceBuildingCommand(YourCity, Campus, At(3, 2))));
+    }
+
+    [Theory]
+    [InlineData(2, 2)]
+    [InlineData(1, 1)]
+    [InlineData(5, 4)]
+    public void Resolve_PlacingAndTheCityTileATakenTileOrOneOutside_OnlyStopsPlacing(int column, int row)
+    {
+        var selection = BoardSelection.Of(YourCity) with { Placing = Campus };
+
+        var click = BoardClickResolver.Resolve(Ruleset, CityView(), selection, At(column, row));
+
+        click.ShouldBe(new BoardClick(BoardSelection.Of(YourCity), null));
+    }
+
+    [Fact]
+    public void Highlights_Placing_AreTheFreeTilesOfTheTerritory()
+    {
+        var highlights = BoardClickResolver.Highlights(Ruleset, CityView(), BoardSelection.Of(YourCity) with { Placing = Campus });
+
+        highlights.Placeable.ShouldBe([At(3, 2), At(1, 2), At(2, 1), At(1, 3), At(2, 3)], ignoreOrder: true);
+        highlights.Reachable.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Prune_PlacingABuildingNoTileCanTake_StopsPlacing()
+    {
+        var selection = BoardSelection.Of(YourCity) with { Placing = Harbour };
+
+        BoardClickResolver.Prune(Ruleset, CityView(), selection).ShouldBe(BoardSelection.Of(YourCity));
+    }
+
+    // Your city 7 at (2, 2), with a farm on (1, 1) in its territory.
+    private static PlayerView CityView() =>
+        Create(cities: [City(7, You, At(2, 2))], improvements: static coord => coord == At(1, 1) ? Farm : null);
+
+    private static readonly CityId YourCity = new(7);
+
     private static PlayerView RiverView() =>
         Create([Soldier(2, You, At(3, 2))], rivers: static coord => coord == At(3, 2) ? new TileRivers(East: River) : null);
 }

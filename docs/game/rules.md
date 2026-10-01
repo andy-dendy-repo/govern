@@ -198,7 +198,7 @@ Units and buildings cost resources as well as production, and need resources eve
 
 ## Improvements
 
-A builder builds an improvement on the tile it stands on, in one of your cities' territory (not on a city's own tile). A tile holds one improvement. From the end of the turn it is finished, the city whose territory it is in adds the improvement's yield to its resources every turn, on top of the tile's own yield.
+A builder builds an improvement on the tile it stands on, in one of your cities' territory (not on a city's own tile, nor on a tile with a building or one reserved for a building). A tile holds one improvement. From the end of the turn it is finished, the city whose territory it is in adds the improvement's yield to its resources every turn, on top of the tile's own yield.
 
 | Improvement | Terrain | Cost | Yield per turn |
 |---|---|---|---|
@@ -221,7 +221,14 @@ A unit with Build bridges can bridge the river between its tile and a neighbouri
 
 Each city can build each building once. A city produces either a unit or a building: picking one replaces the other, and the progress is kept. When the progress reaches the building's cost, the building is finished, progress starts again from 0 and the city goes back to the unit it was producing before.
 
-| Building | Cost | Yield per turn | Extra production | Needs next to the city |
+Every building stands on its own tile of the city's territory, which you pick when you order it:
+- The tile must be in that city's territory, not the city's own tile, on terrain a unit can enter (not a lake or mountains), with no improvement and no other building, and no builder of yours working on an improvement there.
+- The tile is reserved while the city produces the building: no improvement can be started on it. Ordering the same building again on another tile moves the reservation and keeps the progress.
+- The tile keeps its own yield. The building's yield and production go to the city as a whole, wherever it stands.
+- A city whose free tiles are all taken can't order a building until its territory grows.
+- You see a building on its tile while you can see the tile. When a city is captured its buildings stay on their tiles, and a building it was still producing is dropped.
+
+| Building | Cost | Yield per turn | Extra production | Needs next to its tile |
 |---|---|---|---|---|
 | Army camp | 8 | — | +1 | — |
 | Campus | 8 | 2 Science | — | — |
