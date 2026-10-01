@@ -22,7 +22,7 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 | G7 | [City territory and growth](#g7-city-territory-and-growth) | G5 | L |
 | G8 | [City stats and the production queue](#g8-city-stats-and-the-production-queue) | G7 | L |
 | G9 | [Army units and combat](#g9-army-units-and-combat) | G3, G5 | L |
-| G10 | [Builders and buildings (with upgrades)](#g10-builders-and-buildings-with-upgrades) | G7, G8 | L |
+| G10 | [Builders and buildings (with upgrades)](#g10-builders-and-buildings-with-upgrades): G10a done, G10b open | G7, G8 | L |
 | G11 | [Science and culture trees](#g11-science-and-culture-trees) | G8 | L |
 | G12 | [Civilizations and governors](#g12-civilizations-and-governors) | G8, G11 | L |
 | G13 | [Colonies founded by governors (settlers removed)](#g13-colonies-founded-by-governors-settlers-removed) | G12 | M |
@@ -130,7 +130,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G6. Rivers and bridges
 
-- **Status:** rivers done 2026-10-01 ([plan](../plans/done/G6-rivers.md)). Shipped: three river kinds along hex edges in ruleset v4 (stream: free; river: +1 movement, +3 defence; deep river: can't cross, +5 defence), a river defence bonus against melee attacks only, mirrored river generation from hills and mountains to lakes or the border that never cuts the map in two, the rivers board layer and river crossings on the movement-cost lens. Decided by the owner: map generation places **no bridges**, so a deep river is a wall to walk round until builders build bridges (moved to G10). Still open from the list below: bridges (G10), ships on rivers and under bridges (G15), seasonal states (G14), fresh water and housing (G5, G8).
+- **Status:** rivers done 2026-10-01 ([plan](../plans/done/G6-rivers.md)). Shipped: three river kinds along hex edges in ruleset v4 (stream: free; river: +1 movement, +3 defence; deep river: can't cross, +5 defence), a river defence bonus against melee attacks only, mirrored river generation from hills and mountains to lakes or the border that never cuts the map in two, the rivers board layer and river crossings on the movement-cost lens. Decided by the owner: map generation places **no bridges**, so a deep river is a wall to walk round until builders build bridges (moved to G10, done in G10a). Still open from the list below: ships on rivers and under bridges (G15), seasonal states (G14), fresh water and housing (G5, G8).
 - **Model:** rivers run **along hex edges** (as in Civ), with flow from high ground to the sea.
 - **River states (requested):**
 
@@ -188,8 +188,9 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G10. Builders and buildings (with upgrades)
 
-- **Builder (requested):** a unit that lets a city apply its production to create, upgrade or remove buildings on tiles in its territory. It also builds bridges on river edges (moved here from G6, 2026-10-01): a bridge flag on the river edge, crossed as a stream, which makes the step check accept a bridged deep river and the generator's connectivity check count it; pillaging and repairing bridges too.
-  - *(Suggested)* A builder has a number of charges, or works for n turns per building. Decide which; Civ 6 uses charges.
+- **Status:** split on 2026-10-01. **G10a done** 2026-10-01 ([plan](../plans/done/G10a-builders-and-buildings.md), PR #PRNUM): the builder, tile improvements (farm, lumber camp, mine) in a city's work area, unique city buildings (army camp, campus, trade post, culture centre, harbour) that give a resource or production, bridges built by builders and soldiers, and a per-player stockpile (ruleset v5, [rules](rules.md#building-with-units)). **G10b** is open: upgrades, building health, pillage and repair, removing an improvement, and the buildings' own mechanics (traders from trade posts, faster army production in army camps, ships from harbours with G15).
+- **Owner's model (2026-10-01), not Civ 6:** builders have **no charges**. Builders and soldiers have their own build production; on their city's ground the city's production is added, outside it the unit builds alone (for now only bridges). Both builders and soldiers build bridges.
+- **Builder (requested):** a unit that lets a city apply its production to create, upgrade or remove buildings on tiles in its territory. It also builds bridges on river edges (moved here from G6, 2026-10-01; done in G10a: a crossed bridge counts as no river). Pillaging and repairing bridges are G10b.
 - **Building parameters (requested):** health, room for living (housing), resources produced, production needed to build it.
 - **Upgrades (requested):** some buildings upgrade into the next kind. *Suggested* chains:
 

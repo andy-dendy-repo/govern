@@ -62,7 +62,7 @@ internal static class EndTurnRule
         var perTurn = WorkArea.ProductionPerTurn(ruleset, city.BuildingList);
         if (city.ProducingBuilding is { } building)
         {
-            return ProduceBuilding(ruleset, state, city, building, perTurn, events);
+            return ProduceBuilding(ruleset, state, city, building, events);
         }
 
         var cost = ruleset.Unit(city.Producing).ProductionCost;
@@ -81,9 +81,9 @@ internal static class EndTurnRule
     }
 
     // A finished building joins the city, which goes back to producing its unit from scratch.
-    private static GameState ProduceBuilding(Ruleset ruleset, GameState state, City city, BuildingType building, int perTurn, ImmutableArray<GameEvent>.Builder events)
+    private static GameState ProduceBuilding(Ruleset ruleset, GameState state, City city, BuildingType building, ImmutableArray<GameEvent>.Builder events)
     {
-        var progress = city.ProductionProgress + perTurn;
+        var progress = city.ProductionProgress + WorkArea.ProductionPerTurn(ruleset, city.BuildingList);
         if (progress < ruleset.Building(building).Cost)
         {
             return state.WithCity(city with { ProductionProgress = progress });

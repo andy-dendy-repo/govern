@@ -1,6 +1,6 @@
 ---
 title: Game UI design system
-tags: [client, game-ui, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
+tags: [client, game-ui, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, stockpile, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
 code: [src/Govern.Client/Components/Game, src/Govern.Client/Features/Games/Components/Screen, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/Features/Games/Services/GameUiService.cs, src/Govern.Client/Features/Design/Pages/DesignPage.razor, src/Govern.Client/Helpers, src/Govern.Client/wwwroot/css, tests/Govern.ArchitectureTests/GameUiTests.cs]
 updated: 2026-10-01
 ---
@@ -17,9 +17,9 @@ A started game (`Features/Games/Components/GameTable`) is a CSS grid with fixed 
 
 | Zone | Component | Holds | Grows with |
 |---|---|---|---|
-| Top bar | `Screen/TopBar` | Your seat colour, "Turn n: your turn", End turn, Resign (inline confirm) | treasury (G8), science and culture (G11), season (G14): one element each, before the actions |
+| Top bar | `Screen/TopBar` | Your seat colour, "Turn n: your turn", your stockpile (one `CostLabel` per ruleset resource, G10a), End turn, Resign (inline confirm) | season (G14): one element each, before the actions |
 | Map | `Board/GameBoard` | The hex board, pan and zoom, zoom buttons | map lenses (toolbar in this zone), new board layers |
-| Action bar | `Screen/ActionBar`, floating over the bottom of the map | The selected own unit's actions (Found city, with the rule's reason when disabled) and a hint for board moves | one button per new ability |
+| Action bar | `Screen/ActionBar`, floating over the bottom of the map | The selected own unit's actions (Found city; Build <improvement> for each improvement that fits the unit's terrain; Build bridge, which turns on bridge mode; each with the rule's reason when disabled) and a hint for board moves or the unit's job | one button per new ability |
 | Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel`), the combat forecast of a pending attack (`CombatForecastPanel`) or a hint | one panel per new selection kind (tile, building) |
 | Full-screen view | (added with its first user) | Large content: tech and culture trees (G11), the city screen, governors (G12) | |
 
@@ -33,11 +33,12 @@ The action bar floats over the bottom-left of the map, so a unit's actions sit n
 | Exact numbers on demand | `NumberTooltip`: hover shows the title; the info button shows it on click, Enter, Space or tap (no long press); Esc closes it |
 | Destructive actions confirm inline | `ConfirmButton`: the first click asks, a second click on the confirm button acts, Cancel or Esc backs out (Resign today) |
 | No accidental actions | A drag on the board is never a click; commands are sent one at a time; a link never acts on its own |
-| Keyboard | Every action is a button (Tab reaches it); Esc cancels a pending attack, else clears the selection (`GameUiService.Escape`). The screen takes keyboard focus on arrival and after each command (whose disabled buttons would drop it); an Esc handled by an open `ConfirmButton` or `NumberTooltip` stops there |
+| Bridge mode | Build bridge (`GameUiService.ToggleBridge`) marks the neighbours the unit can bridge to (`BoardHighlights.Bridgeable`, from `GameEngine.BridgeTargets`, dashed `overlay bridgeable`); a click on one sends the bridge, any other click, the button again or Esc leaves the mode |
+| Keyboard | Every action is a button (Tab reaches it); Esc cancels a pending attack or bridge mode, else clears the selection (`GameUiService.Escape`). The screen takes keyboard focus on arrival and after each command (whose disabled buttons would drop it); an Esc handled by an open `ConfirmButton` or `NumberTooltip` stops there |
 
 ## UI state (GameUiService)
 
-`Features/Games/Services/GameUiService` holds the UI state of one game screen: the selection (`BoardSelection`) and its highlights (`BoardHighlights`, from the Core previews). `GameTable` creates one per game and cascades it (`CascadingValue IsFixed`), so `SidePanel` and `ActionBar` read the selection instead of receiving it through parameter chains. It holds no game state: the view stays the server's. A new view calls `Refresh`, which drops a selection that is no longer visible, and a pending attack target (`BoardSelection.Target`) the unit can no longer fight. It also holds the active map lens ([map lenses](#map-lenses)); later UI state (an open full-screen view) is added here.
+`Features/Games/Services/GameUiService` holds the UI state of one game screen: the selection (`BoardSelection`) and its highlights (`BoardHighlights`, from the Core previews). `GameTable` creates one per game and cascades it (`CascadingValue IsFixed`), so `SidePanel` and `ActionBar` read the selection instead of receiving it through parameter chains. It holds no game state: the view stays the server's. A new view calls `Refresh`, which drops a selection that is no longer visible, a pending attack target (`BoardSelection.Target`) the unit can no longer fight, and bridge mode (`BoardSelection.Bridge`) with nothing left to bridge. It also holds the active map lens ([map lenses](#map-lenses)); later UI state (an open full-screen view) is added here.
 
 ## Design tokens, themes and colours
 
@@ -64,9 +65,10 @@ All colours are CSS custom properties in `wwwroot/css/tokens.css` (`--gv-<group>
 | `unit-<id>` | Each ruleset unit (`Icons.Unit`) |
 | `terrain-<id>` | Each ruleset terrain (`Icons.Terrain`): a hex swatch filled with the terrain colour plus a `.terrain-mark` drawing (trees, humps, peaks, waves; none for plains). The board draws it on every known tile that isn't the default terrain, where the hex blends into the tile and only the drawing shows, so terrain is never told by colour alone |
 | `city` | Cities |
-| `ui-movement`, `ui-sight`, `ui-production`, `ui-health`, `ui-strength`, `ui-turns` | UI glyphs (`Icons` constants) |
+| `improvement-<id>`, `building-<id>`, `resource-<id>` | Each ruleset improvement (outlined lines, drawn small in the tile's upper left by the board), building and resource (`Icons.Improvement`, `Icons.Building`, `Icons.Resource`) |
+| `ui-movement`, `ui-sight`, `ui-production`, `ui-health`, `ui-strength`, `ui-turns`, `ui-bridge` | UI glyphs (`Icons` constants) |
 
-Shapes sit in a 26×26 box centred on 0,0. The main shape takes its fill from the `<use>` (a seat or terrain class); `.icon-mark` draws the white mark inside unit symbols and `.icon-line` draws outlined glyphs in the text colour. `GameIcon` draws one icon at text size; it is decorative unless `Label` is set (then `role="img"` with that name). `GameSpriteTests` checks every ruleset unit and terrain and every `Icons` constant has a symbol.
+Shapes sit in a 26×26 box centred on 0,0. The main shape takes its fill from the `<use>` (a seat or terrain class); `.icon-mark` draws the white mark inside unit symbols and `.icon-line` draws outlined glyphs in the text colour. `GameIcon` draws one icon at text size; it is decorative unless `Label` is set (then `role="img"` with that name). `GameSpriteTests` checks every ruleset unit, terrain, improvement, building and resource and every `Icons` constant has a symbol.
 
 ## Board layers
 
@@ -79,14 +81,15 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | Component | Status | Use |
 |---|---|---|
 | `GameSprite`, `GameIcon` | built | The icon set and one icon |
-| `StatTable` | built | Icon, label and value rows (`Models/StatRow`), with an optional detail tooltip; `UnitPanel` shows strength (and ranged strength) for any unit, and movement left, sight and cost for your own |
+| `StatTable` | built | Icon, label and value rows (`Models/StatRow`), with an optional detail tooltip; `UnitPanel` shows strength (and ranged strength) for any unit, and movement left, sight, cost and build production for your own |
 | `NumberTooltip` | built | A number with its exact value and origin (hover, focus, tap) |
-| `ProgressBar` | built | Progress towards a cost with "n turns left" at the current rate ("Complete" once reached, "Never at this rate" without income); `CityPanel` shows production |
-| `CostLabel` | built | Icon and amount; each Build button shows the unit's production cost |
+| `ProgressBar` | built | Progress towards a cost with "n turns left" at the current rate ("Complete" once reached, "Never at this rate" without income); `CityPanel` shows production (a unit or a building), `UnitPanel` a unit's job (its build production plus the production of the own city whose ground it stands on) |
+| `CostLabel` | built | Icon and amount; each Build button shows its production cost, and the top bar each resource of the stockpile |
 | `ConfirmButton` | built | Inline confirm for destructive actions (Resign) |
 | `HealthBar` | built (G9) | A unit's health as a bar with "n of max", the danger style at a third or less; `UnitPanel` and the combat forecast. The board draws its own small SVG bar under each hurt unit (`BoardPieces`) |
 | `CombatForecastPanel`, `CombatSideView` | built (G9), feature panel | The forecast of a pending attack from `GameEngine.CombatForecast`: each side's health, strength (modifiers in the tooltip) and damage range, then Attack and Cancel |
-| `YieldList`, `ResourceBadge` | planned by G5/G8 | Yield and resource rows and badges |
+| `CityPanel` buildings | built (G10a), feature panel | The city's buildings, and a Build button per building it doesn't have (with its yield, its cost and the rule's reason when disabled) |
+| `YieldList` | planned by G5/G8 | Yield rows per tile and city |
 | `QueueList` | planned by G8/G10 | A reorderable build queue |
 | `TreeView` | planned by G11/G12 | Tech, culture and governor skill trees in a full-screen view |
 | `LensToolbar`, `BoardLens` and `IMapLens` | built (G4) | Toggleable map overlays, one at a time ([map lenses](#map-lenses)); the first is movement cost. Edge marks for river crossings (G6). Later lenses: resources (G5), territory (G7), yields and loyalty (G8), seasons (G14) |
@@ -106,6 +109,11 @@ A lens marks every known tile with one kind of information, instead of clutterin
 - **Layer:** `Components/Board/BoardRivers` draws every known river edge in the `BoardLayer.Rivers` slot as a `<line class="river river-<id> visible|explored">` between the edge's two corners (`HexLayout.EdgeEnds`), with a `<title>` sentence (`Helpers/RiverDescription`). It renders nothing when no river is known, and again only for a new view, like the terrain.
 - **Style:** `board.css` has one `.river-<id>` rule per ruleset river (its width: stream 2.5, river 5, deep river 8, so the kinds differ by more than colour); colours come from the `--gv-river*` tokens, darker for the deep river and when explored. `GameUiTests.BoardCss_StylesEveryRiver` checks a rule exists for every ruleset river. The rules aren't scoped to `.board`, so the `/design` gallery shows each kind.
 - **Forecast:** the river bonus appears in the defender's strength breakdown ("+3 behind River").
+- **Bridges** (G10a): `BoardRivers` also draws each bridge in sight as a `<line class="bridge">` plank across its edge (`HexLayout.BridgeEnds`, from one tile's centre towards the other), with a `<title>`. The movement cost lens leaves bridged edges unmarked.
+
+## Improvements
+
+`Components/Board/BoardImprovements` draws each improvement in sight (the view carries it for visible tiles only) in the `BoardLayer.Improvements` slot: its sprite symbol at 0.6 scale in the tile's upper left (`.improvement`, `--gv-improvement`), so the unit or city in the middle stays readable, with a `<title>` naming it.
 
 ## Design gallery (/design)
 

@@ -1,6 +1,6 @@
 ---
 title: Game Core engine
-tags: [game, core, engine, hex, rivers, edges, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
+tags: [game, core, engine, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, work-area, stockpile, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
 updated: 2026-10-01
 ---
@@ -19,7 +19,7 @@ updated: 2026-10-01
 | `GameFactory.Create(ruleset, GameSetup)` | New game: a generated map of the ruleset's size (or the setup's size, within the ruleset's limits) whose two halves mirror each other ([map generation](#map-generation)); each player gets the ruleset's starting units (by default a settler plus an adjacent soldier) on the default terrain. Turn 1, first player, version 0 |
 | `GameEngine.Execute(ruleset, state, actor, command)` | Validates and applies one `GameCommand`. Returns `CommandResult`: a `GameUpdate` (new `GameState` + ordered `GameEvent`s) or a `RuleViolation`. A rejected command never changes the state |
 | `GameEngine.ReachableTiles(ruleset, state, viewer, unitId)` | Tiles one of the viewer's units can move to this turn, for UI highlights. Another player's unit always returns an empty list |
-| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CombatForecast(ruleset, view, unitId, target)`, `CheckFoundCity(ruleset, view, unitId)` | What `Execute` would decide for a move, an attack (and the damage range of a fight) or founding a city, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
+| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CombatForecast(ruleset, view, unitId, target)`, `CheckFoundCity(ruleset, view, unitId)`, `CheckBuildImprovement(ruleset, view, unitId, improvement)`, `BridgeTargets(ruleset, view, unitId)`, `CheckProduceBuilding(ruleset, view, cityId, building)` | What `Execute` would decide for a move, an attack (and the damage range of a fight), founding a city, starting an improvement or a bridge, or producing a building, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
 | `GameEngine.ViewFor(ruleset, state, player)` | The fog-of-war `PlayerView`: the only shape a client may receive |
 | `GameSerializer` | The one JSON format for storage (jsonb), the Api and the client |
 
@@ -65,7 +65,8 @@ After each accepted command, `Execute`:
 - **Combat:** `AttackTarget.River` carries the river between attacker and target. `CombatCalculator` adds it as a `River` modifier for the defender of a melee attack; `AttackRule.Check` refuses capturing an undefended city across an uncrossable river (`attack.river_in_the_way`).
 - **Generation** (`Map/RiverGenerator`, internal, called by `MapGenerator` after the terrain): walks along corners from a source terrain to a mouth terrain or the border, edge by edge with the mirror, deepening by `map.generation.rivers.stages`; an uncrossable edge is laid only while the passable tiles stay connected. Draws use `NextHashed`. Algorithm: [game logic](../game/game-logic.md#rivers).
 - **View:** `TileView.Rivers` for explored and visible tiles (rivers never change).
-- **Deferred:** bridges (G10), ships on rivers (G15), seasonal river states (G14).
+- **Bridges** (G10a) sit on edges like rivers: see [Builders, improvements, buildings and bridges](#builders-improvements-buildings-and-bridges-g10a).
+- **Deferred:** ships on rivers (G15), seasonal river states (G14).
 - Reference: Red Blob Games, "Hexagonal Grids".
 
 ## Units and cities (the default ruleset)
@@ -77,6 +78,9 @@ After each accepted command, `Execute`:
 | Spearman | anti_cavalry | 18 | 2 | 2 | 4 | `attack` |
 | Horseman | cavalry | 20 | 3 | 3 | 6 | `attack` |
 | Archer | ranged | 10 (shoots at 22, range 2) | 2 | 2 | 5 | `ranged_attack`: shoots enemy units in range, no damage back |
+| Builder | civilian | — | 2 | 2 | 5 | `build_improvement`, `build_bridge` (build production 2) |
+
+The soldier also has `build_bridge` with build production 1.
 
 - `UnitType` and `TerrainType` are ids from the ruleset (`readonly record struct`s written to JSON as the plain id). Stats come from `ruleset.Unit(type)`; rules check abilities (`UnitDefinition.CanFoundCity`/`CanAttack`/`CanRangedAttack`, `AttackRange`), never a unit id. A new unit is a ruleset entry only; a new ability also needs a `UnitAbility` value, a command and a rule.
 - **Cities** (the ruleset's `cities` section; defaults in brackets):
@@ -87,6 +91,19 @@ After each accepted command, `Execute`:
   - named from a text template (`City {n}`);
   - a captured city's progress resets (yes).
 - **Stacking:** at most one unit per tile. A unit may stand in its own city.
+
+## Builders, improvements, buildings and bridges (G10a)
+
+Andrii's model, not a copy of another game: units have no build charges; a building unit has its own **build production** and, on its own city's ground, the city's production is added.
+- **Folder:** `Core/Economy` holds the ids (`ResourceType`, `ImprovementType`, `BuildingType`, plain ids in JSON like `UnitType`), `ResourceAmount` and the definitions (`ResourceDefinition`, `ImprovementDefinition`, `BuildingDefinition`). Ruleset sections: [game data: building sections](../game/game-data-economy.md).
+- **State, all optional in the JSON (no schema bump):** `Unit.Job` (`UnitJob`: progress, the round it started, and an `Improvement` or a `BridgeTo` target), `Tile.Improvement`, `Tile.Bridges` (`TileBridges`, one flag per stored side, like `TileRivers`), `City.ProducingBuilding` and `City.Buildings`, `Player.Resources` (the stockpile, in ruleset order).
+- **Work area:** `Cities/WorkArea` (`Contains`: distance 1..`cities.workRadius`; `Covers`: also the city tile; `ProductionPerTurn`: `productionPerTurn` plus the buildings' `production`). The validator keeps work areas from overlapping.
+- **Commands:** `BuildImprovementCommand` (`build_improvement`), `BuildBridgeCommand` (`build_bridge`), `ProduceBuildingCommand` (`produce_building`). Starting a job sets movement to 0 (`BuildStartedEvent`); moving or attacking drops the job; `SetProductionCommand` clears a building in production.
+- **End turn** (`EndTurnRule`): heal (units without a job), then `Engine/ConstructionRule.AdvanceJobs` (oldest job first; each city feeds one job and then skips its own production; a job whose placement check fails is dropped; `ImprovementBuiltEvent`, `BridgeBuiltEvent`), then `ConstructionRule.CollectYields` (buildings plus work-area improvements into the stockpile), then production (`BuildingCompletedEvent` for a building).
+- **Bridges** are only seen through `GameMap.CrossedRiverBetween` / `PlayerView.CrossedRiverBetween` (null when the edge is bridged), used by the step cost, the combat river modifier and the capture check, so a bridged edge is like no river.
+- **View:** `TileView.Bridges` and `Improvement` for visible tiles only (they change); `UnitView.Job` for own units only; `CityView.ProducingBuilding` and `Buildings` for own cities only; `PlayerView.Resources` is the viewer's own stockpile.
+- **Previews:** `BuildImprovementRule.Check`, `BuildBridgeRule.Check` and `ProduceBuildingRule.Check` are shared by the rules and `ViewPreviewCalculator`; `Engine/BuildPreviewTests` checks parity with `Execute`. The bridge preview is exact because a `build_bridge` unit's sight is at least `workRadius` + 1 (validator).
+- Algorithms: [game logic](../game/game-logic.md#building-with-units-jobs). Later (G10b): upgrades, building health, pillage and repair, and the buildings' own mechanics.
 
 ## Combat (G9)
 
@@ -105,7 +122,10 @@ After each accepted command, `Execute`:
 | `FoundCityCommand` (`found_city`) | Settler with movement left, not on a city, spacing respected. The settler is removed and a city created (`CityFoundedEvent`) |
 | `SetProductionCommand` (`set_production`) | Own city; changes what it builds and keeps its progress (`ProductionChangedEvent`) |
 | `AttackCommand` (`attack`) | A unit with `attack` or `ranged_attack` and movement left; a target in range (adjacent for melee). Against a unit, both fight ([combat](#combat-g9)): `UnitAttackedEvent`, then `UnitDestroyedEvent` for each unit at 0 health; an undefended enemy city is captured by a melee attacker, which moves in (`CityCapturedEvent`). Movement drops to 0 |
-| `EndTurnCommand` (`end_turn`) | The actor's cities produce. A finished unit spawns on the city or its first free neighbour with 0 movement; if the city is surrounded, it waits. The next active player gets full movement; the round (`Turn`) increases on wrap (`TurnEndedEvent`) |
+| `BuildImprovementCommand` (`build_improvement`) | A builder with movement left in an own work area starts an improvement job ([G10a](#builders-improvements-buildings-and-bridges-g10a)) |
+| `BuildBridgeCommand` (`build_bridge`) | A unit with `build_bridge` and movement left starts a bridge job over the river towards a neighbour |
+| `ProduceBuildingCommand` (`produce_building`) | Own city; produces a building it doesn't have yet (needs the adjacent terrain if any), keeps its progress (`ProductionChangedEvent` with `Building`) |
+| `EndTurnCommand` (`end_turn`) | Units heal, jobs advance, yields are collected, then the actor's cities produce. A finished unit spawns on the city or its first free neighbour with 0 movement; if the city is surrounded, it waits. The next active player gets full movement; the round (`Turn`) increases on wrap (`TurnEndedEvent`) |
 | `ResignCommand` (`resign`) | Any active player, any time (`PlayerResignedEvent`) |
 
 **Turn guard:** every command except Resign requires a running game and `actor == CurrentPlayer`. The unit or city must exist and belong to the actor.
@@ -132,6 +152,10 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `city.not_found` / `city.unknown_unit_type` | The actor has no such city / a unit type the game's ruleset doesn't have |
 | `attack.not_adjacent` / `attack.out_of_range` / `attack.no_target` / `attack.own_target` | Attack target problems (`out_of_range` for ranged units; `no_target` also for a ranged unit aimed at an empty city) |
 | `attack.river_in_the_way` | A melee unit would capture an undefended city across a river it can't cross |
+| `unit.cannot_build_improvements` / `unit.cannot_build_bridges` | The unit type lacks the build ability |
+| `build.already_building` / `build.unknown_improvement` / `build.not_in_work_area` / `build.wrong_terrain` / `build.tile_improved` | Improvement job problems |
+| `bridge.not_adjacent` / `bridge.no_river` / `bridge.exists` / `bridge.impassable` / `bridge.enemy_work_area` | Bridge job problems |
+| `city.unknown_building` / `city.building_exists` / `city.building_needs_terrain` | Building production problems |
 
 Exceptions are reserved for programming errors: an invalid `GameSetup`, an unknown command type, or `ViewFor` for a non-participant.
 
@@ -161,6 +185,8 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 | `GameEngine.AttackTargets(view, unitId)` | Tiles in range with an enemy unit (or, for melee, an enemy city) | the tiles an `AttackCommand` would be accepted for |
 | `GameEngine.CombatForecast(view, unitId, target)` | Both strengths, their modifiers and each side's damage range; `null` for a capture or a rejected attack | the range `Execute` rolls in |
 | `GameEngine.CheckFoundCity(view, unitId)` | `null`, or the `RuleViolation` | what a `FoundCityCommand` would return |
+| `GameEngine.CheckBuildImprovement(view, unitId, improvement)` / `CheckProduceBuilding(view, cityId, building)` | `null`, or the `RuleViolation` | what a `BuildImprovementCommand` / `ProduceBuildingCommand` would return |
+| `GameEngine.BridgeTargets(view, unitId)` | The neighbours the unit can bridge to, row then column | the targets a `BuildBridgeCommand` would be accepted for |
 
 - All three give nothing (or the violation) when the game is over, it isn't the viewer's turn, or the unit isn't the viewer's, the same as the command guard.
 - **Why a view is enough:** unit sight ≥ movement, founder sight ≥ city spacing − 1, and ranged range ≤ sight (enforced by `RulesetValidator`). Every tile a unit could reach, attack or be blocked by is therefore visible, and the view shows every unit and city on it. Reachability over a view enters only visible tiles.
@@ -187,7 +213,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 
 ## JSON format and schema version (GameSerializer)
 
-- `GameSerializer.Options` uses web defaults (camelCase), with enums as camelCase strings (numbers are rejected). `UnitType`, `TerrainType` and `RiverType` are written as their plain ruleset ids (`"settler"`), the same JSON the former enums gave, so stored games read unchanged.
+- `GameSerializer.Options` uses web defaults (camelCase), with enums as camelCase strings (numbers are rejected). `UnitType`, `TerrainType`, `RiverType`, `ResourceType`, `ImprovementType` and `BuildingType` are written as their plain ruleset ids (`"settler"`), the same JSON the former enums gave, so stored games read unchanged.
 - Commands and events are polymorphic, with a `type` discriminator that may appear anywhere in the object.
 - The discriminator names are part of the storage and wire format. Never rename them.
 - **Required values:** every constructor value is required (`RespectRequiredConstructorParameters`). Bad client input, including a missing `type`, always surfaces as `JsonException` (a 400 in the Api), never a 500.
@@ -205,12 +231,13 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - rules reading changed ruleset values (costs, production, spacing, names, abilities, capture);
 - every rule's happy path and errors;
 - fog of war, including hidden enemy production and the tile index ↔ coordinate mapping;
-- the view previews' parity with `Execute` (`Engine/GameEnginePreviewTests`), including rivers of each kind around the unit;
+- the view previews' parity with `Execute` (`Engine/GameEnginePreviewTests`), including rivers of each kind and bridges around the unit, and the build previews (`Engine/BuildPreviewTests`);
+- builders, jobs, yields and buildings (`Actions/BuildImprovementActionTests`, `BuildBridgeActionTests`, `ProduceBuildingActionTests`, `Engine/ConstructionRuleTests`);
 - river generation: mirrored, from a source to a mouth, never splitting the passable map (`Map/MapGeneratorTests`);
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v4.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, and `WithRiver` a river on chosen edges.
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v5.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge` an improvement or a bridge; `AddUnit` takes a `UnitJob` and `AddCity` a building in production and built buildings.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`
