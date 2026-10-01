@@ -1,3 +1,5 @@
+using Govern.Core.Economy;
+using Govern.Core.Cities;
 using System.Collections.Immutable;
 using Govern.Core.Actions;
 using Govern.Core.Map;
@@ -133,6 +135,58 @@ public static class GameEngine
         return ViewPreviewCalculator.CheckFoundCity(ruleset, view, unitId);
     }
 
+    /// <summary>
+    /// Whether one of the viewer's units can start building an improvement on its tile now, worked out from their view alone
+    /// (for the client).
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="unitId">The builder.</param>
+    /// <param name="improvement">The improvement.</param>
+    /// <returns>
+    /// <see langword="null"/> when a <see cref="BuildImprovementCommand"/> would be accepted; otherwise the violation it would be
+    /// rejected with.
+    /// </returns>
+    public static RuleViolation? CheckBuildImprovement(Ruleset ruleset, PlayerView view, UnitId unitId, ImprovementType improvement)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return ViewPreviewCalculator.CheckBuildImprovement(ruleset, view, unitId, improvement);
+    }
+
+    /// <summary>
+    /// Neighbouring tiles one of the viewer's units can start bridging to now, worked out from their view alone (for the client).
+    /// A tile is in the result exactly when a <see cref="BuildBridgeCommand"/> to it would be accepted.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="unitId">The unit.</param>
+    /// <returns>Tiles across a river the unit can bridge, ordered by row then column; empty when it can't build a bridge now.</returns>
+    public static ImmutableArray<HexCoord> BridgeTargets(Ruleset ruleset, PlayerView view, UnitId unitId)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return ViewPreviewCalculator.BridgeTargets(ruleset, view, unitId);
+    }
+
+    /// <summary>
+    /// Whether one of the viewer's cities can start producing a building now, worked out from their view alone (for the client).
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="cityId">The city.</param>
+    /// <param name="building">The building.</param>
+    /// <returns>
+    /// <see langword="null"/> when a <see cref="ProduceBuildingCommand"/> would be accepted; otherwise the violation it would be
+    /// rejected with.
+    /// </returns>
+    public static RuleViolation? CheckProduceBuilding(Ruleset ruleset, PlayerView view, CityId cityId, BuildingType building)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return ViewPreviewCalculator.CheckProduceBuilding(ruleset, view, cityId, building);
+    }
+
     /// <summary>What one participant may see of the game (fog of war applied).</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="state">Current state.</param>
@@ -148,6 +202,9 @@ public static class GameEngine
         AttackCommand attack => AttackRule.Apply(ruleset, state, actor, attack),
         FoundCityCommand found => FoundCityRule.Apply(ruleset, state, actor, found),
         SetProductionCommand production => SetProductionRule.Apply(ruleset, state, actor, production),
+        BuildImprovementCommand build => BuildImprovementRule.Apply(ruleset, state, actor, build),
+        BuildBridgeCommand bridge => BuildBridgeRule.Apply(ruleset, state, actor, bridge),
+        ProduceBuildingCommand building => ProduceBuildingRule.Apply(ruleset, state, actor, building),
         EndTurnCommand => EndTurnRule.Apply(ruleset, state, actor),
         ResignCommand => ResignRule.Apply(state, actor),
         _ => throw new ArgumentOutOfRangeException(nameof(command), command.GetType().Name, "Unknown command."),

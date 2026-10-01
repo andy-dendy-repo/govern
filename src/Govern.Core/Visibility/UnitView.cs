@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.State;
@@ -17,9 +18,17 @@ namespace Govern.Core.Visibility;
 /// <param name="Position">Tile the unit stands on.</param>
 /// <param name="MovementLeft">Movement points left this turn; <see langword="null"/> for an enemy unit.</param>
 /// <param name="Health">Health left, from 1 to <see cref="CombatRules.MaxHealth"/>.</param>
-public sealed record UnitView(UnitId Id, PlayerId Owner, UnitType Type, HexCoord Position, int? MovementLeft, int Health)
+/// <param name="Job">What the unit is building; only for the viewer's own units (an enemy's would show its plans).</param>
+public sealed record UnitView(
+    UnitId Id,
+    PlayerId Owner,
+    UnitType Type,
+    HexCoord Position,
+    int? MovementLeft,
+    int Health,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] UnitJob? Job = null)
 {
-    /// <summary>Projects a unit for a viewer, hiding the movement of units the viewer doesn't own.</summary>
+    /// <summary>Projects a unit for a viewer, hiding the movement and job of units the viewer doesn't own.</summary>
     /// <param name="ruleset">The game's ruleset (for the unit's health).</param>
     /// <param name="unit">The unit.</param>
     /// <param name="viewer">The player the view is for.</param>
@@ -28,6 +37,7 @@ public sealed record UnitView(UnitId Id, PlayerId Owner, UnitType Type, HexCoord
     {
         ArgumentNullException.ThrowIfNull(unit);
 
-        return new UnitView(unit.Id, unit.Owner, unit.Type, unit.Position, unit.Owner == viewer ? unit.MovementLeft : null, unit.Health(ruleset));
+        var own = unit.Owner == viewer;
+        return new UnitView(unit.Id, unit.Owner, unit.Type, unit.Position, own ? unit.MovementLeft : null, unit.Health(ruleset), own ? unit.Job : null);
     }
 }

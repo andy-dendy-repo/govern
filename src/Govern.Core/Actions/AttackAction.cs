@@ -21,7 +21,8 @@ public sealed record AttackCommand(UnitId UnitId, HexCoord Target) : GameCommand
 /// An attack. Against a unit, both sides take damage rolled within <see cref="CombatCalculator"/>'s ranges (a ranged attacker
 /// and a civilian defender take none) and a unit at 0 health is destroyed; the attacker stays where it is. An undefended enemy
 /// city is captured by a melee attacker, which moves in (its production progress goes back to 0 when the ruleset says so), unless
-/// a river it can't cross is in the way. Attacking uses all remaining movement.
+/// a river it can't cross is in the way; the city keeps its buildings and stops producing a building. Attacking uses all remaining
+/// movement and drops the attacker's job. A bridge spans its river: no river bonus, and capturing across it is allowed.
 /// </summary>
 internal static class AttackRule
 {
@@ -38,7 +39,7 @@ internal static class AttackRule
             state.Map.Contains(command.Target),
             defender?.Owner ?? city?.Owner,
             defender is not null,
-            state.Map.RiverBetween(attacker.Position, command.Target));
+            state.Map.CrossedRiverBetween(attacker.Position, command.Target));
         if (Check(ruleset, attacker, command.Target, target) is { } violation)
         {
             return violation;
@@ -91,7 +92,7 @@ internal static class AttackRule
         var events = ImmutableArray.CreateBuilder<GameEvent>();
         events.Add(new UnitAttackedEvent(attacker.Id, attacker.Owner, attacker.Position, defender.Id, defender.Owner, defender.Position, dealt, taken));
         var next = Hurt(ruleset, state with { RngState = random.State }, defender, dealt, events);
-        next = Hurt(ruleset, next, attacker with { MovementLeft = 0 }, taken, events);
+        next = Hurt(ruleset, next, attacker with { MovementLeft = 0, Job = null }, taken, events);
         return new GameUpdate(next, events.ToImmutable());
     }
 
@@ -125,8 +126,8 @@ internal static class AttackRule
     {
         var progress = ruleset.Cities.CaptureResetsProduction ? 0 : city.ProductionProgress;
         var next = state
-            .WithCity(city with { Owner = attacker.Owner, ProductionProgress = progress })
-            .WithUnit(attacker with { Position = city.Position, MovementLeft = 0 });
+            .WithCity(city with { Owner = attacker.Owner, ProductionProgress = progress, ProducingBuilding = null })
+            .WithUnit(attacker with { Position = city.Position, MovementLeft = 0, Job = null });
 
         return new GameUpdate(next, [
             new UnitMovedEvent(attacker.Id, [city.Position]),

@@ -1,3 +1,4 @@
+using Govern.Core.Economy;
 using System.Collections.Immutable;
 using Govern.Core.Map;
 using Govern.Core.State;
@@ -32,6 +33,7 @@ namespace Govern.Core.Visibility;
 /// The viewer's cities and the enemy cities on visible tiles, ordered by id; enemy production is hidden (<see cref="CityView"/>).
 /// </param>
 /// <param name="Players">Participants in turn order.</param>
+/// <param name="Resources">The viewer's own stockpile, in the ruleset's order (the opponent's is never shown).</param>
 public sealed record PlayerView(
     PlayerId Viewer,
     long Version,
@@ -44,7 +46,8 @@ public sealed record PlayerView(
     ImmutableArray<TileView> Tiles,
     ImmutableArray<UnitView> Units,
     ImmutableArray<CityView> Cities,
-    ImmutableArray<PlayerSummary> Players)
+    ImmutableArray<PlayerSummary> Players,
+    ImmutableArray<ResourceAmount> Resources)
 {
     /// <summary>The position of the tile at an index of <see cref="Tiles"/>.</summary>
     /// <param name="index">A tile index, 0 to <c>Width * Height - 1</c>.</param>
@@ -86,6 +89,22 @@ public sealed record PlayerView(
     /// </returns>
     public RiverType? RiverBetween(HexCoord a, HexCoord b) =>
         HexEdge.Between(a, b) is { } edge && Contains(edge.Owner) ? TileAt(edge.Owner).Rivers?.On(edge.Side) : null;
+
+    /// <summary>Whether the viewer sees a bridge on the edge between two neighbouring tiles.</summary>
+    /// <param name="a">One tile.</param>
+    /// <param name="b">The other tile.</param>
+    /// <returns><see langword="true"/> when the edge is bridged and the tile that owns it is visible.</returns>
+    public bool BridgeBetween(HexCoord a, HexCoord b) =>
+        HexEdge.Between(a, b) is { } edge && Contains(edge.Owner) && TileAt(edge.Owner).Bridges?.On(edge.Side) == true;
+
+    /// <summary>
+    /// The river the viewer knows a unit crosses from one tile to its neighbour: the river between them unless a bridge spans it
+    /// (see <see cref="GameMap.CrossedRiverBetween"/>).
+    /// </summary>
+    /// <param name="a">The tile the unit is on.</param>
+    /// <param name="b">The neighbouring tile.</param>
+    /// <returns>The river crossed, or <see langword="null"/>.</returns>
+    public RiverType? CrossedRiverBetween(HexCoord a, HexCoord b) => BridgeBetween(a, b) ? null : RiverBetween(a, b);
 
     /// <summary>Returns the unit on a tile, if the viewer sees one there.</summary>
     /// <param name="coord">The tile.</param>

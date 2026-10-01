@@ -1,3 +1,4 @@
+using Govern.Core.Economy;
 using System.Collections.Immutable;
 using Govern.Core.Map;
 using Govern.Core.Units;
@@ -10,7 +11,11 @@ internal sealed record RulesetDocument(
     MapRules Map,
     ImmutableArray<TerrainDefinition> Terrains,
     ImmutableArray<RiverDefinition> Rivers,
+    BridgeRules Bridges,
     ImmutableArray<UnitDefinition> Units,
     CityRules Cities,
+    ImmutableArray<ResourceDefinition> Resources,
+    ImmutableArray<ImprovementDefinition> Improvements,
+    ImmutableArray<BuildingDefinition> Buildings,
     CombatRules Combat,
     ImmutableDictionary<string, string> Texts);
