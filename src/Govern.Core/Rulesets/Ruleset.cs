@@ -17,12 +17,14 @@ public sealed class Ruleset
 {
     private readonly FrozenDictionary<UnitType, UnitDefinition> _units;
     private readonly FrozenDictionary<TerrainType, TerrainDefinition> _terrains;
+    private readonly FrozenDictionary<RiverType, RiverDefinition> _rivers;
 
     internal Ruleset(RulesetDocument document, string hash)
     {
         Setup = document.Setup;
         Map = document.Map;
         Terrains = document.Terrains;
+        Rivers = document.Rivers;
         Units = document.Units;
         Cities = document.Cities;
         Combat = document.Combat;
@@ -30,6 +32,7 @@ public sealed class Ruleset
         Hash = hash;
         _units = document.Units.ToFrozenDictionary(static unit => unit.Id);
         _terrains = document.Terrains.ToFrozenDictionary(static terrain => terrain.Id);
+        _rivers = document.Rivers.ToFrozenDictionary(static river => river.Id);
     }
 
     /// <summary>How a game starts.</summary>
@@ -40,6 +43,9 @@ public sealed class Ruleset
 
     /// <summary>Every terrain, in the document's order.</summary>
     public ImmutableArray<TerrainDefinition> Terrains { get; }
+
+    /// <summary>Every river kind, in the document's order.</summary>
+    public ImmutableArray<RiverDefinition> Rivers { get; }
 
     /// <summary>Every unit, in the document's order (the order the client lists them in).</summary>
     public ImmutableArray<UnitDefinition> Units { get; }
@@ -101,6 +107,13 @@ public sealed class Ruleset
     public TerrainDefinition Terrain(TerrainType type) =>
         _terrains.GetValueOrDefault(type) ?? throw new ArgumentException($"The ruleset has no terrain '{type.Id}'.", nameof(type));
 
+    /// <summary>The definition of a river kind that is in the game.</summary>
+    /// <param name="type">A river kind of this ruleset.</param>
+    /// <returns>Its definition.</returns>
+    /// <exception cref="ArgumentException">The ruleset has no such river (a programming error).</exception>
+    public RiverDefinition River(RiverType type) =>
+        _rivers.GetValueOrDefault(type) ?? throw new ArgumentException($"The ruleset has no river '{type.Id}'.", nameof(type));
+
     /// <summary>A text by key.</summary>
     /// <param name="key">A key the ruleset uses, such as <c>unit.settler.name</c>.</param>
     /// <returns>The English text.</returns>
@@ -117,6 +130,11 @@ public sealed class Ruleset
     /// <param name="type">A terrain of this ruleset.</param>
     /// <returns>The text <c>terrain.{id}.name</c>.</returns>
     public string TerrainName(TerrainType type) => Text($"terrain.{type.Id}.name");
+
+    /// <summary>The display name of a river kind.</summary>
+    /// <param name="type">A river kind of this ruleset.</param>
+    /// <returns>The text <c>river.{id}.name</c>.</returns>
+    public string RiverName(RiverType type) => Text($"river.{type.Id}.name");
 
     /// <summary>The display name of a unit class.</summary>
     /// <param name="unitClass">A class used by a unit of this ruleset (<see cref="UnitDefinition.Class"/>).</param>

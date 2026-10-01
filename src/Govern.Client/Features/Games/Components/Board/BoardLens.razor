@@ -1,8 +1,10 @@
-@* The active map lens (Features/Games/Lenses) in its BoardLayer: a tinted hex and a short label on every tile the lens marks.
+@* The active map lens (Features/Games/Lenses) in its BoardLayer: a tinted hex and a short label on every tile the lens marks,
+   then a small badge on every edge it marks (river crossings), drawn last so no tile covers them.
    Nothing is rendered while no lens is on. Clicks pass through to the tiles (pointer-events: none in board.css). *@
 @using Govern.Client.Features.Games.Enums
 @using Govern.Client.Features.Games.Helpers
 @using Govern.Client.Features.Games.Lenses
+@using Govern.Core.Map
 @using Govern.Core.Visibility
 
 @if (Lens is not null)
@@ -22,10 +24,26 @@
                 <text class="lens-label" dy="0.35em">@mark.Label</text>
             </g>
         }
+        @for (var index = 0; index < View.Tiles.Length; index++)
+        {
+            var coord = View.CoordAt(index);
+            foreach (var mark in Lens.EdgeMarksFor(View.Tiles[index]))
+            {
+                var (x, y) = HexLayout.EdgeMiddle(new HexEdge(coord, mark.Side));
+                <g class="@($"lens-edge-mark {mark.Class}")" transform="translate(@HexLayout.Format(x) @HexLayout.Format(y))">
+                    <title>@mark.Description</title>
+                    <circle r="@EdgeBadgeRadius"/>
+                    <text class="lens-edge-label" dy="0.35em">@mark.Label</text>
+                </g>
+            }
+        }
     </g>
 }
 
 @code {
+    // A badge fits two characters inside a 30 px hex edge.
+    private const string EdgeBadgeRadius = "8";
+
     private (PlayerView View, IMapLens? Lens)? _rendered;
 
     [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;

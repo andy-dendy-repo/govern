@@ -77,6 +77,16 @@ public sealed record PlayerView(
         return Tiles[(coord.Row * Width) + coord.Column];
     }
 
+    /// <summary>The river the viewer knows of on the edge between two neighbouring tiles.</summary>
+    /// <param name="a">One tile.</param>
+    /// <param name="b">The other tile.</param>
+    /// <returns>
+    /// The river, or <see langword="null"/> when there is none, the tiles are not neighbours, or the tile that owns the edge is
+    /// off the map or unexplored.
+    /// </returns>
+    public RiverType? RiverBetween(HexCoord a, HexCoord b) =>
+        HexEdge.Between(a, b) is { } edge && Contains(edge.Owner) ? TileAt(edge.Owner).Rivers?.On(edge.Side) : null;
+
     /// <summary>Returns the unit on a tile, if the viewer sees one there.</summary>
     /// <param name="coord">The tile.</param>
     /// <returns>The unit, or <see langword="null"/>.</returns>

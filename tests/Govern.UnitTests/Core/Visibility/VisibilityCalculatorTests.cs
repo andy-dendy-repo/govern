@@ -117,6 +117,22 @@ public class VisibilityCalculatorTests
     }
 
     [Fact]
+    public void ViewFor_Rivers_ShowOnExploredTilesOnly()
+    {
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithRiver(TestRulesets.River, ((2, 2), (3, 2)))
+            .WithRiver(TestRulesets.DeepRiver, ((9, 5), (10, 5)));
+        builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+
+        var view = GameEngine.ViewFor(TestRulesets.Default, builder.Build(), P1);
+
+        view.TileAt(At(2, 2)).Rivers.ShouldBe(new TileRivers(East: TestRulesets.River));
+        view.RiverBetween(At(3, 2), At(2, 2)).ShouldBe(TestRulesets.River);
+        view.TileAt(At(9, 5)).Rivers.ShouldBeNull();
+        view.RiverBetween(At(9, 5), At(10, 5)).ShouldBeNull();
+    }
+
+    [Fact]
     public void ViewFor_UnitMovedAway_KeepsLeftTilesAsExplored()
     {
         var builder = new GameStateBuilder().WithCapitals();

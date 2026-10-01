@@ -43,6 +43,12 @@
     --gv-terrain-mark: rgba(20, 23, 28, 0.6);
     --gv-terrain-mark-explored: rgba(255, 255, 255, 0.5);
 
+    /* Rivers on tile edges: visible and explored shades; deep rivers are darker (and wider, in board.css). */
+    --gv-river: #3a86c8;
+    --gv-river-explored: #3c5f80;
+    --gv-river-deep: #1f5a94;
+    --gv-river-deep-explored: #2c4560;
+
     /* Map lenses: tints over the tiles and the label on each (Features/Games/Lenses). */
     --gv-lens-cheap: rgba(255, 255, 255, 0.12);
     --gv-lens-costly: rgba(255, 196, 0, 0.4);
@@ -93,6 +99,10 @@
         --gv-terrain-lake-explored: #30506c;
         --gv-terrain-mark: rgba(255, 255, 255, 0.6);
         --gv-terrain-mark-explored: rgba(255, 255, 255, 0.45);
+        --gv-river: #4a95d4;
+        --gv-river-explored: #3a5875;
+        --gv-river-deep: #2c6fae;
+        --gv-river-deep-explored: #2a4560;
         --gv-boot-track: #3a3f47;
         --gv-shadow: rgba(0, 0, 0, 0.7);
     }

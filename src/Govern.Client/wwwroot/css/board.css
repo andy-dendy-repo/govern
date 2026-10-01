@@ -100,6 +100,36 @@
     fill: var(--gv-terrain);
 }
 
+/* Rivers (Components/Board/BoardRivers): one rule per ruleset river id (GameUiTests.BoardCss_StylesEveryRiver), wider as the
+   river gets deeper, so the kinds differ by more than colour. Not scoped to .board, so the design gallery draws them too. */
+.river {
+    stroke: var(--gv-river-colour);
+    stroke-linecap: round;
+    --gv-river-colour: var(--gv-river);
+}
+
+.river.explored {
+    --gv-river-colour: var(--gv-river-explored);
+}
+
+.river-stream {
+    stroke-width: 2.5;
+}
+
+.river-river {
+    stroke-width: 5;
+}
+
+.river-deep_river {
+    stroke-width: 8;
+    --gv-river-colour: var(--gv-river-deep);
+}
+
+.river-deep_river.explored {
+    --gv-river-colour: var(--gv-river-deep-explored);
+}
+
+.board .layer-rivers,
 .board .layer-lens,
 .board .layer-highlights,
 .board .layer-cities,
@@ -118,6 +148,24 @@
 
 .board .lens-mark.blocked {
     fill: var(--gv-lens-blocked);
+}
+
+/* A lens badge on a tile edge (a river crossing): a small disc with the label. */
+.board .lens-edge-mark circle {
+    fill: var(--gv-lens-label-outline);
+    stroke: var(--gv-lens-label);
+    stroke-width: 1.5;
+}
+
+.board .lens-edge-mark.blocked circle {
+    fill: var(--gv-danger);
+}
+
+.board .lens-edge-label {
+    fill: var(--gv-lens-label);
+    font-size: 10px;
+    font-weight: 700;
+    text-anchor: middle;
 }
 
 .board .lens-label {

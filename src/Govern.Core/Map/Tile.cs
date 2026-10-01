@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Govern.Core.Map;
 
 /// <summary>
@@ -5,4 +7,11 @@ namespace Govern.Core.Map;
 /// </summary>
 /// <param name="Coord">Position of the tile.</param>
 /// <param name="Terrain">Terrain on the tile.</param>
-public sealed record Tile(HexCoord Coord, TerrainType Terrain);
+/// <param name="Rivers">
+/// Rivers on the edges this tile owns (<see cref="HexSide"/>), or <see langword="null"/> when there are none. Left out of the
+/// JSON while null, so maps saved before rivers existed read unchanged.
+/// </param>
+public sealed record Tile(
+    HexCoord Coord,
+    TerrainType Terrain,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TileRivers? Rivers = null);

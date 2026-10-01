@@ -9,6 +9,7 @@ internal sealed record RulesetDocument(
     SetupRules Setup,
     MapRules Map,
     ImmutableArray<TerrainDefinition> Terrains,
+    ImmutableArray<RiverDefinition> Rivers,
     ImmutableArray<UnitDefinition> Units,
     CityRules Cities,
     CombatRules Combat,

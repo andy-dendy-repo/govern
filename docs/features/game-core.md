@@ -1,8 +1,8 @@
 ---
 title: Game Core engine
-tags: [game, core, engine, hex, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
+tags: [game, core, engine, hex, rivers, edges, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Game Core engine
@@ -51,6 +51,21 @@ After each accepted command, `Execute`:
 - **Sight bonus:** `VisibilityCalculator.VisibleTiles` adds the `SightBonus` of the tile a unit or city stands on. It only adds sight, so the fog invariants the previews rely on still hold.
 - **Defence bonus:** added to a defending unit's strength in `CombatCalculator` (G9).
 - **Deferred:** forests blocking sight (needs line of sight and breaks the "sees every reachable tile" invariant), terrain layers such as forested hills (G5).
+
+## Rivers (G6)
+
+| River (default ruleset) | Crossing cost | Crossable | Defence bonus |
+|---|---|---|---|
+| Stream | 0 | yes | 0 |
+| River | +1 | yes | +3 |
+| Deep river | — | no | +5 |
+
+- **State:** rivers run along tile edges. `HexEdge.Between(a, b)` names an edge by the tile that stores it and the `HexSide` (east, north-east, north-west), so every edge is stored once, in that tile's `Tile.Rivers` (`TileRivers`, one optional `RiverType` per side). `GameMap.RiverBetween(a, b)` and `PlayerView.RiverBetween(a, b)` look an edge up from either side. A tile without rivers leaves `rivers` out of the JSON, so games saved before G6 read unchanged with no schema bump.
+- **Movement is per step:** `ReachabilityCalculator` prices each step between neighbours with `StepCost` (the entered tile's cost plus the river's `crossingCost`; null over an uncrossable river), shared by `MoveUnitRule` and the view preview.
+- **Combat:** `AttackTarget.River` carries the river between attacker and target. `CombatCalculator` adds it as a `River` modifier for the defender of a melee attack; `AttackRule.Check` refuses capturing an undefended city across an uncrossable river (`attack.river_in_the_way`).
+- **Generation** (`Map/RiverGenerator`, internal, called by `MapGenerator` after the terrain): walks along corners from a source terrain to a mouth terrain or the border, edge by edge with the mirror, deepening by `map.generation.rivers.stages`; an uncrossable edge is laid only while the passable tiles stay connected. Draws use `NextHashed`. Algorithm: [game logic](../game/game-logic.md#rivers).
+- **View:** `TileView.Rivers` for explored and visible tiles (rivers never change).
+- **Deferred:** bridges (G10), ships on rivers (G15), seasonal river states (G14).
 - Reference: Red Blob Games, "Hexagonal Grids".
 
 ## Units and cities (the default ruleset)
@@ -76,7 +91,7 @@ After each accepted command, `Execute`:
 ## Combat (G9)
 
 - **State:** `Unit.Damage` (0 = unhurt; health = `combat.maxHealth` − damage). Stored as damage so games saved before G9 read as unhurt with no schema bump; the JSON leaves it out while it is 0. The view carries `UnitView.Health` for every unit the viewer sees.
-- **`Engine/CombatCalculator`** (internal) works out a fight from two `Combatant`s (type, health, terrain): strengths with their `CombatModifier`s (health, counter, terrain), and each side's damage range. `AttackRule` rolls within those ranges; `GameEngine.CombatForecast` returns them to the client. Integer maths only.
+- **`Engine/CombatCalculator`** (internal) works out a fight from two `Combatant`s (type, health, terrain) and the river between them: strengths with their `CombatModifier`s (health, counter, terrain, river), and each side's damage range. `AttackRule` rolls within those ranges; `GameEngine.CombatForecast` returns them to the client. Integer maths only.
 - **Rolls** use `DeterministicRandom.NextHashed`, defender first, and only for a side whose range isn't a single value (a ranged attacker and a civilian take fixed damage).
 - **Events:** `UnitAttackedEvent` (`unit_attacked`: both units, both positions, damage dealt and taken), then a `UnitDestroyedEvent` for each unit brought to 0.
 - **Healing** is part of `EndTurnRule`, before production: a hurt unit with full movement left rested.
@@ -116,6 +131,7 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `city.tile_taken` / `city.too_close` | Founding on a city / closer than the minimum spacing |
 | `city.not_found` / `city.unknown_unit_type` | The actor has no such city / a unit type the game's ruleset doesn't have |
 | `attack.not_adjacent` / `attack.out_of_range` / `attack.no_target` / `attack.own_target` | Attack target problems (`out_of_range` for ranged units; `no_target` also for a ranged unit aimed at an empty city) |
+| `attack.river_in_the_way` | A melee unit would capture an undefended city across a river it can't cross |
 
 Exceptions are reserved for programming errors: an invalid `GameSetup`, an unknown command type, or `ViewFor` for a non-participant.
 
@@ -123,7 +139,7 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 
 - A player sees every tile within the sight radius of their units and cities.
 - Everything a player has ever seen accumulates in `Player.Explored`.
-- `PlayerView.Tiles` marks each tile as `Unexplored` (terrain hidden), `Explored` (terrain known) or `Visible`. A `TileView` carries no coordinates: tiles are row-major (index `row * Width + column`), so `PlayerView.CoordAt(index)` gives a tile's position and `TileAt(coord)` the tile at a position. That keeps every snapshot about a third smaller.
+- `PlayerView.Tiles` marks each tile as `Unexplored` (terrain and rivers hidden), `Explored` (terrain and rivers known) or `Visible`. A `TileView` carries no coordinates: tiles are row-major (index `row * Width + column`), so `PlayerView.CoordAt(index)` gives a tile's position and `TileAt(coord)` the tile at a position. That keeps every snapshot about a third smaller.
 - `PlayerView.Units` and `PlayerView.Cities` contain the viewer's own objects and enemy objects **on visible tiles only**.
 - **Enemy production is hidden:** cities are `CityView`s, and an enemy city's `Producing` and `ProductionProgress` are null. Its progress would tell the viewer when the next enemy unit appears. A change in enemy production therefore never changes the viewer's `Version`.
 - **Enemy movement is hidden:** units are `UnitView`s (`UnitView.From`), and a visible enemy unit's `MovementLeft` is null. It would show how far the unit moved through fog this turn, or that it attacked. A change in enemy movement alone therefore never changes the viewer's `Version`. `PlayerView.UnitAt` and `FindOwnUnit` return `UnitView`s; the view previews rebuild the viewer's own `Unit` (whose movement is always present) for the rules' shared checks.
@@ -148,7 +164,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 
 - All three give nothing (or the violation) when the game is over, it isn't the viewer's turn, or the unit isn't the viewer's, the same as the command guard.
 - **Why a view is enough:** unit sight ≥ movement, founder sight ≥ city spacing − 1, and ranged range ≤ sight (enforced by `RulesetValidator`). Every tile a unit could reach, attack or be blocked by is therefore visible, and the view shows every unit and city on it. Reachability over a view enters only visible tiles.
-- **They can't drift from the rules:** `AttackRule.Check` and `FoundCityRule.Check` are shared by the rule and the preview, as are the turn check (`CommandGuardRule.CheckTurn`) and the Dijkstra in `ReachabilityCalculator`. `GameEnginePreviewTests` compares each preview with `Execute` for every tile within 3 of the unit, over scenarios covering own and enemy blockers, an own city in reach, enemies just outside sight (where the view and the state differ), the map edge, no movement, the opponent's turn, an enemy unit id, a finished game, and terrain: forest around the unit (with full and with 1 movement left), mountains and lake around it, a path around a lake, a unit on hills that sees further, an archer with targets in and out of range, and a horseman. `CombatForecastTests` checks over 1000 seeds that `Execute` rolls exactly the forecast's lowest and highest damage for each kind of fight. A new terrain type with a new cost or blocker adds its own parity scenarios.
+- **They can't drift from the rules:** `AttackRule.Check` and `FoundCityRule.Check` are shared by the rule and the preview, as are the turn check (`CommandGuardRule.CheckTurn`) and the Dijkstra in `ReachabilityCalculator`. `GameEnginePreviewTests` compares each preview with `Execute` for every tile within 3 of the unit, over scenarios covering own and enemy blockers, an own city in reach, enemies just outside sight (where the view and the state differ), the map edge, no movement, the opponent's turn, an enemy unit id, a finished game, terrain: forest around the unit (with full and with 1 movement left), mountains and lake around it, a path around a lake, a unit on hills that sees further, an archer with targets in and out of range, and a horseman, and rivers: a stream, a river and a deep river around the unit (with full and with 1 movement left), a deep river wall, enemies across rivers, and a horseman along a river. `CombatForecastTests` checks over 1000 seeds that `Execute` rolls exactly the forecast's lowest and highest damage for each kind of fight. A new terrain type with a new cost or blocker adds its own parity scenarios.
 
 ## View version
 
@@ -171,7 +187,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 
 ## JSON format and schema version (GameSerializer)
 
-- `GameSerializer.Options` uses web defaults (camelCase), with enums as camelCase strings (numbers are rejected). `UnitType` and `TerrainType` are written as their plain ruleset ids (`"settler"`), the same JSON the former enums gave, so stored games read unchanged.
+- `GameSerializer.Options` uses web defaults (camelCase), with enums as camelCase strings (numbers are rejected). `UnitType`, `TerrainType` and `RiverType` are written as their plain ruleset ids (`"settler"`), the same JSON the former enums gave, so stored games read unchanged.
 - Commands and events are polymorphic, with a `type` discriminator that may appear anywhere in the object.
 - The discriminator names are part of the storage and wire format. Never rename them.
 - **Required values:** every constructor value is required (`RespectRequiredConstructorParameters`). Bad client input, including a missing `type`, always surfaces as `JsonException` (a 400 in the Api), never a 500.
@@ -189,11 +205,12 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - rules reading changed ruleset values (costs, production, spacing, names, abilities, capture);
 - every rule's happy path and errors;
 - fog of war, including hidden enemy production and the tile index ↔ coordinate mapping;
-- the view previews' parity with `Execute` (`Engine/GameEnginePreviewTests`);
+- the view previews' parity with `Execute` (`Engine/GameEnginePreviewTests`), including rivers of each kind around the unit;
+- river generation: mirrored, from a source to a mouth, never splitting the passable map (`Map/MapGeneratorTests`);
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v2.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles.
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v4.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, and `WithRiver` a river on chosen edges.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`
