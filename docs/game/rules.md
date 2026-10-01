@@ -246,6 +246,7 @@ The top bar counts your resources (food, water, wood, stone, gold, science, cult
 - You see the health of every enemy unit you can see.
 - You never see an enemy unit's movement left or job, what an enemy city is producing, which buildings it has, or its stock. An enemy unit you watch losing health, or not healing, between turns may still tell you that it moved, or that the land or the city keeping it up is short.
 - The order in which units and cities are listed, and their ids, reveal nothing about when they were created.
+- Your game log lists only what you could see happen: an enemy move appears for the part of its path you saw, an attack from the fog shows the attacker's type but not where it stood, and what happens out of your sight leaves no trace in it.
 
 ## Game numbers
 

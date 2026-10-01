@@ -25,6 +25,7 @@ public partial class GameTable : IDisposable
 
     private readonly CancellationTokenSource _lifetime = new();
     private readonly GameUiService _ui = new();
+    private BoardAnimationService _animation = null!;
     private ElementReference _screen;
     private PlayerView? _view;
     private bool _focusScreen = true;
@@ -46,6 +47,12 @@ public partial class GameTable : IDisposable
     [Inject]
     private RulesetService Rulesets { get; set; } = null!;
 
+    [Inject]
+    private TimeProvider Time { get; set; } = null!;
+
+    [Inject]
+    private BoardInteropService Interop { get; set; } = null!;
+
     private Ruleset Ruleset => Rulesets.Ruleset;
 
     private PlayerView View => Game.View ?? throw new InvalidOperationException("The game table needs a started game with a view.");
@@ -54,19 +61,28 @@ public partial class GameTable : IDisposable
     public void Dispose()
     {
         _ui.Changed -= StateHasChanged;
+        _animation.Changed -= OnAnimationChanged;
+        _animation.Dispose();
         _lifetime.Cancel();
         _lifetime.Dispose();
         GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc />
-    protected override void OnInitialized() => _ui.Changed += StateHasChanged;
+    protected override void OnInitialized()
+    {
+        _ui.Changed += StateHasChanged;
+        _animation = new BoardAnimationService(Time);
+        _animation.Changed += OnAnimationChanged;
+    }
 
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
         if (!ReferenceEquals(View, _view))
         {
+            // The new events play on the board while everything else already shows the new view.
+            _ = _animation.PlayAsync(_view, View, Game.Log);
             _view = View;
             _ui.Refresh(Ruleset, View);
 
@@ -81,6 +97,11 @@ public partial class GameTable : IDisposable
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            _animation.ReducedMotion = await Interop.PrefersReducedMotionAsync(_lifetime.Token);
+        }
+
         // Keep keyboard focus in the screen so Esc works: on arrival, and after a command, whose disabled buttons drop focus.
         if (_focusScreen)
         {
@@ -96,6 +117,8 @@ public partial class GameTable : IDisposable
             return;
         }
 
+        // Acting ends the animation, so the board shows exactly what the click is resolved against.
+        _animation.Finish();
         var click = BoardClickResolver.Resolve(Ruleset, View, _ui.Selection, coord);
         _ui.Select(Ruleset, View, click.Next);
         if (click.Command is { } command)
@@ -153,6 +176,9 @@ public partial class GameTable : IDisposable
         _stale = true;
         await GameChanged.InvokeAsync(result.Value);
     }
+
+    // Animation steps come from timers, outside the renderer's own events.
+    private void OnAnimationChanged() => _ = InvokeAsync(StateHasChanged);
 
     private void OnKeyDown(KeyboardEventArgs args)
     {

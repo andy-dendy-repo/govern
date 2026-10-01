@@ -69,7 +69,7 @@ public class AttackActionTests
         var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
 
         update.State.FindUnit(defender).ShouldBeNull();
-        update.Events.ShouldContain(new UnitDestroyedEvent(defender, P2, At(4, 3)));
+        update.Events.ShouldContain(new UnitDestroyedEvent(defender, P2, TestRulesets.Soldier, At(4, 3)));
         update.Events.OfType<UnitAttackedEvent>().Single().DamageDealt.ShouldBe(5);
         update.State.FindUnit(attacker)!.Position.ShouldBe(At(3, 3));
     }
@@ -85,7 +85,7 @@ public class AttackActionTests
 
         update.State.FindUnit(attacker).ShouldBeNull();
         update.State.FindUnit(defender).ShouldNotBeNull();
-        update.Events.ShouldContain(new UnitDestroyedEvent(attacker, P1, At(3, 3)));
+        update.Events.ShouldContain(new UnitDestroyedEvent(attacker, P1, TestRulesets.Soldier, At(3, 3)));
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class AttackActionTests
 
         update.State.FindUnit(settler).ShouldBeNull();
         update.State.FindUnit(attacker)!.Damage.ShouldBe(0);
-        update.Events.ShouldContain(new UnitAttackedEvent(attacker, P1, At(3, 3), settler, P2, At(4, 3), 100, 0));
+        update.Events.ShouldContain(new UnitAttackedEvent(attacker, P1, TestRulesets.Soldier, At(3, 3), settler, P2, TestRulesets.Settler, At(4, 3), 100, 0));
     }
 
     [Fact]
@@ -205,7 +205,7 @@ public class AttackActionTests
         captured.Owner.ShouldBe(P1);
         captured.ProductionProgress.ShouldBe(0);
         update.State.FindUnit(attacker)!.Position.ShouldBe(At(4, 3));
-        update.Events.ShouldContain(new CityCapturedEvent(city, P2, P1, attacker));
+        update.Events.ShouldContain(new CityCapturedEvent(city, captured.Name, At(4, 3), P2, P1, attacker));
     }
 
     [Fact]

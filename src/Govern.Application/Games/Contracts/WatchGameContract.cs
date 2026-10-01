@@ -103,6 +103,12 @@ internal sealed class WatchGameHandler(
             .Where(candidate => candidate.Id == gameId && candidate.Players.Any(player => player.UserId == userId))
             .FirstOrDefaultAsync(cancellationToken);
 
-        return game?.FindPlayer(userId) is { } caller ? GetGameResponse.From(game, caller, rulesets.Ruleset) : null;
+        if (game?.FindPlayer(userId) is not { } caller)
+        {
+            return null;
+        }
+
+        var log = await GameLogService.RecentAsync(db, game, caller, cancellationToken);
+        return GetGameResponse.From(game, caller, rulesets.Ruleset, log);
     }
 }

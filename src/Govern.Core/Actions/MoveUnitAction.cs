@@ -52,6 +52,6 @@ internal static class MoveUnitRule
             Job = null,
         };
 
-        return new GameUpdate(state.WithUnit(moved), [new UnitMovedEvent(unit.Id, reachability.PathTo(command.Target))]);
+        return new GameUpdate(state.WithUnit(moved), [new UnitMovedEvent(unit.Id, unit.Owner, unit.Type, reachability.PathTo(command.Target))]);
     }
 }

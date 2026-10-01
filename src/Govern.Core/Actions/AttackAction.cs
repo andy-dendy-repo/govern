@@ -90,7 +90,8 @@ internal static class AttackRule
         var taken = Roll(ruleset, random, forecast.Attacker, forecast.Defender);
 
         var events = ImmutableArray.CreateBuilder<GameEvent>();
-        events.Add(new UnitAttackedEvent(attacker.Id, attacker.Owner, attacker.Position, defender.Id, defender.Owner, defender.Position, dealt, taken));
+        events.Add(new UnitAttackedEvent(
+            attacker.Id, attacker.Owner, attacker.Type, attacker.Position, defender.Id, defender.Owner, defender.Type, defender.Position, dealt, taken));
         var next = Hurt(ruleset, state with { RngState = random.State }, defender, dealt, events);
         next = Hurt(ruleset, next, attacker with { MovementLeft = 0, Job = null }, taken, events);
         return new GameUpdate(next, events.ToImmutable());
@@ -118,7 +119,7 @@ internal static class AttackRule
             return state.WithUnit(unit with { Damage = unit.Damage + damage });
         }
 
-        events.Add(new UnitDestroyedEvent(unit.Id, unit.Owner, unit.Position));
+        events.Add(new UnitDestroyedEvent(unit.Id, unit.Owner, unit.Type, unit.Position));
         return state.WithoutUnit(unit.Id);
     }
 
@@ -130,8 +131,8 @@ internal static class AttackRule
             .WithUnit(attacker with { Position = city.Position, MovementLeft = 0, Job = null });
 
         return new GameUpdate(next, [
-            new UnitMovedEvent(attacker.Id, [city.Position]),
-            new CityCapturedEvent(city.Id, city.Owner, attacker.Owner, attacker.Id),
+            new UnitMovedEvent(attacker.Id, attacker.Owner, attacker.Type, [city.Position]),
+            new CityCapturedEvent(city.Id, city.Name, city.Position, city.Owner, attacker.Owner, attacker.Id),
         ]);
     }
 }

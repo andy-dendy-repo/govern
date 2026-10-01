@@ -85,6 +85,45 @@ namespace Govern.Infrastructure.Persistence.Migrations
                     b.ToTable("games", (string)null);
                 });
 
+            modelBuilder.Entity("Govern.Domain.Entities.GameLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Events")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("events");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("game_id");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("player_id");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer")
+                        .HasColumnName("sequence");
+
+                    b.Property<int>("Turn")
+                        .HasColumnType("integer")
+                        .HasColumnName("turn");
+
+                    b.HasKey("Id")
+                        .HasName("pk_game_log_entries");
+
+                    b.HasIndex("GameId")
+                        .HasDatabaseName("ix_game_log_entries_game_id");
+
+                    b.HasIndex("PlayerId", "Sequence")
+                        .HasDatabaseName("ix_game_log_entries_player_id_sequence");
+
+                    b.ToTable("game_log_entries", (string)null);
+                });
+
             modelBuilder.Entity("Govern.Domain.Entities.GamePlayer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -98,6 +137,10 @@ namespace Govern.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("JoinedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("joined_at");
+
+                    b.Property<int>("LogLength")
+                        .HasColumnType("integer")
+                        .HasColumnName("log_length");
 
                     b.Property<int>("Seat")
                         .HasColumnType("integer")
@@ -220,6 +263,23 @@ namespace Govern.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_games_users_creator_id");
                 });
 
+            modelBuilder.Entity("Govern.Domain.Entities.GameLogEntry", b =>
+                {
+                    b.HasOne("Govern.Domain.Entities.Game", null)
+                        .WithMany("LogEntries")
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_game_log_entries_games_game_id");
+
+                    b.HasOne("Govern.Domain.Entities.GamePlayer", null)
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_game_log_entries_game_players_player_id");
+                });
+
             modelBuilder.Entity("Govern.Domain.Entities.GamePlayer", b =>
                 {
                     b.HasOne("Govern.Domain.Entities.Game", null)
@@ -249,6 +309,8 @@ namespace Govern.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Govern.Domain.Entities.Game", b =>
                 {
+                    b.Navigation("LogEntries");
+
                     b.Navigation("Players");
                 });
 

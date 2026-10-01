@@ -5,6 +5,7 @@ using Govern.Core.Actions;
 using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Engine;
+using Govern.Core.Events;
 using Govern.Core.State;
 using Govern.Domain.Enums;
 using Govern.IntegrationTests.Fixtures;
@@ -42,6 +43,46 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
         }
 
         (await GamesApi.GetGameAsync(Client, joiner, game.Id, Ct)).View!.CurrentPlayer.ShouldBe(new PlayerId(opponent.PlayerId));
+    }
+
+    [Fact]
+    public async Task Post_EndTurn_PutsTheTurnInBothPlayersLogsAndStoresOneEntryPerSeat()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var before = await GamesApi.GetGameAsync(Client, creator, game.Id, Ct);
+        before.Log.ShouldBeEmpty();
+
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, before.View!.Version, new EndTurnCommand(), Ct);
+
+        var own = (await GamesApi.ReadGameAsync(response, Ct)).Log.ShouldHaveSingleItem();
+        own.Sequence.ShouldBe(1);
+        own.Turn.ShouldBe(1);
+        own.Events.OfType<TurnEndedEvent>().ShouldHaveSingleItem();
+        var theirs = (await GamesApi.GetGameAsync(Client, joiner, game.Id, Ct)).Log.ShouldHaveSingleItem();
+        theirs.Events.ShouldAllBe(gameEvent => gameEvent is TurnEndedEvent);
+
+        var (scope, db) = await Fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            (await db.GameLogEntries.CountAsync(entry => entry.GameId == game.Id, Ct)).ShouldBe(2);
+        }
+    }
+
+    [Fact]
+    public async Task Post_MoveOutOfTheOpponentsSight_LogsItOnlyForTheMover()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var view = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!;
+        var unit = view.Units.First(u => u.Owner == view.Viewer);
+        var target = GameEngine.ReachableTiles(TestRulesets.Default, await StoredStateAsync(game.Id), view.Viewer, unit.Id).First();
+
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, view.Version, new MoveUnitCommand(unit.Id, target), Ct);
+
+        var moved = (await GamesApi.ReadGameAsync(response, Ct)).Log.ShouldHaveSingleItem().Events.ShouldHaveSingleItem().ShouldBeOfType<UnitMovedEvent>();
+        moved.UnitId.ShouldBe(unit.Id);
+        moved.Path[^1].ShouldBe(target);
+        (await GamesApi.GetGameAsync(Client, joiner, game.Id, Ct)).Log.ShouldBeEmpty();
     }
 
     [Fact]

@@ -36,7 +36,7 @@ public class ConstructionRuleTests
 
         update.State.Map.TileAt(At(5, 5)).Improvement.ShouldBe(TestRulesets.Farm);
         update.State.FindUnit(unit)!.Job.ShouldBeNull();
-        update.Events.ShouldContain(new ImprovementBuiltEvent(unit, At(5, 5), TestRulesets.Farm));
+        update.Events.ShouldContain(new ImprovementBuiltEvent(unit, P1, At(5, 5), TestRulesets.Farm));
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class ConstructionRuleTests
         var built = EndTurn(EndTurn(update.State, P2).State);
         built.State.Map.BridgeBetween(At(6, 5), At(5, 5)).ShouldBeTrue();
         built.State.FindUnit(unit)!.Job.ShouldBeNull();
-        built.Events.ShouldContain(new BridgeBuiltEvent(unit, At(5, 5), At(6, 5)));
+        built.Events.ShouldContain(new BridgeBuiltEvent(unit, P1, At(5, 5), At(6, 5)));
     }
 
     [Fact]

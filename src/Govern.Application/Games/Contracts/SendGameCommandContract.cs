@@ -81,6 +81,12 @@ internal sealed class SendGameCommandHandler(
             return GameErrors.FromViolation(result.Violation);
         }
 
+        return await SaveAsync(db, game, caller, cancellationToken);
+    }
+
+    // Saves the accepted command and answers with the game as the caller now sees it, log included.
+    private async Task<Result<GetGameResponse>> SaveAsync(IApplicationDbContext db, Game game, GamePlayer caller, CancellationToken cancellationToken)
+    {
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -90,7 +96,8 @@ internal sealed class SendGameCommandHandler(
             return GameErrors.StaleVersion;
         }
 
-        return GetGameResponse.From(game, caller, rulesets.Ruleset);
+        var log = await GameLogService.RecentAsync(db, game, caller, cancellationToken);
+        return GetGameResponse.From(game, caller, rulesets.Ruleset, log);
     }
 
     // Why the command cannot reach the engine, or null when it can (a finished game is left to the engine: game.finished).

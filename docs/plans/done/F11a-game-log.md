@@ -7,7 +7,7 @@ updated: 2026-10-01
 
 # Plan: F11a game log (engine events filtered by visibility)
 
-**Status:** planned 2026-10-01 (backlog F11a, Next). F11b [animations](F11b-animations.md) builds on the events this plan delivers.
+**Status:** done 2026-10-01, PR #37. F11b [animations](F11b-animations.md) builds on the events this plan delivers. Implementation notes: the sequence index `(player_id, sequence)` is not unique (a unique one made concurrent commands deadlock; the game's revision already allows one commit per revision); events name the unit type `unitType`, since `type` is the JSON discriminator.
 
 ## Context
 Every accepted command already produces engine events (`GameUpdate.Events`, 19 kinds after G5–G10), but the server drops them: only `VictoryRule` reads them, and players only see the board jump to its new state. Above all, a player doesn't learn what the opponent did during their turn ("their Archer hit your Soldier for 22"). Events describe the full state, so [ADR 0005](../../decisions/0005-live-updates.md) kept them server-side until a log needed them, together with a `VisibilityCalculator.EventsFor` that doesn't exist yet. This plan adds that filter, stores each player's filtered events, sends them with the game snapshot, and shows them as a log in the side panel.

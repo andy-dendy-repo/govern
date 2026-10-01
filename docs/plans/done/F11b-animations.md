@@ -7,7 +7,7 @@ updated: 2026-10-01
 
 # Plan: F11b board animations from game events
 
-**Status:** planned 2026-10-01 (backlog F11b, Next). Blocked by [F11a](F11a-game-log.md), which delivers the filtered events to the client.
+**Status:** done 2026-10-01, PR #37, together with [F11a](F11a-game-log.md), which delivers the filtered events to the client.
 
 ## Context
 The board redraws straight into each new view, so an opponent's move, an attack or a lost unit is easy to miss: a unit simply appears somewhere else, or is gone. With F11a every snapshot carries the events the player may see, in order. This plan plays them on the board as short animations, so both your own commands and the opponent's turn read as actions rather than jumps.
