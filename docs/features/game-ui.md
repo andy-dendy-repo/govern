@@ -1,6 +1,6 @@
 ---
 title: Game UI design system
-tags: [client, game-ui, upkeep, resource-cost, supply, building-health, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, territory, borders, city-stock, yields-lens, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
+tags: [client, game-ui, tabs, city-tabs, upkeep, resource-cost, supply, building-health, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, territory, borders, city-stock, yields-lens, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
 code: [src/Govern.Client/Components/Game, src/Govern.Client/Features/Games/Components/Screen, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/Features/Games/Services/GameUiService.cs, src/Govern.Client/Features/Design/Pages/DesignPage.razor, src/Govern.Client/Helpers, src/Govern.Client/wwwroot/css, tests/Govern.ArchitectureTests/GameUiTests.cs]
 updated: 2026-10-01
 ---
@@ -20,7 +20,7 @@ A started game (`Features/Games/Components/GameTable`) is a CSS grid with fixed 
 | Top bar | `Screen/TopBar` | Your seat colour, "Turn n: your turn", the resources in all your cities (one `CostLabel` per ruleset resource, the sum of your cities' stock), End turn, Resign (inline confirm) | season (G14): one element each, before the actions |
 | Map | `Board/GameBoard` | The hex board, pan and zoom, zoom buttons | map lenses (toolbar in this zone), new board layers |
 | Action bar | `Screen/ActionBar`, floating over the bottom of the map | The selected own unit's actions (Found city; Build <improvement> for each improvement that fits the unit's terrain; Build bridge, which turns on bridge mode; each with the rule's reason when disabled) and a hint for board moves or the unit's job | one button per new ability |
-| Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel`), the combat forecast of a pending attack (`CombatForecastPanel`) or a hint | one panel per new selection kind (tile, building) |
+| Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel` with its Units, Buildings and Economy tabs), the combat forecast of a pending attack (`CombatForecastPanel`) or a hint | one panel per new selection kind (tile, building) |
 | Full-screen view | (added with its first user) | Large content: tech and culture trees (G11), the city screen, governors (G12) | |
 
 The action bar floats over the bottom-left of the map, so a unit's actions sit next to the board without scrolling; it covers a few tiles in that corner, which the player reaches by panning. On screens narrower than 60rem the zones stack: top bar, map (with its action bar), side panel (map first, panels below).
@@ -88,6 +88,7 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | `ConfirmButton` | built | Inline confirm for destructive actions (Resign) |
 | `HealthBar` | built (G9) | A unit's health as a bar with "n of max", the danger style at a third or less; `UnitPanel` and the combat forecast. The board draws its own small SVG bar under each hurt unit (`BoardPieces`) |
 | `CombatForecastPanel`, `CombatSideView` | built (G9), feature panel | The forecast of a pending attack from `GameEngine.CombatForecast`: each side's health, strength (modifiers in the tooltip) and damage range, then Attack and Cancel |
+| `CityPanel` tabs | built, feature panel | For your own city, the stock and the current production (text, cost line, `ProgressBar`) stay on top; the rest is a `RadzenTabs` (`.city-tabs`): **Units** (a Build button per ruleset unit), **Buildings** (the buildings it has, "Built", then a Build button per missing building) and **Economy** (`CityUpkeep` and the next territory tile). Economy carries a `warning` icon while the city can't pay its upkeep. The open tab lives in `GameUiService.CityTab`, so it stays open from city to city; tabs render on the client (`TabRenderMode.Client`), so switching sends nothing. An enemy city has no tabs |
 | `CityPanel` buildings | built (G10a), feature panel | The city's buildings, and a Build button per building it doesn't have (with its yield, its cost and the rule's reason when disabled) |
 | `CityPanel` stock and territory | built (G5, G7), feature panel | The city's stock (`.city-stock`, one `CostLabel` per resource with its net gain a turn, `+n` or `-n`: income minus the upkeep it pays and the resource cost it pays to begin its item, from `GameEngine.CityForecast`) and "Next territory tile: held of price culture" |
 | `CityUpkeep` | built (G8a), feature panel | Inside `CityPanel`: the upkeep a turn (`.upkeep-due`, or "No upkeep"), what the city can't pay for (`.upkeep-shortage`: "Can't pay for Campus, Soldier: each loses 10 health at the end of the turn.") and the order switch, Buildings or Units (`.upkeep-priority-buildings`/`-units`, `aria-pressed`), which sends `SetUpkeepPriorityCommand` |
@@ -137,7 +138,7 @@ The terrain renders once per view (`BoardTerrain.ShouldRender`) and pieces only 
 
 1. A new ruleset unit or terrain: add its `<symbol>` to `GameSprite` (and, for a terrain, its two tokens in `tokens.css` and its `.terrain-<id>` rule in `board.css`). The tests name what is missing.
 2. A new number or list on a panel: use `StatTable`, `ProgressBar`, `CostLabel`; add a planned component (`YieldList`, `QueueList`, `TreeView`) to `Components/Game` when its G item needs it, with tests and a gallery entry.
-3. A new action: a button in `ActionBar` (unit) or the panel (city), disabled with the rule's reason; a destructive one uses `ConfirmButton`.
+3. A new action: a button in `ActionBar` (unit) or in the fitting `CityPanel` tab (city), disabled with the rule's reason; a destructive one uses `ConfirmButton`. A new group of city content gets its own tab rather than lengthening another one.
 4. A new selection kind: its panel in `SidePanel`, reading `GameUiService`.
 5. New map content: its `BoardLayer` slot. Information a player toggles on and off: a new `IMapLens` ([map lenses](#map-lenses)).
 6. Update this document's catalog.

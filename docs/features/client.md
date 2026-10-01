@@ -2,7 +2,7 @@
 title: Blazor client
 tags: [client, blazor, webassembly, radzen, csp, static-web-apps, security-headers, bunit, configuration, auth, jwt, refresh-token, web-locks, login, games, lobby, invite-link, sse, server-sent-events, reconnect, backoff, board, hex, svg, pan, zoom, commands, stale-version]
 code: [src/Govern.Client, src/Govern.Client/Auth, src/Govern.Client/Features/Games, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/wwwroot/js/board.js, tests/Govern.ClientTests, tests/Govern.ArchitectureTests/ClientSecurityTests.cs, tests/Govern.ArchitectureTests/ClientContractTests.cs, .github/scripts/configure-client.sh, .github/workflows/release.yml]
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Blazor client
@@ -154,7 +154,7 @@ A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the
 | `Screen/ActionBar` | For your selected unit: a hint for board moves and, for a unit with the `found_city` ability, Found city, disabled with the rule's message from `CheckFoundCity` |
 | `Screen/SidePanel` | The stale notice and Api error, the result once finished, and the panel for the selection (or a hint) |
 | `UnitPanel` | The selected unit in its owner's seat colour, named from the ruleset ("Your Settler"); for your own unit a `StatTable` with movement left of the ruleset's movement, sight and production cost |
-| `CityPanel` | The selected city; for your own city, what it produces (progress of the ruleset's cost, and a `ProgressBar` with the turns left at the ruleset's production per turn) and one Build button per ruleset unit with its cost, in the ruleset's order (Build Settler, Build Soldier). An enemy city shows its name only (its production is hidden in the view) |
+| `CityPanel` | The selected city; for your own city, what it produces (progress of the ruleset's cost, and a `ProgressBar` with the turns left at the ruleset's production per turn) and its Units, Buildings and Economy tabs (the Units tab has one Build button per ruleset unit with its cost, in the ruleset's order; details in [game UI](game-ui.md)). An enemy city shows its name only (its production is hidden in the view) |
 | `GameOverPanel` | "You won!", "You lost." or "Nobody won.", how each player ended (won, resigned, eliminated), and a link back to `/games` |
 
 ### Board interactions
