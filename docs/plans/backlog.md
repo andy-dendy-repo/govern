@@ -24,7 +24,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 ## Now
 
-Empty: content slice C1 is done (G9, PR #30), and G6 rivers, picked by the owner on 2026-10-01, is done (PR #PRNUM). The owner picks what moves up from Next.
+Empty: content slice C1 is done (G9, PR #30), and G6 rivers, picked by the owner on 2026-10-01, is done (PR #32). The owner picks what moves up from Next.
 
 ### Content slice C1: G2, G4, G9
 
@@ -78,7 +78,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
-| G6 | Rivers along hex edges: stream, river (+1 to cross, +3 defence) and deep river (can't cross, +5 defence), mirrored river generation, the rivers board layer and lens crossings (ruleset v4, [rules](../game/rules.md)). No generated bridges (owner); bridges moved to G10 | 2026-10-01, PR #PRNUM | [G6](done/G6-rivers.md) |
+| G6 | Rivers along hex edges: stream, river (+1 to cross, +3 defence) and deep river (can't cross, +5 defence), mirrored river generation, the rivers board layer and lens crossings (ruleset v4, [rules](../game/rules.md)). No generated bridges (owner); bridges moved to G10 | 2026-10-01, PR #32 | [G6](done/G6-rivers.md) |
 | C1 | Content slice C1: richer ruleset and Core (G2, G4, G9); its section stays under Now for the record | 2026-09-30, PR #30 | [slice](#content-slice-c1-g2-g4-g9) |
 | G9 | Army units and combat: health, spearman, horseman and archer with class counters, terrain defence, healing, the combat forecast and health bars (ruleset v3, [rules](../game/rules.md)). Completes content slice C1 | 2026-09-30, PR #30 | [G9](done/G9-units-and-combat.md) |
 | G4 | Terrain: forest, hills (+1 sight), mountains and lake, seeded mirrored map generation (ruleset v2), the movement-cost map lens ([rules](../game/rules.md), [game UI](../features/game-ui.md)) | 2026-09-30, PR #28 | [G4](done/G4-terrain.md) |

@@ -7,7 +7,7 @@ updated: 2026-10-01
 
 # Plan: G6 rivers (bridges with G10)
 
-**Status:** done 2026-10-01 (PR #PRNUM). Proposed and approved the same day; the owner decided that deep rivers stay and map generation places no bridges. See [Decisions made during implementation](#decisions-made-during-implementation) for where the result differs from the plan below.
+**Status:** done 2026-10-01 (PR #32). Proposed and approved the same day; the owner decided that deep rivers stay and map generation places no bridges. See [Decisions made during implementation](#decisions-made-during-implementation) for where the result differs from the plan below.
 
 ## Context
 The map has terrain on tiles only, so every obstacle is a whole tile. G6 adds rivers that run **along hex edges** (as in Civ). Crossing them is free or costly, and the defender gets a bonus against attacks across them. It is the first edge-based rule, so movement, the view previews and map generation learn to look at the step between two tiles, not just the tile entered. The owner decided (2026-10-01) to keep all three depths, including the deep river that only a bridge crosses, but not to have map generation place bridges: bridges come with builders in G10. Until then a deep river is a wall to walk around. Ships (G15) and seasons (G14) don't exist yet either; this plan leaves clean hooks for all three.
