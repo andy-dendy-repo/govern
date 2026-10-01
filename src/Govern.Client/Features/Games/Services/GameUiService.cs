@@ -1,6 +1,7 @@
 using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
+using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.Visibility;
@@ -102,6 +103,23 @@ public sealed class GameUiService
     }
 
     /// <summary>
+    /// Starts choosing a tile for a building of the selected city (its panel's Build button), or stops when it is the building
+    /// already being placed; the board marks the tiles that can take it.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The view on screen.</param>
+    /// <param name="building">The building.</param>
+    public void PlaceBuilding(Ruleset ruleset, PlayerView view, BuildingType building)
+    {
+        if (Selection.City is null)
+        {
+            return;
+        }
+
+        Select(ruleset, view, Selection with { Placing = Selection.Placing == building ? null : building });
+    }
+
+    /// <summary>
     /// The player's units that can still act this turn: movement left and no job running, in id order (the top bar's
     /// "units can still move").
     /// </summary>
@@ -130,15 +148,15 @@ public sealed class GameUiService
         Select(ruleset, view, BoardSelection.Of(next.Id));
     }
 
-    /// <summary>Handles Escape: cancels a pending attack or bridge mode, otherwise clears the selection.</summary>
+    /// <summary>Handles Escape: cancels a pending attack, bridge mode or placing a building, otherwise clears the selection.</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The view on screen.</param>
     /// <returns>Whether anything changed.</returns>
     public bool Escape(Ruleset ruleset, PlayerView view)
     {
-        if (Selection.Bridge)
+        if (Selection.Bridge || Selection.Placing is not null)
         {
-            Select(ruleset, view, Selection with { Bridge = false });
+            Select(ruleset, view, Selection with { Bridge = false, Placing = null });
             return true;
         }
 

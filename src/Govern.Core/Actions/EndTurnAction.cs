@@ -97,7 +97,9 @@ internal static class EndTurnRule
         return reset with { Units = reset.Units.Add(unit) };
     }
 
-    // A finished building joins the city, which goes back to producing its unit from scratch.
+    // A finished building joins the city and stands on its reserved tile, and the city goes back to producing its unit from
+    // scratch. The site is still valid: the reservation keeps improvements off it, and its territory changes hands only with the
+    // city, whose capture drops the reservation. A game saved before buildings had sites has none; that building stays off the map.
     private static GameState ProduceBuilding(Ruleset ruleset, GameState state, City city, int perTurn, ImmutableArray<GameEvent>.Builder events)
     {
         var building = city.ProducingBuilding!.Value;
@@ -107,8 +109,17 @@ internal static class EndTurnRule
             return state.WithCity(city with { ProductionProgress = progress });
         }
 
-        events.Add(new BuildingCompletedEvent(city.Id, building));
-        return state.WithCity(city with { ProducingBuilding = null, ProductionProgress = 0, ProductionPaid = false, Buildings = [.. city.BuildingList, building] });
+        var site = city.ProducingBuildingSite;
+        events.Add(new BuildingCompletedEvent(city.Id, building, site ?? city.Position));
+        var done = state.WithCity(city with
+        {
+            ProducingBuilding = null,
+            ProducingBuildingSite = null,
+            ProductionProgress = 0,
+            ProductionPaid = false,
+            Buildings = [.. city.BuildingList, building],
+        });
+        return site is { } coord ? done with { Map = done.Map.WithTile(done.Map.TileAt(coord) with { Building = building }) } : done;
     }
 
     // The city tile when free, otherwise the first free neighbour a unit could stand on; null when surrounded.

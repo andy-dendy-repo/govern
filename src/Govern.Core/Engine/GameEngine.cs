@@ -170,21 +170,39 @@ public static class GameEngine
     }
 
     /// <summary>
-    /// Whether one of the viewer's cities can start producing a building now, worked out from their view alone (for the client).
+    /// Whether one of the viewer's cities can start producing a building now on some tile of its territory, worked out from their
+    /// view alone (for the client); <see cref="BuildingSites"/> lists the tiles.
     /// </summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The viewer's current view.</param>
     /// <param name="cityId">The city.</param>
     /// <param name="building">The building.</param>
     /// <returns>
-    /// <see langword="null"/> when a <see cref="ProduceBuildingCommand"/> would be accepted; otherwise the violation it would be
-    /// rejected with.
+    /// <see langword="null"/> when a <see cref="ProduceBuildingCommand"/> would be accepted on at least one tile; otherwise the
+    /// violation it would be rejected with (on the tile that passes the most site checks).
     /// </returns>
     public static RuleViolation? CheckProduceBuilding(Ruleset ruleset, PlayerView view, CityId cityId, BuildingType building)
     {
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(view);
         return ViewPreviewCalculator.CheckProduceBuilding(ruleset, view, cityId, building);
+    }
+
+    /// <summary>
+    /// Tiles of one of the viewer's cities' territory where it can start producing a building now, worked out from their view
+    /// alone (for the client). A tile is in the result exactly when a <see cref="ProduceBuildingCommand"/> with it as the site
+    /// would be accepted.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="cityId">The city.</param>
+    /// <param name="building">The building.</param>
+    /// <returns>The tiles, ordered by row then column; empty when the city can't produce the building now.</returns>
+    public static ImmutableArray<HexCoord> BuildingSites(Ruleset ruleset, PlayerView view, CityId cityId, BuildingType building)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return ViewPreviewCalculator.BuildingSites(ruleset, view, cityId, building);
     }
 
     /// <summary>

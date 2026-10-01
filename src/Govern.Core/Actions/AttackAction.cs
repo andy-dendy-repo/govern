@@ -127,7 +127,7 @@ internal static class AttackRule
     {
         var progress = ruleset.Cities.CaptureResetsProduction ? 0 : city.ProductionProgress;
         var next = state
-            .WithCity(city with { Owner = attacker.Owner, ProductionProgress = progress, ProducingBuilding = null, ProductionPaid = false })
+            .WithCity(city with { Owner = attacker.Owner, ProductionProgress = progress, ProducingBuilding = null, ProducingBuildingSite = null, ProductionPaid = false })
             .WithUnit(attacker with { Position = city.Position, MovementLeft = 0, Job = null });
 
         return new GameUpdate(next, [

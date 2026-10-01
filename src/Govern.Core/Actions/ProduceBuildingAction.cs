@@ -10,16 +10,19 @@ using Govern.Core.State;
 namespace Govern.Core.Actions;
 
 /// <summary>
-/// Makes a city produce a building; accumulated progress is kept, and the city goes back to its unit when the building is done.
-/// A resource cost already paid for the item it leaves goes back to the city's stock.
+/// Makes a city produce a building on a tile of its territory; accumulated progress is kept, and the city goes back to its unit
+/// when the building is done. A resource cost already paid for the item it leaves goes back to the city's stock.
 /// </summary>
 /// <param name="CityId">The actor's city.</param>
 /// <param name="Building">The building: a building id of the game's ruleset.</param>
-public sealed record ProduceBuildingCommand(CityId CityId, BuildingType Building) : GameCommand;
+/// <param name="Site">The tile the building will stand on, reserved while the city produces it.</param>
+public sealed record ProduceBuildingCommand(CityId CityId, BuildingType Building, HexCoord Site) : GameCommand;
 
 /// <summary>
-/// Switches a city to producing a building it doesn't have yet, keeping the accumulated progress. A building that requires an
-/// adjacent terrain needs one of those terrains next to the city.
+/// Switches a city to producing a building it doesn't have yet, keeping the accumulated progress, and reserves the building's
+/// tile. The tile must be in the city's territory (off the city tile), passable, free of improvements and buildings and of an
+/// improvement being built; a building that requires an adjacent terrain needs one of those terrains next to the tile. Ordering
+/// the same building on another tile only moves the reservation, and on the same tile changes nothing.
 /// </summary>
 internal static class ProduceBuildingRule
 {
@@ -31,31 +34,71 @@ internal static class ProduceBuildingRule
             return RuleViolations.CityNotFound;
         }
 
-        var neighbors = city.Position.Neighbors().Where(state.Map.Contains).Select(coord => state.Map.TileAt(coord).Terrain);
-        if (Check(ruleset, city, command.Building, [.. neighbors]) is { } violation)
+        if (Check(ruleset, city, command.Building) is { } violation)
         {
             return violation;
         }
 
-        var changed = city.ProducingBuilding == command.Building ? city : CityProduction.Refund(ruleset, city) with { ProducingBuilding = command.Building };
+        if (CheckSite(ruleset.Building(command.Building), SiteOf(ruleset, state, city, command.Site)) is { } siteViolation)
+        {
+            return siteViolation;
+        }
+
+        if (city.ProducingBuilding == command.Building && city.ProducingBuildingSite == command.Site)
+        {
+            return new GameUpdate(state, []);
+        }
+
+        var changed = city.ProducingBuilding == command.Building
+            ? city with { ProducingBuildingSite = command.Site }
+            : CityProduction.Refund(ruleset, city) with { ProducingBuilding = command.Building, ProducingBuildingSite = command.Site };
         return new GameUpdate(state.WithCity(changed), [new ProductionChangedEvent(city.Id, city.Producing, command.Building)]);
     }
 
-    // Shared with the view-based preview (ViewPreviewCalculator): a city sees its neighbours (city sight is at least 1).
-    public static RuleViolation? Check(Ruleset ruleset, City city, BuildingType building, ImmutableArray<TerrainType> neighborTerrains)
+    // Whether the city may produce the building at all, wherever it stands; shared with the view-based preview.
+    public static RuleViolation? Check(Ruleset ruleset, City city, BuildingType building)
     {
-        if (ruleset.FindBuilding(building) is not { } definition)
+        if (ruleset.FindBuilding(building) is null)
         {
             return RuleViolations.UnknownBuilding;
         }
 
-        if (city.Has(building))
+        return city.Has(building) ? RuleViolations.BuildingExists : null;
+    }
+
+    // The site checks in the order CheckSite makes them; a later one means the site passed the earlier ones. The view preview
+    // reads the order to name the site that came closest when none is accepted.
+    private static readonly ImmutableArray<(Func<BuildingDefinition, BuildingSite, bool> Fails, RuleViolation Violation)> SiteChecks =
+    [
+        (static (_, site) => !site.InCityTerritory, RuleViolations.BuildingNotInTerritory),
+        (static (_, site) => !site.Passable, RuleViolations.BuildingWrongTerrain),
+        (static (_, site) => site.Taken, RuleViolations.BuildingSiteTaken),
+        (static (_, site) => site.BeingImproved, RuleViolations.BuildingSiteBeingImproved),
+        (static (building, site) => !building.RequiresAdjacentTerrain.IsEmpty && !building.RequiresAdjacentTerrain.Any(site.NeighborTerrains.Contains),
+            RuleViolations.BuildingNeedsTerrain),
+    ];
+
+    public static ImmutableArray<RuleViolation> SiteCheckOrder { get; } = [.. SiteChecks.Select(static check => check.Violation)];
+
+    // Whether the building may stand on the site; shared with the view-based preview (ViewPreviewCalculator).
+    public static RuleViolation? CheckSite(BuildingDefinition building, BuildingSite site) =>
+        SiteChecks.FirstOrDefault(check => check.Fails(building, site)).Violation;
+
+    private static BuildingSite SiteOf(Ruleset ruleset, GameState state, City city, HexCoord coord)
+    {
+        if (!state.Map.Contains(coord))
         {
-            return RuleViolations.BuildingExists;
+            return BuildingSite.Outside;
         }
 
-        return definition.RequiresAdjacentTerrain.IsEmpty || definition.RequiresAdjacentTerrain.Any(neighborTerrains.Contains)
-            ? null
-            : RuleViolations.BuildingNeedsTerrain;
+        var tile = state.Map.TileAt(coord);
+        var improving = state.UnitAt(coord) is { Job.Improvement: not null } unit && unit.Owner == city.Owner;
+        var neighbors = coord.Neighbors().Where(state.Map.Contains).Select(neighbor => state.Map.TileAt(neighbor).Terrain);
+        return new BuildingSite(
+            tile.Territory == city.Id && coord != city.Position,
+            ruleset.Terrain(tile.Terrain).IsPassable,
+            tile.Improvement is not null || tile.Building is not null,
+            improving,
+            [.. neighbors]);
     }
 }

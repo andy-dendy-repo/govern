@@ -2,6 +2,7 @@ using Govern.Core.Actions;
 using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Engine;
+using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.UnitTests.Core.Builders;
 using static Govern.UnitTests.Core.Builders.GameStateBuilder;
@@ -12,6 +13,9 @@ namespace Govern.UnitTests.Core.Engine;
 // A city pays the whole resource cost at the end of the turn its item begins, and only then adds production.
 public class ProductionCostTests
 {
+    // A free tile of the desert city's territory, for its buildings.
+    private static readonly HexCoord CitySite = At(5, 4);
+
     [Fact]
     public void EndTurn_StockCoversTheCost_PaysItAndStartsProducing()
     {
@@ -68,7 +72,7 @@ public class ProductionCostTests
 
         var same = GameEngine.Execute(TestRulesets.Default, state, P1, new SetProductionCommand(city, TestRulesets.Soldier)).ShouldSucceed();
         var switched = GameEngine.Execute(TestRulesets.Default, state, P1, new SetProductionCommand(city, TestRulesets.Archer)).ShouldSucceed();
-        var building = GameEngine.Execute(TestRulesets.Default, state, P1, new ProduceBuildingCommand(city, TestRulesets.ArmyCamp)).ShouldSucceed();
+        var building = GameEngine.Execute(TestRulesets.Default, state, P1, new ProduceBuildingCommand(city, TestRulesets.ArmyCamp, CitySite)).ShouldSucceed();
 
         same.State.FindCity(city)!.ProductionPaid.ShouldBeTrue();
         same.State.FindCity(city)!.StockList.ShouldBeEmpty();
@@ -83,11 +87,11 @@ public class ProductionCostTests
     public void ProduceBuilding_FromAPaidBuilding_RefundsItsCost()
     {
         var builder = UnpaidDesertCity(out var city, []);
-        builder.WithCity(city, c => c with { ProducingBuilding = TestRulesets.ArmyCamp, ProductionPaid = true });
+        builder.WithCity(city, c => c with { ProducingBuilding = TestRulesets.ArmyCamp, ProducingBuildingSite = CitySite, ProductionPaid = true });
         var state = builder.Build();
 
-        var same = GameEngine.Execute(TestRulesets.Default, state, P1, new ProduceBuildingCommand(city, TestRulesets.ArmyCamp)).ShouldSucceed();
-        var other = GameEngine.Execute(TestRulesets.Default, state, P1, new ProduceBuildingCommand(city, TestRulesets.Campus)).ShouldSucceed();
+        var same = GameEngine.Execute(TestRulesets.Default, state, P1, new ProduceBuildingCommand(city, TestRulesets.ArmyCamp, CitySite)).ShouldSucceed();
+        var other = GameEngine.Execute(TestRulesets.Default, state, P1, new ProduceBuildingCommand(city, TestRulesets.Campus, CitySite)).ShouldSucceed();
 
         same.State.FindCity(city)!.ProductionPaid.ShouldBeTrue();
         var refunded = other.State.FindCity(city)!;

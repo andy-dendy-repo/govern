@@ -3,6 +3,7 @@ using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.Client.Models;
+using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
@@ -29,6 +30,7 @@ public partial class GameTable : IDisposable
     private ElementReference _screen;
     private PlayerView? _view;
     private bool _focusScreen = true;
+    private BuildingType? _placing;
     private ApiError? _error;
     private bool _sending;
     private bool _stale;
@@ -60,7 +62,7 @@ public partial class GameTable : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        _ui.Changed -= StateHasChanged;
+        _ui.Changed -= OnUiChanged;
         _animation.Changed -= OnAnimationChanged;
         _animation.Dispose();
         _lifetime.Cancel();
@@ -71,7 +73,7 @@ public partial class GameTable : IDisposable
     /// <inheritdoc />
     protected override void OnInitialized()
     {
-        _ui.Changed += StateHasChanged;
+        _ui.Changed += OnUiChanged;
         _animation = new BoardAnimationService(Time);
         _animation.Changed += OnAnimationChanged;
     }
@@ -175,6 +177,19 @@ public partial class GameTable : IDisposable
 
         _stale = true;
         await GameChanged.InvokeAsync(result.Value);
+    }
+
+    // Placing a building starts from a button inside the city panel's tabs, which keep Esc from reaching the screen, so the
+    // screen takes focus back: Esc then cancels the placing.
+    private void OnUiChanged()
+    {
+        if (_ui.Selection.Placing is { } placing && placing != _placing)
+        {
+            _focusScreen = true;
+        }
+
+        _placing = _ui.Selection.Placing;
+        StateHasChanged();
     }
 
     // Animation steps come from timers, outside the renderer's own events.

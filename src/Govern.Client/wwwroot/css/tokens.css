@@ -27,6 +27,8 @@
     --gv-overlay-target: rgba(214, 69, 69, 0.6);
     --gv-overlay-bridgeable: rgba(176, 132, 74, 0.4);
     --gv-overlay-bridgeable-stroke: #c9965a;
+    --gv-overlay-placeable: rgba(120, 170, 230, 0.4);
+    --gv-overlay-placeable-stroke: #8fc1f0;
     /* Bridges across river edges and tile improvements (their symbol strokes). */
     --gv-bridge: #8a5a2b;
     --gv-bridge-outline: #3b2614;

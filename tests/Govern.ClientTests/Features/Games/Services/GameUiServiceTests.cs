@@ -153,6 +153,35 @@ public class GameUiServiceTests
     }
 
     [Fact]
+    public void PlaceBuilding_SelectedCity_MarksTheSitesAndEscapeStopsPlacing()
+    {
+        var view = Create(cities: [City(7, You, At(2, 2))]);
+        _ui.Select(Ruleset, view, BoardSelection.Of(new CityId(7)));
+
+        _ui.PlaceBuilding(Ruleset, view, Campus);
+        _ui.Selection.Placing.ShouldBe(Campus);
+        _ui.Highlights.Placeable.Count.ShouldBe(6);
+
+        _ui.Escape(Ruleset, view).ShouldBeTrue();
+        _ui.Selection.ShouldBe(BoardSelection.Of(new CityId(7)));
+        _ui.Highlights.Placeable.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void PlaceBuilding_SameBuildingAgain_StopsPlacingAndNothingSelected_DoesNothing()
+    {
+        var view = Create(cities: [City(7, You, At(2, 2))]);
+        _ui.PlaceBuilding(Ruleset, view, Campus);
+        _ui.Selection.ShouldBe(BoardSelection.None);
+
+        _ui.Select(Ruleset, view, BoardSelection.Of(new CityId(7)));
+        _ui.PlaceBuilding(Ruleset, view, Campus);
+        _ui.PlaceBuilding(Ruleset, view, Campus);
+
+        _ui.Selection.ShouldBe(BoardSelection.Of(new CityId(7)));
+    }
+
+    [Fact]
     public void ToggleBridge_NothingSelected_DoesNothing()
     {
         _ui.ToggleBridge(Ruleset, Start());

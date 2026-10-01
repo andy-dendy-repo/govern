@@ -10,7 +10,7 @@ namespace Govern.Client.Features.Games.Services;
 
 /// <summary>
 /// Plays the game log's new events on the board, one after another: a unit walks its path, an attacker lunges and damage
-/// floats up, a destroyed unit fades, a new city or build pulses. The view is applied at once; only <see cref="Motion"/>
+/// floats up, a destroyed unit fades, a new city, improvement, bridge or building (on its tile) pulses. The view is applied at once; only <see cref="Motion"/>
 /// (where units are drawn, ghosts and effects) changes while it plays, so the panels and buttons never wait. Each log entry
 /// plays once (by sequence), the first log seen on opening the game plays nothing, and a view with newer entries or <see cref="Finish"/>
 /// ends what is playing (the same view arriving twice, from a command's answer and the stream, does not). <c>GameTable</c> creates one per game.
@@ -129,6 +129,7 @@ public sealed class BoardAnimationService(TimeProvider time) : IDisposable
         CityFoundedEvent founded => Pulse(founded.Position),
         CityCapturedEvent captured => Pulse(captured.Position),
         ImprovementBuiltEvent built => Pulse(built.Position),
+        BuildingCompletedEvent completed => Pulse(completed.Position),
         BridgeBuiltEvent bridge => Pulse(bridge.From),
         _ => Task.CompletedTask,
     };

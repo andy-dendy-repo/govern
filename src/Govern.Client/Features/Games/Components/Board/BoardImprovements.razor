@@ -1,49 +1,26 @@
-@* The improvements the player knows of (BoardLayer.Improvements): each one's symbol in the upper left of its tile, small,
-   so the unit or city in the middle stays readable, with a title for assistive technology. The view carries an improvement
-   only for tiles in sight. Like the terrain, it renders again only for a new view. *@
+@* The improvements and buildings the player knows of (BoardLayer.Improvements): each one's symbol in the upper left of its
+   tile, small, so the unit or city in the middle stays readable, with a title for assistive technology. A building is drawn
+   in its owner's seat colour. A tile holds an improvement or a building, never both. The view carries them only for tiles in sight; the player's own city also shows, faded,
+   the building it produces on the tile reserved for it. Like the terrain, it renders again only for a new view. *@
 @using Govern.Client.Features.Games.Enums
 @using Govern.Client.Features.Games.Helpers
-@using Govern.Client.Features.Games.Services
-@using Govern.Core.Economy
 @using Govern.Core.Map
-@using Govern.Core.Visibility
 
-@if (Improvements().Any())
+@if (Improvements().Any() || Buildings().Any())
 {
     <g class="layer-improvements" data-layer="@BoardLayers.Name(BoardLayer.Improvements)">
         @foreach (var (coord, improvement) in Improvements())
         {
-            var (x, y) = HexLayout.Center(coord);
-            <use href="@($"#{Icons.Improvement(improvement)}")"
-                 transform="translate(@HexLayout.Format(x - Offset) @HexLayout.Format(y - Offset)) scale(@SymbolScale)"
-                 class="@($"improvement improvement-{improvement}")">
+            <use href="@($"#{Icons.Improvement(improvement)}")" transform="@Corner(coord)" class="@($"improvement improvement-{improvement}")">
                 <title>@Rulesets.Ruleset.ImprovementName(improvement)</title>
             </use>
         }
-    </g>
-}
-
-@code {
-    private const string SymbolScale = "0.6";
-    private static readonly double Offset = HexLayout.Size * 0.45;
-    private PlayerView? _rendered;
-
-    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
-
-    [Inject] private RulesetService Rulesets { get; set; } = null!;
-
-    protected override bool ShouldRender() => !ReferenceEquals(View, _rendered);
-
-    protected override void OnAfterRender(bool firstRender) => _rendered = View;
-
-    private IEnumerable<(HexCoord Coord, ImprovementType Improvement)> Improvements()
-    {
-        for (var index = 0; index < View.Tiles.Length; index++)
+        @foreach (var (coord, building, seat, planned) in Buildings())
         {
-            if (View.Tiles[index].Improvement is { } improvement)
-            {
-                yield return (View.CoordAt(index), improvement);
-            }
+            <use href="@($"#{Icons.Building(building)}")" transform="@Corner(coord)"
+                 class="@($"tile-building tile-building-{building} {seat}{(planned ? " planned" : "")}")">
+                <title>@(planned ? $"{Rulesets.Ruleset.BuildingName(building)} (being built)" : Rulesets.Ruleset.BuildingName(building))</title>
+            </use>
         }
-    }
+    </g>
 }

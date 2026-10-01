@@ -11,7 +11,8 @@ namespace Govern.Core.Cities;
 /// A city. At the end of its owner's turn it adds its production (<see cref="Rulesets.CityRules.ProductionPerTurn"/> plus its
 /// buildings' <see cref="BuildingDefinition.Production"/>) to <see cref="ProductionProgress"/>, unless a builder used it for a job
 /// in the city's territory that turn. When the progress reaches the cost it spawns a <see cref="Producing"/> unit, or adds the
-/// <see cref="ProducingBuilding"/> to <see cref="Buildings"/> and goes back to its unit.
+/// <see cref="ProducingBuilding"/> to <see cref="Buildings"/>, puts it on the <see cref="ProducingBuildingSite"/> tile and goes
+/// back to its unit.
 /// </summary>
 /// <param name="Id">City identifier.</param>
 /// <param name="Owner">Player who controls the city.</param>
@@ -34,6 +35,10 @@ namespace Govern.Core.Cities;
 /// </param>
 /// <param name="UpkeepPriority">Whether the city pays its buildings' or its units' upkeep first.</param>
 /// <param name="BuildingDamage">Health its buildings have lost to unpaid upkeep; <see langword="null"/> when none is hurt.</param>
+/// <param name="ProducingBuildingSite">
+/// The tile of the city's territory reserved for <paramref name="ProducingBuilding"/>, where it will stand; set exactly when
+/// <paramref name="ProducingBuilding"/> is.
+/// </param>
 public sealed record City(
     CityId Id,
     PlayerId Owner,
@@ -47,7 +52,8 @@ public sealed record City(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int TilesGained = 0,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool ProductionPaid = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] UpkeepPriority UpkeepPriority = UpkeepPriority.BuildingsFirst,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<BuildingDamage>? BuildingDamage = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<BuildingDamage>? BuildingDamage = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? ProducingBuildingSite = null)
 {
     /// <summary>The city's resources (empty when it has none).</summary>
     [JsonIgnore]

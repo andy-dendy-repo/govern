@@ -25,6 +25,9 @@ namespace Govern.Core.Visibility;
 /// <param name="ProductionPaid">Whether the resource cost of what it produces is paid; <see langword="false"/> for an enemy city.</param>
 /// <param name="UpkeepPriority">Whether it pays buildings or units first; the default for an enemy city.</param>
 /// <param name="BuildingDamage">Health its buildings have lost; <see langword="null"/> when none is hurt or for an enemy city.</param>
+/// <param name="ProducingBuildingSite">
+/// The tile reserved for <paramref name="ProducingBuilding"/>; always <see langword="null"/> for an enemy city.
+/// </param>
 public sealed record CityView(
     CityId Id,
     PlayerId Owner,
@@ -38,7 +41,8 @@ public sealed record CityView(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int TilesGained = 0,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool ProductionPaid = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] UpkeepPriority UpkeepPriority = UpkeepPriority.BuildingsFirst,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<BuildingDamage>? BuildingDamage = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<BuildingDamage>? BuildingDamage = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? ProducingBuildingSite = null)
 {
     /// <summary>The city's resources (empty when it has none or for an enemy city).</summary>
     [JsonIgnore]
@@ -66,7 +70,7 @@ public sealed record CityView(
     {
         ArgumentNullException.ThrowIfNull(city);
         return city.Owner == viewer
-            ? new CityView(city.Id, city.Owner, city.Name, city.Position, city.Producing, city.ProductionProgress, city.ProducingBuilding, city.Buildings, city.Stock, city.TilesGained, city.ProductionPaid, city.UpkeepPriority, city.BuildingDamage)
+            ? new CityView(city.Id, city.Owner, city.Name, city.Position, city.Producing, city.ProductionProgress, city.ProducingBuilding, city.Buildings, city.Stock, city.TilesGained, city.ProductionPaid, city.UpkeepPriority, city.BuildingDamage, city.ProducingBuildingSite)
             : new CityView(city.Id, city.Owner, city.Name, city.Position, Producing: null, ProductionProgress: null);
     }
 }

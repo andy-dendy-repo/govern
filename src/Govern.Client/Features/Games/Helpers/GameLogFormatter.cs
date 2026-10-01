@@ -61,7 +61,7 @@ public static class GameLogFormatter
             names.IsYou(captured.NewOwner)),
         TerritoryGrewEvent grew => new($"{names.City(grew.CityId, grew.Owner)} grew its territory", grew.Tile, names.IsYou(grew.Owner)),
         ProductionChangedEvent changed => new($"{names.OwnCity(changed.CityId)} now builds {names.Production(changed)}", names.CityTile(changed.CityId), true),
-        BuildingCompletedEvent completed => new($"{names.OwnCity(completed.CityId)} finished {Article(names.Building(completed.Building))}", names.CityTile(completed.CityId), true),
+        BuildingCompletedEvent completed => new($"{names.OwnCity(completed.CityId)} finished {Article(names.Building(completed.Building))}", completed.Position, true),
         BuildingDamagedEvent damaged => new(
             $"{names.OwnCity(damaged.CityId)}'s {names.Building(damaged.Building)} is short of upkeep: {damaged.Health} health left",
             names.CityTile(damaged.CityId),

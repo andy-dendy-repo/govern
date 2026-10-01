@@ -19,10 +19,15 @@ namespace Govern.Core.Map;
 /// The city whose territory the tile is in, or <see langword="null"/> when no city owns it. A tile changes hands only with its
 /// city (a capture), never by itself.
 /// </param>
+/// <param name="Building">
+/// The building that stands on the tile, if any (at most one); it belongs to the city whose <paramref name="Territory"/> holds the
+/// tile and works for that city as a whole.
+/// </param>
 public sealed record Tile(
     HexCoord Coord,
     TerrainType Terrain,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TileRivers? Rivers = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TileBridges? Bridges = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImprovementType? Improvement = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CityId? Territory = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CityId? Territory = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] BuildingType? Building = null);
