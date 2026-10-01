@@ -1,6 +1,6 @@
 ---
 title: Game UI design system
-tags: [client, game-ui, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, stockpile, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
+tags: [client, game-ui, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, territory, borders, city-stock, yields-lens, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
 code: [src/Govern.Client/Components/Game, src/Govern.Client/Features/Games/Components/Screen, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/Features/Games/Services/GameUiService.cs, src/Govern.Client/Features/Design/Pages/DesignPage.razor, src/Govern.Client/Helpers, src/Govern.Client/wwwroot/css, tests/Govern.ArchitectureTests/GameUiTests.cs]
 updated: 2026-10-01
 ---
@@ -17,7 +17,7 @@ A started game (`Features/Games/Components/GameTable`) is a CSS grid with fixed 
 
 | Zone | Component | Holds | Grows with |
 |---|---|---|---|
-| Top bar | `Screen/TopBar` | Your seat colour, "Turn n: your turn", your stockpile (one `CostLabel` per ruleset resource, G10a), End turn, Resign (inline confirm) | season (G14): one element each, before the actions |
+| Top bar | `Screen/TopBar` | Your seat colour, "Turn n: your turn", the resources in all your cities (one `CostLabel` per ruleset resource, the sum of your cities' stock), End turn, Resign (inline confirm) | season (G14): one element each, before the actions |
 | Map | `Board/GameBoard` | The hex board, pan and zoom, zoom buttons | map lenses (toolbar in this zone), new board layers |
 | Action bar | `Screen/ActionBar`, floating over the bottom of the map | The selected own unit's actions (Found city; Build <improvement> for each improvement that fits the unit's terrain; Build bridge, which turns on bridge mode; each with the rule's reason when disabled) and a hint for board moves or the unit's job | one button per new ability |
 | Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel`), the combat forecast of a pending attack (`CombatForecastPanel`) or a hint | one panel per new selection kind (tile, building) |
@@ -83,16 +83,17 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | `GameSprite`, `GameIcon` | built | The icon set and one icon |
 | `StatTable` | built | Icon, label and value rows (`Models/StatRow`), with an optional detail tooltip; `UnitPanel` shows strength (and ranged strength) for any unit, and movement left, sight, cost and build production for your own |
 | `NumberTooltip` | built | A number with its exact value and origin (hover, focus, tap) |
-| `ProgressBar` | built | Progress towards a cost with "n turns left" at the current rate ("Complete" once reached, "Never at this rate" without income); `CityPanel` shows production (a unit or a building), `UnitPanel` a unit's job (its build production plus the production of the own city whose ground it stands on) |
-| `CostLabel` | built | Icon and amount; each Build button shows its production cost, and the top bar each resource of the stockpile |
+| `ProgressBar` | built | Progress towards a cost with "n turns left" at the current rate ("Complete" once reached, "Never at this rate" without income); `CityPanel` shows production (a unit or a building), `UnitPanel` a unit's job (its build production plus the production of the own city whose territory it stands on) |
+| `CostLabel` | built | Icon and amount; each Build button shows its production cost, the top bar each resource summed over your cities, and `CityPanel` the city's stock with its income a turn (`+n`) |
 | `ConfirmButton` | built | Inline confirm for destructive actions (Resign) |
 | `HealthBar` | built (G9) | A unit's health as a bar with "n of max", the danger style at a third or less; `UnitPanel` and the combat forecast. The board draws its own small SVG bar under each hurt unit (`BoardPieces`) |
 | `CombatForecastPanel`, `CombatSideView` | built (G9), feature panel | The forecast of a pending attack from `GameEngine.CombatForecast`: each side's health, strength (modifiers in the tooltip) and damage range, then Attack and Cancel |
 | `CityPanel` buildings | built (G10a), feature panel | The city's buildings, and a Build button per building it doesn't have (with its yield, its cost and the rule's reason when disabled) |
-| `YieldList` | planned by G5/G8 | Yield rows per tile and city |
+| `CityPanel` stock and territory | built (G5, G7), feature panel | The city's stock (`.city-stock`, one `CostLabel` per resource with `+n` from `GameEngine.CityIncome`) and "Next territory tile: held of price culture" |
+| `YieldList` | planned by G8 | Yield rows per tile and city |
 | `QueueList` | planned by G8/G10 | A reorderable build queue |
 | `TreeView` | planned by G11/G12 | Tech, culture and governor skill trees in a full-screen view |
-| `LensToolbar`, `BoardLens` and `IMapLens` | built (G4) | Toggleable map overlays, one at a time ([map lenses](#map-lenses)); the first is movement cost. Edge marks for river crossings (G6). Later lenses: resources (G5), territory (G7), yields and loyalty (G8), seasons (G14) |
+| `LensToolbar`, `BoardLens` and `IMapLens` | built (G4) | Toggleable map overlays, one at a time ([map lenses](#map-lenses)); movement cost and yields (G5). Edge marks for river crossings (G6). Later lenses: loyalty (G8), seasons (G14) |
 
 ## Map lenses
 
@@ -102,6 +103,8 @@ A lens marks every known tile with one kind of information, instead of clutterin
 - **Toolbar:** `Components/Board/LensToolbar` in the map zone's top-left corner, one toggle button per registered lens (`aria-pressed`, keyboard reachable). It reads the cascaded `GameUiService`, so it renders nothing outside a game screen.
 - **Edges:** a lens may also mark the edges a tile stores (`IMapLens.EdgeMarksFor(TileView)` → `Models/EdgeMark`, none by default), drawn after the tiles as a small badge at the edge's middle (`.lens-edge-mark.<class>`).
 - **Drawing:** `Components/Board/BoardLens` draws the active lens in the `BoardLayer.Lens` slot: per marked tile a tinted hex (`.lens-mark.<class>` in `board.css`, colours from `--gv-lens-*` tokens), a label and a `<title>` with the sentence, then the edge badges. Unexplored tiles are never marked.
+- **Lens marks get the view** (`IMapLens.MarkFor(PlayerView, index)`, defaulting to `MarkFor(TileView)`), so a lens can read the rivers around a tile.
+- **Yields** (`YieldLens`, G5): each explored or visible tile shows its total yield (`YieldCalculator.TileYields`: terrain, the best river on its edges, its improvement), tinted `rich` (4 or more), `poor` or `barren` (nothing, like desert), with a sentence naming each resource ("Plains: 2 food, 1 water a turn").
 - **Movement cost** (`MovementCostLens`): each explored or visible tile shows its terrain's movement cost (tint `cheap` for 1, `costly` above), and ✕ (`blocked`) where land units can't go. River edges show their extra crossing cost (`+1`, `costly`) or ✕ (`blocked`) where land units can't cross; a free stream shows nothing.
 
 ## Rivers
@@ -110,6 +113,10 @@ A lens marks every known tile with one kind of information, instead of clutterin
 - **Style:** `board.css` has one `.river-<id>` rule per ruleset river (its width: stream 2.5, river 5, deep river 8, so the kinds differ by more than colour); colours come from the `--gv-river*` tokens, darker for the deep river and when explored. `GameUiTests.BoardCss_StylesEveryRiver` checks a rule exists for every ruleset river. The rules aren't scoped to `.board`, so the `/design` gallery shows each kind.
 - **Forecast:** the river bonus appears in the defender's strength breakdown ("+3 behind River").
 - **Bridges** (G10a): `BoardRivers` also draws each bridge in sight as a `<line class="bridge">` plank across its edge (`HexLayout.BridgeEnds`, from one tile's centre towards the other), with a `<title>`. The movement cost lens leaves bridged edges unmarked.
+
+## Territory borders
+
+`Components/Board/BoardBorders` (G7) draws, in the `BoardLayer.Borders` slot, every edge of a visible territory tile whose neighbour is not in the same player's territory, as a dashed `<line class="border seat-N">` in the owner's seat colour, set slightly inside the tile so two players' borders on one edge stay apart. It renders nothing while no territory is in sight.
 
 ## Improvements
 

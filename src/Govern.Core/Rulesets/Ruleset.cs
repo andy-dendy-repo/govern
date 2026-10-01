@@ -32,6 +32,7 @@ public sealed class Ruleset
         Bridges = document.Bridges;
         Units = document.Units;
         Cities = document.Cities;
+        Territory = document.Territory;
         Resources = document.Resources;
         Improvements = document.Improvements;
         Buildings = document.Buildings;
@@ -67,7 +68,10 @@ public sealed class Ruleset
     /// <summary>Cities.</summary>
     public CityRules Cities { get; }
 
-    /// <summary>Every resource, in the document's order (the order stockpiles and yields are listed in).</summary>
+    /// <summary>City territory.</summary>
+    public TerritoryRules Territory { get; }
+
+    /// <summary>Every resource, in the document's order (the order stocks and yields are listed in).</summary>
     public ImmutableArray<ResourceDefinition> Resources { get; }
 
     /// <summary>Every tile improvement, in the document's order.</summary>

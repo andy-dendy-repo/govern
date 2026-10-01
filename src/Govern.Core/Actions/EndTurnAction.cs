@@ -18,8 +18,8 @@ public sealed record EndTurnCommand : GameCommand;
 
 /// <summary>
 /// Ends the actor's turn: their hurt units that neither moved, attacked nor worked heal, their units' jobs advance (see
-/// <see cref="ConstructionRule"/>), their cities add their yields to the stockpile and produce (except a city whose production a
-/// job used), then the next active player moves with full movement.
+/// <see cref="ConstructionRule"/>), their cities add their income to their stock, grow their territory
+/// (see <see cref="TerritoryRule"/>) and produce (except a city whose production a job used), then the next active player moves with full movement.
 /// </summary>
 internal static class EndTurnRule
 {
@@ -27,10 +27,11 @@ internal static class EndTurnRule
     {
         var events = ImmutableArray.CreateBuilder<GameEvent>();
         var (built, usedCities) = ConstructionRule.AdvanceJobs(ruleset, Heal(ruleset, state, actor), actor, events);
-        var produced = built.Cities
+        var grown = TerritoryRule.Grow(ruleset, ConstructionRule.CollectYields(ruleset, built, actor), actor, events);
+        var produced = grown.Cities
             .Where(city => city.Owner == actor && !usedCities.Contains(city.Id))
             .Select(static city => city.Id)
-            .Aggregate(ConstructionRule.CollectYields(ruleset, built, actor), (current, cityId) => Produce(ruleset, current, current.FindCity(cityId)!, events));
+            .Aggregate(grown, (current, cityId) => Produce(ruleset, current, current.FindCity(cityId)!, events));
 
         return new GameUpdate(PassTurn(ruleset, produced, events), events.ToImmutable());
     }
@@ -59,7 +60,7 @@ internal static class EndTurnRule
 
     private static GameState Produce(Ruleset ruleset, GameState state, City city, ImmutableArray<GameEvent>.Builder events)
     {
-        var perTurn = WorkArea.ProductionPerTurn(ruleset, city.BuildingList);
+        var perTurn = CityProduction.PerTurn(ruleset, city.BuildingList);
         if (city.ProducingBuilding is { } building)
         {
             return ProduceBuilding(ruleset, state, city, building, events);
@@ -83,7 +84,7 @@ internal static class EndTurnRule
     // A finished building joins the city, which goes back to producing its unit from scratch.
     private static GameState ProduceBuilding(Ruleset ruleset, GameState state, City city, BuildingType building, ImmutableArray<GameEvent>.Builder events)
     {
-        var progress = city.ProductionProgress + WorkArea.ProductionPerTurn(ruleset, city.BuildingList);
+        var progress = city.ProductionProgress + CityProduction.PerTurn(ruleset, city.BuildingList);
         if (progress < ruleset.Building(building).Cost)
         {
             return state.WithCity(city with { ProductionProgress = progress });

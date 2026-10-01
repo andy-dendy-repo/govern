@@ -16,7 +16,7 @@ public class GameTableBuildTests : ClientTestContext
     public GameTableBuildTests() => SignIn();
 
     [Fact]
-    public void BuildImprovement_BuilderInTheWorkArea_SendsIt()
+    public void BuildImprovement_BuilderInTheTerritory_SendsIt()
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var cut = RenderTable(Create([Unit(1, You, BuilderType, At(3, 2))], [City(7, You, At(2, 2))]));
@@ -29,14 +29,14 @@ public class GameTableBuildTests : ClientTestContext
     }
 
     [Fact]
-    public void BuildImprovement_OutsideTheWorkArea_IsDisabledWithTheReason()
+    public void BuildImprovement_OutsideTheTerritory_IsDisabledWithTheReason()
     {
         var cut = RenderTable(Create([Unit(1, You, BuilderType, At(6, 4))], [City(7, You, At(2, 2))]));
 
         Tile(cut, At(6, 4)).Click();
 
         cut.Find("button.build-farm").HasAttribute("disabled").ShouldBeTrue();
-        cut.Find(".build-improvement-reason").TextContent.ShouldBe("Improvements can only be built in your cities' work areas.");
+        cut.Find(".build-improvement-reason").TextContent.ShouldBe("Improvements can only be built in your cities' territory, off the city tiles.");
     }
 
     [Fact]
@@ -157,12 +157,33 @@ public class GameTableBuildTests : ClientTestContext
     }
 
     [Fact]
-    public void Render_Stockpile_ShowsEveryResource()
+    public void SelectOwnCity_ShowsItsStockWithTheGainEachTurnAndTheNextTilesPrice()
     {
-        var cut = RenderTable(Create(resources: [new ResourceAmount(Science, 7)]));
+        var cut = RenderTable(Create(cities: [City(7, You, At(2, 2), stock: [new ResourceAmount(Food, 5), new ResourceAmount(Culture, 2)])]));
+
+        Tile(cut, At(2, 2)).Click();
+
+        // 7 plains tiles (2 food, 1 water each) and the city's own culture.
+        cut.Find(".city-resource-food .cost-amount").TextContent.ShouldBe("5");
+        cut.Find(".city-resource-food .city-resource-gain").TextContent.ShouldBe("+14");
+        cut.Find(".city-resource-water .cost-amount").TextContent.ShouldBe("0");
+        cut.Find(".city-resource-water .city-resource-gain").TextContent.ShouldBe("+7");
+        cut.Find(".city-resource-culture .city-resource-gain").TextContent.ShouldBe("+1");
+        cut.FindAll(".city-resource-gold").ShouldBeEmpty("no gold and no gain");
+        cut.Find(".territory-growth").TextContent.ShouldBe("Next territory tile: 2 of 4 culture");
+    }
+
+    [Fact]
+    public void Render_Stockpile_ShowsEveryResourceSummedOverYourCities()
+    {
+        var cut = RenderTable(Create(cities: [
+            City(7, You, At(2, 2), stock: [new ResourceAmount(Science, 7)]),
+            City(8, You, At(6, 2), stock: [new ResourceAmount(Science, 3)]),
+            City(9, Opponent, At(6, 5)),
+        ]));
 
         cut.FindAll(".stockpile .stock").Count.ShouldBe(Ruleset.Resources.Length);
-        cut.Find(".stock-science .cost-amount").TextContent.ShouldBe("7");
+        cut.Find(".stock-science .cost-amount").TextContent.ShouldBe("10");
         cut.Find(".stock-food .cost-amount").TextContent.ShouldBe("0");
     }
 

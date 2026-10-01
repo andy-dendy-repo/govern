@@ -120,11 +120,11 @@ public class GameFactoryTests
         GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, setup)).ShouldBe(GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, setup)));
     }
 
-    // Recorded with ruleset v4 (G6 rivers): the same ruleset and setup must always give exactly the same new game.
+    // Recorded with ruleset v6 (G5/G7 desert patches): the same ruleset and setup must always give exactly the same new game.
     [Theory]
-    [InlineData(1UL, "a8de9b12605cc4054d5a3e234339251e76d1430a3113e4184d3b83bf43644c12")]
-    [InlineData(42UL, "6a926c7fb55478278001d1446d46178c033a42ba1ba4f2b80af215b11d41b0ed")]
-    [InlineData(987_654_321UL, "50e3decd0e06f0c7c865cc9304d370105538d7feb7616979582c26fa0f67461a")]
+    [InlineData(1UL, "bd1308812ebb11f60ee82adc198489f88fa49a698b7ce4ae73d724b059a374bf")]
+    [InlineData(42UL, "1ba44705f475dbacc8245d935676e3cacba901783c002cc65668c08de152822a")]
+    [InlineData(987_654_321UL, "67698a82486d31f0ac75f542da893ed970e9087977fb6d41dc0a1d6228746281")]
     public void Create_KnownSeed_GivesTheRecordedState(ulong seed, string expectedSha256)
     {
         var json = GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, new GameSetup([P1, P2], seed)));
@@ -172,7 +172,7 @@ public class GameFactoryTests
     {
         var ruleset = TestRulesets.With(json =>
         {
-            json["terrains"]!.AsArray().Add(new JsonObject { ["id"] = "grass", ["movementCost"] = 1, ["isPassable"] = true, ["sightBonus"] = 0, ["defenceBonus"] = 0 });
+            json["terrains"]!.AsArray().Add(new JsonObject { ["id"] = "grass", ["movementCost"] = 1, ["isPassable"] = true, ["sightBonus"] = 0, ["defenceBonus"] = 0, ["yields"] = new JsonArray() });
             json["texts"]!["terrain.grass.name"] = "Grass";
             json["map"]!["defaultTerrain"] = "grass";
             json["map"]!["generation"]!["patches"] = new JsonArray();

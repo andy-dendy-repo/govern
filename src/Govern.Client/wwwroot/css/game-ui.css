@@ -139,8 +139,21 @@
     gap: var(--gv-space-1);
 }
 
-.stock .cost-label {
+.stock .cost-label,
+.city-resource {
     font-variant-numeric: tabular-nums;
+}
+
+/* A city's resource with what it gains each turn (Components/CityPanel). */
+.city-resource {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--gv-space-1);
+}
+
+.city-resource-gain {
+    font-size: 0.8em;
+    opacity: 0.75;
 }
 
 .produce .cost-label {

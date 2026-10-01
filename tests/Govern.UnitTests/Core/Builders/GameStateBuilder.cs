@@ -26,6 +26,7 @@ internal sealed class GameStateBuilder
     private readonly Dictionary<HexEdge, RiverType> _rivers = [];
     private readonly HashSet<HexEdge> _bridges = [];
     private readonly Dictionary<HexCoord, ImprovementType> _improvements = [];
+    private readonly Dictionary<HexCoord, CityId?> _territory = [];
     private int _nextId = 1;
     private PlayerId _currentPlayer = P1;
     private int _turn = 1;
@@ -46,6 +47,8 @@ internal sealed class GameStateBuilder
         UnitType? producing = null,
         int progress = 0,
         BuildingType? producingBuilding = null,
+        ImmutableArray<ResourceAmount>? stock = null,
+        int tilesGained = 0,
         params BuildingType[] buildings)
     {
         var id = new CityId(_nextId++);
@@ -57,8 +60,22 @@ internal sealed class GameStateBuilder
             producing ?? TestRulesets.Soldier,
             progress,
             producingBuilding,
-            buildings.Length == 0 ? null : [.. buildings]));
+            buildings.Length == 0 ? null : [.. buildings],
+            stock,
+            tilesGained));
         return id;
+    }
+
+    // Gives tiles to a city's territory (null: to no city), on top of the tiles every city claims around itself when it is built
+    // (territory.initialRadius, in the order the cities were added), e.g. WithTerritory(city, (5, 7)).
+    public GameStateBuilder WithTerritory(CityId? city, params (int Column, int Row)[] tiles)
+    {
+        foreach (var (column, row) in tiles)
+        {
+            _territory[At(column, row)] = city;
+        }
+
+        return this;
     }
 
     // Puts an improvement on tiles, e.g. WithImprovement(TestRulesets.Farm, (5, 4)).
@@ -136,7 +153,21 @@ internal sealed class GameStateBuilder
     private GameMap BuildMap()
     {
         var map = GameMap.Create(Width, Height, TestRulesets.Plains);
-        return map with { Tiles = [.. map.Tiles.Select(tile => WithRivers(_terrain.TryGetValue(tile.Coord, out var terrain) ? tile with { Terrain = terrain } : tile))] };
+        return map with { Tiles = [.. map.Tiles.Select(tile => WithTerritory(WithRivers(_terrain.TryGetValue(tile.Coord, out var terrain) ? tile with { Terrain = terrain } : tile)))] };
+    }
+
+    // The first city (in the order added) within territory.initialRadius claims the tile, unless WithTerritory says otherwise.
+    private Tile WithTerritory(Tile tile)
+    {
+        if (_territory.TryGetValue(tile.Coord, out var owner))
+        {
+            return tile with { Territory = owner };
+        }
+
+        var radius = TestRulesets.Default.Territory.InitialRadius;
+        return _cities.FirstOrDefault(city => city.Position.DistanceTo(tile.Coord) <= radius) is { } claimer
+            ? tile with { Territory = claimer.Id }
+            : tile;
     }
 
     private Tile WithRivers(Tile tile)

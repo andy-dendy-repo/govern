@@ -27,12 +27,20 @@ public class LensToolbarTests : ClientTestContext
     }
 
     [Fact]
+    public void Render_GameScreen_OffersTheYieldLens()
+    {
+        var cut = Render<LensToolbar>(parameters => parameters.AddCascadingValue(new GameUiService()));
+
+        cut.Find("button[data-lens=yields]").TextContent.ShouldContain("Yields");
+    }
+
+    [Fact]
     public void ActiveLens_ChangedElsewhere_PressesTheButton()
     {
         var ui = new GameUiService();
         var cut = Render<LensToolbar>(parameters => parameters.AddCascadingValue(ui));
 
-        ui.ToggleLens(Services.GetServices<IMapLens>().Single());
+        ui.ToggleLens(Services.GetServices<IMapLens>().Single(static lens => lens.Id == "movement-cost"));
 
         cut.WaitForAssertion(() => cut.Find("button[data-lens=movement-cost]").GetAttribute("aria-pressed").ShouldBe("true"));
     }

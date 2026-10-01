@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Govern.Core.Cities;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.Serialization;
@@ -16,7 +17,7 @@ public static class VisibilityCalculator
 {
     /// <summary>
     /// Tiles currently in sight of the player's units (their type's sight) and cities (<see cref="CityRules.Sight"/>), each
-    /// plus the <see cref="TerrainDefinition.SightBonus"/> of the tile it stands on.
+    /// plus the <see cref="TerrainDefinition.SightBonus"/> of the tile it stands on, and every tile of their cities' territory.
     /// </summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="state">The game.</param>
@@ -30,14 +31,22 @@ public static class VisibilityCalculator
         var unitSight = state.Units
             .Where(unit => unit.Owner == player)
             .SelectMany(unit => unit.Position.WithinRadius(ruleset.Unit(unit.Type).Sight + SightBonus(ruleset, state, unit.Position)));
+        var ownCities = state.Cities.Where(city => city.Owner == player).Select(static city => city.Id).ToHashSet();
         var citySight = state.Cities
             .Where(city => city.Owner == player)
             .SelectMany(city => city.Position.WithinRadius(ruleset.Cities.Sight + SightBonus(ruleset, state, city.Position)));
+        var territory = state.Map.Tiles
+            .Where(tile => tile.Territory is { } city && ownCities.Contains(city))
+            .Select(static tile => tile.Coord);
 
-        return unitSight.Concat(citySight).Where(state.Map.Contains).ToHashSet();
+        return unitSight.Concat(citySight).Where(state.Map.Contains).Concat(territory).ToHashSet();
     }
 
-    /// <summary>Adds every currently visible tile to each active player's <see cref="Player.Explored"/> list.</summary>
+    /// <summary>
+    /// Adds every currently visible tile, and every neighbour of their cities' territory, to each active player's
+    /// <see cref="Player.Explored"/> list. The neighbours store some of the rivers on the territory's outer edges, so knowing
+    /// their (unchanging) terrain and rivers lets the view compute a city's income exactly.
+    /// </summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="state">The game.</param>
     /// <returns>The state with updated exploration; newly seen tiles are appended in row-then-column order.</returns>
@@ -54,6 +63,8 @@ public static class VisibilityCalculator
 
             var known = player.Explored.ToHashSet();
             var discovered = VisibleTiles(ruleset, state, player.Id)
+                .Concat(TerritoryRing(state, player.Id))
+                .Distinct()
                 .Where(coord => !known.Contains(coord))
                 .OrderBy(static coord => coord.Row)
                 .ThenBy(static coord => coord.Column);
@@ -76,7 +87,8 @@ public static class VisibilityCalculator
 
         var visible = VisibleTiles(ruleset, state, viewer);
         var explored = player.Explored.ToHashSet();
-        var tiles = state.Map.Tiles.Select(tile => ToView(tile, visible, explored));
+        var owners = state.Cities.ToDictionary(static city => city.Id, static city => city.Owner);
+        var tiles = state.Map.Tiles.Select(tile => ToView(tile, visible, explored, owners, viewer));
 
         var view = new PlayerView(
             viewer,
@@ -97,8 +109,7 @@ public static class VisibilityCalculator
                 .Where(city => city.Owner == viewer || visible.Contains(city.Position))
                 .OrderBy(static city => city.Id.Value)
                 .Select(city => CityView.From(city, viewer))],
-            [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status))],
-            player.Stockpile);
+            [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status))]);
 
         return view with { Version = Fingerprint(view) };
     }
@@ -111,13 +122,35 @@ public static class VisibilityCalculator
         return BinaryPrimitives.ReadInt64LittleEndian(hash) & long.MaxValue;
     }
 
+    // The tiles next to the player's territory that aren't in it.
+    private static IEnumerable<HexCoord> TerritoryRing(GameState state, PlayerId player)
+    {
+        var ownCities = state.Cities.Where(city => city.Owner == player).Select(static city => city.Id).ToHashSet();
+        return state.Map.Tiles
+            .Where(tile => tile.Territory is { } city && ownCities.Contains(city))
+            .SelectMany(static tile => tile.Coord.Neighbors())
+            .Where(state.Map.Contains);
+    }
+
     private static int SightBonus(Ruleset ruleset, GameState state, HexCoord position) =>
         ruleset.Terrain(state.Map.TileAt(position).Terrain).SightBonus;
 
-    private static TileView ToView(Tile tile, IReadOnlySet<HexCoord> visible, HashSet<HexCoord> explored) => tile.Coord switch
-    {
-        var coord when visible.Contains(coord) => new TileView(TileVisibility.Visible, tile.Terrain, tile.Rivers, tile.Bridges, tile.Improvement),
-        var coord when explored.Contains(coord) => new TileView(TileVisibility.Explored, tile.Terrain, tile.Rivers),
-        _ => new TileView(TileVisibility.Unexplored, null),
-    };
+    private static TileView ToView(
+        Tile tile,
+        IReadOnlySet<HexCoord> visible,
+        HashSet<HexCoord> explored,
+        Dictionary<CityId, PlayerId> owners,
+        PlayerId viewer) => tile.Coord switch
+        {
+            var coord when visible.Contains(coord) => new TileView(
+                TileVisibility.Visible,
+                tile.Terrain,
+                tile.Rivers,
+                tile.Bridges,
+                tile.Improvement,
+                tile.Territory is { } city ? owners[city] : null,
+                tile.Territory is { } own && owners[own] == viewer ? own : null),
+            var coord when explored.Contains(coord) => new TileView(TileVisibility.Explored, tile.Terrain, tile.Rivers),
+            _ => new TileView(TileVisibility.Unexplored, null),
+        };
 }

@@ -24,7 +24,13 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 ## Now
 
-Empty: content slice C1 is done (G9, PR #30); G6 rivers (PR #32) and G10a builders and buildings (PR #33), both picked by the owner on 2026-10-01, are done. The owner picks what moves up from Next.
+Picked by the owner on 2026-10-01: G5, G7 and the economy part of G8 together, as one [plan](active/G5-G7-G8-economy.md) in two PRs (yields and territory first, then costs, upkeep and HP).
+
+| # | Id | Item | Status |
+|---|---|---|---|
+| 1 | G5 | [Resources and tile yields](../game/design-roadmap.md#g5-resources-and-tile-yields): every terrain yields, water and desert, rivers give water | in progress (branch `claude/project-thread-qjb1fk`, PR 1) |
+| 2 | G7 | [City territory and growth](../game/design-roadmap.md#g7-city-territory-and-growth): territory claimed on founding and grown with culture, each city's own stock | in progress (branch `claude/project-thread-qjb1fk`, PR 1) |
+| 3 | G8a | [City stats, part a](../game/design-roadmap.md#g8-city-stats-and-the-production-queue): resource costs paid when production begins, upkeep with a per-city priority, supply from the tiles around a unit outside territory, shortage damage down to 1 HP, building health | planned (PR 2) |
 
 ### Content slice C1: G2, G4, G9
 
@@ -59,9 +65,7 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 | F8 | Turn timers and absent players | 2026-09-30 | Prerequisite of F9 and F10, which are deferred | With F9 or F10 | [F8](deferred/follow-ups.md#f8-turn-timers-and-absent-players) |
 | F9 | Simultaneous turns (Civ 6 style) | 2026-09-30 | Content and UI first | Alternating turns become the main complaint in play | [F9](deferred/follow-ups.md#f9-simultaneous-turns-civ-6-style) |
 | F10 | More than two players | 2026-09-30 | Content and UI first | 1-vs-1 play is solid; after F8 and F9 | [F10](deferred/follow-ups.md#f10-more-than-two-players) |
-| G5 | Resources and tile yields | 2026-09-30 | Not in content slice C1; needs G7/G8 (territory, city stats) to matter | C1 is done; then pick the next slice | [G5](../game/design-roadmap.md#g5-resources-and-tile-yields) |
-| G7 | City territory and growth | 2026-09-30 | Not in content slice C1; needs G5 | C1 is done; then pick the next slice | [G7](../game/design-roadmap.md#g7-city-territory-and-growth) |
-| G8 | City stats and the production queue | 2026-09-30 | Not in content slice C1; needs G7 | C1 is done; then pick the next slice | [G8](../game/design-roadmap.md#g8-city-stats-and-the-production-queue) |
+| G8b | City stats, part b: population, housing, loyalty and the production queue. Split from G8 on 2026-10-01; G8a (costs and upkeep) is in Now | 2026-10-01 | The owner wants costs, upkeep and supply first (G8a) | G8a is done and cities need to grow or be managed | [G8](../game/design-roadmap.md#g8-city-stats-and-the-production-queue) |
 | G10b | Builders and buildings, part b: upgrades, building health, pillage and repair, removing an improvement, the buildings' own mechanics (traders, faster army production, ships from harbours). Split from G10 on 2026-10-01; G10a is done | 2026-09-30 | Not in content slice C1; G10a gives the base; the rest needs G7, G8 (and G15 for ships) | The owner picks the next G item | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
 | G11 | Science and culture trees | 2026-09-30 | Not in content slice C1; needs G8 | C1 is done; then pick the next slice | [G11](../game/design-roadmap.md#g11-science-and-culture-trees) |
 | G12 | Civilizations and governors | 2026-09-30 | Not in content slice C1; needs G8, G11 | C1 is done; then pick the next slice | [G12](../game/design-roadmap.md#g12-civilizations-and-governors) |

@@ -96,6 +96,12 @@ public sealed record GameMap(int Width, int Height, ImmutableArray<Tile> Tiles)
     /// <returns>The river crossed, or <see langword="null"/> when there is none or it is bridged.</returns>
     public RiverType? CrossedRiverBetween(HexCoord a, HexCoord b) => BridgeBetween(a, b) ? null : RiverBetween(a, b);
 
+    /// <summary>The rivers on the six edges of a tile, bridged or not, each edge at most once.</summary>
+    /// <param name="coord">The tile.</param>
+    /// <returns>The river of every edge that has one.</returns>
+    public IEnumerable<RiverType> RiversAround(HexCoord coord) =>
+        coord.Neighbors().Select(neighbor => RiverBetween(coord, neighbor)).OfType<RiverType>();
+
     // A copy with a river on one edge; the owner tile must be on the map.
     internal GameMap WithRiver(HexEdge edge, RiverType river)
     {

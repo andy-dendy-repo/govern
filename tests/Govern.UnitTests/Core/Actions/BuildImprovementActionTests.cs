@@ -8,11 +8,11 @@ using static Govern.UnitTests.Core.Builders.GameStateBuilder;
 
 namespace Govern.UnitTests.Core.Actions;
 
-// A P1 city at (6, 4) has the work area around it; (5, 5) is next to it.
+// A P1 city at (6, 4) has the territory around it; (5, 5) is next to it.
 public class BuildImprovementActionTests
 {
     [Fact]
-    public void Execute_BuilderOnPlainsInWorkArea_StartsAFarmAndUsesItsMovement()
+    public void Execute_BuilderOnPlainsInTerritory_StartsAFarmAndUsesItsMovement()
     {
         var builder = new GameStateBuilder().WithCapitals().WithCurrentPlayer(P1, turn: 3);
         builder.AddCity(P1, 6, 4);
@@ -51,14 +51,14 @@ public class BuildImprovementActionTests
     }
 
     [Fact]
-    public void Execute_OutsideEveryWorkArea_IsRefused()
+    public void Execute_OutsideEveryTerritory_IsRefused()
     {
         var builder = new GameStateBuilder().WithCapitals();
         builder.AddCity(P1, 6, 2);
         var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5);
 
         GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new BuildImprovementCommand(unit, TestRulesets.Farm))
-            .ShouldFailWith(RuleViolations.NotInWorkArea);
+            .ShouldFailWith(RuleViolations.NotInTerritory);
     }
 
     [Fact]
@@ -69,18 +69,18 @@ public class BuildImprovementActionTests
         var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5);
 
         GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new BuildImprovementCommand(unit, TestRulesets.Farm))
-            .ShouldFailWith(RuleViolations.NotInWorkArea);
+            .ShouldFailWith(RuleViolations.NotInTerritory);
     }
 
     [Fact]
-    public void Execute_InAnEnemyWorkArea_IsRefused()
+    public void Execute_InEnemyTerritory_IsRefused()
     {
         var builder = new GameStateBuilder().WithCapitals();
         builder.AddCity(P2, 6, 4);
         var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5);
 
         GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new BuildImprovementCommand(unit, TestRulesets.Farm))
-            .ShouldFailWith(RuleViolations.NotInWorkArea);
+            .ShouldFailWith(RuleViolations.NotInTerritory);
     }
 
     [Theory]

@@ -1,3 +1,4 @@
+using Govern.Core.Cities;
 using Govern.Core.Economy;
 using System.Text.Json.Serialization;
 
@@ -14,9 +15,14 @@ namespace Govern.Core.Map;
 /// </param>
 /// <param name="Bridges">Bridges on the river edges this tile owns, or <see langword="null"/> when there are none.</param>
 /// <param name="Improvement">The improvement built on the tile, if any (at most one).</param>
+/// <param name="Territory">
+/// The city whose territory the tile is in, or <see langword="null"/> when no city owns it. A tile changes hands only with its
+/// city (a capture), never by itself.
+/// </param>
 public sealed record Tile(
     HexCoord Coord,
     TerrainType Terrain,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TileRivers? Rivers = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TileBridges? Bridges = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImprovementType? Improvement = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImprovementType? Improvement = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CityId? Territory = null);
