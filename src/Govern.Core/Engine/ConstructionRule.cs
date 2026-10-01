@@ -102,13 +102,13 @@ internal static class ConstructionRule
         var idle = state.WithUnit(unit with { Job = null });
         if (job.Improvement is { } improvement)
         {
-            events.Add(new ImprovementBuiltEvent(unit.Id, unit.Position, improvement));
+            events.Add(new ImprovementBuiltEvent(unit.Id, unit.Owner, unit.Position, improvement));
             var tile = idle.Map.TileAt(unit.Position);
             return idle with { Map = idle.Map.WithTile(tile with { Improvement = improvement }) };
         }
 
         var target = job.BridgeTo!.Value;
-        events.Add(new BridgeBuiltEvent(unit.Id, unit.Position, target));
+        events.Add(new BridgeBuiltEvent(unit.Id, unit.Owner, unit.Position, target));
         return idle with { Map = idle.Map.WithBridge(HexEdge.Between(unit.Position, target)!.Value) };
     }
 }

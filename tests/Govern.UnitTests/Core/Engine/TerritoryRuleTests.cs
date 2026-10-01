@@ -72,7 +72,7 @@ public class TerritoryRuleTests
         var grown = update.State.FindCity(city)!;
         grown.TilesGained.ShouldBe(1);
         YieldCalculator.AmountOf(grown.StockList, TestRulesets.Culture).ShouldBe(0);
-        update.Events.ShouldContain(new TerritoryGrewEvent(city, At(7, 5)));
+        update.Events.ShouldContain(new TerritoryGrewEvent(city, P1, At(7, 5)));
     }
 
     [Fact]

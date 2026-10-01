@@ -91,7 +91,7 @@ internal static class EndTurnRule
 
         var (allocated, id) = state.AllocateId();
         var unit = new Unit(new UnitId(id), city.Owner, city.Producing, tile, MovementLeft: 0);
-        events.Add(new UnitCreatedEvent(unit, city.Id));
+        events.Add(new UnitCreatedEvent(unit.Id, unit.Owner, unit.Type, unit.Position, city.Id));
 
         var reset = allocated.WithCity(city with { ProductionProgress = 0, ProductionPaid = false });
         return reset with { Units = reset.Units.Add(unit) };

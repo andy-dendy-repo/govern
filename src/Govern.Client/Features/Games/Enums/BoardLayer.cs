@@ -30,4 +30,7 @@ public enum BoardLayer
 
     /// <summary>Units.</summary>
     Units,
+
+    /// <summary>Short-lived animation effects: damage numbers and pulses on tiles (F11b).</summary>
+    Effects,
 }

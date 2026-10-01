@@ -1,7 +1,7 @@
 ---
 title: Game UI design system
-tags: [client, game-ui, tabs, city-tabs, upkeep, resource-cost, supply, building-health, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, territory, borders, city-stock, yields-lens, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast]
-code: [src/Govern.Client/Components/Game, src/Govern.Client/Features/Games/Components/Screen, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/Features/Games/Services/GameUiService.cs, src/Govern.Client/Features/Design/Pages/DesignPage.razor, src/Govern.Client/Helpers, src/Govern.Client/wwwroot/css, tests/Govern.ArchitectureTests/GameUiTests.cs]
+tags: [client, game-ui, tabs, city-tabs, upkeep, resource-cost, supply, building-health, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, territory, borders, city-stock, yields-lens, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast, game-log, animations, effects, reduced-motion]
+code: [src/Govern.Client/Components/Game, src/Govern.Client/Features/Games/Components/Screen, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/Features/Games/Services/GameUiService.cs, src/Govern.Client/Features/Games/Services/BoardAnimationService.cs, src/Govern.Client/Features/Games/Components/GameLog.razor, src/Govern.Client/Features/Design/Pages/DesignPage.razor, src/Govern.Client/Helpers, src/Govern.Client/wwwroot/css, tests/Govern.ArchitectureTests/GameUiTests.cs]
 updated: 2026-10-01
 ---
 
@@ -20,7 +20,7 @@ A started game (`Features/Games/Components/GameTable`) is a CSS grid with fixed 
 | Top bar | `Screen/TopBar` | Your seat colour, "Turn n: your turn", the resources in all your cities (one `CostLabel` per ruleset resource, the sum of your cities' stock), on your turn "n units can still move" (`.next-unit`: own units with movement left and no job, from `GameUiService.IdleUnits`; a click selects the next one, wrapping round), End turn, Resign (inline confirm) | season (G14): one element each, before the actions |
 | Map | `Board/GameBoard` | The hex board, pan and zoom, zoom buttons. It opens fitted to your units and cities with 3 hexes of room (`HexLayout.Around`), or the whole map when you have none; Fit shows the whole map. The lens toolbar stops short of the zoom buttons and wraps on narrow boards | map lenses (toolbar in this zone), new board layers |
 | Action bar | `Screen/ActionBar`, floating over the bottom of the map | The selected own unit's actions (Found city; Build <improvement> for each improvement that fits the unit's terrain; Build bridge, which turns on bridge mode; each with the rule's reason when disabled) and a hint for board moves or the unit's job | one button per new ability |
-| Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel` with its Units, Buildings and Economy tabs), the combat forecast of a pending attack (`CombatForecastPanel`) or a hint | one panel per new selection kind (tile, building) |
+| Side panel | `Screen/SidePanel` | Notices (stale command, Api error), the game result, the panel for the selection (`UnitPanel`, `CityPanel` with its Units, Buildings and Economy tabs), the combat forecast of a pending attack (`CombatForecastPanel`) or a hint, and the game log at the bottom ([game log](#game-log-in-the-side-panel)) | one panel per new selection kind (tile, building) |
 | Full-screen view | (added with its first user) | Large content: tech and culture trees (G11), the city screen, governors (G12) | |
 
 Above the zones, a started game's page shows only a small title and the connection badge (no player list: the top bar has your colour and whose turn it is), so the board starts high. The top bar, side panel and action bar are cards (raised surface, border, radius). The action bar floats over the bottom-left of the map, so a unit's actions sit next to the board without scrolling; it covers a few tiles in that corner, which the player reaches by panning. On screens narrower than 60rem the zones stack: top bar, map (with its action bar), side panel (map first, panels below).
@@ -72,7 +72,27 @@ Shapes sit in a 26×26 box centred on 0,0. The main shape takes its fill from th
 
 ## Board layers
 
-The board's SVG groups render in the fixed `Features/Games/Enums/BoardLayer` order, each as `<g data-layer="…">`: terrain → rivers → improvements → borders → lens → highlights → cities → units. A layer with nothing to draw yet is not rendered. Lenses and highlights sit under the pieces so units stay readable. Clicks go to the terrain tiles; every layer above has `pointer-events: none`. `GameBoardTests.Render_Layers_FollowTheBoardLayerOrder` checks the order.
+The board's SVG groups render in the fixed `Features/Games/Enums/BoardLayer` order, each as `<g data-layer="…">`: terrain → rivers → improvements → borders → lens → highlights → cities → units → effects. A layer with nothing to draw yet is not rendered. Lenses and highlights sit under the pieces so units stay readable. Clicks go to the terrain tiles; every layer above has `pointer-events: none`. `GameBoardTests.Render_Layers_FollowTheBoardLayerOrder` checks the order.
+
+## Game log in the side panel
+
+`Features/Games/Components/GameLog` lists the player's log (`GetGameResponse.Log`, [games](games.md#game-log)) at the bottom of the side panel: one "Turn n" group per round, newest first, and in each round the newest line on top. `Helpers/GameLogFormatter` turns an event into one sentence with ruleset names and seats ("Your Archer hit Seat 2's Soldier: 22 damage, 6 taken", "An unseen Seat 2 Archer hit your Soldier"); `.yours` lines (your own actions) carry the accent border. A line with a tile has a Show button: it centres the board on the tile (`GameUiService.Focus`, `GameBoard.Focus`) and selects your unit or city there. The header button collapses the log (`GameUiService.LogOpen`, open by default, `aria-expanded`).
+
+## Board animations
+
+`Features/Games/Services/BoardAnimationService` (F11b, one per `GameTable`) plays the new log entries of each newer view on the board, in order. The view itself is applied at once, so panels and buttons never wait; only `BoardMotion` (unit positions, ghosts, effects) changes while it plays.
+
+| Event | On the board |
+|---|---|
+| `unit_moved` | The unit slides tile by tile (`Step`, 120 ms a tile; a CSS `transform` transition on `.unit-at`); a unit no longer in the view walks as a ghost |
+| `unit_attacked` | The attacker lunges a third of the way and back (`Lunge`, 160 ms), then both damage numbers float up (`.effect.damage`) |
+| `unit_destroyed` | A ghost of the unit fades (`.ghost.fading`) |
+| `city_founded`, `city_captured`, `improvement_built`, `bridge_built` | The tile pulses (`.effect.pulse`) |
+
+- Each entry plays once (by `sequence`); the log the game opens with plays nothing.
+- A newer view or a tile click finishes everything at once, so input is never blocked.
+- `prefers-reduced-motion: reduce` (read through `BoardInteropService.PrefersReducedMotionAsync` and in CSS): units don't walk or lunge, and effects only fade.
+- Effects are their own top layer (`BoardEffects`, `effects`); ghosts sit in the units layer without the `unit` class.
 
 ## Component catalog
 
@@ -97,6 +117,8 @@ Shared game components live in `Components/Game` (each with bUnit tests in `test
 | `YieldList` | planned by G8b | Yield rows per tile and city |
 | `QueueList` | planned by G8b/G10b | A reorderable build queue |
 | `TreeView` | planned by G11/G12 | Tech, culture and governor skill trees in a full-screen view |
+| `GameLog` | built (F11a), feature panel | The player's log in the side panel ([game log](#game-log-in-the-side-panel)) |
+| `BoardEffects` | built (F11b), board layer | Damage numbers and pulses of the playing animation ([board animations](#board-animations)) |
 | `LensToolbar`, `BoardLens` and `IMapLens` | built (G4) | Toggleable map overlays, one at a time ([map lenses](#map-lenses)); movement cost and yields (G5). Edge marks for river crossings (G6). Later lenses: loyalty (G8), seasons (G14) |
 
 ## Map lenses
@@ -132,7 +154,7 @@ A lens marks every known tile with one kind of information, instead of clutterin
 
 ## Performance
 
-The terrain renders once per view (`BoardTerrain.ShouldRender`) and pieces only when the view, selection or highlights change; panning and zooming change one `transform`. Maps are 20×14 by default and at most 40×40 (`map.maxSize` in the ruleset), which renders smoothly; measure the largest offered size again before moving terrain to a cached layer or a canvas.
+The terrain renders once per view (`BoardTerrain.ShouldRender`) and pieces only when the view, selection, highlights or animation motion change (an animation re-renders the pieces once per step); panning and zooming change one `transform`. Maps are 20×14 by default and at most 40×40 (`map.maxSize` in the ruleset), which renders smoothly; measure the largest offered size again before moving terrain to a cached layer or a canvas.
 
 ## Adding UI for a new mechanic
 

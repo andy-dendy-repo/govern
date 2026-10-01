@@ -1,6 +1,7 @@
 using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
+using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.Visibility;
 
@@ -29,6 +30,12 @@ public sealed class GameUiService
     /// </summary>
     public int CityTab { get; set; }
 
+    /// <summary>Whether the game log in the side panel is open (it is, until the player collapses it).</summary>
+    public bool LogOpen { get; set; } = true;
+
+    /// <summary>The latest request to centre the board on a tile, or <see langword="null"/> before the first.</summary>
+    public BoardFocus? Focus { get; private set; }
+
     /// <summary>Raised after the state changed.</summary>
     public event Action? Changed;
 
@@ -44,6 +51,24 @@ public sealed class GameUiService
         Selection = selection;
         Highlights = BoardClickResolver.Highlights(ruleset, view, selection);
         Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Shows a tile from the game log: centres the board on it and selects the player's own unit, or else city, standing there.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The view on screen.</param>
+    /// <param name="tile">The tile.</param>
+    public void Show(Ruleset ruleset, PlayerView view, HexCoord tile)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        Focus = new BoardFocus(tile, (Focus?.Request ?? 0) + 1);
+        var selection = view.Units.FirstOrDefault(unit => unit.Position == tile && unit.Owner == view.Viewer) is { } unit
+            ? BoardSelection.Of(unit.Id)
+            : view.Cities.FirstOrDefault(city => city.Position == tile && city.Owner == view.Viewer) is { } city
+                ? BoardSelection.Of(city.Id)
+                : BoardSelection.None;
+        Select(ruleset, view, selection);
     }
 
     /// <summary>Keeps the state valid for a new view: drops a selection that is no longer in it and recomputes the highlights.</summary>

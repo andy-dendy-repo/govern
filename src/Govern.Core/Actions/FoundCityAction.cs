@@ -42,7 +42,7 @@ internal static class FoundCityRule
         var founded = allocated.WithoutUnit(settler.Id);
         founded = founded with { Cities = founded.Cities.Add(city), Map = TerritoryRule.ClaimAround(ruleset, founded.Map, city) };
 
-        return new GameUpdate(founded, [new CityFoundedEvent(city, settler.Id)]);
+        return new GameUpdate(founded, [new CityFoundedEvent(city.Id, city.Owner, city.Position, city.Name, settler.Id)]);
     }
 
     // Shared with the view-based preview (ViewPreviewCalculator). Every city closer than the spacing is visible to the settler

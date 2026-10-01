@@ -6,7 +6,7 @@ namespace Govern.Client.Features.Games.Services;
 
 /// <summary>
 /// The game board's JavaScript (<c>wwwroot/js/board.js</c>): a non-passive wheel listener, so zooming never scrolls the
-/// page, and measuring the board element. Every call degrades to a no-op when the module can't run, so the board still works
+/// page, measuring the board element and reading the reduced-motion preference. Every call degrades to a no-op when the module can't run, so the board still works
 /// (with a default size) without it.
 /// </summary>
 public sealed class BoardInteropService(IJSRuntime js) : IAsyncDisposable
@@ -48,6 +48,23 @@ public sealed class BoardInteropService(IJSRuntime js) : IAsyncDisposable
         {
             ForgetFailedImport();
             return null;
+        }
+    }
+
+    /// <summary>Whether the player asked the browser for reduced motion (<c>prefers-reduced-motion: reduce</c>).</summary>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns><see langword="true"/> when reduced motion is asked for; <see langword="false"/> otherwise or when unknown.</returns>
+    public async Task<bool> PrefersReducedMotionAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var module = await ModuleAsync();
+            return await module.InvokeAsync<bool>("prefersReducedMotion", cancellationToken);
+        }
+        catch (JSException)
+        {
+            ForgetFailedImport();
+            return false;
         }
     }
 

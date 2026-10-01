@@ -27,7 +27,7 @@ public class VictoryRuleTests
         update.State.FindPlayer(P2)!.Status.ShouldBe(PlayerStatus.Eliminated);
         update.State.FindUnit(escort).ShouldBeNull();
         update.Events.ShouldContain(new PlayerEliminatedEvent(P2));
-        update.Events.ShouldContain(new UnitDestroyedEvent(escort, P2, At(9, 7)));
+        update.Events.ShouldContain(new UnitDestroyedEvent(escort, P2, TestRulesets.Soldier, At(9, 7)));
         update.Events[^1].ShouldBe(new GameWonEvent(P1));
     }
 

@@ -1,6 +1,6 @@
 ---
 title: Game logic (Core algorithms)
-tags: [game, core, rules, algorithms, upkeep, resource-cost, supply, shortage, building-health, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, determinism]
+tags: [game, core, rules, algorithms, upkeep, resource-cost, supply, shortage, building-health, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, game-log, events, determinism]
 code: [src/Govern.Core]
 updated: 2026-10-01
 ---
@@ -231,6 +231,7 @@ If no tile qualifies, nothing is paid and the stock keeps growing. Cities never 
    - units and cities ordered by id, so the order reveals nothing about when they were created;
    - the round, the current player, the status, the winner and each player's status.
 4. **The view version** is a fingerprint (SHA-256) of everything in the view. It changes only when something the player can see changes, so it can't be used to count the opponent's hidden actions. A command must quote the version it was based on (the server rejects it with `game.stale_version` if the view changed since).
+5. **The game log** of a player: after every accepted command, the events of that command they may see, in order. The **seen tiles** are the tiles they could see before the command plus those they see after it. Everything about their own units and cities is kept. Of the other player's events they keep: the end of a turn, a resignation, an elimination and the win; a move cut to the seen tiles of its path (dropped when none is seen); an attack when either tile is seen or the attacked unit is theirs (an attacker on an unseen tile keeps only its owner and type, not its id or tile); a capture when the city's tile is seen or the city was theirs; a destroyed unit, a founded city, a new unit, a finished improvement or a grown territory tile when its tile is seen (a new unit and a grown tile without the city they came from), and a bridge when the builder's end is seen. Production, jobs started, buildings finished or damaged, the upkeep order and starving units are never kept for the other player. Hidden events are dropped, never counted, and an entry has no version or time, so the log tells nothing the two views don't.
 
 ## View previews (what the client can check)
 

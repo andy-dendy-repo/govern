@@ -54,6 +54,15 @@ public sealed record BoardViewport(double Scale, double X, double Y)
         return new BoardViewport(scale, x - ((x - X) * ratio), y - ((y - Y) * ratio));
     }
 
+    /// <summary>Pans so that the board point (x, y) is in the middle of the element, at the same zoom.</summary>
+    /// <param name="x">The point's x in board space.</param>
+    /// <param name="y">The point's y in board space.</param>
+    /// <param name="width">The board element's width in pixels.</param>
+    /// <param name="height">The board element's height in pixels.</param>
+    /// <returns>The panned viewport.</returns>
+    public BoardViewport CentreOn(double x, double y, double width, double height) =>
+        this with { X = (width / 2) - (x * Scale), Y = (height / 2) - (y * Scale) };
+
     private static double Clamp(double scale) =>
         double.IsFinite(scale) ? Math.Clamp(scale, MinScale, MaxScale) : 1;
 }

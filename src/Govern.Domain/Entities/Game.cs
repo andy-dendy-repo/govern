@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Govern.Core.Engine;
 using Govern.Core.Rulesets;
 using Govern.Core.State;
+using Govern.Core.Visibility;
 using Govern.Domain.EntityBase;
 using Govern.Domain.Enums;
 using Govern.Domain.Events;
@@ -31,6 +32,7 @@ public sealed class Game : BaseAuditableEntity
     public static readonly TimeSpan LobbyLifetime = TimeSpan.FromDays(7);
 
     private readonly List<GamePlayer> _players = [];
+    private readonly List<GameLogEntry> _logEntries = [];
 
     private Game()
     {
@@ -78,6 +80,12 @@ public sealed class Game : BaseAuditableEntity
     /// The seated players (the caller must load them).
     /// </summary>
     public IReadOnlyCollection<GamePlayer> Players => _players.AsReadOnly();
+
+    /// <summary>
+    /// The players' log entries. Never loaded with the game: it holds the entries <see cref="Execute"/> added since the game was
+    /// loaded, which saving inserts. Read a player's log with a query on the entries.
+    /// </summary>
+    public IReadOnlyCollection<GameLogEntry> LogEntries => _logEntries.AsReadOnly();
 
     /// <summary>
     /// Whether every seat is taken.
@@ -201,8 +209,8 @@ public sealed class Game : BaseAuditableEntity
 
     /// <summary>
     /// Runs one player's command through the engine. An accepted command replaces <see cref="State"/>, moves
-    /// <see cref="CurrentPlayerId"/> and finishes the game when the engine does; a rejected one changes nothing.
-    /// <see cref="ActivityAt"/> moves only when the turn passes or the game finishes.
+    /// <see cref="CurrentPlayerId"/> and finishes the game when the engine does, and adds a <see cref="GameLogEntry"/> for each
+    /// seat that saw any of its events; a rejected one changes nothing. <see cref="ActivityAt"/> moves only when the turn passes or the game finishes.
     /// </summary>
     /// <param name="userId">The seated user sending the command.</param>
     /// <param name="ruleset">The ruleset the game was started with.</param>
@@ -220,10 +228,12 @@ public sealed class Game : BaseAuditableEntity
             throw new InvalidOperationException("Only a seated player of a started game can send commands.");
         }
 
-        var result = GameEngine.Execute(ruleset, State, player.PlayerId, command);
+        var before = State;
+        var result = GameEngine.Execute(ruleset, before, player.PlayerId, command);
         if (result.IsSuccess)
         {
             State = result.Update.State;
+            Record(ruleset, before, result.Update);
             var finished = State.Status == GameStatus.Finished;
             var (phase, currentPlayerId) = (Phase, CurrentPlayerId);
             Phase = finished ? GamePhase.Finished : GamePhase.InProgress;
@@ -238,6 +248,19 @@ public sealed class Game : BaseAuditableEntity
         }
 
         return result;
+    }
+
+    // Gives every seat the events it may see of an accepted command, as one log entry (none when it saw nothing).
+    private void Record(Ruleset ruleset, GameState before, GameUpdate update)
+    {
+        foreach (var seat in _players)
+        {
+            var events = VisibilityCalculator.EventsFor(ruleset, before, update, seat.PlayerId);
+            if (!events.IsEmpty)
+            {
+                _logEntries.Add(GameLogEntry.Create(Id, seat.Id, seat.NextLogSequence(), before.Turn, events));
+            }
+        }
     }
 
     // A change every player sees: bumps the revision and the activity time, and notifies watchers.

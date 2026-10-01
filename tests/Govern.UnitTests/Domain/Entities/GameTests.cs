@@ -1,5 +1,6 @@
 using Govern.Core.Actions;
 using Govern.Core.Engine;
+using Govern.Core.Events;
 using Govern.Core.State;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
@@ -397,6 +398,52 @@ public class GameTests
 
         game.ActivityAt.ShouldBe(Now);
         game.Revision.ShouldBe(3);
+    }
+
+    [Fact]
+    public void Execute_EndTurn_GivesEachSeatALogEntryOfWhatItSaw()
+    {
+        var game = StartedGame();
+        var creator = game.FindPlayer(Creator)!;
+        var joiner = game.FindPlayer(Joiner)!;
+
+        game.Execute(Creator, TestRulesets.Default, new EndTurnCommand(), Now);
+
+        var own = game.LogEntries.Single(entry => entry.PlayerId == creator.Id);
+        own.Sequence.ShouldBe(1);
+        own.Turn.ShouldBe(1);
+        own.Events.OfType<TurnEndedEvent>().ShouldHaveSingleItem();
+        var theirs = game.LogEntries.Single(entry => entry.PlayerId == joiner.Id);
+        theirs.Events.ShouldAllBe(gameEvent => gameEvent is TurnEndedEvent);
+        creator.LogLength.ShouldBe(1);
+        joiner.LogLength.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Execute_HiddenMove_AddsAnEntryOnlyForTheMover()
+    {
+        var game = StartedGame();
+        var mover = game.FindPlayer(Creator)!;
+        var move = game.State!.Units
+            .Where(unit => unit.Owner == mover.PlayerId)
+            .SelectMany(unit => GameEngine.ReachableTiles(TestRulesets.Default, game.State, mover.PlayerId, unit.Id).Select(target => new MoveUnitCommand(unit.Id, target)))
+            .First();
+
+        game.Execute(Creator, TestRulesets.Default, move, Now);
+
+        // The spawns are far apart, so the opponent sees nothing of the first move.
+        game.LogEntries.ShouldHaveSingleItem().PlayerId.ShouldBe(mover.Id);
+        game.FindPlayer(Joiner)!.LogLength.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Execute_RejectedCommand_AddsNoLogEntry()
+    {
+        var game = StartedGame();
+
+        game.Execute(Joiner, TestRulesets.Default, new EndTurnCommand(), Now);
+
+        game.LogEntries.ShouldBeEmpty();
     }
 
     private static Game StartedGame()
