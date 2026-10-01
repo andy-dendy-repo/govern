@@ -160,6 +160,11 @@
     margin-inline-start: var(--gv-space-2);
 }
 
+/* The city panel's tabs (Units, Buildings, Economy): the tab content lines up with the panel instead of Radzen's inset. */
+.city-tabs .rz-tabview-panel {
+    padding: var(--gv-space-3) 0 0;
+}
+
 /* The design gallery (Features/Design/Pages/DesignPage, Development only). */
 .design-swatch {
     display: inline-flex;

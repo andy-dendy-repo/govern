@@ -23,6 +23,12 @@ public sealed class GameUiService
     /// <summary>The map lens drawn over the board, or <see langword="null"/> when none is on.</summary>
     public IMapLens? ActiveLens { get; private set; }
 
+    /// <summary>
+    /// The index of the open tab of the player's city panel (0 Units, 1 Buildings, 2 Economy). It stays open when another city
+    /// is selected, so the player can go through their cities on the same tab.
+    /// </summary>
+    public int CityTab { get; set; }
+
     /// <summary>Raised after the state changed.</summary>
     public event Action? Changed;
 
