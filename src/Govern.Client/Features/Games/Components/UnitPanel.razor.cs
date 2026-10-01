@@ -1,5 +1,6 @@
 using Govern.Client.Helpers;
 using Govern.Client.Models;
+using Govern.Core.Cities;
 using Govern.Core.Rulesets;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -8,7 +9,8 @@ using Microsoft.AspNetCore.Components;
 namespace Govern.Client.Features.Games.Components;
 
 /// <summary>
-/// The selected unit's panel: its combat stats for any unit the player sees, and its movement, sight and cost for their own.
+/// The selected unit's panel: its combat stats for any unit the player sees, and its movement, sight, cost, build production
+/// and job for their own.
 /// </summary>
 public partial class UnitPanel
 {
@@ -36,7 +38,7 @@ public partial class UnitPanel
                 return [.. CombatRows(definition)];
             }
 
-            return
+            StatRow[] rows =
             [
                 .. CombatRows(definition),
                 new(Icons.Movement, "Movement", $"{Unit.MovementLeft} of {definition.Movement}",
@@ -44,8 +46,31 @@ public partial class UnitPanel
                 SightRow(definition.Sight),
                 new(Icons.Production, "Cost", $"{definition.ProductionCost}", $"A city needs {definition.ProductionCost} production to build one.", "cost"),
             ];
+            return definition.BuildProduction > 0
+                ? [.. rows, new(Icons.Production, "Build", $"{definition.BuildProduction} per turn",
+                    $"Adds {definition.BuildProduction} production a turn to what it builds; on your city's land the city's production is added too.",
+                    "build")]
+                : rows;
         }
     }
+
+    // How much a turn adds to the job: the unit's own build production, plus the production of the own city whose land it
+    // stands on (if that city is not feeding an older job, which the view doesn't tell, the job may take longer).
+    private int JobPerTurn
+    {
+        get
+        {
+            var perTurn = Ruleset.Unit(Unit.Type).BuildProduction;
+            var city = View.Cities.FirstOrDefault(city => city.Owner == View.Viewer && WorkArea.Covers(Ruleset, city.Position, Unit.Position));
+            return city is null ? perTurn : perTurn + WorkArea.ProductionPerTurn(Ruleset, city.BuildingList);
+        }
+    }
+
+    private string JobText(UnitJob job) => job.Improvement is { } improvement
+        ? $"Building a {Ruleset.ImprovementName(improvement)}: {job.Progress} of {JobCost(job)}"
+        : $"Building a bridge: {job.Progress} of {JobCost(job)}";
+
+    private int JobCost(UnitJob job) => job.Improvement is { } improvement ? Ruleset.Improvement(improvement).Cost : Ruleset.Bridges.Cost;
 
     // Sight plus the bonus of the tile the unit stands on (hills); the own unit's tile is always visible, so its terrain is known.
     private StatRow SightRow(int sight)

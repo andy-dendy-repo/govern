@@ -7,7 +7,7 @@
     <GameSprite/>
     <div @ref="_screen" class="game-screen" tabindex="-1" @onkeydown="@OnKeyDown">
         <div class="zone-top">
-            <TopBar View="@View" Busy="@_sending" Command="@SendAsync"/>
+            <TopBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
         </div>
         <div class="zone-map">
             <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>

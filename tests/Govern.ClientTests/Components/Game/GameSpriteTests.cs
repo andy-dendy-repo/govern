@@ -32,6 +32,20 @@ public class GameSpriteTests : ClientTestContext
     }
 
     [Fact]
+    public void Render_EveryRulesetImprovementBuildingAndResource_HasASymbol()
+    {
+        var cut = Render<GameSprite>();
+
+        var missing = TestViews.Ruleset.Improvements.Select(static improvement => Icons.Improvement(improvement.Id))
+            .Concat(TestViews.Ruleset.Buildings.Select(static building => Icons.Building(building.Id)))
+            .Concat(TestViews.Ruleset.Resources.Select(static resource => Icons.Resource(resource.Id)))
+            .Where(id => cut.FindAll($"symbol#{id}").Count != 1)
+            .ToList();
+
+        missing.ShouldBeEmpty("every improvement, building and resource in the ruleset needs its symbol in Components/Game/GameSprite.razor");
+    }
+
+    [Fact]
     public void Render_EveryNamedIcon_HasASymbol()
     {
         var cut = Render<GameSprite>();

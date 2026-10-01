@@ -17,6 +17,10 @@
     {
         <use href="#hex" x="@X(coord)" y="@Y(coord)" class="@(coord == Selection.Target ? "overlay attackable target" : "overlay attackable")"/>
     }
+    @foreach (var coord in Highlights.Bridgeable)
+    {
+        <use href="#hex" x="@X(coord)" y="@Y(coord)" class="overlay bridgeable"/>
+    }
 </g>
 <g class="layer-cities" data-layer="@BoardLayers.Name(BoardLayer.Cities)">
     @foreach (var city in View.Cities)

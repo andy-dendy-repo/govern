@@ -57,10 +57,31 @@ public sealed class GameUiService
         Changed?.Invoke();
     }
 
-    /// <summary>Handles Escape: cancels a pending attack, otherwise clears the selection.</summary>
-    /// <returns>Whether anything changed.</returns>
-    public bool Escape()
+    /// <summary>Turns bridge mode on for the selected unit, or off when it is on (the action bar's Build bridge).</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The view on screen.</param>
+    public void ToggleBridge(Ruleset ruleset, PlayerView view)
     {
+        if (Selection.Unit is null)
+        {
+            return;
+        }
+
+        Select(ruleset, view, Selection with { Target = null, Bridge = !Selection.Bridge });
+    }
+
+    /// <summary>Handles Escape: cancels a pending attack or bridge mode, otherwise clears the selection.</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The view on screen.</param>
+    /// <returns>Whether anything changed.</returns>
+    public bool Escape(Ruleset ruleset, PlayerView view)
+    {
+        if (Selection.Bridge)
+        {
+            Select(ruleset, view, Selection with { Bridge = false });
+            return true;
+        }
+
         if (Selection.Target is not null)
         {
             CancelAttack();
