@@ -65,6 +65,40 @@ public sealed class BoardAnimationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task PlayAsync_SameViewAgainWhilePlaying_KeepsPlaying()
+    {
+        await _animation.PlayAsync(null, Before, []);
+        _ = _animation.PlayAsync(Before, After, [Entry(1, Moved())]);
+
+        await _animation.PlayAsync(After, After, [Entry(1, Moved())]);
+
+        _animation.IsPlaying.ShouldBeTrue();
+        _animation.Motion.Positions[Mover].ShouldBe(Point(At(2, 2)));
+    }
+
+    [Fact]
+    public async Task PlayAsync_TwoMovesOfOneUnitInOneView_StartsTheSecondWhereTheFirstEnded()
+    {
+        await _animation.PlayAsync(null, Before, []);
+        var further = Create(units: [Soldier(1, You, At(5, 3)), Soldier(2, Opponent, At(5, 2))]);
+        var second = new UnitMovedEvent(Mover, You, SoldierType, [At(5, 3)]);
+
+        var drawn = new List<BoardPoint?>();
+        _animation.Changed += () => drawn.Add(_animation.Motion.Positions.TryGetValue(Mover, out var at) ? at : null);
+
+        _ = _animation.PlayAsync(Before, further, [Entry(1, Moved()), Entry(2, second)]);
+        for (var step = 1; step <= 3; step++)
+        {
+            var before = drawn.Count;
+            _time.Advance(BoardAnimationService.Step);
+            await Eventually.HoldsAsync(() => drawn.Count > before, "the next step is drawn");
+        }
+
+        await Eventually.HoldsAsync(() => drawn.Count == 5, "the first walk ends and the second begins");
+        drawn.ShouldBe([Point(At(2, 2)), Point(At(3, 2)), Point(At(4, 2)), null, Point(At(4, 2))]);
+    }
+
+    [Fact]
     public async Task Finish_WhilePlaying_PutsEveryUnitOnItsTileAtOnce()
     {
         await _animation.PlayAsync(null, Before, []);

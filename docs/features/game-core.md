@@ -207,9 +207,10 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 |---|---|
 | `turn_ended`, `player_resigned`, `player_eliminated`, `game_won` | always |
 | `unit_moved` | the path cut to the seen tiles; dropped when none is seen |
-| `unit_attacked` | when either tile is seen or the defender is theirs; an attacker on an unseen tile loses its `attackerId` and `from` |
+| `unit_attacked` | when either tile is seen or the defender is theirs; an attacker on an unseen tile has a null `attackerId` and `from` (written as null, so stored entries read back) |
 | `city_captured` | when the city's tile is seen or the city was theirs |
-| `unit_destroyed`, `city_founded`, `unit_created`, `improvement_built`, `territory_grew`, `bridge_built` | when the tile (either bridge end) is seen |
+| `unit_destroyed`, `city_founded`, `unit_created`, `improvement_built`, `territory_grew` | when the tile is seen; `unit_created` and `territory_grew` without their `cityId` (the view never says which enemy city a tile belongs to) |
+| `bridge_built` | when the builder's tile (`from`) is seen, since the builder stays there |
 | `production_changed`, `build_started`, `building_completed`, `building_damaged`, `upkeep_priority_set`, `unit_starved` | never: the view already shows what the opponent may know |
 
 Hidden events are dropped, never counted, so the log adds nothing the two views don't already give (`EventVisibilityTests` checks every event type for both players).
