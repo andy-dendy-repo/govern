@@ -65,29 +65,35 @@ internal static class RiverGenerator
                 return null;
             }
 
-            // The next edge shares the corner (a, b, c): it is a–c or b–c. Only edges that don't lead back towards the source.
-            var distance = Distance(source, a, b, c);
-            List<(HexCoord Kept, HexCoord Next)> candidates = [];
-            foreach (var (kept, dropped) in new[] { (a, b), (b, a) })
-            {
-                var next = OtherCommonNeighbor(kept, c, dropped);
-                if (Distance(source, kept, c, next) >= distance && layout.CanTake(kept, c, taken))
-                {
-                    candidates.Add((kept, next));
-                }
-            }
-
-            if (candidates.Count == 0)
+            if (NextStep(layout, source, (a, b, c), taken, random) is not { } step)
             {
                 return null;
             }
 
-            var (keep, ahead) = candidates[random.NextHashed(0, candidates.Count)];
-            layout.TryTake(keep, c, taken, edges);
-            (a, b, c) = (keep, c, ahead);
+            layout.TryTake(step.Kept, c, taken, edges);
+            (a, b, c) = (step.Kept, c, step.Ahead);
         }
 
         return edges.Count >= rules.MinLength ? edges : null;
+    }
+
+    // The next edge shares the corner (a, b, c): it is a–c or b–c, chosen at random among those that don't lead back towards
+    // the source. Returns the tile it keeps (a or b) and the next corner's third tile, or null when neither edge fits.
+    private static (HexCoord Kept, HexCoord Ahead)? NextStep(
+        Layout layout, HexCoord source, (HexCoord A, HexCoord B, HexCoord C) corner, HashSet<HexEdge> taken, DeterministicRandom random)
+    {
+        var distance = Distance(source, corner.A, corner.B, corner.C);
+        List<(HexCoord Kept, HexCoord Ahead)> candidates = [];
+        foreach (var (kept, dropped) in new[] { (corner.A, corner.B), (corner.B, corner.A) })
+        {
+            var ahead = OtherCommonNeighbor(kept, corner.C, dropped);
+            if (Distance(source, kept, corner.C, ahead) >= distance && layout.CanTake(kept, corner.C, taken))
+            {
+                candidates.Add((kept, ahead));
+            }
+        }
+
+        return candidates.Count == 0 ? null : candidates[random.NextHashed(0, candidates.Count)];
     }
 
     private static HexCoord Step(HexCoord coord, int direction) =>

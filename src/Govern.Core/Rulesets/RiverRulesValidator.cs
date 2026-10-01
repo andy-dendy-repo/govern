@@ -47,14 +47,19 @@ internal static class RiverRulesValidator
         CheckTerrains(generation.Sources, terrains, $"{path}.sources", problems);
         CheckTerrains(generation.Mouths, terrains, $"{path}.mouths", problems);
 
-        var stages = generation.Stages;
-        if (stages.IsEmpty)
+        CheckStages(document, generation.Stages, rivers, problems);
+    }
+
+    private static void CheckStages(RulesetDocument document, IReadOnlyList<RiverStageRules> stages, HashSet<string> rivers, List<RulesetProblem> problems)
+    {
+        const string path = "$.map.generation.rivers";
+        if (stages.Count == 0)
         {
             problems.Add(new($"{path}.stages", "At least one stage is required."));
             return;
         }
 
-        for (var index = 0; index < stages.Length; index++)
+        for (var index = 0; index < stages.Count; index++)
         {
             var stage = stages[index];
             var stagePath = $"{path}.stages[{index}]";
