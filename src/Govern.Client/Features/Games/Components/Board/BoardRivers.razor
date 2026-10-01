@@ -1,10 +1,9 @@
 @* The rivers the player knows of, one line along each river edge (BoardLayer.Rivers), drawn wider per kind and with a title for
-   assistive technology, so a river is never told by colour alone. Nothing is rendered while no river is known. Like the
-   terrain, it renders again only for a new view. *@
+   assistive technology, so a river is never told by colour alone, and the bridges over them (in sight only), a plank across
+   the edge. Nothing is rendered while no river is known. Like the terrain, it renders again only for a new view. *@
 @using Govern.Client.Features.Games.Enums
 @using Govern.Client.Features.Games.Helpers
 @using Govern.Client.Features.Games.Services
-@using Govern.Core.Map
 @using Govern.Core.Visibility
 
 @if (Rivers().Any())
@@ -18,37 +17,12 @@
                 <title>@RiverDescription.For(Rulesets.Ruleset, river)</title>
             </line>
         }
-    </g>
-}
-
-@code {
-    private PlayerView? _rendered;
-
-    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
-
-    [Inject] private RulesetService Rulesets { get; set; } = null!;
-
-    protected override bool ShouldRender() => !ReferenceEquals(View, _rendered);
-
-    protected override void OnAfterRender(bool firstRender) => _rendered = View;
-
-    // Each known river edge with the visibility of the tile that holds it.
-    private IEnumerable<(HexEdge Edge, RiverType River, TileVisibility Visibility)> Rivers()
-    {
-        for (var index = 0; index < View.Tiles.Length; index++)
+        @foreach (var edge in Bridges())
         {
-            if (View.Tiles[index] is not { Rivers: { } rivers } tile)
-            {
-                continue;
-            }
-
-            foreach (var side in Enum.GetValues<HexSide>())
-            {
-                if (rivers.On(side) is { } river)
-                {
-                    yield return (new HexEdge(View.CoordAt(index), side), river, tile.Visibility);
-                }
-            }
+            var (x1, y1, x2, y2) = HexLayout.BridgeEnds(edge);
+            <line x1="@HexLayout.Format(x1)" y1="@HexLayout.Format(y1)" x2="@HexLayout.Format(x2)" y2="@HexLayout.Format(y2)" class="bridge">
+                <title>Bridge</title>
+            </line>
         }
-    }
+    </g>
 }

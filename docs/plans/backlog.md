@@ -24,7 +24,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 ## Now
 
-Empty: content slice C1 is done (G9, PR #30), and G6 rivers, picked by the owner on 2026-10-01, is done (PR #32). The owner picks what moves up from Next.
+Empty: content slice C1 is done (G9, PR #30); G6 rivers (PR #32) and G10a builders and buildings (PR #33), both picked by the owner on 2026-10-01, are done. The owner picks what moves up from Next.
 
 ### Content slice C1: G2, G4, G9
 
@@ -62,12 +62,12 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 | G5 | Resources and tile yields | 2026-09-30 | Not in content slice C1; needs G7/G8 (territory, city stats) to matter | C1 is done; then pick the next slice | [G5](../game/design-roadmap.md#g5-resources-and-tile-yields) |
 | G7 | City territory and growth | 2026-09-30 | Not in content slice C1; needs G5 | C1 is done; then pick the next slice | [G7](../game/design-roadmap.md#g7-city-territory-and-growth) |
 | G8 | City stats and the production queue | 2026-09-30 | Not in content slice C1; needs G7 | C1 is done; then pick the next slice | [G8](../game/design-roadmap.md#g8-city-stats-and-the-production-queue) |
-| G10 | Builders and buildings (with upgrades); also bridges over rivers, moved from G6 on 2026-10-01 | 2026-09-30 | Not in content slice C1; needs G7, G8 | C1 is done; then pick the next slice | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
+| G10b | Builders and buildings, part b: upgrades, building health, pillage and repair, removing an improvement, the buildings' own mechanics (traders, faster army production, ships from harbours). Split from G10 on 2026-10-01; G10a is done | 2026-09-30 | Not in content slice C1; G10a gives the base; the rest needs G7, G8 (and G15 for ships) | The owner picks the next G item | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
 | G11 | Science and culture trees | 2026-09-30 | Not in content slice C1; needs G8 | C1 is done; then pick the next slice | [G11](../game/design-roadmap.md#g11-science-and-culture-trees) |
 | G12 | Civilizations and governors | 2026-09-30 | Not in content slice C1; needs G8, G11 | C1 is done; then pick the next slice | [G12](../game/design-roadmap.md#g12-civilizations-and-governors) |
 | G13 | Colonies founded by governors | 2026-09-30 | Not in content slice C1; needs G12 | C1 is done; then pick the next slice | [G13](../game/design-roadmap.md#g13-colonies-founded-by-governors-settlers-removed) |
 | G14 | Seasons | 2026-09-30 | Not in content slice C1; modifies almost everything; last | C1 is done; then pick the next slice | [G14](../game/design-roadmap.md#g14-seasons) |
-| G15 | Ships and naval movement | 2026-09-30 | Not in content slice C1; needs G10 (G6 rivers are done) | C1 is done; then pick the next slice | [G15](../game/design-roadmap.md#g15-ships-and-naval-movement) |
+| G15 | Ships and naval movement | 2026-09-30 | Not in content slice C1; needs harbours (G10a, done) and G10b (G6 rivers are done) | C1 is done; then pick the next slice | [G15](../game/design-roadmap.md#g15-ships-and-naval-movement) |
 | G16 | Diplomacy (war and peace, trade, alliances, diplomacy points) | 2026-09-30 | Not needed for 1-vs-1 | F10, or resource trading (G5) is wanted | [open question 1](../game/design-roadmap.md#open-questions) |
 
 ## Ideas
@@ -78,6 +78,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| G10a | Builders and buildings, part a: the builder; builders and soldiers build with their own build production plus the city's on its ground, no charges (owner's model); farm, lumber camp and mine in a city's work area; army camp, campus, trade post, culture centre and harbour; bridges over any river; the resource stockpile (ruleset v5, [rules](../game/rules.md#building-with-units)) | 2026-10-01, PR #33 | [G10a](done/G10a-builders-and-buildings.md) |
 | G6 | Rivers along hex edges: stream, river (+1 to cross, +3 defence) and deep river (can't cross, +5 defence), mirrored river generation, the rivers board layer and lens crossings (ruleset v4, [rules](../game/rules.md)). No generated bridges (owner); bridges moved to G10 | 2026-10-01, PR #32 | [G6](done/G6-rivers.md) |
 | C1 | Content slice C1: richer ruleset and Core (G2, G4, G9); its section stays under Now for the record | 2026-09-30, PR #30 | [slice](#content-slice-c1-g2-g4-g9) |
 | G9 | Army units and combat: health, spearman, horseman and archer with class counters, terrain defence, healing, the combat forecast and health bars (ruleset v3, [rules](../game/rules.md)). Completes content slice C1 | 2026-09-30, PR #30 | [G9](done/G9-units-and-combat.md) |

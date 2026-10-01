@@ -129,7 +129,22 @@
     --gv-river-colour: var(--gv-river-deep-explored);
 }
 
+/* A bridge (BoardRivers): a plank across its river edge, drawn over the river with an outline. */
+.bridge {
+    stroke: var(--gv-bridge);
+    stroke-width: 6;
+    stroke-linecap: butt;
+    filter: drop-shadow(0 0 1px var(--gv-bridge-outline));
+}
+
+/* A tile improvement (Components/Board/BoardImprovements): its symbol's lines (currentColor), small in the tile's upper left. */
+.improvement {
+    color: var(--gv-improvement);
+    filter: drop-shadow(0 0 1px var(--gv-board-outline));
+}
+
 .board .layer-rivers,
+.board .layer-improvements,
 .board .layer-lens,
 .board .layer-highlights,
 .board .layer-cities,
@@ -216,6 +231,12 @@
 .board .overlay.attackable {
     fill: var(--gv-overlay-attackable);
     stroke: var(--gv-overlay-attackable-stroke);
+}
+
+.board .overlay.bridgeable {
+    fill: var(--gv-overlay-bridgeable);
+    stroke: var(--gv-overlay-bridgeable-stroke);
+    stroke-dasharray: 4 3;
 }
 
 .board .overlay.target {

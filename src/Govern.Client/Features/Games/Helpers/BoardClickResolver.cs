@@ -22,7 +22,8 @@ public static class BoardClickResolver
     /// A move by the selected own unit when the tile allows it (never while it is not the player's turn or the game is over).
     /// On an enemy unit it can attack, a click selects it as the <see cref="BoardSelection.Target"/> (the forecast is shown);
     /// only the forecast's Attack button attacks, so a double-click never attacks unseen. An undefended enemy city is captured
-    /// at once. Otherwise the new selection: the unit on
+    /// at once. In bridge mode, a click on a marked neighbour builds the bridge and any other click only leaves bridge mode.
+    /// Otherwise the new selection: the unit on
     /// the tile (clicking a selected unit again selects the player's city under it), else the city on the tile, else nothing.
     /// </returns>
     public static BoardClick Resolve(Ruleset ruleset, PlayerView view, BoardSelection selection, HexCoord coord)
@@ -30,6 +31,13 @@ public static class BoardClickResolver
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(view);
         ArgumentNullException.ThrowIfNull(selection);
+
+        if (selection is { Unit: { } builder, Bridge: true } && view.FindOwnUnit(builder) is not null)
+        {
+            return GameEngine.BridgeTargets(ruleset, view, builder).Contains(coord)
+                ? new BoardClick(selection with { Bridge = false }, new BuildBridgeCommand(builder, coord))
+                : new BoardClick(selection with { Bridge = false }, null);
+        }
 
         if (selection.Unit is { } unitId && view.FindOwnUnit(unitId) is not null)
         {
@@ -59,7 +67,7 @@ public static class BoardClickResolver
 
     /// <summary>
     /// Keeps a selection valid for a new view: a unit or city that is no longer in it (destroyed, captured, or out of sight)
-    /// is dropped, and so is a pending attack target the unit can no longer fight.
+    /// is dropped, and so is a pending attack target the unit can no longer fight and bridge mode with nothing left to bridge.
     /// </summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The new view.</param>
@@ -76,6 +84,11 @@ public static class BoardClickResolver
             selection = selection with { Target = null };
         }
 
+        if (selection is { Unit: { } builder, Bridge: true } && GameEngine.BridgeTargets(ruleset, view, builder).IsEmpty)
+        {
+            selection = selection with { Bridge = false };
+        }
+
         var kept = selection switch
         {
             { Unit: { } unit } => view.Units.Any(candidate => candidate.Id == unit),
@@ -85,7 +98,10 @@ public static class BoardClickResolver
         return kept ? selection : BoardSelection.None;
     }
 
-    /// <summary>The tiles to mark for the selection: where the selected own unit can move and what it can attack.</summary>
+    /// <summary>
+    /// The tiles to mark for the selection: where the selected own unit can move and what it can attack, or in bridge mode
+    /// only the neighbours it can bridge to.
+    /// </summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The player's current view.</param>
     /// <param name="selection">The selection.</param>
@@ -96,8 +112,12 @@ public static class BoardClickResolver
         ArgumentNullException.ThrowIfNull(view);
         ArgumentNullException.ThrowIfNull(selection);
 
-        return selection.Unit is { } unitId
-            ? new BoardHighlights([.. GameEngine.ReachableTiles(ruleset, view, unitId)], [.. GameEngine.AttackTargets(ruleset, view, unitId)])
-            : BoardHighlights.None;
+        return selection switch
+        {
+            { Unit: { } builder, Bridge: true } => new BoardHighlights([], [], [.. GameEngine.BridgeTargets(ruleset, view, builder)]),
+            { Unit: { } unitId } => new BoardHighlights(
+                [.. GameEngine.ReachableTiles(ruleset, view, unitId)], [.. GameEngine.AttackTargets(ruleset, view, unitId)], []),
+            _ => BoardHighlights.None,
+        };
     }
 }

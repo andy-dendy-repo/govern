@@ -20,6 +20,10 @@ namespace Govern.Core.Units;
 /// which never fights back.
 /// </param>
 /// <param name="Ranged">The ranged attack; set exactly when the unit has <see cref="UnitAbility.RangedAttack"/>.</param>
+/// <param name="BuildProduction">
+/// Production points the unit puts into its job each turn; at least 1 exactly when it has <see cref="UnitAbility.BuildImprovement"/>
+/// or <see cref="UnitAbility.BuildBridge"/>, otherwise 0.
+/// </param>
 public sealed record UnitDefinition(
     UnitType Id,
     string Class,
@@ -28,7 +32,8 @@ public sealed record UnitDefinition(
     int ProductionCost,
     ImmutableArray<UnitAbility> Abilities,
     int? Strength = null,
-    RangedRules? Ranged = null)
+    RangedRules? Ranged = null,
+    int BuildProduction = 0)
 {
     /// <summary>Whether the unit can found a city (and is consumed doing so).</summary>
     [JsonIgnore]
@@ -41,6 +46,14 @@ public sealed record UnitDefinition(
     /// <summary>Whether the unit can shoot enemy units within <see cref="RangedRules.Range"/>.</summary>
     [JsonIgnore]
     public bool CanRangedAttack => Abilities.Contains(UnitAbility.RangedAttack);
+
+    /// <summary>Whether the unit can build tile improvements.</summary>
+    [JsonIgnore]
+    public bool CanBuildImprovements => Abilities.Contains(UnitAbility.BuildImprovement);
+
+    /// <summary>Whether the unit can build bridges.</summary>
+    [JsonIgnore]
+    public bool CanBuildBridges => Abilities.Contains(UnitAbility.BuildBridge);
 
     /// <summary>The farthest tile the unit can attack: its ranged range, 1 for melee, 0 when it can't attack.</summary>
     [JsonIgnore]

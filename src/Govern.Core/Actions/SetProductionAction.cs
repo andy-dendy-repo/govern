@@ -8,7 +8,7 @@ using Govern.Core.Units;
 namespace Govern.Core.Actions;
 
 /// <summary>
-/// Chooses which unit a city builds; accumulated progress is kept.
+/// Chooses which unit a city builds (and stops producing a building, if it was); accumulated progress is kept.
 /// </summary>
 /// <param name="CityId">The actor's city.</param>
 /// <param name="UnitType">Unit type to build: a unit id of the game's ruleset.</param>
@@ -32,7 +32,7 @@ internal static class SetProductionRule
             return RuleViolations.UnknownUnitType;
         }
 
-        var changed = city with { Producing = command.UnitType };
+        var changed = city with { Producing = command.UnitType, ProducingBuilding = null };
         return new GameUpdate(state.WithCity(changed), [new ProductionChangedEvent(city.Id, command.UnitType)]);
     }
 }

@@ -21,4 +21,18 @@ public enum UnitAbility
     /// </summary>
     [JsonStringEnumMemberName("ranged_attack")]
     RangedAttack,
+
+    /// <summary>
+    /// Builds tile improvements in its own cities' work areas, with its <see cref="UnitDefinition.BuildProduction"/> plus the
+    /// city's production.
+    /// </summary>
+    [JsonStringEnumMemberName("build_improvement")]
+    BuildImprovement,
+
+    /// <summary>
+    /// Builds bridges over rivers next to it, with its <see cref="UnitDefinition.BuildProduction"/> (plus the city's production
+    /// inside one of its own cities' work areas).
+    /// </summary>
+    [JsonStringEnumMemberName("build_bridge")]
+    BuildBridge,
 }

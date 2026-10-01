@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Units;
 
@@ -18,6 +19,9 @@ public sealed class Ruleset
     private readonly FrozenDictionary<UnitType, UnitDefinition> _units;
     private readonly FrozenDictionary<TerrainType, TerrainDefinition> _terrains;
     private readonly FrozenDictionary<RiverType, RiverDefinition> _rivers;
+    private readonly FrozenDictionary<ResourceType, ResourceDefinition> _resources;
+    private readonly FrozenDictionary<ImprovementType, ImprovementDefinition> _improvements;
+    private readonly FrozenDictionary<BuildingType, BuildingDefinition> _buildings;
 
     internal Ruleset(RulesetDocument document, string hash)
     {
@@ -25,14 +29,21 @@ public sealed class Ruleset
         Map = document.Map;
         Terrains = document.Terrains;
         Rivers = document.Rivers;
+        Bridges = document.Bridges;
         Units = document.Units;
         Cities = document.Cities;
+        Resources = document.Resources;
+        Improvements = document.Improvements;
+        Buildings = document.Buildings;
         Combat = document.Combat;
         Texts = document.Texts;
         Hash = hash;
         _units = document.Units.ToFrozenDictionary(static unit => unit.Id);
         _terrains = document.Terrains.ToFrozenDictionary(static terrain => terrain.Id);
         _rivers = document.Rivers.ToFrozenDictionary(static river => river.Id);
+        _resources = document.Resources.ToFrozenDictionary(static resource => resource.Id);
+        _improvements = document.Improvements.ToFrozenDictionary(static improvement => improvement.Id);
+        _buildings = document.Buildings.ToFrozenDictionary(static building => building.Id);
     }
 
     /// <summary>How a game starts.</summary>
@@ -47,11 +58,23 @@ public sealed class Ruleset
     /// <summary>Every river kind, in the document's order.</summary>
     public ImmutableArray<RiverDefinition> Rivers { get; }
 
+    /// <summary>Bridges over rivers.</summary>
+    public BridgeRules Bridges { get; }
+
     /// <summary>Every unit, in the document's order (the order the client lists them in).</summary>
     public ImmutableArray<UnitDefinition> Units { get; }
 
     /// <summary>Cities.</summary>
     public CityRules Cities { get; }
+
+    /// <summary>Every resource, in the document's order (the order stockpiles and yields are listed in).</summary>
+    public ImmutableArray<ResourceDefinition> Resources { get; }
+
+    /// <summary>Every tile improvement, in the document's order.</summary>
+    public ImmutableArray<ImprovementDefinition> Improvements { get; }
+
+    /// <summary>Every city building, in the document's order.</summary>
+    public ImmutableArray<BuildingDefinition> Buildings { get; }
 
     /// <summary>Health, damage, healing and counters.</summary>
     public CombatRules Combat { get; }
@@ -114,6 +137,35 @@ public sealed class Ruleset
     public RiverDefinition River(RiverType type) =>
         _rivers.GetValueOrDefault(type) ?? throw new ArgumentException($"The ruleset has no river '{type.Id}'.", nameof(type));
 
+    /// <summary>Looks up a tile improvement that may not exist, such as one sent in a command.</summary>
+    /// <param name="type">The improvement.</param>
+    /// <returns>Its definition, or <see langword="null"/> when the ruleset has no such improvement.</returns>
+    public ImprovementDefinition? FindImprovement(ImprovementType type) => _improvements.GetValueOrDefault(type);
+
+    /// <summary>The definition of a tile improvement that is in the game.</summary>
+    /// <param name="type">An improvement of this ruleset.</param>
+    /// <returns>Its definition.</returns>
+    /// <exception cref="ArgumentException">The ruleset has no such improvement (a programming error).</exception>
+    public ImprovementDefinition Improvement(ImprovementType type) =>
+        FindImprovement(type) ?? throw new ArgumentException($"The ruleset has no improvement '{type.Id}'.", nameof(type));
+
+    /// <summary>Looks up a city building that may not exist, such as one sent in a command.</summary>
+    /// <param name="type">The building.</param>
+    /// <returns>Its definition, or <see langword="null"/> when the ruleset has no such building.</returns>
+    public BuildingDefinition? FindBuilding(BuildingType type) => _buildings.GetValueOrDefault(type);
+
+    /// <summary>The definition of a city building that is in the game.</summary>
+    /// <param name="type">A building of this ruleset.</param>
+    /// <returns>Its definition.</returns>
+    /// <exception cref="ArgumentException">The ruleset has no such building (a programming error).</exception>
+    public BuildingDefinition Building(BuildingType type) =>
+        FindBuilding(type) ?? throw new ArgumentException($"The ruleset has no building '{type.Id}'.", nameof(type));
+
+    /// <summary>Looks up a resource that may not exist.</summary>
+    /// <param name="type">The resource.</param>
+    /// <returns>Its definition, or <see langword="null"/> when the ruleset has no such resource.</returns>
+    public ResourceDefinition? FindResource(ResourceType type) => _resources.GetValueOrDefault(type);
+
     /// <summary>A text by key.</summary>
     /// <param name="key">A key the ruleset uses, such as <c>unit.settler.name</c>.</param>
     /// <returns>The English text.</returns>
@@ -135,6 +187,21 @@ public sealed class Ruleset
     /// <param name="type">A river kind of this ruleset.</param>
     /// <returns>The text <c>river.{id}.name</c>.</returns>
     public string RiverName(RiverType type) => Text($"river.{type.Id}.name");
+
+    /// <summary>The display name of a resource.</summary>
+    /// <param name="type">A resource of this ruleset.</param>
+    /// <returns>The text <c>resource.{id}.name</c>.</returns>
+    public string ResourceName(ResourceType type) => Text($"resource.{type.Id}.name");
+
+    /// <summary>The display name of a tile improvement.</summary>
+    /// <param name="type">An improvement of this ruleset.</param>
+    /// <returns>The text <c>improvement.{id}.name</c>.</returns>
+    public string ImprovementName(ImprovementType type) => Text($"improvement.{type.Id}.name");
+
+    /// <summary>The display name of a city building.</summary>
+    /// <param name="type">A building of this ruleset.</param>
+    /// <returns>The text <c>building.{id}.name</c>.</returns>
+    public string BuildingName(BuildingType type) => Text($"building.{type.Id}.name");
 
     /// <summary>The display name of a unit class.</summary>
     /// <param name="unitClass">A class used by a unit of this ruleset (<see cref="UnitDefinition.Class"/>).</param>

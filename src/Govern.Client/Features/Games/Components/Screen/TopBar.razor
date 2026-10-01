@@ -1,7 +1,9 @@
-@* The top zone of the game screen: the player's seat, the turn and whose turn it is, End turn, and Resign (asks first).
-   Later counters (treasury, science, culture, season) are added here, one element each, before the actions. *@
+@* The top zone of the game screen: the player's seat, the turn and whose turn it is, the player's stockpile (one counter per
+   ruleset resource), End turn, and Resign (asks first). Later counters (season) are added here, before the actions. *@
 @using Govern.Core.Actions
 @using Govern.Core.Engine
+@using Govern.Core.Economy
+@using Govern.Core.Rulesets
 @using Govern.Core.State
 @using Govern.Core.Visibility
 
@@ -11,6 +13,18 @@
         <span class="@($"seat-swatch {Seats.Class(View, View.Viewer)}")" role="img" aria-label="@($"Your colour: seat {Seats.Number(View, View.Viewer)}")"></span>
         <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="turn rz-m-0">@TurnText</RadzenText>
     </RadzenStack>
+    @if (Ruleset.Resources.Length > 0)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" Wrap="FlexWrap.Wrap"
+                     class="stockpile" role="group" aria-label="Your stockpile">
+            @foreach (var resource in Ruleset.Resources)
+            {
+                <span class="@($"stock stock-{resource.Id.Id}")">
+                    <CostLabel Amount="@Stock(resource.Id)" Icon="@Icons.Resource(resource.Id)" Label="@Ruleset.ResourceName(resource.Id)"/>
+                </span>
+            }
+        </RadzenStack>
+    }
     @if (View.Status == GameStatus.InProgress)
     {
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
@@ -26,9 +40,14 @@
 @code {
     [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
 
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
     [Parameter] public bool Busy { get; set; }
 
     [Parameter] public EventCallback<GameCommand> Command { get; set; }
+
+    private int Stock(ResourceType resource) =>
+        View.Resources.IsDefault ? 0 : View.Resources.Where(stock => stock.Resource == resource).Sum(stock => stock.Amount);
 
     private bool IsYourTurn => View.CurrentPlayer == View.Viewer;
 

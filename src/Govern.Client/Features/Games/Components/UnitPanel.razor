@@ -1,5 +1,6 @@
 @* The selected unit: its type in its owner's colour, its health and combat stats (for any unit the player sees) and, for the
-   player's own unit, its movement left, sight with the bonus of the terrain it stands on, and cost.
+   player's own unit, its movement left, sight with the bonus of the terrain it stands on, cost, build production and what it
+   is building.
    Its actions are in the action bar (Screen/ActionBar). *@
 @using Govern.Core.Rulesets
 @using Govern.Core.Units
@@ -14,4 +15,9 @@
     </RadzenStack>
     <HealthBar Health="@Unit.Health" Max="@Ruleset.Combat.MaxHealth"/>
     <StatTable Rows="@Rows"/>
+    @if (IsOwn && Unit.Job is { } job)
+    {
+        <RadzenText TextStyle="TextStyle.Body2" class="unit-job rz-m-0">@JobText(job)</RadzenText>
+        <ProgressBar Value="@job.Progress" Max="@JobCost(job)" PerTurn="@JobPerTurn" Label="Building"/>
+    }
 </RadzenStack>

@@ -80,11 +80,37 @@ public sealed record GameMap(int Width, int Height, ImmutableArray<Tile> Tiles)
     public RiverType? RiverBetween(HexCoord a, HexCoord b) =>
         HexEdge.Between(a, b) is { } edge && Contains(edge.Owner) ? TileAt(edge.Owner).Rivers?.On(edge.Side) : null;
 
+    /// <summary>Whether the edge between two neighbouring tiles has a bridge.</summary>
+    /// <param name="a">One tile.</param>
+    /// <param name="b">The other tile.</param>
+    /// <returns><see langword="true"/> when the edge is bridged.</returns>
+    public bool BridgeBetween(HexCoord a, HexCoord b) =>
+        HexEdge.Between(a, b) is { } edge && Contains(edge.Owner) && TileAt(edge.Owner).Bridges?.On(edge.Side) == true;
+
+    /// <summary>
+    /// The river a unit crosses stepping or attacking from one tile to its neighbour: the river on the edge between them, unless
+    /// a bridge spans it (a bridged edge is crossed as if it had no river).
+    /// </summary>
+    /// <param name="a">The tile the unit is on.</param>
+    /// <param name="b">The neighbouring tile.</param>
+    /// <returns>The river crossed, or <see langword="null"/> when there is none or it is bridged.</returns>
+    public RiverType? CrossedRiverBetween(HexCoord a, HexCoord b) => BridgeBetween(a, b) ? null : RiverBetween(a, b);
+
     // A copy with a river on one edge; the owner tile must be on the map.
     internal GameMap WithRiver(HexEdge edge, RiverType river)
     {
         var tile = TileAt(edge.Owner);
         var rivers = (tile.Rivers ?? new TileRivers()).With(edge.Side, river);
-        return this with { Tiles = Tiles.SetItem((edge.Owner.Row * Width) + edge.Owner.Column, tile with { Rivers = rivers }) };
+        return WithTile(tile with { Rivers = rivers });
     }
+
+    // A copy with a bridge on one edge; the owner tile must be on the map.
+    internal GameMap WithBridge(HexEdge edge)
+    {
+        var tile = TileAt(edge.Owner);
+        return WithTile(tile with { Bridges = (tile.Bridges ?? new TileBridges()).With(edge.Side) });
+    }
+
+    // A copy with a tile replaced (the tile at the same coordinate).
+    internal GameMap WithTile(Tile tile) => this with { Tiles = Tiles.SetItem((tile.Coord.Row * Width) + tile.Coord.Column, tile) };
 }

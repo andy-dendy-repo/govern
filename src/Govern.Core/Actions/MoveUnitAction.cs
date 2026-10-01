@@ -16,7 +16,7 @@ namespace Govern.Core.Actions;
 public sealed record MoveUnitCommand(UnitId UnitId, HexCoord Target) : GameCommand;
 
 /// <summary>
-/// Moves a unit along the cheapest path to an empty tile it can reach with its remaining movement.
+/// Moves a unit along the cheapest path to an empty tile it can reach with its remaining movement. Moving drops the unit's job.
 /// </summary>
 internal static class MoveUnitRule
 {
@@ -49,6 +49,7 @@ internal static class MoveUnitRule
         {
             Position = command.Target,
             MovementLeft = unit.MovementLeft - reachability.CostTo(command.Target),
+            Job = null,
         };
 
         return new GameUpdate(state.WithUnit(moved), [new UnitMovedEvent(unit.Id, reachability.PathTo(command.Target))]);

@@ -124,7 +124,7 @@ public class FoundCityActionTests
     [Fact]
     public void Execute_UnitWithFoundCityAbility_FoundsACity()
     {
-        var ruleset = TestRulesets.With(json => json["units"]![1]!["abilities"] = new JsonArray("attack", "found_city"));
+        var ruleset = TestRulesets.With(json => json["units"]![1]!["abilities"] = new JsonArray("attack", "build_bridge", "found_city"));
         var builder = new GameStateBuilder().WithCapitals();
         var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5);
 

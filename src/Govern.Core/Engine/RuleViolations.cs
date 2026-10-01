@@ -58,4 +58,49 @@ public static class RuleViolations
 
     /// <summary>The target belongs to the attacker.</summary>
     public static readonly RuleViolation OwnTarget = new("attack.own_target", "You cannot attack your own unit or city.");
+
+    /// <summary>The unit type cannot build tile improvements.</summary>
+    public static readonly RuleViolation CannotBuildImprovements = new("unit.cannot_build_improvements", "This unit cannot build improvements.");
+
+    /// <summary>The unit type cannot build bridges.</summary>
+    public static readonly RuleViolation CannotBuildBridges = new("unit.cannot_build_bridges", "This unit cannot build bridges.");
+
+    /// <summary>The unit is already building exactly this; starting again would throw its progress away.</summary>
+    public static readonly RuleViolation AlreadyBuilding = new("build.already_building", "The unit is already building this.");
+
+    /// <summary>The improvement is not defined.</summary>
+    public static readonly RuleViolation UnknownImprovement = new("build.unknown_improvement", "That improvement does not exist.");
+
+    /// <summary>The unit's tile is not in a work area of one of the actor's cities.</summary>
+    public static readonly RuleViolation NotInWorkArea = new("build.not_in_work_area", "Improvements can only be built in your cities' work areas.");
+
+    /// <summary>The improvement can't be built on the tile's terrain.</summary>
+    public static readonly RuleViolation WrongTerrain = new("build.wrong_terrain", "That improvement can't be built on this terrain.");
+
+    /// <summary>The tile already has an improvement.</summary>
+    public static readonly RuleViolation TileImproved = new("build.tile_improved", "This tile already has an improvement.");
+
+    /// <summary>The bridge target is not a neighbour of the unit's tile on the map.</summary>
+    public static readonly RuleViolation BridgeNotAdjacent = new("bridge.not_adjacent", "A bridge must start at the unit's tile and reach a neighbouring tile.");
+
+    /// <summary>There is no river on the edge to bridge.</summary>
+    public static readonly RuleViolation NoRiver = new("bridge.no_river", "There is no river to bridge there.");
+
+    /// <summary>The edge already has a bridge.</summary>
+    public static readonly RuleViolation BridgeExists = new("bridge.exists", "A bridge already spans that river.");
+
+    /// <summary>Units could not enter the far side of the river, so a bridge leads nowhere.</summary>
+    public static readonly RuleViolation BridgeLeadsNowhere = new("bridge.impassable", "The other side of the river can't be entered.");
+
+    /// <summary>One of the bridge's ends is an enemy city's tile or in its work area.</summary>
+    public static readonly RuleViolation EnemyWorkArea = new("bridge.enemy_work_area", "You can't build a bridge in an enemy city's work area.");
+
+    /// <summary>The building is not defined.</summary>
+    public static readonly RuleViolation UnknownBuilding = new("city.unknown_building", "That building does not exist.");
+
+    /// <summary>The city already has the building.</summary>
+    public static readonly RuleViolation BuildingExists = new("city.building_exists", "The city already has this building.");
+
+    /// <summary>The building needs a terrain next to the city that is not there.</summary>
+    public static readonly RuleViolation BuildingNeedsTerrain = new("city.building_needs_terrain", "This building needs a different terrain next to the city.");
 }

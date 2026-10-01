@@ -11,10 +11,15 @@ namespace Govern.Core.Rulesets;
 /// <param name="InitialProduction">What a new city builds first.</param>
 /// <param name="NameTemplate">The text key of a new city's name; <c>{n}</c> in the text is the founder's city count.</param>
 /// <param name="CaptureResetsProduction">Whether a captured city's production progress goes back to 0.</param>
+/// <param name="WorkRadius">
+/// How far, in tiles, a city's work area reaches: the tiles around it (not its own) where builders build improvements with its
+/// production. Two work areas never overlap (<see cref="MinimumSpacing"/> is more than twice this).
+/// </param>
 public sealed record CityRules(
     int Sight,
     int MinimumSpacing,
     int ProductionPerTurn,
     UnitType InitialProduction,
     string NameTemplate,
-    bool CaptureResetsProduction);
+    bool CaptureResetsProduction,
+    int WorkRadius);

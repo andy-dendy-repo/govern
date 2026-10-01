@@ -1,3 +1,4 @@
+using Govern.Core.Economy;
 using System.Text.Json.Serialization;
 using Govern.Core.Map;
 
@@ -13,7 +14,14 @@ namespace Govern.Core.Visibility;
 /// Rivers on the edges the tile owns (<see cref="HexSide"/>), or <see langword="null"/> when there are none or the tile is
 /// unexplored. Rivers never change, so an explored tile shows them as they are.
 /// </param>
+/// <param name="Bridges">
+/// Bridges on the river edges the tile owns; only on a <see cref="TileVisibility.Visible"/> tile, since bridges are built during
+/// the game. <see langword="null"/> otherwise or when there are none.
+/// </param>
+/// <param name="Improvement">The tile's improvement; only on a <see cref="TileVisibility.Visible"/> tile.</param>
 public sealed record TileView(
     TileVisibility Visibility,
     TerrainType? Terrain,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TileRivers? Rivers = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TileRivers? Rivers = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TileBridges? Bridges = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImprovementType? Improvement = null);

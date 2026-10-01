@@ -11,7 +11,11 @@ namespace Govern.Client.Features.Games.Models;
 /// A tile with an enemy unit the selected own unit is about to attack: its combat forecast is shown until the player attacks or
 /// cancels. <see langword="null"/> when no attack is pending.
 /// </param>
-public sealed record BoardSelection(UnitId? Unit, CityId? City, HexCoord? Target = null)
+/// <param name="Bridge">
+/// Whether the selected own unit is choosing where to build a bridge: the board marks the river edges it can bridge, and a
+/// click on one starts the bridge.
+/// </param>
+public sealed record BoardSelection(UnitId? Unit, CityId? City, HexCoord? Target = null, bool Bridge = false)
 {
     /// <summary>Nothing selected.</summary>
     public static BoardSelection None { get; } = new(null, null);

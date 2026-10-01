@@ -9,7 +9,7 @@ namespace Govern.Client.Features.Games.Lenses;
 
 /// <summary>
 /// Shows what each known tile costs to enter (from the terrain's <c>movementCost</c>), and ✕ where land units can't go. On river
-/// edges it shows the extra cost of crossing (<c>+1</c>), or ✕ where land units can't cross.
+/// edges it shows the extra cost of crossing (<c>+1</c>), or ✕ where land units can't cross; a bridged edge shows nothing.
 /// </summary>
 /// <param name="rulesets">The game's ruleset.</param>
 public sealed class MovementCostLens(RulesetService rulesets) : IMapLens
@@ -53,7 +53,8 @@ public sealed class MovementCostLens(RulesetService rulesets) : IMapLens
 
         foreach (var side in Enum.GetValues<HexSide>())
         {
-            if (rivers.On(side) is not { } river)
+            // A bridged edge costs nothing to cross.
+            if (rivers.On(side) is not { } river || tile.Bridges?.On(side) == true)
             {
                 continue;
             }

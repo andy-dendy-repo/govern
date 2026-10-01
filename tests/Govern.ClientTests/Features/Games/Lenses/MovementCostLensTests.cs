@@ -59,6 +59,17 @@ public class MovementCostLensTests
     }
 
     [Fact]
+    public void EdgeMarksFor_BridgedRivers_AreNotMarked()
+    {
+        var tile = new TileView(
+            TileVisibility.Visible, Plains, new TileRivers(NorthEast: River, NorthWest: DeepRiver), new TileBridges(NorthWest: true));
+
+        var marks = _lens.EdgeMarksFor(tile).ToList();
+
+        marks.ShouldBe([new EdgeMark(HexSide.NorthEast, "+1", "costly", "River: costs 1 more movement to cross")]);
+    }
+
+    [Fact]
     public void EdgeMarksFor_TileWithoutRivers_IsEmpty()
     {
         _lens.EdgeMarksFor(new TileView(TileVisibility.Visible, Plains)).ShouldBeEmpty();

@@ -58,6 +58,21 @@ public static class HexLayout
         return ((x1 + x2) / 2, (y1 + y2) / 2);
     }
 
+    /// <summary>
+    /// The ends of a bridge over a tile edge: a short line across the edge's middle, from one tile towards the other, as long
+    /// as half the distance between their centres.
+    /// </summary>
+    /// <param name="edge">The bridged edge.</param>
+    /// <returns>Both ends' x and y.</returns>
+    public static (double X1, double Y1, double X2, double Y2) BridgeEnds(HexEdge edge)
+    {
+        var (ax, ay) = Center(edge.Owner);
+        var (bx, by) = Center(edge.Neighbor());
+        var (mx, my) = ((ax + bx) / 2, (ay + by) / 2);
+        var (dx, dy) = ((bx - ax) / 4, (by - ay) / 4);
+        return (mx - dx, my - dy, mx + dx, my + dy);
+    }
+
     /// <summary>The smallest rectangle holding every hex of a map.</summary>
     /// <param name="width">Map columns; at least 1.</param>
     /// <param name="height">Map rows; at least 1.</param>

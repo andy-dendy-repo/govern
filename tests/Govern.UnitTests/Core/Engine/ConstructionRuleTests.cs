@@ -1,0 +1,227 @@
+using Govern.Core.Actions;
+using Govern.Core.Economy;
+using Govern.Core.Engine;
+using Govern.Core.Events;
+using Govern.Core.Units;
+using Govern.UnitTests.Core.Builders;
+using static Govern.UnitTests.Core.Builders.GameStateBuilder;
+
+namespace Govern.UnitTests.Core.Engine;
+
+// Jobs and yields at the end of a turn. Production: builder 2, soldier 1, city 1 (+1 with an army camp); farm 4, mine 6, bridge 6.
+public class ConstructionRuleTests
+{
+    [Fact]
+    public void EndTurn_BuilderInWorkArea_UsesItsOwnAndTheCitysProduction()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var city = builder.AddCity(P1, 6, 4, progress: 1);
+        var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5, job: UnitJob.ForImprovement(TestRulesets.Mine, 1));
+        var state = builder.WithTerrain(TestRulesets.Hills, (5, 5)).Build();
+
+        var update = EndTurn(state);
+
+        update.State.FindUnit(unit)!.Job!.Progress.ShouldBe(3);
+        update.State.FindCity(city)!.ProductionProgress.ShouldBe(1, "the city's production went to the job");
+    }
+
+    [Fact]
+    public void EndTurn_ProgressReachesTheCost_BuildsTheImprovementAndFreesTheUnit()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddCity(P1, 6, 4);
+        var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5, job: new UnitJob(1, 1, Improvement: TestRulesets.Farm));
+
+        var update = EndTurn(builder.Build());
+
+        update.State.Map.TileAt(At(5, 5)).Improvement.ShouldBe(TestRulesets.Farm);
+        update.State.FindUnit(unit)!.Job.ShouldBeNull();
+        update.Events.ShouldContain(new ImprovementBuiltEvent(unit, At(5, 5), TestRulesets.Farm));
+    }
+
+    [Fact]
+    public void EndTurn_FarmTakesTwoTurnsFromScratch()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddCity(P1, 6, 4);
+        var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5);
+        var state = builder.Build();
+
+        state = GameEngine.Execute(TestRulesets.Default, state, P1, new BuildImprovementCommand(unit, TestRulesets.Farm)).ShouldSucceed().State;
+        state = EndTurn(state).State;
+        state.Map.TileAt(At(5, 5)).Improvement.ShouldBeNull();
+        state = EndTurn(state, P2).State;
+        state = EndTurn(state).State;
+
+        state.Map.TileAt(At(5, 5)).Improvement.ShouldBe(TestRulesets.Farm);
+    }
+
+    [Fact]
+    public void EndTurn_CityFeedsOnlyTheOldestJob()
+    {
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithRiver(TestRulesets.River, ((6, 5), (7, 5)))
+            .WithCurrentPlayer(P1, turn: 4);
+        builder.AddCity(P1, 6, 4);
+        var newer = builder.AddUnit(P1, TestRulesets.Builder, 5, 5, job: UnitJob.ForImprovement(TestRulesets.Farm, 3));
+        var older = builder.AddUnit(P1, TestRulesets.Soldier, 6, 5, job: UnitJob.ForBridge(At(7, 5), 2));
+
+        var update = EndTurn(builder.Build());
+
+        update.State.FindUnit(older)!.Job!.Progress.ShouldBe(2, "soldier 1 + city 1");
+        update.State.FindUnit(newer)!.Job!.Progress.ShouldBe(2, "builder 2 only");
+    }
+
+    [Fact]
+    public void EndTurn_BridgeOutsideEveryWorkArea_UsesOnlyTheUnitsProduction()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.DeepRiver, ((5, 5), (6, 5)));
+        var unit = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, job: new UnitJob(4, 1, BridgeTo: At(6, 5)));
+
+        var update = EndTurn(builder.Build());
+
+        update.State.FindUnit(unit)!.Job!.Progress.ShouldBe(5);
+
+        var built = EndTurn(EndTurn(update.State, P2).State);
+        built.State.Map.BridgeBetween(At(6, 5), At(5, 5)).ShouldBeTrue();
+        built.State.FindUnit(unit)!.Job.ShouldBeNull();
+        built.Events.ShouldContain(new BridgeBuiltEvent(unit, At(5, 5), At(6, 5)));
+    }
+
+    [Fact]
+    public void EndTurn_BridgeFromTheCityTile_UsesTheCitysProduction()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((5, 5), (6, 5)));
+        builder.AddCity(P1, 5, 5);
+        var unit = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, job: UnitJob.ForBridge(At(6, 5), 1));
+
+        EndTurn(builder.Build()).State.FindUnit(unit)!.Job!.Progress.ShouldBe(2);
+    }
+
+    [Fact]
+    public void EndTurn_SiteNoLongerAllowsTheJob_DropsIt()
+    {
+        // The bridge was finished from the other bank, and the farm's city now belongs to the enemy.
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithRiver(TestRulesets.River, ((5, 5), (6, 5)))
+            .WithBridge(((5, 5), (6, 5)));
+        builder.AddCity(P2, 3, 2);
+        var bridger = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, job: new UnitJob(5, 1, BridgeTo: At(6, 5)));
+        var farmer = builder.AddUnit(P1, TestRulesets.Builder, 3, 3, job: new UnitJob(3, 1, Improvement: TestRulesets.Farm));
+
+        var update = EndTurn(builder.Build());
+
+        update.State.FindUnit(bridger)!.Job.ShouldBeNull();
+        update.State.FindUnit(farmer)!.Job.ShouldBeNull();
+        update.State.Map.TileAt(At(3, 3)).Improvement.ShouldBeNull();
+    }
+
+    [Fact]
+    public void EndTurn_WorkingUnit_DoesNotHeal()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((5, 5), (6, 5)));
+        var unit = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, damage: 30, job: UnitJob.ForBridge(At(6, 5), 1));
+
+        EndTurn(builder.Build()).State.FindUnit(unit)!.Damage.ShouldBe(30);
+    }
+
+    [Fact]
+    public void Move_DropsTheJob()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddCity(P1, 6, 4);
+        var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5, job: new UnitJob(3, 1, Improvement: TestRulesets.Farm));
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(unit, At(4, 5))).ShouldSucceed();
+
+        update.State.FindUnit(unit)!.Job.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Attack_DropsTheJob()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((5, 5), (6, 5)));
+        var unit = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, job: new UnitJob(3, 1, BridgeTo: At(6, 5)));
+        builder.AddUnit(P2, TestRulesets.Settler, 4, 5);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(unit, At(4, 5))).ShouldSucceed();
+
+        update.State.FindUnit(unit)!.Job.ShouldBeNull();
+    }
+
+    [Fact]
+    public void EndTurn_ImprovementsAndBuildings_AddTheirYieldsToTheOwnersStockpileInRulesetOrder()
+    {
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithImprovement(TestRulesets.Farm, (5, 5), (7, 4))
+            .WithImprovement(TestRulesets.Mine, (6, 3))
+            .WithImprovement(TestRulesets.Farm, (9, 9));
+        builder.AddCity(P1, 6, 4, buildings: [TestRulesets.Campus, TestRulesets.Harbour]);
+        builder.AddCity(P2, 9, 8, buildings: [TestRulesets.TradePost]);
+
+        var update = EndTurn(builder.Build());
+
+        update.State.FindPlayer(P1)!.Stockpile.ShouldBe([
+            new ResourceAmount(TestRulesets.Food, 6),
+            new ResourceAmount(TestRulesets.Stone, 2),
+            new ResourceAmount(TestRulesets.Science, 2),
+        ]);
+        update.State.FindPlayer(P2)!.Resources.ShouldBeNull("only the ending player's cities yield");
+
+        var next = EndTurn(EndTurn(update.State, P2).State);
+        next.State.FindPlayer(P1)!.Stockpile.First().ShouldBe(new ResourceAmount(TestRulesets.Food, 12));
+        next.State.FindPlayer(P2)!.Stockpile.ShouldBe([new ResourceAmount(TestRulesets.Food, 2), new ResourceAmount(TestRulesets.Gold, 2)]);
+    }
+
+    [Fact]
+    public void EndTurn_ImprovementOutsideEveryWorkArea_YieldsNothing()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithImprovement(TestRulesets.Farm, (5, 5));
+
+        EndTurn(builder.Build()).State.FindPlayer(P1)!.Resources.ShouldBeNull();
+    }
+
+    [Fact]
+    public void EndTurn_ArmyCamp_AddsProductionToItsCity()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var city = builder.AddCity(P1, 5, 5, buildings: [TestRulesets.ArmyCamp]);
+
+        EndTurn(builder.Build()).State.FindCity(city)!.ProductionProgress.ShouldBe(2);
+    }
+
+    [Fact]
+    public void EndTurn_BuildingFinished_JoinsTheCityAndProductionGoesBackToTheUnit()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var city = builder.AddCity(P1, 5, 5, TestRulesets.Archer, progress: 7, producingBuilding: TestRulesets.Campus, buildings: [TestRulesets.TradePost]);
+
+        var update = EndTurn(builder.Build());
+
+        var finished = update.State.FindCity(city)!;
+        finished.BuildingList.ShouldBe([TestRulesets.TradePost, TestRulesets.Campus]);
+        finished.ProducingBuilding.ShouldBeNull();
+        finished.Producing.ShouldBe(TestRulesets.Archer);
+        finished.ProductionProgress.ShouldBe(0);
+        update.Events.ShouldContain(new BuildingCompletedEvent(city, TestRulesets.Campus));
+        update.State.FindPlayer(P1)!.Stockpile.ShouldBe([new ResourceAmount(TestRulesets.Gold, 2)], "a new building yields from the next turn");
+    }
+
+    [Fact]
+    public void Capture_KeepsTheBuildingsAndStopsTheBuildingInProduction()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var city = builder.AddCity(P2, 6, 5, progress: 3, producingBuilding: TestRulesets.Harbour, buildings: [TestRulesets.Campus]);
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 5, 5);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(6, 5))).ShouldSucceed();
+
+        var captured = update.State.FindCity(city)!;
+        captured.Owner.ShouldBe(P1);
+        captured.BuildingList.ShouldBe([TestRulesets.Campus]);
+        captured.ProducingBuilding.ShouldBeNull();
+    }
+
+    private static GameUpdate EndTurn(Govern.Core.State.GameState state, Govern.Core.State.PlayerId? player = null) =>
+        GameEngine.Execute(TestRulesets.Default, state, player ?? P1, new EndTurnCommand()).ShouldSucceed();
+}
