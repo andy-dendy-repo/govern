@@ -1,13 +1,13 @@
 ---
 title: Game data (the loadable ruleset)
-tags: [game, core, ruleset, map-generation, terrain, sight-bonus, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
+tags: [game, core, ruleset, map-generation, terrain, rivers, sight-bonus, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
 code: [rulesets, src/Govern.Core/Rulesets, src/Govern.Application/Games/Services/DefaultRulesetService.cs, src/Govern.Client/Features/Games/Services/RulesetService.cs]
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v3.json`](../../rulesets/default/v3.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3; [`v1.json`](../../rulesets/default/v1.json) and [`v2.json`](../../rulesets/default/v2.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v4.json`](../../rulesets/default/v4.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4; [`v1.json`](../../rulesets/default/v1.json), [`v2.json`](../../rulesets/default/v2.json) and [`v3.json`](../../rulesets/default/v3.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -47,13 +47,13 @@ updated: 2026-09-30
 | `created_at` | `timestamptz` | When it was published; no `updated_at`, because a version is immutable |
 | `created_by` | `uuid`, nullable | The admin who published it; null when a migration did |
 
-- **The document holds only game content.** `key`, `version` and `name` live only in the row; the migration (or the admin) supplies them, and a repository file's path names them (`rulesets/default/v3.json`).
+- **The document holds only game content.** `key`, `version` and `name` live only in the row; the migration (or the admin) supplies them, and a repository file's path names them (`rulesets/default/v4.json`).
 - **Core and the rulesets are always consistent.** A started game is pinned to one version for good. There's no `schemaVersion` and no upgrading of old rulesets: when a Core change needs new fields, the rulesets are updated with it. Handling older rulesets is deferred until it matters.
 - **New games** use the highest `version` of the ruleset. Retiring a version and a lobby description are deferred with Ruleset B ([question 6 there](../plans/deferred/ruleset-b-store-and-pin.md#decisions-and-questions-for-part-b): one ruleset or several).
 
 ## Versions in the repository
 
-*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) and `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
+*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9), and `v3.json` when `rivers` and `map.generation.rivers` arrived (G6); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
 
 ## Format conventions
 
@@ -75,7 +75,7 @@ updated: 2026-09-30
 | `Text(key)`, `UnitName(type)`, `TerrainName(type)`, `ClassName(class)`, `CityName(n)` | Texts |
 | `Setup`, `Map`, `Terrains`, `Units`, `Cities`, `Combat`, `Texts` | The sections, in the document's order |
 
-Reading is strict, so a typo fails loading instead of silently taking a default: property names are camelCase only, every field is required (except a unit's `strength` and `ranged`, whose absence means "can't fight" and "no ranged attack"), unknown fields and duplicate keys are rejected, numbers must be JSON numbers and abilities JSON strings. `UnitType` and `TerrainType` are ids (`readonly record struct`s) written to JSON as the plain id, so a saved game still reads `"settler"` and `"plains"`.
+Reading is strict, so a typo fails loading instead of silently taking a default: property names are camelCase only, every field is required (except a unit's `strength` and `ranged`, whose absence means "can't fight" and "no ranged attack"), unknown fields and duplicate keys are rejected, numbers must be JSON numbers and abilities JSON strings. `UnitType`, `TerrainType` and `RiverType` are ids (`readonly record struct`s) written to JSON as the plain id, so a saved game still reads `"settler"`, `"plains"` and `"river"`.
 
 ## Top-level structure
 
@@ -84,6 +84,7 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
   "setup": { },
   "map": { },
   "terrains": [ ],
+  "rivers": [ ],
   "units": [ ],
   "cities": { },
   "combat": { },
@@ -129,7 +130,7 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
   "maxSize": 40,
   "defaultTerrain": "plains",
   "spawn": { "zoneColumnsPerMille": 250, "edgeMargin": 1 },
-  "generation": { "patches": [ … ] }
+  "generation": { "patches": [ … ], "rivers": { … } }
 }
 ```
 
@@ -157,6 +158,36 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 - **Limits:** the shares add up to at most 500 (at least half of every map stays default terrain), and the shares of impassable terrains to at most 150, so the generator can always keep the passable tiles connected.
 - An empty `patches` list gives an all-default-terrain map, as before G4.
 
+### River generation (`map.generation.rivers`)
+
+*Decided 2026-10-01 (G6).* After the terrain, the generator lays down rivers along tile edges. Each river starts at a corner of a `sources` tile, runs along edges that share a corner, never back towards its source, and ends at the first corner that touches a `mouths` tile or the map's border. Each river is laid with its mirror. The algorithm is in [game logic](game-logic.md#rivers).
+
+| Field | Type | Meaning |
+|---|---|---|
+| `count` | int 0..20 | Rivers to lay down, each with its mirror (0 for none). Fewer when the map has no room |
+| `minLength`, `maxLength` | int 1..100, min ≤ max | Edges per river; a river that hasn't reached a mouth by `maxLength` is dropped, as is one shorter than `minLength` |
+| `sources` | terrain ids | Terrains a river may start next to; not empty, each once |
+| `mouths` | terrain ids | Terrains a river may end at (the map's border always ends one); not empty, each once |
+| `stages[].river` | river id | The river kind of this stretch |
+| `stages[].fromSegment` | int | The edge number, counted from the source (0), where the stretch starts; the first is 0, then strictly increasing |
+
+```json
+"rivers": {
+  "count": 2,
+  "minLength": 4,
+  "maxLength": 12,
+  "sources": ["hills", "mountains"],
+  "mouths": ["lake"],
+  "stages": [
+    { "river": "stream", "fromSegment": 0 },
+    { "river": "river", "fromSegment": 3 },
+    { "river": "deep_river", "fromSegment": 7 }
+  ]
+}
+```
+
+- The first stage must be a crossable river: where an uncrossable stretch would cut the passable tiles in two, the generator lays the last crossable kind before it instead, so every passable tile stays reachable.
+
 ## Terrains (`terrains`)
 
 | Field | Type | Meaning |
@@ -181,6 +212,30 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
 - A `sightBonus` only adds sight, so it keeps the fog invariants below. Terrain that blocks sight (forests) is deferred: it would break them.
 - A `defenceBonus` counts only for the defender, and is a whole number of strength points, not a percentage (strengths are small integers).
 - The client needs a sprite symbol, two colour tokens and a CSS rule per terrain ([game UI](../features/game-ui.md)).
+
+## Rivers (`rivers`)
+
+*Decided 2026-10-01 (G6).* Rivers run along the edges between tiles. Each tile stores the rivers on its east, north-east and north-west edges (`Tile.Rivers`), so every edge is stored once; a tile without rivers leaves the field out of the JSON, so games saved before G6 read unchanged.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | id | `river` |
+| `crossingCost` | int 0..100 | Movement points a land unit spends to cross, on top of the cost of the tile it enters |
+| `isCrossable` | bool | Whether land units may cross at all (false: a deep river, crossed later by a bridge, G10) |
+| `defenceBonus` | int 0..100 | Extra strength for a unit attacked in melee across it |
+
+```json
+"rivers": [
+  { "id": "stream", "crossingCost": 0, "isCrossable": true, "defenceBonus": 0 },
+  { "id": "river", "crossingCost": 1, "isCrossable": true, "defenceBonus": 3 },
+  { "id": "deep_river", "crossingCost": 0, "isCrossable": false, "defenceBonus": 5 }
+]
+```
+
+- At least one kind is crossable. A `crossingCost` only adds, so it keeps the fog invariants below.
+- Ranged attacks ignore rivers; a melee unit may attack a unit across an uncrossable river but not capture a city across one.
+- Bridges (G10), ship navigation (G15) and seasons changing a river's kind (G14) add fields when they arrive.
+- The client needs a CSS rule per river (`.river-<id>`, its width) in `board.css` ([game UI](../features/game-ui.md)); `GameUiTests.BoardCss_StylesEveryRiver` checks it.
 
 ## Units (`units`)
 
@@ -295,17 +350,18 @@ Everything a player reads about the game's content comes from here: unit, class 
 ```
 
 - **Decided 2026-09-30:** texts are their own top-level section (not inside `setup`), English only for now, so there is no per-language level. Other languages are deferred.
-- The validator requires `unit.{id}.name` for every unit, `class.{id}.name` for every unit class, `terrain.{id}.name` for every terrain and the `nameTemplate` key, and rejects empty texts.
+- The validator requires `unit.{id}.name` for every unit, `class.{id}.name` for every unit class, `terrain.{id}.name` for every terrain, `river.{id}.name` for every river and the `nameTemplate` key, and rejects empty texts.
 - Core returns rule violation **codes**; the Api or the client looks up the message. *To discuss:* which language the Api uses for the ProblemDetails `title` (the `Accept-Language` header, or always `en` with the client translating).
 
 ## Validation (at load time)
 
 `RulesetValidator` rejects a ruleset that breaks any of these and reports every problem with its JSON path (`$.units[1].sight: Must be at least 2, …`); `RulesetTests` has one case per rule:
 - The JSON reads strictly (see [Reading a ruleset in code](#reading-a-ruleset-in-code)).
-- Ids are lower snake_case (a letter, then letters, digits or `_`, at most 32 characters) and unique per list; `units` and `terrains` are not empty.
-- Every reference resolves: `startingUnits`, `initialProduction`, `defaultTerrain`, `map.generation.patches[].terrain`, `nameTemplate`.
+- Ids are lower snake_case (a letter, then letters, digits or `_`, at most 32 characters) and unique per list; `units`, `terrains` and `rivers` are not empty.
+- Every reference resolves: `startingUnits`, `initialProduction`, `defaultTerrain`, `map.generation.patches[].terrain`, `map.generation.rivers` `sources`, `mouths` and `stages[].river`, `nameTemplate`.
 - Map generation: a patch terrain is not `defaultTerrain` and not listed twice; `sharePerMille` and `patchSize` ≥ 1; shares add up to at most 500, impassable ones to at most 150.
 - `sightBonus` ≥ 0; `defenceBonus` 0..100.
+- Rivers: `crossingCost` and `defenceBonus` 0..100; at least one kind crossable; generation `count` 0..20, `1 ≤ minLength ≤ maxLength ≤ 100`, `sources` and `mouths` not empty and without repeats, `stages` not empty, starting at 0, strictly increasing, the first one crossable.
 - Units and combat: see [Units](#units-units) and [Combat](#combat-combat).
 - Numbers are in range: movement, sight, costs, city sight, spacing and production ≥ 1; `8 ≤ minSize ≤ maxSize ≤ 40`; the default size within them; `players` = 2.
 - Spawn: `zoneColumnsPerMille` 1–250; `edgeMargin` ≥ 1 and less than the zone on the smallest map; `startingUnits` no more than that zone.
@@ -330,7 +386,7 @@ Each [roadmap](design-roadmap.md) item adds a section here, with fields, example
 |---|---|
 | `terrains` gains elevation and features (layers), yields | G5 |
 | `resources` (groups, yields, reserves, reveal tech) | G5 |
-| `rivers` (states, crossing costs, ship navigation) | G6, G15 |
+| `rivers` gains bridges (G10), ship navigation (G15), seasonal kinds (G14) | G10, G15, G14 |
 | `cities` gains territory, growth, housing, loyalty, yields | G7, G8 |
 | `units` gains attacks per turn (deferred from G9 until a unit differs), resource costs (G5) | G9, G5 |
 | `buildings` (cost, health, housing, yields, upgrade chains), builder charges | G10 |
