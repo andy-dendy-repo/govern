@@ -93,7 +93,8 @@ public class EventVisibilityTests
         attacked.From.ShouldBeNull();
         attacked.AttackerType.ShouldBe(TestRulesets.Archer);
         attacked.DamageDealt.ShouldBe(20);
-        GameSerializer.Serialize<GameEvent>(attacked).ShouldNotContain("attackerId");
+        var stored = GameSerializer.Deserialize<GameEvent>(GameSerializer.Serialize<GameEvent>(attacked)).ShouldBeOfType<UnitAttackedEvent>();
+        (stored.AttackerId, stored.From, stored.DamageDealt).ShouldBe((null, null, 20));
     }
 
     [Fact]
@@ -146,6 +147,49 @@ public class EventVisibilityTests
         var captured = new CityCapturedEvent(city, "City 2", At(5, 5), P2, P1, new UnitId(999));
 
         VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [captured]), P2).ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public void EventsFor_EnemyUnitCreatedAndTerritoryOnASeenTile_PassWithoutTheirCity()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddUnit(P2, TestRulesets.Soldier, 5, 4);
+        var state = builder.Build();
+        var city = new CityId(77);
+        GameEvent[] events = [new UnitCreatedEvent(new UnitId(78), P1, TestRulesets.Soldier, At(5, 5), city), new TerritoryGrewEvent(city, P1, At(6, 4))];
+
+        var seen = VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [.. events]), P2);
+
+        seen.OfType<UnitCreatedEvent>().ShouldHaveSingleItem().CityId.ShouldBeNull();
+        seen.OfType<TerritoryGrewEvent>().ShouldHaveSingleItem().CityId.ShouldBeNull();
+        VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [.. events]), P1).ShouldBe(events);
+    }
+
+    [Fact]
+    public void EventsFor_BridgeSeenOnlyFromTheFarEnd_IsDropped()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddUnit(P2, TestRulesets.Soldier, 5, 4);
+        var state = builder.Build();
+        var hidden = new BridgeBuiltEvent(new UnitId(79), P1, At(9, 4), At(7, 4));
+        var seenFrom = new BridgeBuiltEvent(new UnitId(79), P1, At(6, 4), At(7, 4));
+
+        VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [hidden]), P2).ShouldBeEmpty();
+        VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [seenFrom]), P2).ShouldBe([seenFrom]);
+    }
+
+    [Theory]
+    [MemberData(nameof(EventTypes))]
+    public void LogEvents_EveryTypeAndItsRedactedShape_ReadBackFromTheStoredJson(string type)
+    {
+        var (_, samples) = Samples();
+        var sample = samples.Single(gameEvent => Discriminator(gameEvent.GetType()) == type);
+
+        foreach (var stored in new[] { sample, Hidden(sample) })
+        {
+            var json = GameSerializer.Serialize(stored);
+            GameSerializer.Serialize(GameSerializer.Deserialize<GameEvent>(json)).ShouldBe(json);
+        }
     }
 
     [Theory]
@@ -209,6 +253,15 @@ public class EventVisibilityTests
 
         return (state, samples);
     }
+
+    // The redacted shapes the opponent can get: the attack from the fog, a new unit and grown territory without their city.
+    private static GameEvent Hidden(GameEvent gameEvent) => gameEvent switch
+    {
+        UnitAttackedEvent attacked => attacked with { AttackerId = null, From = null },
+        UnitCreatedEvent created => created with { CityId = null },
+        TerritoryGrewEvent grew => grew with { CityId = null },
+        _ => gameEvent,
+    };
 
     private static string Discriminator(Type type) =>
         (string)typeof(GameEvent).GetCustomAttributes<JsonDerivedTypeAttribute>().Single(attribute => attribute.DerivedType == type).TypeDiscriminator!;

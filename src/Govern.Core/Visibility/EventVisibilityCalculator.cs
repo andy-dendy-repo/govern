@@ -41,8 +41,9 @@ internal static class EventVisibilityCalculator
         CityCapturedEvent captured => captured.PreviousOwner == viewer || captured.NewOwner == viewer || seen.Contains(captured.Position)
             ? captured
             : null,
-        BridgeBuiltEvent bridge => bridge.Owner == viewer || seen.Contains(bridge.From) || seen.Contains(bridge.To) ? bridge : null,
-        _ when Place(gameEvent) is var (owner, tile) => owner == viewer || seen.Contains(tile) ? gameEvent : null,
+        // The builder stays on From, so a bridge seen only from the far end would give away a hidden unit.
+        BridgeBuiltEvent bridge => bridge.Owner == viewer || seen.Contains(bridge.From) ? bridge : null,
+        _ when Place(gameEvent) is var (owner, tile) => owner == viewer ? gameEvent : seen.Contains(tile) ? Public(gameEvent) : null,
         _ => Private(gameEvent, viewer, owners),
     };
 
@@ -55,6 +56,15 @@ internal static class EventVisibilityCalculator
         ImprovementBuiltEvent built => (built.Owner, built.Position),
         TerritoryGrewEvent grew => (grew.Owner, grew.Tile),
         _ => null,
+    };
+
+    // What another player may know of an event they saw: never which city made a unit or grew (the view hides which enemy
+    // city a tile belongs to, and the city may be out of sight).
+    private static GameEvent Public(GameEvent gameEvent) => gameEvent switch
+    {
+        UnitCreatedEvent created => created with { CityId = null },
+        TerritoryGrewEvent grew => grew with { CityId = null },
+        _ => gameEvent,
     };
 
     // Events about a player's private state reach only that player. A new event type is hidden until it is given a row in

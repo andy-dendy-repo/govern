@@ -12,8 +12,8 @@ namespace Govern.Client.Features.Games.Services;
 /// Plays the game log's new events on the board, one after another: a unit walks its path, an attacker lunges and damage
 /// floats up, a destroyed unit fades, a new city or build pulses. The view is applied at once; only <see cref="Motion"/>
 /// (where units are drawn, ghosts and effects) changes while it plays, so the panels and buttons never wait. Each log entry
-/// plays once (by sequence), the first log seen on opening the game plays nothing, and a newer view or <see cref="Finish"/>
-/// ends what is playing. <c>GameTable</c> creates one per game.
+/// plays once (by sequence), the first log seen on opening the game plays nothing, and a view with newer entries or <see cref="Finish"/>
+/// ends what is playing (the same view arriving twice, from a command's answer and the stream, does not). <c>GameTable</c> creates one per game.
 /// </summary>
 /// <param name="time">The clock the steps wait on.</param>
 public sealed class BoardAnimationService(TimeProvider time) : IDisposable
@@ -47,7 +47,7 @@ public sealed class BoardAnimationService(TimeProvider time) : IDisposable
     public event Action? Changed;
 
     /// <summary>
-    /// Plays the entries of <paramref name="log"/> not played yet, after ending what is playing. The first call only
+    /// Plays the entries of <paramref name="log"/> not played yet, after ending what is playing; with none, what plays goes on. The first call only
     /// remembers where the log is, so opening a game replays nothing.
     /// </summary>
     /// <param name="previous">The view shown before (where moving units start); <see langword="null"/> when there was none.</param>
@@ -57,23 +57,20 @@ public sealed class BoardAnimationService(TimeProvider time) : IDisposable
     public Task PlayAsync(PlayerView? previous, PlayerView current, IReadOnlyList<GameLogItem>? log)
     {
         ArgumentNullException.ThrowIfNull(current);
-        Finish();
-
         var entries = log ?? [];
-        var newest = entries.Count == 0 ? _lastSequence ?? 0 : Math.Max(entries.Max(static item => item.Sequence), _lastSequence ?? 0);
-        if (_lastSequence is not { } last)
-        {
-            _lastSequence = newest;
-            return Task.CompletedTask;
-        }
+        var last = _lastSequence;
+        _lastSequence = Math.Max(last ?? 0, entries.Count == 0 ? 0 : entries.Max(static item => item.Sequence));
+        var events = last is { } played
+            ? entries.Where(item => item.Sequence > played).OrderBy(static item => item.Sequence).SelectMany(static item => item.Events).ToList()
+            : [];
 
-        _lastSequence = newest;
-        var events = entries.Where(item => item.Sequence > last).OrderBy(static item => item.Sequence).SelectMany(static item => item.Events).ToList();
+        // The same view arrives twice (the command's answer and the stream's snapshot): nothing new keeps what is playing.
         if (events.Count == 0)
         {
             return Task.CompletedTask;
         }
 
+        Finish();
         var playing = _playing = new CancellationTokenSource();
         return RunAsync(new Scene(previous, current), events, playing);
     }
@@ -140,6 +137,7 @@ public sealed class BoardAnimationService(TimeProvider time) : IDisposable
     private async Task WalkAsync(Scene scene, UnitMovedEvent moved, CancellationToken cancellationToken)
     {
         List<HexCoord> tiles = [.. scene.Start(moved.UnitId) is { } start ? [start] : Array.Empty<HexCoord>(), .. moved.Path];
+        scene.Moved(moved.UnitId, tiles[^1]);
         var ghost = scene.InCurrent(moved.UnitId) ? null : new BoardGhost(++_nextKey, moved.Owner, moved.UnitType, Point(tiles[0]), Fading: false);
         foreach (var tile in tiles)
         {
@@ -205,10 +203,16 @@ public sealed class BoardAnimationService(TimeProvider time) : IDisposable
         return new BoardPoint(x, y);
     }
 
-    // The views before and after, for where a unit starts and whether it is still seen.
+    // The views before and after, for where a unit starts (where its last walk in this batch ended, else its tile before) and
+    // whether it is still seen.
     private sealed class Scene(PlayerView? previous, PlayerView current)
     {
-        public HexCoord? Start(UnitId unit) => previous?.Units.FirstOrDefault(candidate => candidate.Id == unit)?.Position;
+        private readonly Dictionary<UnitId, HexCoord> _walked = [];
+
+        public HexCoord? Start(UnitId unit) =>
+            _walked.TryGetValue(unit, out var tile) ? tile : previous?.Units.FirstOrDefault(candidate => candidate.Id == unit)?.Position;
+
+        public void Moved(UnitId unit, HexCoord tile) => _walked[unit] = tile;
 
         public bool InCurrent(UnitId unit) => current.Units.Any(candidate => candidate.Id == unit);
     }

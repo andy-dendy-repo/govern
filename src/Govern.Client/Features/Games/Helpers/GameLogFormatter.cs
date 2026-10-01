@@ -118,7 +118,7 @@ public static class GameLogFormatter
 
         public string OwnCity(CityId id) => view.Cities.FirstOrDefault(city => city.Id == id)?.Name ?? "One of your cities";
 
-        public string City(CityId id, PlayerId owner) =>
+        public string City(CityId? id, PlayerId owner) =>
             view.Cities.FirstOrDefault(city => city.Id == id)?.Name ?? (IsYou(owner) ? "One of your cities" : $"A city of Seat {Seats.Number(view, owner)}");
 
         public Core.Map.HexCoord? CityTile(CityId id) => view.Cities.FirstOrDefault(city => city.Id == id)?.Position;
