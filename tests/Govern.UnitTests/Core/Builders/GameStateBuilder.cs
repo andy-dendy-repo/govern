@@ -22,6 +22,7 @@ internal sealed class GameStateBuilder
     private readonly List<Unit> _units = [];
     private readonly List<City> _cities = [];
     private readonly Dictionary<HexCoord, TerrainType> _terrain = [];
+    private readonly Dictionary<HexEdge, RiverType> _rivers = [];
     private int _nextId = 1;
     private PlayerId _currentPlayer = P1;
     private int _turn = 1;
@@ -61,6 +62,17 @@ internal sealed class GameStateBuilder
         return this;
     }
 
+    // Puts a river on the edges between neighbouring tiles, e.g. WithRiver(TestRulesets.River, ((5, 5), (6, 5))).
+    public GameStateBuilder WithRiver(RiverType river, params ((int Column, int Row) A, (int Column, int Row) B)[] edges)
+    {
+        foreach (var (a, b) in edges)
+        {
+            _rivers[HexEdge.Between(At(a.Column, a.Row), At(b.Column, b.Row)) ?? throw new ArgumentException($"{a} and {b} are not neighbours.")] = river;
+        }
+
+        return this;
+    }
+
     public GameStateBuilder WithCurrentPlayer(PlayerId player, int turn = 1)
     {
         _currentPlayer = player;
@@ -84,6 +96,16 @@ internal sealed class GameStateBuilder
     private GameMap BuildMap()
     {
         var map = GameMap.Create(Width, Height, TestRulesets.Plains);
-        return map with { Tiles = [.. map.Tiles.Select(tile => _terrain.TryGetValue(tile.Coord, out var terrain) ? tile with { Terrain = terrain } : tile)] };
+        return map with { Tiles = [.. map.Tiles.Select(tile => WithRivers(_terrain.TryGetValue(tile.Coord, out var terrain) ? tile with { Terrain = terrain } : tile))] };
+    }
+
+    private Tile WithRivers(Tile tile)
+    {
+        foreach (var (edge, river) in _rivers.Where(river => river.Key.Owner == tile.Coord))
+        {
+            tile = tile with { Rivers = (tile.Rivers ?? new TileRivers()).With(edge.Side, river) };
+        }
+
+        return tile;
     }
 }

@@ -232,4 +232,73 @@ public class MoveUnitActionTests
 
         result.ShouldFailWith(RuleViolations.Unreachable);
     }
+
+    [Fact]
+    public void Execute_OverAStream_CostsOnlyTheTile()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.Stream, ((2, 2), (3, 2)));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2, movementLeft: 1);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2))).ShouldSucceed();
+
+        update.State.FindUnit(soldier)!.MovementLeft.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Execute_OverARiver_CostsOneMore()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((2, 2), (3, 2)));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2))).ShouldSucceed();
+
+        update.State.FindUnit(soldier)!.MovementLeft.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Execute_OverARiverWithOneMovementLeft_ReturnsUnreachable()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((2, 2), (3, 2)));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2, movementLeft: 1);
+
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2)));
+
+        result.ShouldFailWith(RuleViolations.Unreachable);
+    }
+
+    [Fact]
+    public void Execute_TheSameEdgeFromTheOtherSide_CostsTheSame()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.River, ((2, 2), (3, 2)));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 3, 2, movementLeft: 1);
+
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(2, 2)));
+
+        result.ShouldFailWith(RuleViolations.Unreachable);
+    }
+
+    [Fact]
+    public void Execute_DeepRiverOnEveryNearEdge_ReturnsUnreachable()
+    {
+        // The deep river walls off (3, 2) from (2, 2) and both tiles next to them; the way round is 3 steps, one too many.
+        var builder = new GameStateBuilder().WithCapitals()
+            .WithRiver(TestRulesets.DeepRiver, ((2, 2), (3, 2)), ((2, 1), (3, 2)), ((2, 3), (3, 2)));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2)));
+
+        result.ShouldFailWith(RuleViolations.Unreachable);
+    }
+
+    [Fact]
+    public void Execute_DeepRiverOnTheDirectEdge_GoesAroundIt()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.DeepRiver, ((2, 2), (3, 2)));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2))).ShouldSucceed();
+
+        update.State.FindUnit(soldier)!.MovementLeft.ShouldBe(0);
+        update.Events.ShouldHaveSingleItem().ShouldBeOfType<UnitMovedEvent>().Path.Length.ShouldBe(2);
+    }
 }

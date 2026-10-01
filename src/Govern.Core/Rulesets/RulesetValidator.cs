@@ -30,6 +30,7 @@ internal static class RulesetValidator
         var problems = new List<RulesetProblem>();
         var units = CheckIds(document.Units.Select(static unit => unit.Id.Id), "$.units", problems);
         var terrains = CheckIds(document.Terrains.Select(static terrain => terrain.Id.Id), "$.terrains", problems);
+        var rivers = CheckIds(document.Rivers.Select(static river => river.Id.Id), "$.rivers", problems);
 
         CheckUnits(document, problems);
         CheckTerrains(document.Terrains, problems);
@@ -40,6 +41,7 @@ internal static class RulesetValidator
         CheckFogInvariants(document, problems);
         CheckTexts(document, problems);
         CombatRulesValidator.Validate(document, problems);
+        RiverRulesValidator.Validate(document, rivers, terrains, problems);
 
         return [.. problems];
     }

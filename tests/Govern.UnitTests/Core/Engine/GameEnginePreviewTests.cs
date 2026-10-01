@@ -36,7 +36,12 @@ public class GameEnginePreviewTests
         "on hills with enemies further out",
         "archer with targets in range",
         "archer on hills with an enemy out of range",
-        "horseman in the open");
+        "horseman in the open",
+        "rivers around",
+        "partial movement facing rivers",
+        "deep river wall",
+        "enemies across rivers",
+        "horseman along a river");
 
     [Theory]
     [MemberData(nameof(Scenarios))]
@@ -199,6 +204,42 @@ public class GameEnginePreviewTests
     }
 
     [Fact]
+    public void ReachableTiles_RiversAround_PriceEachCrossing()
+    {
+        var (state, unitId, _) = Build("rivers around");
+
+        var reachable = GameEngine.ReachableTiles(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
+
+        // Over the stream for 1, over the river for 2, never over the deep river (but round it, for 2).
+        reachable.ShouldContain(At(6, 5));
+        reachable.ShouldContain(At(4, 5));
+        reachable.ShouldContain(At(5, 4));
+        reachable.ShouldNotContain(At(7, 5));
+    }
+
+    [Fact]
+    public void ReachableTiles_PartialMovementFacingRivers_CrossesOnlyTheStream()
+    {
+        var (state, unitId, _) = Build("partial movement facing rivers");
+
+        var reachable = GameEngine.ReachableTiles(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
+
+        reachable.ShouldContain(At(6, 5));
+        reachable.ShouldNotContain(At(4, 5));
+        reachable.ShouldNotContain(At(5, 4));
+    }
+
+    [Fact]
+    public void AttackTargets_EnemiesAcrossRivers_LeaveOutTheCityBehindTheDeepRiver()
+    {
+        var (state, unitId, _) = Build("enemies across rivers");
+
+        var targets = GameEngine.AttackTargets(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
+
+        targets.ShouldBe([At(5, 4), At(4, 5)]);
+    }
+
+    [Fact]
     public void Previews_NullView_Throw()
     {
         Should.Throw<ArgumentNullException>(() => GameEngine.ReachableTiles(TestRulesets.Default, null!, new UnitId(1)));
@@ -244,6 +285,11 @@ public class GameEnginePreviewTests
             // Sight 3 on hills, but range 2: the enemy three tiles away is seen and can't be shot.
             "archer on hills with an enemy out of range" => (builder.AddUnit(P1, TestRulesets.Archer, 5, 5), Blocker(builder, P2, 8, 5)),
             "horseman in the open" => (builder.AddUnit(P1, TestRulesets.Horseman, 5, 5), Blocker(builder, P2, 7, 4)),
+            "partial movement facing rivers" => (builder.AddUnit(P1, TestRulesets.Soldier, 5, 5, movementLeft: 1), At(5, 5)),
+            // An enemy unit across a deep river (a target), an undefended enemy city across one (not a target) and an enemy
+            // unit across a river.
+            "enemies across rivers" => (Soldier(builder, 5, 5), EnemyCity(builder, 6, 5, Blocker(builder, P2, 4, 5, Blocker(builder, P2, 5, 4)))),
+            "horseman along a river" => (builder.AddUnit(P1, TestRulesets.Horseman, 5, 5), At(5, 5)),
             _ => (Soldier(builder, 5, 5), At(5, 5)),
         };
 
@@ -272,6 +318,22 @@ public class GameEnginePreviewTests
             // The lake blocks the straight line; the tile behind it costs 3 around it, one more than a full move.
             "path around a lake" => builder.WithTerrain(TestRulesets.Lake, (6, 5), (6, 4), (6, 6)),
             "on hills with enemies further out" or "archer on hills with an enemy out of range" => builder.WithTerrain(TestRulesets.Hills, (5, 5)),
+            // A stream east, a river west and a deep river north-west of (5, 5), with forest behind the stream.
+            "rivers around" or "partial movement facing rivers" => builder
+                .WithRiver(TestRulesets.Stream, ((5, 5), (6, 5)))
+                .WithRiver(TestRulesets.River, ((5, 5), (4, 5)))
+                .WithRiver(TestRulesets.DeepRiver, ((5, 5), (5, 4)))
+                .WithTerrain(TestRulesets.Forest, (7, 5)),
+            // A deep river along the whole column edge east of the unit: only the far ends of the wall lead round it.
+            "deep river wall" => builder.WithRiver(
+                TestRulesets.DeepRiver,
+                ((5, 3), (6, 3)), ((6, 3), (6, 4)), ((6, 4), (6, 5)), ((5, 5), (6, 5)), ((6, 5), (6, 6)), ((6, 6), (6, 7)), ((5, 7), (6, 7))),
+            "enemies across rivers" => builder
+                .WithRiver(TestRulesets.DeepRiver, ((5, 5), (6, 5)), ((5, 5), (5, 4)))
+                .WithRiver(TestRulesets.River, ((5, 5), (4, 5))),
+            "horseman along a river" => builder.WithRiver(
+                TestRulesets.River,
+                ((5, 5), (6, 5)), ((6, 4), (6, 5)), ((6, 4), (7, 4)), ((6, 6), (6, 5)), ((6, 6), (7, 6))),
             _ => builder,
         };
     }

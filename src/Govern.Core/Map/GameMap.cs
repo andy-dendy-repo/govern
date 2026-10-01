@@ -72,4 +72,19 @@ public sealed record GameMap(int Width, int Height, ImmutableArray<Tile> Tiles)
         ArgumentNullException.ThrowIfNull(ruleset);
         return Contains(coord) && ruleset.Terrain(TileAt(coord).Terrain).IsPassable;
     }
+
+    /// <summary>The river on the edge between two neighbouring tiles.</summary>
+    /// <param name="a">One tile.</param>
+    /// <param name="b">The other tile.</param>
+    /// <returns>The river, or <see langword="null"/> when there is none, the tiles are not neighbours or the edge's owner is off the map.</returns>
+    public RiverType? RiverBetween(HexCoord a, HexCoord b) =>
+        HexEdge.Between(a, b) is { } edge && Contains(edge.Owner) ? TileAt(edge.Owner).Rivers?.On(edge.Side) : null;
+
+    // A copy with a river on one edge; the owner tile must be on the map.
+    internal GameMap WithRiver(HexEdge edge, RiverType river)
+    {
+        var tile = TileAt(edge.Owner);
+        var rivers = (tile.Rivers ?? new TileRivers()).With(edge.Side, river);
+        return this with { Tiles = Tiles.SetItem((edge.Owner.Row * Width) + edge.Owner.Column, tile with { Rivers = rivers }) };
+    }
 }

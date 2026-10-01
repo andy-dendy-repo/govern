@@ -6,18 +6,35 @@ namespace Govern.Core.Map;
 
 /// <summary>
 /// Dijkstra over the hex grid, bounded by the unit's remaining movement. Units never pass through other units or enemy cities.
+/// A step costs the entered tile's movement cost plus the crossing cost of a river on the edge between the two tiles, and a
+/// river that can't be crossed blocks the step.
 /// </summary>
 internal static class ReachabilityCalculator
 {
     public static Reachability Compute(Ruleset ruleset, GameState state, Unit unit) => Compute(
         unit,
-        coord => state.Map.IsPassable(ruleset, coord)
-            && state.UnitAt(coord) is null
-            && (state.CityAt(coord) is not { } city || city.Owner == unit.Owner),
-        coord => ruleset.Terrain(state.Map.TileAt(coord).Terrain).MovementCost);
+        (from, to) => state.Map.IsPassable(ruleset, to)
+            && state.UnitAt(to) is null
+            && (state.CityAt(to) is not { } city || city.Owner == unit.Owner)
+                ? StepCost(ruleset, state.Map.TileAt(to).Terrain, state.Map.RiverBetween(from, to))
+                : null);
 
-    // The search itself; the callers say which tiles the unit may enter and what each costs.
-    public static Reachability Compute(Unit unit, Func<HexCoord, bool> canEnter, Func<HexCoord, int> costOf)
+    // The cost of stepping onto a passable tile with the given terrain over an edge with the given river; null when the
+    // river can't be crossed. Shared with the view previews, so both price a step the same way.
+    public static int? StepCost(Ruleset ruleset, TerrainType terrain, RiverType? river)
+    {
+        var cost = ruleset.Terrain(terrain).MovementCost;
+        if (river is not { } type)
+        {
+            return cost;
+        }
+
+        var definition = ruleset.River(type);
+        return definition.IsCrossable ? cost + definition.CrossingCost : null;
+    }
+
+    // The search itself; the callers price each step between neighbours (null when the unit can't take it).
+    public static Reachability Compute(Unit unit, Func<HexCoord, HexCoord, int?> stepCost)
     {
         var costs = new Dictionary<HexCoord, int> { [unit.Position] = 0 };
         var previous = new Dictionary<HexCoord, HexCoord>();
@@ -33,9 +50,14 @@ internal static class ReachabilityCalculator
                 continue;
             }
 
-            foreach (var next in current.Neighbors().Where(canEnter))
+            foreach (var next in current.Neighbors())
             {
-                var nextCost = cost + costOf(next);
+                if (stepCost(current, next) is not { } step)
+                {
+                    continue;
+                }
+
+                var nextCost = cost + step;
                 if (nextCost > unit.MovementLeft || (costs.TryGetValue(next, out var known) && known <= nextCost))
                 {
                     continue;

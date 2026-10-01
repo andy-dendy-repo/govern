@@ -21,7 +21,7 @@ internal static class ViewPreviewCalculator
             return [];
         }
 
-        return [.. ReachabilityCalculator.Compute(unit, coord => CanEnter(ruleset, view, unit, coord), coord => MovementCost(ruleset, view, coord)).Destinations
+        return [.. ReachabilityCalculator.Compute(unit, (from, to) => StepCost(ruleset, view, unit, from, to)).Destinations
             .OrderBy(static coord => coord.Row)
             .ThenBy(static coord => coord.Column)];
     }
@@ -34,7 +34,7 @@ internal static class ViewPreviewCalculator
         }
 
         return [.. unit.Position.WithinRadius(ruleset.Unit(unit.Type).AttackRange)
-            .Where(target => AttackRule.Check(ruleset, unit, target, TargetOf(view, target)) is null)
+            .Where(target => AttackRule.Check(ruleset, unit, target, TargetOf(view, unit.Position, target)) is null)
             .OrderBy(static coord => coord.Row)
             .ThenBy(static coord => coord.Column)];
     }
@@ -42,22 +42,23 @@ internal static class ViewPreviewCalculator
     public static CombatForecast? CombatForecast(Ruleset ruleset, PlayerView view, UnitId unitId, HexCoord target)
     {
         if (ActingUnit(ruleset, view, unitId) is not { } unit
-            || AttackRule.Check(ruleset, unit, target, TargetOf(view, target)) is not null
+            || TargetOf(view, unit.Position, target) is var targetInfo && AttackRule.Check(ruleset, unit, target, targetInfo) is not null
             || view.UnitAt(target) is not { } defender)
         {
             return null;
         }
 
-        // Both tiles are in sight (see AttackRule.Check), so their terrain is known.
+        // Both tiles are in sight (see AttackRule.Check), so their terrain and the river between them are known.
         var attacker = new Combatant(unit.Type, unit.Health(ruleset), view.TileAt(unit.Position).Terrain!.Value);
-        return CombatCalculator.Forecast(ruleset, attacker, new Combatant(defender.Type, defender.Health, view.TileAt(target).Terrain!.Value));
+        var defending = new Combatant(defender.Type, defender.Health, view.TileAt(target).Terrain!.Value);
+        return CombatCalculator.Forecast(ruleset, attacker, defending, targetInfo.River);
     }
 
-    private static AttackTarget TargetOf(PlayerView view, HexCoord target)
+    private static AttackTarget TargetOf(PlayerView view, HexCoord attacker, HexCoord target)
     {
         var defender = view.Contains(target) ? view.UnitAt(target) : null;
         var owner = defender?.Owner ?? (view.Contains(target) ? view.CityAt(target)?.Owner : null);
-        return new AttackTarget(view.Contains(target), owner, defender is not null);
+        return new AttackTarget(view.Contains(target), owner, defender is not null, view.RiverBetween(attacker, target));
     }
 
     public static RuleViolation? CheckFoundCity(Ruleset ruleset, PlayerView view, UnitId unitId)
@@ -73,16 +74,16 @@ internal static class ViewPreviewCalculator
     }
 
     // Only visible tiles can be entered. That loses nothing, because a unit's sight is at least its movement (checked by
-    // RulesetValidator), so every tile it could reach is visible and shows every unit and city on it.
-    private static bool CanEnter(Ruleset ruleset, PlayerView view, Unit unit, HexCoord coord) =>
-        view.Contains(coord)
-        && view.TileAt(coord) is { Visibility: TileVisibility.Visible, Terrain: { } terrain }
+    // RulesetValidator), so every tile it could reach is visible and shows every unit and city on it. Both ends of a step are
+    // then visible, so the view knows the river between them.
+    private static int? StepCost(Ruleset ruleset, PlayerView view, Unit unit, HexCoord from, HexCoord to) =>
+        view.Contains(to)
+        && view.TileAt(to) is { Visibility: TileVisibility.Visible, Terrain: { } terrain }
         && ruleset.Terrain(terrain).IsPassable
-        && view.UnitAt(coord) is null
-        && (view.CityAt(coord) is not { } city || city.Owner == unit.Owner);
-
-    private static int MovementCost(Ruleset ruleset, PlayerView view, HexCoord coord) =>
-        ruleset.Terrain(view.TileAt(coord).Terrain!.Value).MovementCost;
+        && view.UnitAt(to) is null
+        && (view.CityAt(to) is not { } city || city.Owner == unit.Owner)
+            ? ReachabilityCalculator.StepCost(ruleset, terrain, view.RiverBetween(from, to))
+            : null;
 
     // The viewer's unit when they may act with it now; otherwise null.
     private static Unit? ActingUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
