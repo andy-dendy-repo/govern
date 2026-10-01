@@ -68,7 +68,8 @@ internal sealed class StartGameHandler(
             return await ReevaluateAsync(request.GameId, userId, cancellationToken);
         }
 
-        return GetGameResponse.From(game, caller, rulesets.Ruleset);
+        // A game that has just started has no log yet.
+        return GetGameResponse.From(game, caller, rulesets.Ruleset, []);
     }
 
     // Membership is checked in SQL, so an outsider never makes the server load a game's state.

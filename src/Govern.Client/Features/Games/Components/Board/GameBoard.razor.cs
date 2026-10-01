@@ -35,6 +35,7 @@ public partial class GameBoard
     private (double X, double Y) _lastPointer;
     private bool _dragged;
     private bool _dirty = true;
+    private BoardFocus? _focus;
 
     /// <summary>The player's view to draw.</summary>
     [Parameter, EditorRequired]
@@ -67,8 +68,25 @@ public partial class GameBoard
     [Inject]
     private BoardInteropService Interop { get; set; } = null!;
 
+    /// <summary>What the playing animation moves or adds (<see cref="BoardAnimationService"/>); <see cref="BoardMotion.None"/> when idle.</summary>
+    [Parameter]
+    public BoardMotion Motion { get; set; } = BoardMotion.None;
+
+    /// <summary>The latest request to centre the board on a tile; a new request pans the board.</summary>
+    [Parameter]
+    public BoardFocus? Focus { get; set; }
+
     /// <inheritdoc />
-    protected override void OnParametersSet() => _dirty = true;
+    protected override void OnParametersSet()
+    {
+        _dirty = true;
+        if (Focus is { } focus && focus != _focus)
+        {
+            _focus = focus;
+            var (x, y) = HexLayout.Center(focus.Tile);
+            SetViewport(_viewport.CentreOn(x, y, _size.Width, _size.Height));
+        }
+    }
 
     // Pointer moves arrive often; the board renders only when something it shows changed.
     /// <inheritdoc />

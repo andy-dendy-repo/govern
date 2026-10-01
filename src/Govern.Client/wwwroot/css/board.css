@@ -1,6 +1,7 @@
 /*
   The hex board (Features/Games/Components/Board). Colours are tokens (tokens.css); symbols come from GameSprite.
-  Layers render in the fixed BoardLayer order: terrain, rivers, improvements, borders, lens, highlights, cities, units.
+  Layers render in the fixed BoardLayer order: terrain, rivers, improvements, borders, lens, highlights, cities, units,
+  effects.
 */
 .board-frame {
     position: relative;
@@ -154,7 +155,8 @@
 .board .layer-lens,
 .board .layer-highlights,
 .board .layer-cities,
-.board .layer-units {
+.board .layer-units,
+.board .layer-effects {
     pointer-events: none;
 }
 
@@ -324,4 +326,69 @@
     fill: none;
     stroke: var(--gv-icon-mark);
     stroke-width: 2;
+}
+
+/* Animations (Features/Games/Services/BoardAnimationService). A unit is placed with a CSS transform, so a new position from
+   the animation slides there in one step's time; ghosts are units the view no longer has, and effects float or pulse once.
+   EffectLifetime in the service matches the 900ms below. */
+.board .unit-at {
+    transition: transform 120ms linear;
+}
+
+.board .ghost {
+    opacity: 0.7;
+}
+
+.board .ghost.fading {
+    animation: gv-fade 900ms ease-out forwards;
+}
+
+.board .effect.damage text {
+    fill: var(--gv-health-low);
+    stroke: var(--gv-label-outline);
+    stroke-width: 3;
+    font-size: 14px;
+    font-weight: 700;
+    text-anchor: middle;
+    paint-order: stroke;
+}
+
+.board .effect.damage {
+    animation: gv-float 900ms ease-out forwards;
+}
+
+.board .effect.pulse {
+    fill: none;
+    stroke: var(--gv-selected);
+    stroke-width: 3;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: gv-pulse 900ms ease-out forwards;
+}
+
+@keyframes gv-fade {
+    from { opacity: 0.9; }
+    to { opacity: 0; }
+}
+
+@keyframes gv-float {
+    from { opacity: 1; translate: 0 0; }
+    to { opacity: 0; translate: 0 -18px; }
+}
+
+@keyframes gv-pulse {
+    from { opacity: 1; scale: 0.8; }
+    to { opacity: 0; scale: 1.15; }
+}
+
+/* Reduced motion: nothing slides, floats or grows; effects only fade. */
+@media (prefers-reduced-motion: reduce) {
+    .board .unit-at {
+        transition: none;
+    }
+
+    .board .effect.damage,
+    .board .effect.pulse {
+        animation-name: gv-fade;
+    }
 }

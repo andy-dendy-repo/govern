@@ -32,6 +32,9 @@ public sealed record GetGameRequest(Guid GameId) : IRequest<GetGameRequest, GetG
 /// <param name="Players">Seats in order.</param>
 /// <param name="View">The caller's view of the board once started; <see langword="null"/> in the lobby.</param>
 /// <param name="CreatedAt">When the game was created.</param>
+/// <param name="Log">
+/// The caller's recent game log (<see cref="GameLogService"/>), oldest first: only the events they may see. Empty in the lobby.
+/// </param>
 public sealed record GetGameResponse(
     Guid Id,
     GamePhase Phase,
@@ -39,18 +42,21 @@ public sealed record GetGameResponse(
     string? InviteCode,
     IReadOnlyList<GamePlayerSummary> Players,
     PlayerView? View,
-    DateTimeOffset CreatedAt) : IResponse
+    DateTimeOffset CreatedAt,
+    IReadOnlyList<GameLogItem> Log) : IResponse
 {
     /// <summary>Maps a loaded game (with its players) for one of its players.</summary>
     /// <param name="game">The game.</param>
     /// <param name="caller">The caller's seat in <paramref name="game"/>.</param>
     /// <param name="ruleset">The ruleset the game is played with.</param>
+    /// <param name="log">The caller's recent log (<see cref="GameLogService.RecentAsync"/>).</param>
     /// <returns>The response; <see cref="View"/> is built with <see cref="GameEngine.ViewFor"/>.</returns>
-    public static GetGameResponse From(Game game, GamePlayer caller, Ruleset ruleset)
+    public static GetGameResponse From(Game game, GamePlayer caller, Ruleset ruleset, IReadOnlyList<GameLogItem> log)
     {
         ArgumentNullException.ThrowIfNull(game);
         ArgumentNullException.ThrowIfNull(caller);
         ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(log);
 
         var players = game.Players
             .OrderBy(static player => player.Seat)
@@ -65,7 +71,8 @@ public sealed record GetGameResponse(
             isCreator && game.Phase == GamePhase.Lobby ? game.InviteCode.Value : null,
             players,
             game.State is { } state ? GameEngine.ViewFor(ruleset, state, caller.PlayerId) : null,
-            game.CreatedAt);
+            game.CreatedAt,
+            log);
     }
 }
 
@@ -107,6 +114,7 @@ internal sealed class GetGameHandler(
             return GameErrors.NotFound;
         }
 
-        return GetGameResponse.From(game, caller, rulesets.Ruleset);
+        var log = await GameLogService.RecentAsync(db, game, caller, cancellationToken);
+        return GetGameResponse.From(game, caller, rulesets.Ruleset, log);
     }
 }

@@ -133,7 +133,7 @@ public partial class GameBoardTests : ClientTestContext
 
         var cut = RenderBoard(view, lens: new MovementCostLens(new RulesetService()));
 
-        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "rivers", "lens", "highlights", "cities", "units"]);
+        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "rivers", "lens", "highlights", "cities", "units", "effects"]);
     }
 
     [Fact]
@@ -155,7 +155,7 @@ public partial class GameBoardTests : ClientTestContext
 
         var cut = RenderBoard(view);
 
-        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "borders", "highlights", "cities", "units"]);
+        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "borders", "highlights", "cities", "units", "effects"]);
         // Each city owns its tile and 6 neighbours: the outline of 7 hexes has 18 edges. Where the two touch, both draw the edge.
         cut.FindAll("g[data-layer=borders] line.border.seat-1").Count.ShouldBe(18);
         cut.FindAll("g[data-layer=borders] line.border.seat-2").Count.ShouldBe(18);
@@ -210,7 +210,7 @@ public partial class GameBoardTests : ClientTestContext
     {
         var cut = RenderBoard(Start(), highlights: new BoardHighlights([At(1, 1)], [], []), lens: new MovementCostLens(new RulesetService()));
 
-        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "lens", "highlights", "cities", "units"]);
+        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "lens", "highlights", "cities", "units", "effects"]);
     }
 
     [Fact]

@@ -14,6 +14,7 @@ namespace Govern.Client.Features.Games.Models;
 /// <param name="Players">Seats in order.</param>
 /// <param name="View">The caller's fog-of-war view of the board once started; <see langword="null"/> in the lobby.</param>
 /// <param name="CreatedAt">When the game was created.</param>
+/// <param name="Log">The caller's recent game log (the previous round and this one), oldest first; empty in the lobby.</param>
 public sealed record GetGameResponse(
     Guid Id,
     GamePhase Phase,
@@ -21,4 +22,5 @@ public sealed record GetGameResponse(
     string? InviteCode,
     IReadOnlyList<GamePlayerSummary> Players,
     PlayerView? View,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    IReadOnlyList<GameLogItem>? Log = null);

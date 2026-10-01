@@ -21,6 +21,9 @@ public interface IApplicationDbContext : IAsyncDisposable
     /// <summary>Seats in games (owned by games).</summary>
     DbSet<GamePlayer> GamePlayers { get; }
 
+    /// <summary>Each seat's game log (filtered engine events).</summary>
+    DbSet<GameLogEntry> GameLogEntries { get; }
+
     /// <summary>
     /// Saves all tracked changes; audit timestamps are set and domain events are dispatched after a successful save.
     /// </summary>

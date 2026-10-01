@@ -1,8 +1,8 @@
 ---
-title: Games feature (lobby, invite codes, leave, cancel, lobby expiry, start, commands, live updates, player views, game list, limits, quota)
-tags: [games, game, lobby, invite, invite-code, leave, cancel, expiry, quota, activity-at, start, commands, expected-version, live-updates, sse, server-sent-events, stream, heartbeat, rate-limit, player-view, fog-of-war, jsonb, concurrency, privacy]
-code: [src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Api/Models/GameCommandBody.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Infrastructure/Background/ExpiredLobbyCleanupService.cs, src/Govern.Domain/Entities/Game.cs, src/Govern.Domain/Entities/GamePlayer.cs, src/Govern.Domain/ValueObjects/InviteCode.cs, src/Govern.Infrastructure/Persistence/Configurations/GameConfiguration.cs]
-updated: 2026-09-30
+title: Games feature (lobby, invite codes, leave, cancel, lobby expiry, start, commands, live updates, player views, game log, game list, limits, quota)
+tags: [games, game, lobby, invite, invite-code, leave, cancel, expiry, quota, activity-at, start, commands, expected-version, live-updates, sse, server-sent-events, stream, heartbeat, rate-limit, player-view, fog-of-war, game-log, events, jsonb, concurrency, privacy]
+code: [src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Api/Models/GameCommandBody.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Infrastructure/Background/ExpiredLobbyCleanupService.cs, src/Govern.Domain/Entities/Game.cs, src/Govern.Domain/Entities/GamePlayer.cs, src/Govern.Domain/Entities/GameLogEntry.cs, src/Govern.Infrastructure/Persistence/Configurations/GameLogEntryConfiguration.cs, src/Govern.Domain/ValueObjects/InviteCode.cs, src/Govern.Infrastructure/Persistence/Configurations/GameConfiguration.cs]
+updated: 2026-10-01
 ---
 
 # Games feature
@@ -79,7 +79,7 @@ The Core rule-violation codes (`move.unreachable`, `game.not_your_turn`, `game.f
 - **Read with `GameSerializer`:** the body is bound by `Api/Models/GameCommandBody.BindAsync`, not by the HTTP JSON defaults. `type` may appear in any position, and a missing `type` or value is a 400 instead of a server error. The body is capped at 4 KiB (413), and a non-JSON content type is 415.
 - **`expectedVersion`:** send the `view.version` you last saw. It is an opaque, per-player fingerprint of your own view (see [game-core](game-core.md#view-version)): compare it for equality only, never order it. If your view has changed since, the command is not applied (`game.stale_version`); changes hidden from you never make it stale. Races are settled by `games.revision`: two commands based on the same view race, and the loser gets `game.stale_version`.
 - **Checks in order:** membership (404) → lobby (`game.not_started`) → version (`game.stale_version`) → the engine (`GameEngine.Execute` through `Game.Execute`), whose violations become 409 with their own code.
-- **Result:** an accepted command replaces `games.state`, copies the player to move into `games.current_player_id`, bumps `revision`, and sets `phase` to `finished` once the engine reports a winner. The response is the caller's new `GetGameResponse`. Engine events aren't sent to clients; they would need visibility filtering (deferred to the game-log UI).
+- **Result:** an accepted command replaces `games.state`, copies the player to move into `games.current_player_id`, bumps `revision`, and sets `phase` to `finished` once the engine reports a winner. The response is the caller's new `GetGameResponse`, whose `log` carries the command's events as the caller may see them ([game log](#game-log)).
 - Resigning is allowed out of turn. A command for a finished game returns `game.finished`.
 - **The web client** sends one command at a time with `expectedVersion` = the `view.version` on screen, offers only moves and attacks the Core previews accept, and on `game.stale_version` reads the game again and tells the player nothing was applied ([client game board](client.md#sending-commands-one-at-a-time-stale-handling)).
 
@@ -101,6 +101,16 @@ Joined lobbies count toward the unfinished cap (dropping them would let creators
 The rate limiter runs after authentication, so every game request has a user. The counts behind the caps aren't locked: a burst of simultaneous requests can overshoot a cap by up to the rate-limit permit count (20). The rate limit bounds how far.
 
 **Storage:** finished games are kept, so the rolling quota bounds how fast one account can add them (at most 30 games, about 13 KB of state each, per 24 hours). A seat given up by leaving or cancelling a lobby no longer counts, which is harmless: a lobby holds no board state, and a started game keeps both seats. An Azure Monitor alert fires when database storage passes 80% ([deployment](../operations/deployment.md)). Rate-limit counters are in memory, one set per Api instance.
+
+## Game log
+
+Each player has their own log of what they saw happen (F11a, [plan](../plans/done/F11a-game-log.md)).
+
+- **Writing:** after an accepted command, `Game.Execute` asks `VisibilityCalculator.EventsFor` ([filter table](game-core.md#events-a-player-may-see-eventsfor)) for each seat and adds one `GameLogEntry` per seat that saw something: its events, the round (`turn`, the round the command was played in) and a per-seat `sequence` (from `GamePlayer.LogLength`). It is saved with the game in the same transaction, so a rejected or stale command writes nothing.
+- **No counters of hidden activity:** an entry has no game version and no timestamp, and a seat's sequence counts only that seat's entries, so the log never shows how many commands the opponent played out of sight.
+- **Reading:** `GetGameResponse.log` (from `GET /api/games/{id}`, a command response and every stream snapshot) holds the caller's entries from the previous round on, at most `GameLogService.MaxEntries` (200), oldest first: `{ "sequence": 7, "turn": 3, "events": [ { "type": "unit_moved", … } ] }`. Empty in the lobby. Older entries are kept but not served yet.
+- **Live:** an event a player sees always changes their view, so the stream pushes a snapshot, and that snapshot carries every entry in the window (coalesced pushes lose nothing).
+- **The web client** shows the log in the side panel and plays the new entries on the board ([game UI](game-ui.md#game-log-in-the-side-panel)).
 
 ## Live game updates (SSE)
 
@@ -141,12 +151,13 @@ The rate limiter runs after authentication, so every game request has a user. Th
 | Table | Columns | Constraints |
 |---|---|---|
 | `games` | `id`, `creator_id`, `invite_code` (varchar 22), `phase` (varchar 16), `revision` (concurrency token), `state` (`jsonb`, null in the lobby), `current_player_id` (the `game_players.id` to move; null in the lobby and once finished; no FK), `activity_at` (last change both players see), `created_at`, `updated_at` | Unique `invite_code`; index `(phase, activity_at)` for the lobby sweep; index and restrict FK on `creator_id` → `users` |
-| `game_players` | `id` (= `PlayerId`), `game_id`, `user_id`, `seat` (0 or 1), `joined_at` | Unique `(game_id, seat)` and `(game_id, user_id)`; index `(user_id, joined_at)` (the FK, member filters and the quota) and restrict FK on `user_id` → `users`; cascade delete from `games` |
+| `game_players` | `id` (= `PlayerId`), `game_id`, `user_id`, `seat` (0 or 1), `joined_at`, `log_length` (the seat's last log sequence) | Unique `(game_id, seat)` and `(game_id, user_id)`; index `(user_id, joined_at)` (the FK, member filters and the quota) and restrict FK on `user_id` → `users`; cascade delete from `games` |
+| `game_log_entries` | `id`, `game_id`, `player_id` (the seat), `sequence`, `turn`, `events` (`jsonb`, `GameSerializer` format), `created_at`, `updated_at` | Index `(player_id, sequence)` for the window read (not unique: the game's `revision` already lets one command commit per revision, and a unique index made concurrent commands deadlock); index on `game_id`; cascade delete from `games` and `game_players` |
 
 - **The `jsonb` state snapshot:** `games.state` holds the whole `GameState`, written and read through `GameSerializer`. That is the same format the Api and client use, and it carries `schemaVersion`.
   - EF compares the state by reference. The state is immutable and replaced on every change, so there is no deep comparison.
   - Queries never look inside the JSON: anything a list needs has its own column. `ListMyGames` never reads `state`; `isYourTurn` compares `current_player_id` with the caller's seat.
-- **Migrations:** `AddGames`, `AddGameCurrentPlayer`, `AddGameLobbyLifecycle` (existing rows got `activity_at` = 0001-01-01, so lobbies created before it are swept at once and older games sort last; `gamecore` was never deployed, so only local data is affected).
+- **Migrations:** `AddGames`, `AddGameCurrentPlayer`, `AddGameLog` (games already running start with an empty log), `AddGameLobbyLifecycle` (existing rows got `activity_at` = 0001-01-01, so lobbies created before it are swept at once and older games sort last; `gamecore` was never deployed, so only local data is affected).
 
 ## Games JSON format
 
@@ -156,13 +167,14 @@ The rate limiter runs after authentication, so every game request has a user. Th
 
 - **Unit** (`tests/Govern.UnitTests/Domain`):
   - `InviteCodeTests`: shape, uniqueness, round-trip and malformed input.
-  - `GameTests`: seats, idempotent join, start order, no user ids in the state, revision increments, `Execute` (accepted, rejected, resign finishes, lobby and outsider throw), `GameChangedEvent` on join, leave, cancel, start and accepted commands only, leave and cancel rules, and `ActivityAt` (moves only on changes both players see).
+  - `GameTests`: seats, idempotent join, start order, no user ids in the state, revision increments, `Execute` (accepted, rejected, resign finishes, lobby and outsider throw), `GameChangedEvent` on join, leave, cancel, start and accepted commands only, leave and cancel rules, a log entry per seat for what it saw (none for a rejected command), and `ActivityAt` (moves only on changes both players see).
 - **Integration** (`tests/Govern.IntegrationTests/Features/Games`): every endpoint's happy path, 400, 401, 403/404 and each error code. Also covered:
   - the stream (`WatchGameEndpointTests`, read with `Support/GameEventsReader`): the lobby → join → start sequence, both players' snapshots after `end_turn`, no push to the opponent after a hidden move (only heartbeats), the end after a resign or for a finished game, the end at token expiry (`FakeTimeProvider`), and both parts of the `game-streams` limit, and the open-stream limit still holding after the window refilled (a real 13 s wait);
   - concurrent joins (two users; the same user twice), concurrent starts and concurrent commands with the same version;
   - the command body (type in any position, malformed, 413, 415), stale versions and rule-violation codes;
   - both rate-limit policies (per user), the unfinished-games cap and the rolling quota (seeded seats inside and outside the window);
   - leave and cancel (freed caps, rejoin, deleted invite code, streams that end) and their races with start, join and each other (`Support/GameRowLock`; `RaceInOrderAsync` fixes the winner, e.g. a cancel that deletes the lobby under a join's seat insert → `game.invite_not_found`, not a 500);
+  - the game log: `end_turn` in both players' logs with one entry per seat, a move out of the opponent's sight logged only for the mover;
   - the list order by `activityAt` (a move leaves it alone, `end_turn` moves the game up);
   - the expired-lobby sweep (`Background/ExpiredLobbyCleanupServiceTests`, `FakeTimeProvider`): only stale lobbies go, their streams end;
   - the `jsonb` column type;
