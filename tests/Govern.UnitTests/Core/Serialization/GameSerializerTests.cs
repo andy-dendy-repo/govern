@@ -146,7 +146,7 @@ public class GameSerializerTests
         var idle = builder.AddUnit(P1, TestRulesets.Builder, 5, 5);
         var city = builder.AddCity(P1, 6, 4, producingBuilding: TestRulesets.Campus, buildings: [TestRulesets.Harbour]);
         var state = builder.Build();
-        state = state with { Cities = [.. state.Cities.Select(c => c.Id == city ? c with { Stock = [new(TestRulesets.Food, 4)], TilesGained = 2 } : c)] };
+        state = state with { Cities = [.. state.Cities.Select(c => c.Id == city ? c with { Stock = [new(TestRulesets.Food, 4)], TilesGained = 2, ProductionPaid = true, UpkeepPriority = UpkeepPriority.UnitsFirst, BuildingDamage = [new BuildingDamage(TestRulesets.Harbour, 30)] } : c)] };
 
         var json = GameSerializer.Serialize(state);
         var restored = GameSerializer.DeserializeState(json);
@@ -157,6 +157,9 @@ public class GameSerializerTests
         restored.FindCity(city)!.BuildingList.ShouldBe([TestRulesets.Harbour]);
         restored.FindCity(city)!.StockList.ShouldBe([new(TestRulesets.Food, 4)]);
         restored.FindCity(city)!.TilesGained.ShouldBe(2);
+        restored.FindCity(city)!.ProductionPaid.ShouldBeTrue();
+        restored.FindCity(city)!.UpkeepPriority.ShouldBe(UpkeepPriority.UnitsFirst);
+        restored.FindCity(city)!.DamageOf(TestRulesets.Harbour).ShouldBe(30);
         restored.Map.TileAt(At(6, 4)).Territory.ShouldBe(city);
         restored.Map.BridgeBetween(At(4, 3), At(3, 3)).ShouldBeTrue();
         restored.Map.TileAt(At(5, 5)).Improvement.ShouldBe(TestRulesets.Farm);
@@ -167,6 +170,9 @@ public class GameSerializerTests
         root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("buildings", out _)).ShouldBe(1);
         root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("stock", out _)).ShouldBe(1);
         root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("tilesGained", out _)).ShouldBe(1);
+        root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("productionPaid", out _)).ShouldBe(1);
+        root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("upkeepPriority", out _)).ShouldBe(1);
+        root.GetProperty("cities").EnumerateArray().Count(static city => city.TryGetProperty("buildingDamage", out _)).ShouldBe(1);
         root.GetProperty("map").GetProperty("tiles").EnumerateArray().Count(static tile => tile.TryGetProperty("territory", out _))
             .ShouldBe(restored.Map.Tiles.Count(static tile => tile.Territory is not null));
         root.GetProperty("map").GetProperty("tiles").EnumerateArray().Count(static tile => tile.TryGetProperty("bridges", out _)).ShouldBe(1);

@@ -48,7 +48,7 @@ internal static class ConstructionRule
                 && city.Owner == player
                 && used.Add(city.Id))
             {
-                progress += CityProduction.PerTurn(ruleset, city.BuildingList);
+                progress += CityProduction.PerTurn(ruleset, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth));
             }
 
             state = progress >= cost
@@ -59,7 +59,7 @@ internal static class ConstructionRule
         return (state, used);
     }
 
-    // Adds each of the player's cities' income (its territory's tiles, its own yields and its buildings) to its stock.
+    // Adds each of the player's cities' income (its territory's tiles, its own yields and its working buildings) to its stock.
     public static GameState CollectYields(Ruleset ruleset, GameState state, PlayerId player)
     {
         foreach (var city in state.Cities.Where(city => city.Owner == player).ToList())
@@ -77,7 +77,7 @@ internal static class ConstructionRule
     {
         var tileYields = TerritoryRule.TilesOf(map, city.Id)
             .SelectMany(tile => YieldCalculator.TileYields(ruleset, tile.Terrain, map.RiversAround(tile.Coord), tile.Improvement));
-        return YieldCalculator.CityIncome(ruleset, tileYields, city.BuildingList);
+        return YieldCalculator.CityIncome(ruleset, tileYields, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth));
     }
 
     // The job's cost while its site still allows it; null when it doesn't any more (a bridge finished from the other bank, or

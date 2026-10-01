@@ -28,6 +28,12 @@ namespace Govern.Core.Cities;
 /// its territory and buildings go in here, and the city spends from it.
 /// </param>
 /// <param name="TilesGained">How many tiles the city has claimed since it was founded (it sets the price of the next one).</param>
+/// <param name="ProductionPaid">
+/// Whether the city has paid the resource cost of what it produces now; it pays when production begins, and the progress grows
+/// only once paid.
+/// </param>
+/// <param name="UpkeepPriority">Whether the city pays its buildings' or its units' upkeep first.</param>
+/// <param name="BuildingDamage">Health its buildings have lost to unpaid upkeep; <see langword="null"/> when none is hurt.</param>
 public sealed record City(
     CityId Id,
     PlayerId Owner,
@@ -38,7 +44,10 @@ public sealed record City(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] BuildingType? ProducingBuilding = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<BuildingType>? Buildings = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<ResourceAmount>? Stock = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int TilesGained = 0)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int TilesGained = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool ProductionPaid = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] UpkeepPriority UpkeepPriority = UpkeepPriority.BuildingsFirst,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<BuildingDamage>? BuildingDamage = null)
 {
     /// <summary>The city's resources (empty when it has none).</summary>
     [JsonIgnore]
@@ -47,6 +56,20 @@ public sealed record City(
     /// <summary>The buildings in the city (empty when there are none).</summary>
     [JsonIgnore]
     public ImmutableArray<BuildingType> BuildingList => Buildings ?? [];
+
+    /// <summary>The health each hurt building has lost (empty when none is hurt).</summary>
+    [JsonIgnore]
+    public ImmutableArray<BuildingDamage> BuildingDamageList => BuildingDamage ?? [];
+
+    /// <summary>Health a building has lost.</summary>
+    /// <param name="building">The building.</param>
+    /// <returns>0 when it is unhurt (or the city doesn't have it).</returns>
+    public int DamageOf(BuildingType building) => BuildingDamageList.FirstOrDefault(entry => entry.Building == building)?.Damage ?? 0;
+
+    /// <summary>The buildings that still work: those with health left.</summary>
+    /// <param name="buildingHealth">A building's full health (<see cref="Rulesets.UpkeepRules.BuildingHealth"/>).</param>
+    /// <returns>The buildings, in the order they were finished.</returns>
+    public IEnumerable<BuildingType> WorkingBuildings(int buildingHealth) => BuildingList.Where(building => DamageOf(building) < buildingHealth);
 
     /// <summary>Whether the city has a building.</summary>
     /// <param name="building">The building.</param>

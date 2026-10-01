@@ -33,6 +33,7 @@ public sealed class Ruleset
         Units = document.Units;
         Cities = document.Cities;
         Territory = document.Territory;
+        Upkeep = document.Upkeep;
         Resources = document.Resources;
         Improvements = document.Improvements;
         Buildings = document.Buildings;
@@ -70,6 +71,9 @@ public sealed class Ruleset
 
     /// <summary>City territory.</summary>
     public TerritoryRules Territory { get; }
+
+    /// <summary>Upkeep, supply and building health.</summary>
+    public UpkeepRules Upkeep { get; }
 
     /// <summary>Every resource, in the document's order (the order stocks and yields are listed in).</summary>
     public ImmutableArray<ResourceDefinition> Resources { get; }

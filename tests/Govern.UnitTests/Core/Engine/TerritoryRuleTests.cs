@@ -170,7 +170,7 @@ public class TerritoryRuleTests
             .WithRiver(TestRulesets.Stream, ((5, 5), (6, 5)))
             .WithRiver(TestRulesets.DeepRiver, ((6, 5), (7, 5)))
             .WithImprovement(TestRulesets.Farm, (6, 5));
-        var city = builder.AddCity(P1, 5, 5, buildings: [TestRulesets.Campus, TestRulesets.Harbour]);
+        var city = builder.AddCity(P1, 5, 5, paid: true, buildings: [TestRulesets.TradePost, TestRulesets.Harbour]);
         builder.WithTerritory(city, (7, 5));
         var state = builder.Build();
 
@@ -186,7 +186,7 @@ public class TerritoryRuleTests
     {
         // (3, 5) is in the territory at the largest radius; its west edge is stored by (2, 5), which no city or unit sees.
         var builder = new GameStateBuilder().WithCapitals().WithRiver(TestRulesets.Stream, ((3, 5), (2, 5)));
-        var city = builder.AddCity(P1, 6, 5);
+        var city = builder.AddCity(P1, 6, 5, paid: true);
         builder.WithTerritory(city, [.. At(6, 5).WithinRadius(3).Select(static coord => (coord.Column, coord.Row))]);
         var state = builder.Build();
         var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);

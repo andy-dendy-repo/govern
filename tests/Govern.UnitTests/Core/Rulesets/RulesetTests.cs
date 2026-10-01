@@ -141,6 +141,18 @@ public class RulesetTests
         ["unknown growth resource"] = json => json["territory"]!["growthResource"] = "faith",
         ["free territory"] = json => json["territory"]!["tileCost"] = 0,
         ["negative territory price increase"] = json => json["territory"]!["tileCostIncrease"] = -1,
+        ["unit cost of an unknown resource"] = json => json["units"]![1]!["resourceCost"]![0]!["resource"] = "iron",
+        ["unit cost too high"] = json => json["units"]![1]!["resourceCost"]![0]!["amount"] = 1001,
+        ["unit upkeep of zero"] = json => json["units"]![1]!["upkeep"]![0]!["amount"] = 0,
+        ["unit cost in culture"] = json => json["units"]![1]!["resourceCost"]![0]!["resource"] = "culture",
+        ["building upkeep listed twice"] = json => json["buildings"]![0]!["upkeep"] = JsonNode.Parse("""[{ "resource": "food", "amount": 1 }, { "resource": "food", "amount": 2 }]"""),
+        ["building cost of an unknown resource"] = json => json["buildings"]![0]!["resourceCost"]![0]!["resource"] = "iron",
+        ["supply radius too large"] = json => json["upkeep"]!["supplyRadius"] = 4,
+        ["supply beyond sight"] = json => json["upkeep"]!["supplyRadius"] = 2,
+        ["no shortage damage"] = json => json["upkeep"]!["shortageDamage"] = 0,
+        ["shortage damage kills"] = json => json["upkeep"]!["shortageDamage"] = 100,
+        ["buildings without health"] = json => json["upkeep"]!["buildingHealth"] = 0,
+        ["building recovery above its health"] = json => json["upkeep"]!["buildingRecovery"] = 101,
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -273,6 +285,18 @@ public class RulesetTests
         { "unknown growth resource", "$.territory.growthResource" },
         { "free territory", "$.territory.tileCost" },
         { "negative territory price increase", "$.territory.tileCostIncrease" },
+        { "unit cost of an unknown resource", "$.units[1].resourceCost[0].resource" },
+        { "unit cost too high", "$.units[1].resourceCost[0].amount" },
+        { "unit upkeep of zero", "$.units[1].upkeep[0].amount" },
+        { "unit cost in culture", "$.units[1].resourceCost" },
+        { "building upkeep listed twice", "$.buildings[0].upkeep[1].resource" },
+        { "building cost of an unknown resource", "$.buildings[0].resourceCost[0].resource" },
+        { "supply radius too large", "$.upkeep.supplyRadius" },
+        { "supply beyond sight", "$.units[0].sight" },
+        { "no shortage damage", "$.upkeep.shortageDamage" },
+        { "shortage damage kills", "$.upkeep.shortageDamage" },
+        { "buildings without health", "$.upkeep.buildingHealth" },
+        { "building recovery above its health", "$.upkeep.buildingRecovery" },
     };
 
     [Fact]
@@ -308,6 +332,12 @@ public class RulesetTests
         ruleset.Buildings.Select(static building => building.Id)
             .ShouldBe([TestRulesets.ArmyCamp, TestRulesets.Campus, TestRulesets.TradePost, TestRulesets.CultureCentre, TestRulesets.Harbour]);
         ruleset.Building(TestRulesets.ArmyCamp).Production.ShouldBe(1);
+        ruleset.Building(TestRulesets.ArmyCamp).ResourceCost.ShouldBe([new ResourceAmount(TestRulesets.Stone, 4), new ResourceAmount(TestRulesets.Wood, 2)]);
+        ruleset.Building(TestRulesets.Campus).Upkeep.ShouldBe([new ResourceAmount(TestRulesets.Gold, 1)]);
+        ruleset.Building(TestRulesets.TradePost).Upkeep.ShouldBeEmpty();
+        ruleset.Unit(TestRulesets.Horseman).ResourceCost.ShouldBe([new ResourceAmount(TestRulesets.Food, 3), new ResourceAmount(TestRulesets.Water, 2)]);
+        ruleset.Unit(TestRulesets.Soldier).Upkeep.ShouldBe([new ResourceAmount(TestRulesets.Food, 1), new ResourceAmount(TestRulesets.Water, 1)]);
+        ruleset.Upkeep.ShouldBe(new UpkeepRules(SupplyRadius: 1, ShortageDamage: 10, BuildingHealth: 100, BuildingRecovery: 10));
         ruleset.Building(TestRulesets.Harbour).RequiresAdjacentTerrain.ShouldBe([TestRulesets.Lake]);
         ruleset.Unit(TestRulesets.Settler).CanFoundCity.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Settler).CanAttack.ShouldBeFalse();

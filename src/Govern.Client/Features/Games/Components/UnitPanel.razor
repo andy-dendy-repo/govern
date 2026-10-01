@@ -1,7 +1,8 @@
 @* The selected unit: its type in its owner's colour, its health and combat stats (for any unit the player sees) and, for the
    player's own unit, its movement left, sight with the bonus of the terrain it stands on, cost, build production and what it
-   is building.
+   is building, its upkeep and whether it gets it where it stands.
    Its actions are in the action bar (Screen/ActionBar). *@
+@using Govern.Core.Engine
 @using Govern.Core.Rulesets
 @using Govern.Core.Units
 @using Govern.Core.Visibility
@@ -15,6 +16,18 @@
     </RadzenStack>
     <HealthBar Health="@Unit.Health" Max="@Ruleset.Combat.MaxHealth"/>
     <StatTable Rows="@Rows"/>
+    @if (IsOwn)
+    {
+        var supply = Upkeep.IsEmpty ? null : GameEngine.UnitSupply(Ruleset, View, Unit.Id);
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap" class="unit-upkeep">
+            <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="rz-m-0">@(Upkeep.IsEmpty ? "No upkeep" : "Upkeep a turn")</RadzenText>
+            <ResourceCostLabels Ruleset="@Ruleset" Amounts="@Upkeep"/>
+        </RadzenStack>
+        @if (supply is not null)
+        {
+            <RadzenText TextStyle="TextStyle.Caption" class="@($"unit-supply {(supply.Supplied ? "supplied" : "short")} rz-m-0")">@SupplyText(supply)</RadzenText>
+        }
+    }
     @if (IsOwn && Unit.Job is { } job)
     {
         <RadzenText TextStyle="TextStyle.Body2" class="unit-job rz-m-0">@JobText(job)</RadzenText>

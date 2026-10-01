@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
+using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.Client.Helpers;
@@ -57,7 +58,7 @@ public sealed class YieldLens(RulesetService rulesets) : IMapLens
         var name = ruleset.TerrainName(terrain);
         var description = yields.IsEmpty
             ? $"{name}: gives nothing"
-            : $"{name}: {string.Join(", ", yields.Select(amount => $"{amount.Amount} {ruleset.ResourceName(amount.Resource).ToLowerInvariant()}"))} a turn";
+            : $"{name}: {ResourceFormatter.Describe(ruleset, yields)} a turn";
         var richness = total switch
         {
             0 => "barren",
