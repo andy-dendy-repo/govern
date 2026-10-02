@@ -5,55 +5,59 @@ using Govern.Client.Features.Games.Services;
 using Govern.Core.Map;
 using Govern.Core.Visibility;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Govern.Client.Features.Games.Components.Board;
 
 /// <summary>
-/// The SVG hex board. It draws a <see cref="PlayerView"/> and reports clicked tiles through <see cref="TileClicked"/>; panning
-/// and zooming are its own state. A press that moves more than <see cref="DragThreshold"/> pixels is a drag and never a click.
+/// The 3D hex board (F15 preview). It turns the <see cref="PlayerView"/> into a <see cref="BoardScene"/>
+/// (<see cref="BoardSceneBuilder"/>), sends it to the renderer only when the view changes, sends the <see cref="BoardOverlay"/>
+/// only when the selection, its highlights or the lens change, sends the <see cref="SceneMotion"/> of <see cref="Motion"/> only when
+/// it changes (after the scene of the same view), and reports clicked tiles through
+/// <see cref="TileClicked"/>; panning, zooming and telling a drag from a click happen in the renderer. Its
+/// <see cref="Board3DInteropService"/> comes from the component's own scope, so leaving the board unmounts the renderer.
 /// </summary>
-public partial class GameBoard
+public sealed partial class GameBoard3D
 {
-    /// <summary>How far, in pixels, a press may move and still count as a click.</summary>
-    public const double DragThreshold = 4;
-
-    /// <summary>The zoom factor of one wheel notch or button press.</summary>
-    public const double ZoomStep = 1.2;
-
-    // Hexes of room left around the player's units and cities when the board first opens.
-    private const int StartMargin = 3;
-
-    // The size assumed until the element is measured (e.g. when JavaScript is unavailable).
-    private static readonly BoardRect DefaultSize = new(0, 0, 800, 560);
-
-    private ElementReference _board;
-    private BoardViewport _viewport = new(1, 0, 0);
-    private BoardRect _size = DefaultSize;
-    private (double X, double Y)? _pressedAt;
-    private long _pointerId;
-    private (double X, double Y) _lastPointer;
-    private bool _dragged;
-    private bool _dirty = true;
+    private ElementReference _host;
+    private ElementReference _anchor;
+    private HexCoord? _anchored;
+    private bool _mounted;
+    private bool _unavailable;
+    private PlayerView? _drawn;
+    private BoardScene? _scene;
     private BoardFocus? _focus;
+    private (PlayerView View, BoardSelection Selection, BoardHighlights Highlights, IMapLens? Lens)? _overlaid;
+    private BoardMotion? _moved;
 
     /// <summary>The player's view to draw.</summary>
     [Parameter, EditorRequired]
     public PlayerView View { get; set; } = null!;
 
-    /// <summary>The selected unit or city, drawn highlighted.</summary>
-    [Parameter, EditorRequired]
-    public BoardSelection Selection { get; set; } = null!;
+    /// <summary>The latest request to centre the board on a tile; a new request moves the camera.</summary>
+    [Parameter]
+    public BoardFocus? Focus { get; set; }
 
-    /// <summary>The tiles to mark as reachable or attackable.</summary>
-    [Parameter, EditorRequired]
-    public BoardHighlights Highlights { get; set; } = null!;
+    /// <summary>The selected unit or city, ringed on the board.</summary>
+    [Parameter]
+    public BoardSelection Selection { get; set; } = BoardSelection.None;
 
-    /// <summary>The map lens to draw over the terrain, or <see langword="null"/> for none.</summary>
+    /// <summary>The tiles marked for the selection.</summary>
+    [Parameter]
+    public BoardHighlights Highlights { get; set; } = BoardHighlights.None;
+
+    /// <summary>The active map lens, or <see langword="null"/> when none is on.</summary>
     [Parameter]
     public IMapLens? Lens { get; set; }
 
-    /// <summary>The ruleset's full health, so hurt units show a health bar; 0 draws none.</summary>
+    /// <summary>
+    /// What the board draws differently while animations play (<see cref="BoardAnimationService"/>); replaced, never changed, so a
+    /// new one is sent to the renderer only when the reference changes.
+    /// </summary>
+    [Parameter]
+    public BoardMotion Motion { get; set; } = BoardMotion.None;
+
+    /// <summary>The ruleset's full health; hurt units get a health bar. 0 draws none.</summary>
     [Parameter]
     public int MaxHealth { get; set; }
 
@@ -65,18 +69,7 @@ public partial class GameBoard
     [Parameter]
     public EventCallback<HexCoord> TileClicked { get; set; }
 
-    [Inject]
-    private BoardInteropService Interop { get; set; } = null!;
-
-    /// <summary>What the playing animation moves or adds (<see cref="BoardAnimationService"/>); <see cref="BoardMotion.None"/> when idle.</summary>
-    [Parameter]
-    public BoardMotion Motion { get; set; } = BoardMotion.None;
-
-    /// <summary>The latest request to centre the board on a tile; a new request pans the board.</summary>
-    [Parameter]
-    public BoardFocus? Focus { get; set; }
-
-    /// <summary>A card kept beside <see cref="AnchorAt"/> as the board pans and zooms (the attack forecast).</summary>
+    /// <summary>A card kept beside <see cref="AnchorAt"/> as the camera moves (the attack forecast).</summary>
     [Parameter]
     public RenderFragment? Anchored { get; set; }
 
@@ -84,148 +77,132 @@ public partial class GameBoard
     [Parameter]
     public HexCoord? AnchorAt { get; set; }
 
-    /// <inheritdoc />
-    protected override void OnParametersSet()
-    {
-        _dirty = true;
-        if (Focus is { } focus && focus != _focus)
-        {
-            _focus = focus;
-            var (x, y) = HexLayout.Center(focus.Tile);
-            SetViewport(_viewport.CentreOn(x, y, _size.Width, _size.Height));
-        }
-    }
+    private Board3DInteropService Interop => ScopedServices.GetRequiredService<Board3DInteropService>();
 
-    // Pointer moves arrive often; the board renders only when something it shows changed.
+    // A focus request older than the board (an earlier game log click) doesn't move it; the board opens on the player's pieces.
     /// <inheritdoc />
-    protected override bool ShouldRender()
+    protected override void OnInitialized() => _focus = Focus;
+
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync()
     {
-        var render = _dirty;
-        _dirty = false;
-        return render;
+        if (!_mounted)
+        {
+            return;
+        }
+
+        await DrawAsync();
+        await OverlayAsync();
+        await MoveAsync();
+        await FollowFocusAsync();
     }
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender)
         {
-            await Interop.InitAsync(_board, CancellationToken.None);
-            await FitAsync(StartBounds());
+            await AnchorAsync();
+            return;
         }
-    }
 
-    // The board opens on the player's own units and cities (the rest is mostly fog); without any, on the whole map.
-    private BoardRect StartBounds()
-    {
-        HexCoord[] own =
-        [
-            .. View.Units.Where(unit => unit.Owner == View.Viewer).Select(static unit => unit.Position),
-            .. View.Cities.Where(city => city.Owner == View.Viewer).Select(static city => city.Position),
-        ];
-        return own.Length > 0 ? HexLayout.Around(own, StartMargin) : MapBounds;
-    }
-
-    private BoardRect MapBounds => HexLayout.Bounds(View.Width, View.Height);
-
-    private Task FitMapAsync() => FitAsync(MapBounds);
-
-    private async Task FitAsync(BoardRect bounds)
-    {
-        _size = await Interop.MeasureAsync(_board, CancellationToken.None) ?? _size;
-        SetViewport(BoardViewport.Fit(bounds, _size.Width, _size.Height));
-        StateHasChanged();
-    }
-
-    // Only the primary pointer pans, so a second finger can't make the board jump.
-    private void OnPointerDown(PointerEventArgs args)
-    {
-        if (!args.IsPrimary)
+        _mounted = await Interop.MountAsync(_host, OnTileClickedAsync, CancellationToken.None);
+        if (IsDisposed)
         {
             return;
         }
 
-        _pressedAt = _lastPointer = (args.ClientX, args.ClientY);
-        _pointerId = args.PointerId;
-        _dragged = false;
+        if (!_mounted)
+        {
+            _unavailable = true;
+            StateHasChanged();
+            return;
+        }
+
+        await DrawAsync();
+        await OverlayAsync();
+        await MoveAsync();
+        await Interop.FitAsync(_scene!.Start, CancellationToken.None);
+        await FollowFocusAsync();
+        await AnchorAsync();
     }
 
-    private void OnPointerMove(PointerEventArgs args)
+    // The card is handed to the renderer once it is on the page, and let go when it goes.
+    private async Task AnchorAsync()
     {
-        if (args.PointerId != _pointerId)
+        var target = Anchored is null ? null : AnchorAt;
+        if (!_mounted || target == _anchored)
         {
             return;
         }
 
-        if (_pressedAt is not { } pressedAt || args.Buttons == 0)
-        {
-            _pressedAt = null;
-            return;
-        }
-
-        _dragged |= Math.Abs(args.ClientX - pressedAt.X) + Math.Abs(args.ClientY - pressedAt.Y) > DragThreshold;
-        if (_dragged)
-        {
-            SetViewport(_viewport.Pan(args.ClientX - _lastPointer.X, args.ClientY - _lastPointer.Y));
-        }
-
-        _lastPointer = (args.ClientX, args.ClientY);
+        _anchored = target;
+        await (target is { } tile
+            ? Interop.AnchorAsync(_anchor, tile, CancellationToken.None)
+            : Interop.UnanchorAsync(CancellationToken.None));
     }
 
-    // The click (if any) follows the release, so the drag flag stays until the next press.
-    private void OnPointerUp(PointerEventArgs args)
+    // The scene is built and sent only for a new view (a new version: the live update echoing the player's own command carries
+    // the same one); selection and other UI changes don't touch it (yet).
+    private async Task DrawAsync()
     {
-        if (args.PointerId == _pointerId)
-        {
-            _pressedAt = null;
-        }
-    }
-
-    private async Task OnWheelAsync(WheelEventArgs args)
-    {
-        if (args.DeltaY == 0)
+        if (ReferenceEquals(View, _drawn) || View.Version == _drawn?.Version)
         {
             return;
         }
 
-        _size = await Interop.MeasureAsync(_board, CancellationToken.None) ?? _size;
-        SetViewport(_viewport.ZoomAt(args.ClientX - _size.Left, args.ClientY - _size.Top, WheelFactor(args)));
+        _drawn = View;
+        _scene = BoardSceneBuilder.Build(View, MaxHealth);
+        await Interop.RenderAsync(_scene, CancellationToken.None);
     }
 
-    // One mouse notch (100 px, or 3 lines) zooms by ZoomStep; a trackpad's small deltas zoom smoothly instead of a step each.
-    private static double WheelFactor(WheelEventArgs args)
+    // The overlay is sent when the drawn view, the selection, its highlights or the lens change (all replaced, never changed).
+    private async Task OverlayAsync()
     {
-        var pixels = args.DeltaMode switch
+        var inputs = (View: _drawn!, Selection, Highlights, Lens);
+        if (_overlaid is { } last && ReferenceEquals(last.View, inputs.View) && last.Selection == Selection
+            && ReferenceEquals(last.Highlights, Highlights) && ReferenceEquals(last.Lens, Lens))
         {
-            1 => args.DeltaY * 100 / 3,
-            2 => args.DeltaY * 800,
-            _ => args.DeltaY,
-        };
-        return Math.Pow(ZoomStep, -Math.Clamp(pixels / 100, -3, 3));
+            return;
+        }
+
+        _overlaid = inputs;
+        await Interop.RenderOverlayAsync(BoardOverlayBuilder.Build(_drawn!, Selection, Highlights, Lens), CancellationToken.None);
     }
 
-    private void ZoomAtCentre(double factor) => SetViewport(_viewport.ZoomAt(_size.Width / 2, _size.Height / 2, factor));
+    // The motion is sent when it changes (the service replaces it at every step), after the scene it moves pieces of.
+    private async Task MoveAsync()
+    {
+        if (ReferenceEquals(Motion, _moved))
+        {
+            return;
+        }
+
+        _moved = Motion;
+        await Interop.RenderMotionAsync(SceneMotionBuilder.Build(Motion, _drawn), CancellationToken.None);
+    }
+
+    private async Task FollowFocusAsync()
+    {
+        if (Focus is { } focus && focus != _focus)
+        {
+            _focus = focus;
+            var (x, z) = BoardSceneBuilder.Center(focus.Tile);
+            await Interop.FocusAsync(x, z, CancellationToken.None);
+        }
+    }
+
+    private Task FitMapAsync() => _scene is null ? Task.CompletedTask : Interop.FitAsync(_scene.Map, CancellationToken.None);
+
+    private Task ZoomAsync(double factor) => Interop.ZoomAsync(factor, CancellationToken.None);
 
     private async Task OnTileClickedAsync(HexCoord coord)
     {
-        if (_dragged || Disabled)
+        if (Disabled)
         {
             return;
         }
 
-        await TileClicked.InvokeAsync(coord);
-    }
-
-    private string AnchorStyle(HexCoord tile)
-    {
-        var (x, y) = HexLayout.Center(tile);
-        var (screenX, screenY) = _viewport.ToScreen(x, y);
-        return BoardAnchor.Style(screenX, screenY, _size.Width);
-    }
-
-    private void SetViewport(BoardViewport viewport)
-    {
-        _dirty |= viewport != _viewport;
-        _viewport = viewport;
+        await InvokeAsync(() => TileClicked.InvokeAsync(coord));
     }
 }

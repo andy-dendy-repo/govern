@@ -1,34 +1,27 @@
-@* The hex board: terrain, rivers and bridges, improvements, the active map lens, cities, units and the selected unit's moves, attacks and bridge sites, and the animation's effects on top. It opens on the player's own units and cities; Fit shows the whole map. Drag to pan; the wheel or the buttons zoom.
-   Unit and city symbols come from the game's icon set (Components/Game/GameSprite), rendered once by the game screen. *@
-@using Govern.Client.Features.Games.Helpers
+@* The 3D hex board (F15 preview): a WebGL canvas drawn by wwwroot/js/board3d from a BoardScene (the map and its pieces) and a
+   BoardOverlay (the lens, the selection and its highlights), animated by the BoardAnimationService's motion. Drag to pan; the
+   wheel or the buttons zoom.
+   Without WebGL it says so, and the 2D board stays one click away. *@
+@inherits OwningComponentBase
 
 <div class="board-frame">
-    <svg @ref="_board" class="@(Disabled ? "board busy" : "board")" role="application" aria-label="Game board"
-         @onpointerdown="@OnPointerDown" @onpointermove="@OnPointerMove" @onpointerup="@OnPointerUp"
-         @onpointerleave="@OnPointerUp" @onwheel="@OnWheelAsync">
-        <defs>
-            <symbol id="hex" overflow="visible"><polygon points="@HexLayout.Corners"/></symbol>
-        </defs>
-        <g class="layer" transform="@_viewport.Transform">
-            <BoardTerrain View="@View" TileClicked="@OnTileClickedAsync"/>
-            <BoardRivers View="@View"/>
-            <BoardImprovements View="@View"/>
-            <BoardBorders View="@View"/>
-            <BoardLens View="@View" Lens="@Lens"/>
-            <BoardPieces View="@View" Selection="@Selection" Highlights="@Highlights" MaxHealth="@MaxHealth" Motion="@Motion"/>
-            <BoardEffects Motion="@Motion"/>
-        </g>
-    </svg>
-    @if (AnchorAt is { } anchorAt && Anchored is not null)
+    <div @ref="_host" class="@(Disabled ? "board3d busy" : "board3d")" role="application" aria-label="Game board (3D)"></div>
+    @if (_unavailable)
     {
-        <div class="board-anchor" style="@AnchorStyle(anchorAt)">@Anchored</div>
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="board3d-unavailable">
+            This browser can't show the 3D board (WebGL is off or not supported). Switch back with the 2D button.
+        </RadzenAlert>
+    }
+    @if (AnchorAt is not null && Anchored is not null)
+    {
+        <div @ref="_anchor" class="board-anchor">@Anchored</div>
     }
     <LensToolbar/>
     <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem" class="board-zoom">
         <RadzenButton Icon="add" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom in"
-                      Click="@(() => ZoomAtCentre(ZoomStep))" class="zoom-in"/>
+                      Click="@(() => ZoomAsync(GameBoard.ZoomStep))" class="zoom-in"/>
         <RadzenButton Icon="remove" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom out"
-                      Click="@(() => ZoomAtCentre(1 / ZoomStep))" class="zoom-out"/>
+                      Click="@(() => ZoomAsync(1 / GameBoard.ZoomStep))" class="zoom-out"/>
         <RadzenButton Icon="fit_screen" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Fit the map"
                       Click="@FitMapAsync" class="zoom-fit"/>
         <BoardModeToggle/>
