@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F15 step 3, pieces, selection and lenses on the 3D board
 
-**Status:** done 2026-10-02 in PR #43 (backlog F15, step 3 of the [F15 plan](../active/F15-3d-board.md)). Visuals only: Govern.Core, the server, the rules and the view stay as they are. The 3D board stays behind its preview toggle.
+**Status:** done 2026-10-02 in PR #43 (backlog F15, step 3 of the [F15 plan](F15-3d-board.md)). Visuals only: Govern.Core, the server, the rules and the view stay as they are. The 3D board stays behind its preview toggle.
 
 ## Context
 Steps 1 and 2 (PRs #41, #42) put the terrain, rivers, bridges, improvements, buildings and borders on the 3D board, but no units or cities, so a 3D click may only select. This step draws everything the player acts on: units and cities, the selection, the move, attack, bridge and placing highlights, and the two map lenses. With them on screen, a 3D click acts like a 2D one, and the 3D board becomes playable. It also unblocks F16 (the full-screen game view).
@@ -57,7 +57,7 @@ Steps 1 and 2 (PRs #41, #42) put the terrain, rivers, bridges, improvements, bui
 - `docs/features/game-ui.md`, "3D board (preview, F15)": pieces, banners and labels, the overlay and how it is sent apart from the scene, picking, and clicks that act.
 - `.claude/rules/game-ui.md`: "Every ruleset id has its UI" adds the 3D model (`PieceModels`) for a new unit.
 - `.claude/rules/blazor-client.md`: the 3D board's HTML labels are built without HTML sinks (`textContent`, `createElementNS`).
-- `docs/README.md` index; the [F15 plan](../active/F15-3d-board.md) step 3 links here; the backlog F15 row and F16 (now unblocked, needs plan).
+- `docs/README.md` index; the [F15 plan](F15-3d-board.md) step 3 links here; the backlog F15 row and F16 (now unblocked, needs plan).
 - At merge (in the step 3 PR): this plan moves to `docs/plans/done/`.
 
 ## Verification

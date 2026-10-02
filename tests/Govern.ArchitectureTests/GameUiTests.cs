@@ -50,6 +50,41 @@ public partial class GameUiTests
     }
 
     [Fact]
+    public void Board3DScripts_ReadOnlyTokensThatExist()
+    {
+        var (light, _) = TokenBlocks();
+        var missing = Board3DTokens().Where(token => !light.Contains(token)).ToList();
+
+        missing.ShouldBeEmpty("a token the 3D board reads must be defined in wwwroot/css/tokens.css, or it draws as a neutral grey");
+    }
+
+    [Fact]
+    public void Board3DTokens_HaveADarkValue()
+    {
+        var (light, dark) = TokenBlocks();
+        var missing = light.Where(static token => token.StartsWith("--gv-board3d-", StringComparison.Ordinal))
+            .Where(token => !dark.Contains(token))
+            .ToList();
+
+        missing.ShouldBeEmpty("every --gv-board3d-* token needs its dark value under prefers-color-scheme: dark in tokens.css");
+    }
+
+    // The tokens named literally in the 3D board's scripts (names built from an id, such as a terrain's, are checked elsewhere).
+    private static HashSet<string> Board3DTokens() =>
+        [.. Directory.EnumerateFiles(Board3DRoot, "*.js", SearchOption.AllDirectories)
+            .SelectMany(static file => ScriptTokenRegex().Matches(File.ReadAllText(file)).Select(static match => match.Groups[1].Value))];
+
+    // The tokens defined in tokens.css before the dark block (light) and inside it (dark).
+    private static (HashSet<string> Light, HashSet<string> Dark) TokenBlocks()
+    {
+        var css = File.ReadAllText(TokensFile);
+        var split = css.IndexOf("@media (prefers-color-scheme: dark)", StringComparison.Ordinal);
+        split.ShouldBePositive("tokens.css has a dark block");
+        HashSet<string> Defined(string text) => [.. TokenDefinitionRegex().Matches(text).Select(static match => match.Groups[1].Value)];
+        return (Defined(css[..split]), Defined(css[split..]));
+    }
+
+    [Fact]
     public void Board3DModels_HaveABuilderPerFeatureModel()
     {
         var builders = ModelBuilderRegex().Matches(File.ReadAllText(Path.Combine(Board3DRoot, "models.js")))
@@ -213,6 +248,12 @@ public partial class GameUiTests
     // A piece standing on a baked character: `standing(c, 'name')` or `character(c, 'name', …)`.
     [GeneratedRegex(@"\b(?:standing|character)\(c, '([a-z]+)'", RegexOptions.CultureInvariant)]
     private static partial Regex FigureUseRegex();
+
+    [GeneratedRegex(@"'(--gv-[a-z0-9-]+)'", RegexOptions.CultureInvariant)]
+    private static partial Regex ScriptTokenRegex();
+
+    [GeneratedRegex(@"(--gv-[a-z0-9-]+)\s*:", RegexOptions.CultureInvariant)]
+    private static partial Regex TokenDefinitionRegex();
 
     [GeneratedRegex(@"const WATER_LEVEL = ([0-9.]+);", RegexOptions.CultureInvariant)]
     private static partial Regex WaterLevelRegex();

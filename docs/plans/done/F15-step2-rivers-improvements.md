@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F15 step 2, rivers, improvements and borders on the 3D board
 
-**Status:** done 2026-10-02 in PR #42 (backlog F15, step 2 of the [F15 plan](../active/F15-3d-board.md)). Visuals only: Govern.Core, the server, the rules and the view stay as they are. The 3D board stays behind its preview toggle.
+**Status:** done 2026-10-02 in PR #42 (backlog F15, step 2 of the [F15 plan](F15-3d-board.md)). Visuals only: Govern.Core, the server, the rules and the view stay as they are. The 3D board stays behind its preview toggle.
 
 ## Context
 Step 1 (PR #41) put the terrain on the 3D board. The 2D board also shows rivers on tile edges, bridges, improvements, buildings (with the faded one a city is producing) and territory borders, and the 3D board has to show all of them before it can replace the SVG one. This step adds those five things as low-poly models built in code, decided in C# like the tiles, so a player in 3D sees the same map they see in 2D. Pieces, highlights and lenses stay for step 3.
@@ -50,7 +50,7 @@ Step 1 (PR #41) put the terrain on the 3D board. The 2D board also shows rivers 
 ## Docs & rules
 - `docs/features/game-ui.md`, "3D board (preview, F15)": rivers, bridges, improvements, buildings and borders in 3D, `FeatureModels` and `RiverReliefs`, and how a new improvement, building or river kind gets its 3D model.
 - `.claude/rules/game-ui.md`: "Every ruleset id has its UI" adds the 3D model (`FeatureModels`) for a new improvement or building and the 3D width (`RiverReliefs`) for a new river kind.
-- `docs/README.md` index; the [F15 plan](../active/F15-3d-board.md) step 2 links here; the backlog F15 row says step 2.
+- `docs/README.md` index; the [F15 plan](F15-3d-board.md) step 2 links here; the backlog F15 row says step 2.
 - At merge (in the step 2 PR): this plan moves to `docs/plans/done/`.
 
 ## Verification

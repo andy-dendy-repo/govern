@@ -1,0 +1,62 @@
+@page "/design/board"
+@* The 3D board bench (F15 step 5): the board on the largest map the ruleset allows, generated locally (no Api, no sign-in), with
+   buttons to move the army and to measure the board (docs/features/game-ui.md, Performance). The 2D/3D button swaps in the 2D
+   board to compare. Development only: elsewhere it shows the not-found text. *@
+@using System.Globalization
+@using Govern.Client.Features.Games.Components.Board
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
+@implements IDisposable
+
+@if (!Environment.IsDevelopment())
+{
+    <PageTitle>Not found - Govern</PageTitle>
+    <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">Not found</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body1" class="not-found">Sorry, the page you requested does not exist.</RadzenText>
+}
+else
+{
+    <PageTitle>3D board bench - Govern</PageTitle>
+    <CascadingValue Value="@_ui" IsFixed="true">
+        <GameSprite/>
+        <RadzenStack Gap="1rem" class="bench-page">
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">3D board bench</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">
+                A @_view.Width×@_view.Height map generated here, @(_revealed ? "with every tile in sight, an army and cities" : "as the first player sees it at the start").
+            </RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+                <RadzenButton Text="@(_revealed ? "Show the opening" : "Show everything")" ButtonStyle="ButtonStyle.Light" Click="@ToggleRevealed" class="bench-reveal"/>
+                <RadzenButton Text="March" Icon="arrow_forward" ButtonStyle="ButtonStyle.Light" Click="@March" class="bench-march"/>
+                <RadzenButton Text="Measure" Icon="speed" ButtonStyle="ButtonStyle.Primary" Click="@MeasureAsync" Disabled="@_measuring" class="bench-measure"/>
+            </RadzenStack>
+            @if (_ui.Board3D)
+            {
+                <GameBoard3D View="@_view" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens"
+                             MaxHealth="@Ruleset.Combat.MaxHealth" TileClicked="@Select"/>
+            }
+            else
+            {
+                <GameBoard View="@_view" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens"
+                           MaxHealth="@Ruleset.Combat.MaxHealth" TileClicked="@Select"/>
+            }
+            @if (_result is { } result)
+            {
+                <table class="bench-result">
+                    <tbody>
+                        <tr><th scope="row">Scene built in C#</th><td>@Ms(result.SceneBuild)</td></tr>
+                        <tr><th scope="row">Last scene applied</th><td>@Ms(result.Apply) (@string.Join(", ", result.Layers.Select(layer => $"{layer.Key} {Ms(layer.Value)}")))</td></tr>
+                        <tr><th scope="row">Everything rebuilt</th><td>@Ms(result.Rebuild)</td></tr>
+                        <tr><th scope="row">Frames while panning</th><td>@Ms(result.Frame) average, @Ms(result.FrameP95) at the 95th percentile</td></tr>
+                        <tr><th scope="row">Within a frame</th><td>labels @Ms(result.Labels) (@result.LabelCount labels), drawing @Ms(result.Draw)</td></tr>
+                        <tr><th scope="row">Draw calls, triangles</th><td>@result.Calls, @result.Triangles.ToString("N0", CultureInfo.InvariantCulture)</td></tr>
+                        <tr><th scope="row">Triangles by layer</th><td>@string.Join(", ", result.Shares.Select(share => $"{share.Key} {share.Value.ToString("N0", CultureInfo.InvariantCulture)}"))</td></tr>
+                        <tr><th scope="row">Pixel ratio, shadow map</th><td>@result.PixelRatio.ToString("0.##", CultureInfo.InvariantCulture), @result.ShadowMap px</td></tr>
+                    </tbody>
+                </table>
+            }
+            else if (_missing)
+            {
+                <RadzenText TextStyle="TextStyle.Body2" class="bench-missing">The 3D board isn't running here (the 2D board is on, or WebGL is off), so there is nothing to measure.</RadzenText>
+            }
+        </RadzenStack>
+    </CascadingValue>
+}

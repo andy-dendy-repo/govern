@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F15 step 5, themes, touch and performance
 
-**Status:** planned 2026-10-02 (backlog F15, step 5, the last step of the [F15 plan](F15-3d-board.md), after [step 4](../done/F15-step4-animations.md)). Visuals only: Govern.Core, the server, the rules, the view and `BoardScene` stay as they are.
+**Status:** done 2026-10-02 in PR #48 (backlog F15, step 5, the last step of the [F15 plan](F15-3d-board.md), after [step 4](F15-step4-animations.md)); the measurements and the decisions made while building it are at the end. Visuals only: Govern.Core, the server, the rules, the view and `BoardScene` stay as they are.
 
 ## Context
 The 3D board now draws everything the 2D board does, but it was built and checked on 20×14 maps with a mouse. On a phone, the only way to zoom is the buttons, and a second finger is ignored. Every new view rebuilds the whole scene: terrain, rivers, buildings, borders and pieces. Every frame also moves every HTML label, even ones off screen. Step 5 adds pinch to zoom and two-finger pan, and makes the board stay smooth on the largest map the ruleset allows (40×40). It also closes the small gaps left in theming. After this step, F15 is done. Retiring the SVG board stays the deferred item F17.
@@ -141,3 +141,34 @@ The 3D board now draws everything the 2D board does, but it was built and checke
 - **The cloud container has no GPU.** Chromium there renders WebGL in software (SwiftShader), so its frame times are worse than any real device and show only before and after. A check on a real mid-range phone needs Andrii, through his Cloudflare tunnel, with the bench page. The budgets are judged on the bench's CPU-side numbers (rebuild and label time), which software rendering doesn't distort.
 - **A full-visible 40×40 map isn't a real game today.** Games are 20×14 and fogged. The bench is a stress test, and the numbers that matter for play are the fogged view's.
 - **Layer keys cost time too.** Serialising each layer's input to compare it is far cheaper than rebuilding, but the bench checks it. If keys show up, `BoardSceneBuilder` can stamp a per-layer version instead, which changes `BoardScene` and would be noted here.
+
+## Measurements
+On the bench at `/design/board`, full 40×40 map in sight (about 200 units, 12 cities, the yields lens where noted), Chromium in a cloud container with software WebGL (SwiftShader). Times in milliseconds.
+
+| | Before | After |
+|---|---|---|
+| A march applied (1400 px; the bench's march reveals nothing) | 110–167 (terrain 87–137 of it) | 5.6–7.0 (layer keys 1.6–1.9, pieces 1.7–2.2) |
+| A march applied (390 px, 4× CPU throttling) | not measured | 26 (keys 7.4, pieces 8.0) |
+| First scene applied (1400 px); a move that reveals tiles also rebuilds the whole terrain | 203–223 | 83 (terrain 69) |
+| Scene built in C# (`BoardSceneBuilder`) | 32–40 | same: 31–44, 232–236 at 390 px with 4× throttling |
+| Labels in a panning frame | 0.5 (129 labels), 2.9–3.3 with the yields lens (1,729) | same while the camera moves; nothing on frames where it stands still |
+| Draw calls, triangles per frame | 62, 1,264,186 | same (units 529,272 and ground 93,202 per pass, drawn twice for the shadow) |
+
+The real opening view draws 89,008 triangles. The time between frames is 170 ms (opening) to 900 ms (full map) in the container. That is the software renderer, not the board, so frame time budgets need a real device.
+
+## Decisions made during implementation
+- **The bench builds views, not games.** The client may not use `GameFactory` or `GameState` (`LayerDependencyTests.Client_UsesCoreOnlyForViewsAndPreviews`), so `Features/Design/Helpers/BoardBenchBuilder` builds the views itself:
+  - patches of every ruleset terrain from a fixed hash;
+  - a river on every eighth column, a city on every tenth tile with its territory, improvements and a building;
+  - a unit of each type in turn on every few tiles;
+  - or, for the opening, three units in sight of a corner.
+
+  The bench also selects a tapped unit, so touch can be tried there. Its 2D/3D button swaps in the 2D board for comparison, and it reports triangles per layer.
+- **Frames are measured as the time between animation frames**, not as synchronous draw calls: `gl.finish()` returned long before the browser had finished the frame.
+- **A layer is the unit of rebuild.** A move that reveals tiles rebuilds the whole terrain layer (about 70 ms on the full map), not only the new tiles; patching single tiles stays out of scope until a real game shows it.
+- **Layer keys are JSON text.** Per-layer versions from `BoardSceneBuilder` were not needed (keys take 1.6–1.9 ms on the full map). The terrain's key includes the features (no trees under a building), and the features' key includes the tiles they stand on. The baked figures arriving rebuild only the pieces.
+- **Labels:** while the camera moves, every visible label still moves, so a pan costs the same as before. The saving is on frames where the camera stands still, such as animations and idle redraws.
+- **Gestures moved to `gestures.js`.** A third finger is ignored. A pointer that can no longer be captured is still followed.
+- **Phone settings left as they are.** The container can't measure a GPU, so plan step 5's condition can't be judged here. The full map hands the GPU about 1.26 million triangles a frame, 530,000 of them units. If a real phone stutters on `/design/board`, the first levers are units casting no shadow or simpler figures far out, before the pixel ratio and shadow map.
+- **The token checks are two tests.** Every token a 3D script names must exist (`Board3DScripts_ReadOnlyTokensThatExist`). Every `--gv-board3d-*` token must also have a dark value (`Board3DTokens_HaveADarkValue`). The only other tokens a script reads without a dark value, `--gv-selected` and `--gv-bridge-outline`, are the same in both themes on purpose.
+- **The C# scene build is now the larger part of a new view** on the full map: 30 ms on a desktop, 230 ms with 4× throttling. Games are 20×14 today, so it is left as it is. It becomes a follow-up if a large map is ever offered.
