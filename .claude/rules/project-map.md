@@ -11,6 +11,7 @@ Govern is an HTTP Web API with a Blazor WASM client. The server layers follow Cl
 | `docs/` | Knowledge base used for RAG (see `docs.md` rule) |
 | `rulesets/` | Game rulesets: `<key>/v<N>.json`, the loadable data Core plays with (format: `docs/game/game-data.md`). A published version is never edited; a change is a new version |
 | `infra/` | Bicep (Azure) |
+| `tools/` | Offline Node tools, run by hand: `unit-models` bakes the 3D board's units (`wwwroot/models/units`) from the CC0 KayKit pack |
 | `.github/workflows/`, `.github/scripts/` | CI (PR → stage/main) and release (stage → main); `configure-client.sh` fills the client's CSP and Api origin at release |
 
 ## Projects and allowed references

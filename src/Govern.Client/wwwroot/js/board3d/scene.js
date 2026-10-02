@@ -7,7 +7,7 @@ import { CameraRig } from './camera.js';
 import { Palette } from './palette.js';
 import { Labels } from './labels.js';
 import { buildBorders, buildOverlay, disposeShared as disposeBorders } from './overlays.js';
-import { buildPieces, disposeShared as disposePieces } from './pieces.js';
+import { buildPieces, disposeShared as disposePieces, loadFigures } from './pieces.js';
 import { buildFeatures, disposeShared as disposeFeatures } from './models.js';
 import { buildRivers, disposeShared as disposeRivers } from './rivers.js';
 import { disposeLayer } from './shapes.js';
@@ -50,6 +50,8 @@ export class Board3D {
 
         this.listen();
         this.resize();
+        // Units show only their base until the baked characters arrive; then the pieces are built again.
+        loadFigures().then(loaded => loaded && !this.disposed && this.rebuild()).catch(error => console.error(error));
     }
 
     listen() {
@@ -254,6 +256,7 @@ export class Board3D {
     }
 
     dispose() {
+        this.disposed = true;
         cancelAnimationFrame(this.frame);
         for (const [type, handler] of Object.entries(this.handlers)) {
             this.canvas.removeEventListener(type, handler);

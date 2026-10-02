@@ -19,6 +19,7 @@ public partial class GameUiTests
     private static readonly string CssRoot = Path.Combine(ClientRoot, "wwwroot", "css");
     private static readonly string TokensFile = Path.Combine(CssRoot, "tokens.css");
     private static readonly string Board3DRoot = Path.Combine(ClientRoot, "wwwroot", "js", "board3d");
+    private static readonly string UnitModelsRoot = Path.Combine(ClientRoot, "wwwroot", "models", "units");
 
     [Fact]
     public void Css_UsesColourValuesOnlyInTokens()
@@ -70,6 +71,33 @@ public partial class GameUiTests
         var missing = Enum.GetNames<PieceModel>().Select(static name => name.ToLowerInvariant()).Where(name => !builders.Contains(name)).ToList();
 
         missing.ShouldBeEmpty("every PieceModel needs its builder in js/board3d/pieces.js, or it is drawn as a soldier");
+    }
+
+    [Fact]
+    public void Board3DPieces_EveryFigureHasItsBakedModel()
+    {
+        var pieces = File.ReadAllText(Path.Combine(Board3DRoot, "pieces.js"));
+        var listed = FigureListRegex().Match(pieces);
+        listed.Success.ShouldBeTrue("js/board3d/pieces.js lists the baked characters in FIGURES");
+        var figures = FigureNameRegex().Matches(listed.Groups[1].Value).Select(static match => match.Groups[1].Value).ToList();
+        var used = FigureUseRegex().Matches(pieces).Select(static match => match.Groups[1].Value).Distinct(StringComparer.Ordinal);
+
+        used.Except(figures, StringComparer.Ordinal).ShouldBeEmpty("a piece may only stand on a character listed in FIGURES");
+        var baked = BakedUnitRegex().Matches(File.ReadAllText(Path.Combine(SourceTree.RepositoryRoot, "tools", "unit-models", "bake.mjs")))
+            .Select(static match => match.Groups[1].Value);
+        baked.ShouldBe(figures, ignoreOrder: true, "tools/unit-models/bake.mjs bakes exactly the characters pieces.js loads");
+        var shapes = ShapeNameRegex().Matches(pieces).Select(static match => match.Groups[1].Value);
+        figures.Intersect(shapes, StringComparer.Ordinal).ShouldBeEmpty("a figure named like a shape would be drawn as that shape");
+        foreach (var figure in figures)
+        {
+            var file = Path.Combine(UnitModelsRoot, $"{figure}.json");
+            File.Exists(file).ShouldBeTrue($"wwwroot/models/units/{figure}.json is baked by tools/unit-models (npm run bake)");
+            using var model = JsonDocument.Parse(File.ReadAllText(file));
+            foreach (var part in new[] { "body", "seat" })
+            {
+                model.RootElement.GetProperty(part).GetProperty("indices").GetArrayLength().ShouldBeGreaterThan(0, $"{figure}.json has its {part} part");
+            }
+        }
     }
 
     [Fact]
@@ -166,6 +194,25 @@ public partial class GameUiTests
     // A piece builder in pieces.js: `    name: c => [`.
     [GeneratedRegex(@"^ {4}([a-z]+): c => \[", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex PieceBuilderRegex();
+
+    // The baked characters pieces.js loads: `const FIGURES = ['soldier', …];`.
+    [GeneratedRegex(@"const FIGURES = \[([^\]]*)\];", RegexOptions.CultureInvariant)]
+    private static partial Regex FigureListRegex();
+
+    [GeneratedRegex(@"'([a-z]+)'", RegexOptions.CultureInvariant)]
+    private static partial Regex FigureNameRegex();
+
+    // A unit in tools/unit-models/bake.mjs: `    name: { character: …`.
+    [GeneratedRegex(@"^ {4}([a-z]+): \{ character:", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex BakedUnitRegex();
+
+    // A shared shape in pieces.js: `    name: new XxxGeometry(`.
+    [GeneratedRegex(@"^ {4}([a-z]+): new [A-Za-z]+Geometry\(", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex ShapeNameRegex();
+
+    // A piece standing on a baked character: `standing(c, 'name')` or `character(c, 'name', …)`.
+    [GeneratedRegex(@"\b(?:standing|character)\(c, '([a-z]+)'", RegexOptions.CultureInvariant)]
+    private static partial Regex FigureUseRegex();
 
     [GeneratedRegex(@"const WATER_LEVEL = ([0-9.]+);", RegexOptions.CultureInvariant)]
     private static partial Regex WaterLevelRegex();
