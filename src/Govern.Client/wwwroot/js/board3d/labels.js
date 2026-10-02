@@ -74,6 +74,16 @@ export class Labels {
         this.damage.set(key, { element: label, anchor: new Vector3(x, height + 0.9, z) });
     }
 
+    // A page element (the attack forecast) kept next to a point of the board. Unlike the labels it takes clicks and is never
+    // hidden: its CSS keeps it on the board, beside the point (--anchor-x, --anchor-y) on the side with more room (--anchor-flip).
+    setAnchor(element, x, y, z) {
+        this.anchor = { element, anchor: new Vector3(x, y, z) };
+    }
+
+    clearAnchor() {
+        this.anchor = null;
+    }
+
     removeDamage(key) {
         this.damage.get(key)?.element.remove();
         this.damage.delete(key);
@@ -125,6 +135,19 @@ export class Labels {
                 this.put(label, camera, width, height);
             }
         }
+        if (this.anchor && (moved || this.anchor.placed !== true)) {
+            this.putAnchor(this.anchor, camera, width, height);
+        }
+    }
+
+    putAnchor(anchor, camera, width, height) {
+        anchor.placed = true;
+        this.point.copy(anchor.anchor).project(camera);
+        const x = (this.point.x + 1) / 2 * width;
+        const style = anchor.element.style;
+        style.setProperty('--anchor-x', `${x.toFixed(1)}px`);
+        style.setProperty('--anchor-y', `${((1 - this.point.y) / 2 * height).toFixed(1)}px`);
+        style.setProperty('--anchor-flip', x > width * 0.55 ? '1' : '0');
     }
 
     put(label, camera, width, height) {

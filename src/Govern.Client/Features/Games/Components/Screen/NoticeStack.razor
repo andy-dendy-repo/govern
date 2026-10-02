@@ -1,0 +1,35 @@
+@* Notices over the top of the game board, under the top strip: the command that arrived too late, the Api's error and, once the
+   game is over, its result. *@
+@using Govern.Client.Features.Games.Components
+@using Govern.Client.Models
+@using Govern.Core.State
+@using Govern.Core.Visibility
+
+@if (Stale || Error is not null || View.Status == GameStatus.Finished)
+{
+    <div class="notice-stack">
+        @if (Stale)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="stale">
+                The game changed before your move arrived, so nothing was applied. The board is up to date now.
+            </RadzenAlert>
+        }
+        <ApiErrorAlert Error="@Error"/>
+        @if (View.Status == GameStatus.Finished)
+        {
+            <div class="hud-card">
+                <GameOverPanel View="@View"/>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    /// <summary>Whether the last command arrived after the game changed, so nothing was applied.</summary>
+    [Parameter] public bool Stale { get; set; }
+
+    /// <summary>The last command's error, if any.</summary>
+    [Parameter] public ApiError? Error { get; set; }
+}

@@ -1,57 +1,314 @@
 /*
   The game screen and the shared game components (docs/features/game-ui.md). Colours are tokens (tokens.css).
-  Zones: top bar, map, side panel, and the action bar floating over the bottom of the map (so a unit's actions sit next to
-  it without scrolling); on narrow screens the map comes first and the side panel wraps below it.
+  The full-screen game view (F16): the board fills the screen and the controls float over it as cards. The overlay slots
+  (.hud) take no clicks themselves, so a drag between cards reaches the board; only their cards do. The top strip's height is
+  kept in --gv-hud-top (js/game-screen.js), and the board's own controls sit below it.
 */
-.game-screen {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
-    grid-template-areas:
-        "top top"
-        "map side";
-    align-items: start;
-    gap: var(--gv-space-3);
-    outline: none;
+
+/* GameLayout (Layout/GameLayout): the app header, and a body with no padding. The game screen fills it exactly, so only the
+   lobby and the other padded states (or a screen shorter than the game screen's minimum) scroll. */
+.game-layout .game-body {
+    padding: 0;
+    overflow: auto;
 }
 
-.zone-top { grid-area: top; }
-.zone-map { grid-area: map; min-width: 0; }
-.zone-actions {
-    grid-area: map;
-    align-self: end;
-    justify-self: start;
-    z-index: 1;
-    margin: var(--gv-space-2);
+.game-main {
+    height: 100%;
+}
+
+.game-screen {
+    --gv-hud-gap: var(--gv-space-2);
+    --gv-hud-top: 4rem;
+    position: relative;
+    height: 100%;
+    min-height: 20rem;
+    overflow: hidden;
+    outline: none;
+    background: var(--gv-surface);
+}
+
+.hud-board {
+    position: absolute;
+    inset: 0;
+}
+
+/* Inside the game screen the boards fill it (the gallery and the bench keep their capped height). */
+.game-screen .board-frame,
+.game-screen .board,
+.game-screen .board3d {
+    height: 100%;
+    border-radius: 0;
+}
+
+.game-screen .lens-toolbar,
+.game-screen .board-zoom {
+    top: calc(var(--gv-hud-top) + var(--gv-hud-gap));
+}
+
+/* The lens toolbar stops short of the zoom buttons (and the 2D/3D switch). */
+.game-screen .lens-toolbar {
+    right: 10rem;
+}
+
+.hud {
+    position: absolute;
+    z-index: 2;
     pointer-events: none;
 }
 
-.zone-actions > * {
+.hud > *,
+.board-anchor {
     pointer-events: auto;
 }
-.zone-side { grid-area: side; }
 
-@media (max-width: 60rem) {
-    .game-screen {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-areas:
-            "top"
-            "map"
-            "side";
-    }
+/* The 3D board's anchor has no place until its first frame writes one; it shows from then on. */
+.board-anchor:not([style]) {
+    visibility: hidden;
 }
 
+.hud-top {
+    top: var(--gv-hud-gap);
+    left: var(--gv-hud-gap);
+    right: var(--gv-hud-gap);
+}
+
+.hud-notices {
+    top: calc(var(--gv-hud-top) + 3.25rem);
+    left: 50%;
+    width: min(32rem, calc(100% - 2 * var(--gv-hud-gap)));
+    transform: translateX(-50%);
+}
+
+.hud-selection {
+    left: var(--gv-hud-gap);
+    bottom: var(--gv-hud-gap);
+    width: min(24rem, calc(100% - 2 * var(--gv-hud-gap)));
+    max-height: calc(100% - var(--gv-hud-top) - 4rem);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.hud-log {
+    top: calc(var(--gv-hud-top) + 3.25rem);
+    right: var(--gv-hud-gap);
+    bottom: var(--gv-hud-gap);
+    width: min(22rem, calc(100% - 2 * var(--gv-hud-gap)));
+    display: flex;
+    flex-direction: column;
+}
+
+/* A card over the board: the raised surface with a border and a shadow, so it reads over any terrain. */
 .top-bar,
-.side-panel,
+.hud-card,
 .action-bar {
     padding: var(--gv-space-2) var(--gv-space-3);
     background: var(--gv-surface-raised);
     border: 1px solid var(--gv-border);
     border-radius: var(--gv-radius);
+    box-shadow: 0 1px 4px var(--gv-shadow);
 }
 
-.action-bar {
-    background: var(--gv-surface);
-    box-shadow: 0 1px 4px var(--gv-shadow);
+/* The top strip (Screen/TopBar): on wide screens the "more" group flows inline, between the identity and the actions. */
+.top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--gv-space-2) var(--gv-space-3);
+}
+
+.top-identity,
+.top-actions,
+.top-tools,
+.stockpile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--gv-space-2);
+}
+
+.stockpile {
+    gap: var(--gv-space-3);
+}
+
+.top-more {
+    display: contents;
+}
+
+.top-tools {
+    order: 1;
+    margin-inline-start: auto;
+}
+
+.top-actions {
+    order: 2;
+}
+
+.top-more-toggle {
+    display: none;
+}
+
+.log-toggle {
+    gap: var(--gv-space-1);
+}
+
+/* The selection card (Screen/SelectionCard): its body scrolls inside the slot's height; collapsed, only its heading shows. */
+.selection-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding-inline-end: 2.5rem;
+}
+
+.selection-body {
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gv-space-3);
+}
+
+.selection-collapse {
+    position: absolute;
+    top: var(--gv-space-1);
+    right: var(--gv-space-1);
+}
+
+.selection-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--gv-space-2);
+    min-height: 1.75rem;
+}
+
+.selection-hint {
+    align-self: flex-start;
+}
+
+/* The unit's actions sit inside the card, under its panel. */
+.selection-card .action-bar {
+    padding: var(--gv-space-2) 0 0;
+    background: none;
+    border: 0;
+    border-top: 1px solid var(--gv-border);
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* The log drawer (Screen/LogDrawer). */
+.log-drawer {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: var(--gv-space-2);
+}
+
+.log-drawer-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.log-drawer .game-log {
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.notice-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gv-space-2);
+}
+
+/* The attack forecast beside its target (Helpers/BoardAnchor, js/board3d/labels.js): to the point's right, or its left when
+   --anchor-flip is 1, kept inside the board. */
+.board-anchor {
+    --anchor-width: min(22rem, calc(100% - 2 * var(--gv-hud-gap, 0.5rem)));
+    position: absolute;
+    z-index: 3;
+    width: var(--anchor-width);
+    left: clamp(var(--gv-hud-gap, 0.5rem),
+                calc(var(--anchor-x, 50%) + 2.5rem - var(--anchor-flip, 0) * (var(--anchor-width) + 5rem)),
+                calc(100% - var(--anchor-width) - var(--gv-hud-gap, 0.5rem)));
+    top: clamp(calc(var(--gv-hud-top, 0px) + var(--gv-hud-gap, 0.5rem)),
+               calc(var(--anchor-y, 50%) - 4rem),
+               calc(100% - 15rem));
+    max-height: calc(100% - var(--gv-hud-top, 0px) - 2 * var(--gv-hud-gap, 0.5rem));
+    overflow-y: auto;
+}
+
+.game-screen:fullscreen {
+    width: 100%;
+    height: 100%;
+}
+
+/* Phones: a compact strip (the rest under More), the selection card and the forecast as bottom sheets, and the log drawer
+   across the top half. */
+@media (max-width: 40rem) {
+    .game-screen {
+        --gv-hud-gap: var(--gv-space-1);
+    }
+
+    .top-bar {
+        padding: var(--gv-space-1) var(--gv-space-2);
+    }
+
+    .game-title {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .top-more-toggle {
+        display: inline-flex;
+    }
+
+    .top-more {
+        display: none;
+    }
+
+    .top-more.open .top-tools {
+        margin-inline-start: 0;
+    }
+
+    .top-more.open {
+        order: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--gv-space-2);
+        width: 100%;
+    }
+
+    .hud-selection,
+    .board-anchor {
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: auto;
+        width: auto;
+        max-height: 45%;
+    }
+
+    .hud-selection .hud-card,
+    .board-anchor .hud-card {
+        border-radius: var(--gv-radius) var(--gv-radius) 0 0;
+    }
+
+    .board-anchor {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hud-log {
+        left: var(--gv-hud-gap);
+        width: auto;
+        bottom: 50%;
+    }
 }
 
 .seat-swatch {
@@ -194,18 +451,11 @@
     min-width: 10rem;
 }
 
-/* The game log at the bottom of the side panel (GameLog). */
-.game-log {
-    border-top: 1px solid var(--gv-border);
-    padding-top: var(--gv-space-2);
-}
-
+/* The game log (GameLog), in the log drawer. */
 .game-log-lines {
     list-style: none;
     margin: 0 0 var(--gv-space-2);
     padding: 0;
-    max-height: 16rem;
-    overflow-y: auto;
 }
 
 .game-log-line {

@@ -71,4 +71,8 @@ public class BoardViewportTests
             CultureInfo.CurrentCulture = culture;
         }
     }
+
+    [Fact]
+    public void ToScreen_BoardPoint_AppliesTheZoomAndTheOffset() =>
+        new BoardViewport(2, 10, -5).ToScreen(3, 4).ShouldBe((16d, 3d));
 }

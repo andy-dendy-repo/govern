@@ -20,6 +20,8 @@ namespace Govern.Client.Features.Games.Components.Board;
 public sealed partial class GameBoard3D
 {
     private ElementReference _host;
+    private ElementReference _anchor;
+    private HexCoord? _anchored;
     private bool _mounted;
     private bool _unavailable;
     private PlayerView? _drawn;
@@ -67,6 +69,14 @@ public sealed partial class GameBoard3D
     [Parameter]
     public EventCallback<HexCoord> TileClicked { get; set; }
 
+    /// <summary>A card kept beside <see cref="AnchorAt"/> as the camera moves (the attack forecast).</summary>
+    [Parameter]
+    public RenderFragment? Anchored { get; set; }
+
+    /// <summary>The tile <see cref="Anchored"/> stays beside, or <see langword="null"/> for no card.</summary>
+    [Parameter]
+    public HexCoord? AnchorAt { get; set; }
+
     private Board3DInteropService Interop => ScopedServices.GetRequiredService<Board3DInteropService>();
 
     // A focus request older than the board (an earlier game log click) doesn't move it; the board opens on the player's pieces.
@@ -92,6 +102,7 @@ public sealed partial class GameBoard3D
     {
         if (!firstRender)
         {
+            await AnchorAsync();
             return;
         }
 
@@ -113,6 +124,22 @@ public sealed partial class GameBoard3D
         await MoveAsync();
         await Interop.FitAsync(_scene!.Start, CancellationToken.None);
         await FollowFocusAsync();
+        await AnchorAsync();
+    }
+
+    // The card is handed to the renderer once it is on the page, and let go when it goes.
+    private async Task AnchorAsync()
+    {
+        var target = Anchored is null ? null : AnchorAt;
+        if (!_mounted || target == _anchored)
+        {
+            return;
+        }
+
+        _anchored = target;
+        await (target is { } tile
+            ? Interop.AnchorAsync(_anchor, tile, CancellationToken.None)
+            : Interop.UnanchorAsync(CancellationToken.None));
     }
 
     // The scene is built and sent only for a new view (a new version: the live update echoing the player's own command carries

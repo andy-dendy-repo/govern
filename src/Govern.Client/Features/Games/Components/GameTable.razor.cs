@@ -14,12 +14,13 @@ using Microsoft.AspNetCore.Components.Web;
 namespace Govern.Client.Features.Games.Components;
 
 /// <summary>
-/// A started game: the game screen (top bar, board, side panel, action bar). It owns the screen's <see cref="GameUiService"/>
-/// (the selection, cascaded to the panels) and sends the player's commands, one at a time,
+/// A started game: the full-screen game view (the board, with the top strip, notices, selection card, attack forecast and log
+/// drawer over it). It owns the screen's <see cref="GameUiService"/> (the selection, cascaded to the panels), follows the browser's
+/// full screen, and sends the player's commands, one at a time,
 /// based on the version of the view on screen. The game after a command (or, when the command was stale, the game read
 /// again) is reported through <see cref="GameChanged"/>; the page owns the game.
 /// </summary>
-public partial class GameTable : IDisposable
+public partial class GameTable : IAsyncDisposable
 {
     /// <summary>The Api's code for a command based on a view that has changed since.</summary>
     public const string StaleVersionCode = "game.stale_version";
@@ -28,9 +29,12 @@ public partial class GameTable : IDisposable
     private readonly GameUiService _ui = new();
     private BoardAnimationService _animation = null!;
     private ElementReference _screen;
+    private ElementReference _strip;
+    private bool _fullScreenSupported;
     private PlayerView? _view;
     private bool _focusScreen = true;
     private BuildingType? _placing;
+    private bool _logOpen;
     private ApiError? _error;
     private bool _sending;
     private bool _stale;
@@ -43,8 +47,19 @@ public partial class GameTable : IDisposable
     [Parameter]
     public EventCallback<GetGameResponse> GameChanged { get; set; }
 
+    /// <summary>The game's title, shown in the top strip.</summary>
+    [Parameter]
+    public string Title { get; set; } = "Game";
+
+    /// <summary>The live connection's state, shown as a badge in the top strip; <see langword="null"/> before it starts.</summary>
+    [Parameter]
+    public GameWatchUpdate? Connection { get; set; }
+
     [Inject]
     private GamesClient Games { get; set; } = null!;
+
+    [Inject]
+    private GameScreenInteropService Screen { get; set; } = null!;
 
     [Inject]
     private RulesetService Rulesets { get; set; } = null!;
@@ -59,9 +74,16 @@ public partial class GameTable : IDisposable
 
     private PlayerView View => Game.View ?? throw new InvalidOperationException("The game table needs a started game with a view.");
 
+    // The tile the attack forecast stays beside: the pending target, while the selected unit can fight it.
+    private HexCoord? ForecastAt => _ui.Selection is { Unit: { } unit, Target: { } target } && View.UnitAt(target) is not null
+        && GameEngine.CombatForecast(Ruleset, View, unit, target) is not null
+            ? target
+            : null;
+
     /// <inheritdoc />
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
+        await Screen.UnwatchAsync(_screen);
         _ui.Changed -= OnUiChanged;
         _animation.Changed -= OnAnimationChanged;
         _animation.Dispose();
@@ -74,6 +96,7 @@ public partial class GameTable : IDisposable
     protected override void OnInitialized()
     {
         _ui.Changed += OnUiChanged;
+        _ui.MarkLogSeen(Game.Log);
         _animation = new BoardAnimationService(Time);
         _animation.Changed += OnAnimationChanged;
     }
@@ -87,6 +110,10 @@ public partial class GameTable : IDisposable
             _ = _animation.PlayAsync(_view, View, Game.Log);
             _view = View;
             _ui.Refresh(Ruleset, View);
+            if (_ui.LogOpen)
+            {
+                _ui.MarkLogSeen(Game.Log);
+            }
 
             // A later view (a snapshot, not this table's own command) makes the last error or notice out of date.
             if (!_sending)
@@ -101,7 +128,15 @@ public partial class GameTable : IDisposable
     {
         if (firstRender)
         {
-            _animation.ReducedMotion = await Interop.PrefersReducedMotionAsync(_lifetime.Token);
+            // Read once: the table can be disposed (and its token source with it) during the awaits.
+            var cancellationToken = _lifetime.Token;
+            _animation.ReducedMotion = await Interop.PrefersReducedMotionAsync(cancellationToken);
+            _fullScreenSupported = !cancellationToken.IsCancellationRequested
+                && await Screen.WatchAsync(_screen, _strip, OnFullScreenChanged, cancellationToken);
+            if (_fullScreenSupported)
+            {
+                StateHasChanged();
+            }
         }
 
         // Keep keyboard focus in the screen so Esc works: on arrival, and after a command, whose disabled buttons drop focus.
@@ -189,9 +224,17 @@ public partial class GameTable : IDisposable
             _focusScreen = true;
         }
 
-        _placing = _ui.Selection.Placing;
+        // Closing the log drawer removes the focused button with it; the screen takes focus back so Esc keeps working.
+        _focusScreen |= _logOpen && !_ui.LogOpen;
+        (_placing, _logOpen) = (_ui.Selection.Placing, _ui.LogOpen);
         StateHasChanged();
     }
+
+    private Task ToggleFullScreenAsync() =>
+        _ui.FullScreen ? Screen.ExitAsync(_lifetime.Token) : Screen.EnterAsync(_screen, _lifetime.Token);
+
+    // The browser reports entering and leaving (Esc leaves without the button).
+    private void OnFullScreenChanged(bool fullScreen) => _ = InvokeAsync(() => _ui.SetFullScreen(fullScreen));
 
     // Animation steps come from timers, outside the renderer's own events.
     private void OnAnimationChanged() => _ = InvokeAsync(StateHasChanged);

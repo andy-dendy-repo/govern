@@ -1,37 +1,44 @@
-@* A started game: the game screen with its zones (top bar, map, side panel, action bar; see docs/features/game-ui.md).
-   Sends one command at a time. Esc clears the selection. *@
+@* A started game: the full-screen game view (see docs/features/game-ui.md). The board fills the screen, and the controls float
+   over it: the top strip, notices, the selection card in the bottom-left corner, the attack forecast beside its target and the
+   log drawer. Sends one command at a time. Esc closes the log drawer, else clears the selection. *@
 @using Govern.Client.Features.Games.Components.Board
 @using Govern.Client.Features.Games.Components.Screen
 
 <CascadingValue Value="@_ui" IsFixed="true">
     <GameSprite/>
     <div @ref="_screen" class="game-screen" tabindex="-1" @onkeydown="@OnKeyDown">
-        <div class="zone-top">
-            <TopBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
-        </div>
-        <div class="zone-map">
+        <div class="hud-board">
             @if (_ui.Board3D)
             {
-                <GameBoard3D View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+                <GameBoard3D View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"
+                             Anchored="@ForecastCard" AnchorAt="@ForecastAt"/>
             }
             else
             {
-                <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+                <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"
+                           Anchored="@ForecastCard" AnchorAt="@ForecastAt"/>
             }
         </div>
-        <div class="zone-actions">
-            <ActionBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
+        <div @ref="_strip" class="hud hud-top">
+            <TopBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync" Title="@Title" Connection="@Connection" Log="@Game.Log"
+                    FullScreenSupported="@_fullScreenSupported" FullScreenToggled="@ToggleFullScreenAsync"/>
         </div>
-        <aside class="zone-side">
-            <SidePanel View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync" Log="@Game.Log">
-                @if (_stale)
-                {
-                    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="stale">
-                        The game changed before your move arrived, so nothing was applied. The board is up to date now.
-                    </RadzenAlert>
-                }
-                <ApiErrorAlert Error="@_error"/>
-            </SidePanel>
-        </aside>
+        <div class="hud hud-notices">
+            <NoticeStack View="@View" Stale="@_stale" Error="@_error"/>
+        </div>
+        <div class="hud hud-selection">
+            <SelectionCard View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
+        </div>
+        @if (_ui.LogOpen)
+        {
+            <div class="hud hud-log">
+                <LogDrawer View="@View" Ruleset="@Ruleset" Log="@Game.Log"/>
+            </div>
+        }
     </div>
 </CascadingValue>
+
+@code {
+    // The forecast of a pending attack, kept beside its target on the board.
+    private RenderFragment ForecastCard => @<AttackForecast View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>;
+}

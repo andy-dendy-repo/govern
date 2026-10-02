@@ -79,6 +79,22 @@ public sealed class Board3DInteropService(IJSRuntime js) : IAsyncDisposable
     public Task RenderMotionAsync(SceneMotion motion, CancellationToken cancellationToken) =>
         CallAsync("renderMotion", cancellationToken, motion);
 
+    /// <summary>
+    /// Keeps a page element beside a tile as the camera moves (the attack forecast), through its <c>--anchor-x</c>,
+    /// <c>--anchor-y</c> and <c>--anchor-flip</c> properties; it replaces the element kept before.
+    /// </summary>
+    /// <param name="element">The element, inside the board's frame.</param>
+    /// <param name="tile">The tile.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>A task that completes when the element is anchored.</returns>
+    public Task AnchorAsync(ElementReference element, HexCoord tile, CancellationToken cancellationToken) =>
+        CallAsync("anchor", cancellationToken, element, tile.Q, tile.R);
+
+    /// <summary>Lets go of the element kept by <see cref="AnchorAsync"/>.</summary>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>A task that completes when the element is let go.</returns>
+    public Task UnanchorAsync(CancellationToken cancellationToken) => CallAsync("unanchor", cancellationToken);
+
     /// <summary>Moves the camera so a rectangle of the board fills the view.</summary>
     /// <param name="bounds">The rectangle in board units (x and depth).</param>
     /// <param name="cancellationToken">Cancels the call.</param>

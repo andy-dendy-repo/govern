@@ -28,6 +28,15 @@ export function renderMotion(host, motion) {
     boards.get(host)?.setMotion(motion);
 }
 
+// Keeps `element` beside the tile (q, r) as the camera moves, until unanchor.
+export function anchor(host, element, q, r) {
+    boards.get(host)?.anchor(element, q, r);
+}
+
+export function unanchor(host) {
+    boards.get(host)?.anchor(null);
+}
+
 export function fit(host, rect) {
     boards.get(host)?.fit(rect);
 }

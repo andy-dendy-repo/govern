@@ -19,6 +19,10 @@
             <BoardEffects Motion="@Motion"/>
         </g>
     </svg>
+    @if (AnchorAt is { } anchorAt && Anchored is not null)
+    {
+        <div class="board-anchor" style="@AnchorStyle(anchorAt)">@Anchored</div>
+    }
     <LensToolbar/>
     <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem" class="board-zoom">
         <RadzenButton Icon="add" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom in"
