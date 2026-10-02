@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F17, retire the SVG board
 
-**Status:** done 2026-10-02 in PR #PR (backlog F17), planned and built in one PR at the owner's request; the decisions made while building it are at the end. Visuals and client code only: Govern.Core, the server, the rules, the view and the 3D renderer's drawing stay as they are.
+**Status:** done 2026-10-02 in PR #50 (backlog F17), planned and built in one PR at the owner's request; the decisions made while building it are at the end. Visuals and client code only: Govern.Core, the server, the rules, the view and the 3D renderer's drawing stay as they are.
 
 ## Context
 F15 built a WebGL (Three.js) board next to the SVG board, behind a 3D button, and F16 put both under the full-screen game view. The 3D board now draws everything the SVG board draws, plays the same animations and handles touch, so keeping two boards doubles every board change and keeps a toggle players don't need. F17 makes the 3D board the only board and deletes the SVG board, its toggle, its JavaScript and the tests and rules that exist only for it, leaving the client with one board path.
