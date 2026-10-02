@@ -1,5 +1,5 @@
 // The board's ground: one raised hex per tile (flat-shaded, with darker sides), water over lake tiles, low-poly trees, hills,
-// peaks and dunes per tile shape, and a mist over unexplored tiles that thins out towards the known land. Built from a BoardScene (Features/Games/Models/BoardScene).
+// peaks and dunes per tile shape (clear of the tile's improvement or building), and a mist over unexplored tiles that thins out towards the known land. Built from a BoardScene (Features/Games/Models/BoardScene).
 import {
     BufferGeometry, ConeGeometry, CylinderGeometry, Float32BufferAttribute, Group, IcosahedronGeometry, InstancedMesh, Matrix4,
     Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Quaternion, Vector3,
@@ -11,6 +11,9 @@ const BASE = 0;
 const WATER_LEVEL = 0.1;
 const MIST_LEVEL = 0.16;
 const MIST_DENSITY = 0.92;
+export const TOP_JITTER = 0.02;
+// How far a decoration keeps from an improvement or building on its tile.
+const FEATURE_ROOM = 0.5;
 
 // Shared shapes, each with its base at y = 0; never disposed.
 const foliage = new ConeGeometry(0.2, 0.5, 6).translate(0, 0.25, 0);
@@ -34,6 +37,17 @@ export function hash(q, r, salt) {
     let h = Math.imul(q, 374761393) ^ Math.imul(r, 668265263) ^ Math.imul(salt, 2246822519);
     h = Math.imul(h ^ (h >>> 13), 1274126177);
     return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+// The height of a tile's top: its relief's height, varied a little per tile (up to TOP_JITTER either way) so the ground isn't
+// perfectly flat. Rivers and borders are lifted just above TOP_JITTER (rivers.js, overlays.js) so they never flicker.
+export function tileTop(tile) {
+    return tile.height + (hash(tile.q, tile.r, 1) - 0.5) * 2 * TOP_JITTER;
+}
+
+// Where things stand on a tile: its top, or the water over a lake.
+export function tileSurface(tile) {
+    return tile.shape === 'water' ? Math.max(tileTop(tile), WATER_LEVEL) : tileTop(tile);
 }
 
 class MeshBuilder {
@@ -110,6 +124,12 @@ function spot(tile, k, spread) {
     return [tile.x + Math.cos(angle) * distance, tile.z + Math.sin(angle) * distance];
 }
 
+// Whether a decoration at (x, z) keeps clear of the improvement or building on its tile, if any.
+function clear(out, tile, x, z) {
+    const feature = out.features.get(`${tile.q},${tile.r}`);
+    return !feature || Math.hypot(x - feature.x, z - feature.z) > FEATURE_ROOM;
+}
+
 const decorators = {
     flat() { },
     trees(tile, top, palette, out) {
@@ -117,6 +137,9 @@ const decorators = {
         const wood = palette.faded('--gv-board3d-trunk', tile);
         for (let k = 0; k < 4; k++) {
             const [x, z] = k === 3 ? [tile.x, tile.z] : spot(tile, k, 0.5);
+            if (!clear(out, tile, x, z)) {
+                continue;
+            }
             const size = 0.8 + hash(tile.q, tile.r, 30 + k) * 0.45;
             out.trunks.push({ x, y: top, z, sx: size, sy: size, sz: size, colour: wood });
             out.trees.push({ x, y: top + 0.12 * size, z, sx: size, sy: size, sz: size, turn: k, colour: leaves.clone().multiplyScalar(0.85 + hash(tile.q, tile.r, 40 + k) * 0.25) });
@@ -126,6 +149,9 @@ const decorators = {
         const colour = palette.terrain(tile).multiplyScalar(1.08);
         for (let k = 0; k < 3; k++) {
             const [x, z] = spot(tile, k, 0.4);
+            if (!clear(out, tile, x, z)) {
+                continue;
+            }
             const size = 0.8 + hash(tile.q, tile.r, 50 + k) * 0.4;
             out.hills.push({ x, y: top - 0.04, z, sx: size, sy: size * 0.55, sz: size, turn: k * 2, colour });
         }
@@ -134,7 +160,7 @@ const decorators = {
         const rock = palette.terrain(tile);
         const snow = palette.faded('--gv-board3d-snow', tile);
         const peaks = [[tile.x - 0.08, tile.z - 0.05, 1], [...spot(tile, 1, 0.45), 0.6]];
-        peaks.forEach(([x, z, size], k) => {
+        peaks.filter(([x, z]) => clear(out, tile, x, z)).forEach(([x, z, size], k) => {
             const height = size * (0.9 + hash(tile.q, tile.r, 60 + k) * 0.3);
             out.peaks.push({ x, y: top - 0.05, z, sx: size, sy: height, sz: size, turn: k, colour: rock });
             out.caps.push({ x, y: top - 0.05 + height * 0.62, z, sx: size, sy: height, sz: size, turn: k, colour: snow });
@@ -144,6 +170,9 @@ const decorators = {
         const colour = palette.terrain(tile).multiplyScalar(1.06);
         for (let k = 0; k < 2; k++) {
             const [x, z] = spot(tile, k, 0.35);
+            if (!clear(out, tile, x, z)) {
+                continue;
+            }
             out.hills.push({ x, y: top - 0.06, z, sx: 1.3, sy: 0.25, sz: 0.7, turn: hash(tile.q, tile.r, 70 + k) * Math.PI, colour });
         }
     },
@@ -203,11 +232,12 @@ function spotKey(x, z) {
 // Builds the ground of a scene. Returns the group to add and the mesh to pick tiles on (`userData.faceTile`: tile per face).
 export function buildTerrain(scene, palette) {
     const ground = new MeshBuilder();
-    const out = { water: new MeshBuilder(), trees: [], trunks: [], hills: [], peaks: [], caps: [], index: 0 };
+    const features = new Map((scene.features ?? []).map(feature => [`${feature.q},${feature.r}`, feature]));
+    const out = { water: new MeshBuilder(), trees: [], trunks: [], hills: [], peaks: [], caps: [], index: 0, features };
 
     scene.tiles.forEach((tile, index) => {
         out.index = index;
-        const top = tile.height + (hash(tile.q, tile.r, 1) - 0.5) * 0.04;
+        const top = tileTop(tile);
         const shade = 0.96 + hash(tile.q, tile.r, 2) * 0.08;
         const colour = tile.shape === 'water' ? palette.faded('--gv-board3d-seabed', tile) : palette.terrain(tile).multiplyScalar(shade);
         ground.hexTop(tile.x, tile.z, top, TILE_RADIUS, colour, index);

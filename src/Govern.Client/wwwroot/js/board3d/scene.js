@@ -1,11 +1,15 @@
 // One 3D board: the WebGL renderer in its host element, the light, the camera and the pointer. It draws on demand (after a
 // scene, a camera move or a resize), never in a constant loop.
 import {
-    DirectionalLight, HemisphereLight, NeutralToneMapping, PCFShadowMap, Raycaster, Scene, Vector2, WebGLRenderer,
+    DirectionalLight, Group, HemisphereLight, NeutralToneMapping, PCFShadowMap, Raycaster, Scene, Vector2, WebGLRenderer,
 } from '../../lib/three/three.module.js';
 import { CameraRig } from './camera.js';
 import { Palette } from './palette.js';
-import { buildTerrain, disposeShared, disposeTerrain } from './terrain.js';
+import { buildBorders, disposeShared as disposeBorders } from './overlays.js';
+import { buildFeatures, disposeShared as disposeFeatures } from './models.js';
+import { buildRivers, disposeShared as disposeRivers } from './rivers.js';
+import { disposeLayer } from './shapes.js';
+import { buildTerrain, disposeShared as disposeGround, disposeTerrain } from './terrain.js';
 
 // How far, in pixels, a press may move and still count as a click (as the 2D board's GameBoard.DragThreshold).
 const DRAG_THRESHOLD = 4;
@@ -35,6 +39,7 @@ export class Board3D {
         this.raycaster = new Raycaster();
         this.scene = null;
         this.terrain = null;
+        this.layers = null;
         this.frame = 0;
 
         this.listen();
@@ -77,13 +82,31 @@ export class Board3D {
         this.sun.color = palette.token('--gv-board3d-sun');
         this.sun.intensity = 2.2;
         this.placeSun();
+        this.clear();
+        this.terrain = buildTerrain(this.scene, palette);
+        this.world.add(this.terrain.group);
+        this.layers = new Group();
+        for (const layer of [buildRivers(this.scene, palette), buildFeatures(this.scene, palette), buildBorders(this.scene, palette)]) {
+            if (layer) {
+                this.layers.add(layer);
+            }
+        }
+        this.world.add(this.layers);
+        this.requestRender();
+    }
+
+    // Removes and frees the ground and the layers on it.
+    clear() {
         if (this.terrain) {
             this.world.remove(this.terrain.group);
             disposeTerrain(this.terrain.group);
+            this.terrain = null;
         }
-        this.terrain = buildTerrain(this.scene, palette);
-        this.world.add(this.terrain.group);
-        this.requestRender();
+        if (this.layers) {
+            this.world.remove(this.layers);
+            disposeLayer(this.layers);
+            this.layers = null;
+        }
     }
 
     // The sun shines from the south-west, high, and its shadow covers the whole map.
@@ -203,10 +226,10 @@ export class Board3D {
         }
         this.resizeObserver.disconnect();
         this.theme.removeEventListener('change', this.onTheme);
-        if (this.terrain) {
-            disposeTerrain(this.terrain.group);
+        this.clear();
+        for (const disposeShared of [disposeGround, disposeRivers, disposeFeatures, disposeBorders]) {
+            disposeShared();
         }
-        disposeShared();
         this.sun.dispose();
         this.renderer.dispose();
         this.renderer.forceContextLoss();

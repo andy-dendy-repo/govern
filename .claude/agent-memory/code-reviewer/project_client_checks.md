@@ -42,3 +42,7 @@ Review 12 (2026-10-02, F15 step 1, 3D board / Three.js 0.186.1 vendored in wwwro
 - Transient IAsyncDisposable services injected into components are tracked by the WASM app scope until exit (never collected).
 - A pre-existing `GameUiService.Focus` is replayed when the 3D board mounts (2D refits after it, 3D focuses after Fit).
 - `ReferenceEquals(View, _drawn)` rebuilds the whole scene twice per own command (SSE echo, see Review 11); compare `View.Version`.
+
+Review 13 (2026-10-02, F15 step 2, rivers/bridges/features/borders in 3D). Traps for later F15 steps (pieces, lenses):
+- Heights in C# (`TerrainReliefs.Surface`) ignore the JS per-tile jitter (±0.02, `tileTop`); every layer lift must exceed 0.02. Unexplored tiles report height 0.02, so "lower of both sides" logic sinks things at the fog frontier; lake tiles' `Height` (0.03) sits under the 0.1 water, so use `Surface`, not `For(tile).Height`.
+- Layer modules keep module-level geometries/materials and must be added to Board3D.dispose's disposeShared list; per-build InstancedMesh/geometry freed by `shapes.disposeLayer`.

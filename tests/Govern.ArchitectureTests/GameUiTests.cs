@@ -1,6 +1,9 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Govern.ArchitectureTests.Support;
+using Govern.Client.Features.Games.Enums;
+using Govern.Client.Features.Games.Helpers;
 
 namespace Govern.ArchitectureTests;
 
@@ -43,6 +46,28 @@ public partial class GameUiTests
             .ToList();
 
         violations.ShouldBeEmpty("the 3D board reads its colours from the --gv-* tokens (js/board3d/palette.js), never literals");
+    }
+
+    [Fact]
+    public void Board3DModels_HaveABuilderPerFeatureModel()
+    {
+        var builders = ModelBuilderRegex().Matches(File.ReadAllText(Path.Combine(Board3DRoot, "models.js")))
+            .Select(static match => match.Groups[1].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missing = Enum.GetNames<FeatureModel>().Select(static name => name.ToLowerInvariant()).Where(name => !builders.Contains(name)).ToList();
+
+        missing.ShouldBeEmpty("every FeatureModel needs its builder in js/board3d/models.js, or it is drawn as a stand-in");
+    }
+
+    [Fact]
+    public void Board3DTerrain_SharesTheWaterLevelWithTerrainReliefs()
+    {
+        var match = WaterLevelRegex().Match(File.ReadAllText(Path.Combine(Board3DRoot, "terrain.js")));
+
+        match.Success.ShouldBeTrue("js/board3d/terrain.js declares WATER_LEVEL");
+        double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)
+            .ShouldBe(TerrainReliefs.WaterLevel, "things on a lake stand on the water the renderer draws");
     }
 
     [Fact]
@@ -121,6 +146,13 @@ public partial class GameUiTests
     // Three.js (new Color('white'), setStyle('red')).
     [GeneratedRegex(@"#[0-9a-fA-F]{3,8}\b|\b0x[0-9a-fA-F]{6}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(|\b(Color|setStyle|setColorName)\(\s*['""`]", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex ScriptColourValueRegex();
+
+    // A model builder in models.js: `    name: c => [`.
+    [GeneratedRegex(@"^ {4}([a-z]+): c => \[", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex ModelBuilderRegex();
+
+    [GeneratedRegex(@"const WATER_LEVEL = ([0-9.]+);", RegexOptions.CultureInvariant)]
+    private static partial Regex WaterLevelRegex();
 
     // fill, stroke, color, background or style attributes carrying a colour value (hex, functional or a common name).
     [GeneratedRegex(@"\b(fill|stroke|color|background|style)\s*=\s*""[^""]*(#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?)\(|\b(white|black|red|green|blue|yellow|orange|purple|gray|grey)\b)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
