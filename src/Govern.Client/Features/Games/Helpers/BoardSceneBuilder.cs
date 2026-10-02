@@ -26,7 +26,14 @@ public static class BoardSceneBuilder
         }
 
         var map = Scale(HexLayout.Bounds(view.Width, view.Height));
-        return new BoardScene(tiles, map, StartBounds(view) ?? map);
+        return new BoardScene(
+            tiles,
+            map,
+            StartBounds(view) ?? map,
+            SceneLayerBuilder.Rivers(view),
+            SceneLayerBuilder.Bridges(view),
+            SceneLayerBuilder.Features(view),
+            SceneLayerBuilder.Borders(view));
     }
 
     /// <summary>The centre of a tile in board units.</summary>
@@ -41,7 +48,7 @@ public static class BoardSceneBuilder
     private static SceneTile Tile(HexCoord coord, TileView tile)
     {
         var (x, z) = Center(coord);
-        var relief = tile.Terrain is { } terrain ? TerrainReliefs.For(terrain) : TerrainReliefs.Unexplored;
+        var relief = TerrainReliefs.For(tile);
         var visibility = tile.Visibility switch
         {
             TileVisibility.Visible => "visible",

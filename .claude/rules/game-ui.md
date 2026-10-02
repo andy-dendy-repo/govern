@@ -5,7 +5,7 @@ paths:
 
 # Game UI design system
 
-The approaches for every game screen, panel, number and icon. Full description, catalog and "adding UI for a new mechanic": `docs/features/game-ui.md`. Enforced by `tests/Govern.ArchitectureTests/GameUiTests` (colours, terrain palette, river styles) and `tests/Govern.ClientTests` (`GameSpriteTests`: icons per ruleset unit, terrain, improvement, building and resource; `GameBoardTests`: layer order). Change the rule and the tests together.
+The approaches for every game screen, panel, number and icon. Full description, catalog and "adding UI for a new mechanic": `docs/features/game-ui.md`. Enforced by `tests/Govern.ArchitectureTests/GameUiTests` (colours, terrain palette, river styles, a 3D model builder per `FeatureModel`, the 3D water level) and `tests/Govern.ClientTests` (`GameSpriteTests`: icons per ruleset unit, terrain, improvement, building and resource; `GameBoardTests`: layer order). Change the rule and the tests together.
 
 ## Where game UI goes
 
@@ -23,7 +23,7 @@ The approaches for every game screen, panel, number and icon. Full description, 
 ## Rules
 
 - **Colours only as tokens.** No hex, `rgb()`/`hsl()`, named or other colour values outside `wwwroot/css/tokens.css`, none in Razor `fill`/`stroke`/`color`/`background`/`style` attributes, and none in `wwwroot/js/board3d` (it reads tokens through `palette.js`; `GameUiTests.Board3DScripts_TakeColoursOnlyFromTokens`). Use `var(--gv-…)` and classes: `seat-<n>` (from `Helpers/Seats`, the turn order) for players, `terrain terrain-<id>` for terrain.
-- **Every ruleset id has its UI.** A new unit, terrain, improvement, building or resource needs its sprite symbol; a new terrain also needs `--gv-terrain-<id>` and `--gv-terrain-<id>-explored` in `tokens.css`, its `.terrain-<id>` rule in `board.css` and its 3D relief in `Helpers/TerrainReliefs` (`TerrainReliefsTests`); a new river kind needs its `.river-<id>` rule (its width, so kinds differ by more than colour) in `board.css`. A terrain symbol is its hex plus a `.terrain-mark` drawing, which the board shows on its tiles so terrain is never told by colour alone.
+- **Every ruleset id has its UI.** A new unit, terrain, improvement, building or resource needs its sprite symbol; a new terrain also needs `--gv-terrain-<id>` and `--gv-terrain-<id>-explored` in `tokens.css`, its `.terrain-<id>` rule in `board.css` and its 3D relief in `Helpers/TerrainReliefs` (`TerrainReliefsTests`); a new river kind needs its `.river-<id>` rule (its width, so kinds differ by more than colour) in `board.css` and its 3D width in `Helpers/RiverReliefs` (`RiverReliefsTests`); a new improvement or building needs its 3D model in `Helpers/FeatureModels` (`FeatureModelsTests`), a new kind of model also a builder in `js/board3d/models.js`. A terrain symbol is its hex plus a `.terrain-mark` drawing, which the board shows on its tiles so terrain is never told by colour alone.
 - **Icons only from the sprite.** Draw with `GameIcon` (panels) or `<use href="#id">` (board); no other inline SVG icons, image files or icon fonts for game things (Radzen's Material icons stay for generic buttons such as End turn). `GameIcon` is decorative unless `Label` is set.
 - **Select, then act.** Nothing happens on a single accidental click: a destructive action uses `ConfirmButton`; a disabled action shows the rule's reason next to it.
 - **Exact numbers on demand.** A derived number shows its origin through `NumberTooltip` (or a `StatRow` detail).
