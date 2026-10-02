@@ -29,4 +29,5 @@ The approaches for every game screen, panel, number and icon. Full description, 
 - **Exact numbers on demand.** A derived number shows its origin through `NumberTooltip` (or a `StatRow` detail).
 - **Keyboard and touch.** Every action is a button reachable with Tab; no behaviour depends on hover or long press alone.
 - **Reuse before adding.** Check the catalog in `docs/features/game-ui.md` and the gallery first; a new shared component is added to both.
+- **Animations come only from `BoardAnimationService`.** Both boards draw its `BoardMotion` (the 3D board as a `SceneMotion` from `Helpers/SceneMotionBuilder`, with the service's durations); a board never decides what animates or when, only how it looks.
 - **Layout.** The screen zones are the CSS grid in `wwwroot/css/game-ui.css`; they stack map first on narrow screens. No component sets its own page-level layout.

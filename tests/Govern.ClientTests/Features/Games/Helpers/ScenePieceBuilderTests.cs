@@ -38,4 +38,20 @@ public class ScenePieceBuilderTests
         unit.X.ShouldBeGreaterThan(city.X);
         unit.Z.ShouldBeGreaterThan(city.Z);
     }
+
+    [Fact]
+    public void Pieces_Units_CarryTheirIdAndCitiesNone()
+    {
+        var pieces = ScenePieceBuilder.Pieces(Create([Soldier(2, You, At(3, 3))], [City(7, You, At(3, 3), "Kyiv")]), 100);
+
+        pieces.Select(static piece => piece.Unit).ShouldBe([null, 2]);
+    }
+
+    [Fact]
+    public void Ghost_UnitOutOfTheView_StandsOnItsTileWithItsModelAndSeat()
+    {
+        var ghost = ScenePieceBuilder.Ghost(Start(), At(4, 4), ArcherType, Opponent);
+
+        (ghost.Q, ghost.R, ghost.Model, ghost.Seat, ghost.Own, ghost.Icon, ghost.Unit).ShouldBe((At(4, 4).Q, At(4, 4).R, "archer", 2, false, "unit-archer", (int?)null));
+    }
 }

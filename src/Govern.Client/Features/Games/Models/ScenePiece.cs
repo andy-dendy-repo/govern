@@ -16,5 +16,7 @@ namespace Govern.Client.Features.Games.Models;
 /// <param name="Health">A unit's health as a share of full health (1 unhurt; a bar shows below 1); 1 for a city.</param>
 /// <param name="Name">A city's name, drawn under it; <see langword="null"/> for a unit.</param>
 /// <param name="Icon">The id of the piece's symbol in the game's sprite (<c>Helpers/Icons</c>), shown on its banner.</param>
+/// <param name="Unit">A unit's id, which a <see cref="SceneMotion"/> moves it by; <see langword="null"/> for a city.</param>
 public sealed record ScenePiece(
-    int Q, int R, double X, double Z, double Height, string Kind, string Model, int Seat, bool Own, double Health, string? Name, string Icon);
+    int Q, int R, double X, double Z, double Height, string Kind, string Model, int Seat, bool Own, double Health, string? Name, string Icon,
+    int? Unit = null);

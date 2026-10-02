@@ -22,7 +22,7 @@ public class GameBoard3DTests : ClientTestContext
     {
         _module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
         _module.Setup<bool>("mount", _ => true).SetResult(true);
-        foreach (var call in new[] { "render", "renderOverlay", "fit", "focus", "zoom", "unmount" })
+        foreach (var call in new[] { "render", "renderOverlay", "renderMotion", "fit", "focus", "zoom", "unmount" })
         {
             _module.SetupVoid(call, _ => true).SetVoidResult();
         }
@@ -220,6 +220,46 @@ public class GameBoard3DTests : ClientTestContext
             .Add(static board => board.MaxHealth, 100));
 
         Calls("render").Single().Arguments[1].ShouldBeOfType<BoardScene>().Pieces.ShouldHaveSingleItem().Health.ShouldBe(0.5);
+    }
+
+    [Fact]
+    public void Render_Mounted_SendsAnEmptyMotionAfterTheScene()
+    {
+        RenderBoard(Start());
+
+        var motion = Calls("renderMotion").Single().Arguments[1].ShouldBeOfType<SceneMotion>();
+        (motion.Positions.Count, motion.Ghosts.Count, motion.Effects.Count).ShouldBe((0, 0, 0));
+        _module.Invocations.Select(static call => call.Identifier).ToList().IndexOf("renderMotion")
+            .ShouldBeGreaterThan(_module.Invocations.Select(static call => call.Identifier).ToList().IndexOf("render"));
+    }
+
+    [Fact]
+    public void Render_NewMotion_SendsItInSceneUnitsButNoScene()
+    {
+        var cut = RenderBoard(Start());
+        var (x, y) = HexLayout.Center(At(4, 2));
+
+        cut.Render(parameters => parameters.Add(static board => board.Motion, BoardMotion.None with
+        {
+            Positions = BoardMotion.None.Positions.Add(new UnitId(2), new BoardPoint(x, y)),
+        }));
+
+        Calls("render").Count.ShouldBe(1);
+        var position = Calls("renderMotion")[^1].Arguments[1].ShouldBeOfType<SceneMotion>().Positions.ShouldHaveSingleItem();
+        var (sceneX, sceneZ) = BoardSceneBuilder.Center(At(4, 2));
+        (position.Unit, position.X, position.Z).ShouldBe((2, sceneX, sceneZ));
+    }
+
+    [Fact]
+    public void Render_SameMotion_IsNotSentAgain()
+    {
+        var motion = BoardMotion.None with { Ghosts = [new BoardGhost(1, Opponent, SoldierType, new BoardPoint(0, 0), Fading: true)] };
+        var cut = RenderBoard(Start());
+        cut.Render(parameters => parameters.Add(static board => board.Motion, motion));
+
+        cut.Render(parameters => parameters.Add(static board => board.Motion, motion).Add(static board => board.Disabled, true));
+
+        Calls("renderMotion").Count.ShouldBe(2);
     }
 
     private IReadOnlyList<JSRuntimeInvocation> Calls(string identifier) => _module.Invocations[identifier];

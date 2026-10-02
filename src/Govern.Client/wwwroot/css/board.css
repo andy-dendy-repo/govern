@@ -404,7 +404,8 @@
     }
 
     .board .effect.damage,
-    .board .effect.pulse {
+    .board .effect.pulse,
+    .board3d-labels > .board3d-damage {
         animation-name: gv-fade;
     }
 }
@@ -503,6 +504,15 @@
     font-size: 15px;
     font-weight: 700;
     text-shadow: 0 0 3px var(--gv-lens-label-outline), 0 0 2px var(--gv-lens-label-outline);
+}
+
+/* A damage number over the 3D board while an attack plays (motion.js): floats up and fades like the 2D board's. */
+.board3d-damage {
+    color: var(--gv-health-low);
+    font-size: 15px;
+    font-weight: 700;
+    text-shadow: 0 0 3px var(--gv-label-outline), 0 0 2px var(--gv-label-outline);
+    animation: gv-float 900ms ease-out forwards;
 }
 
 .board3d-edge-badge {

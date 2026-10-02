@@ -12,7 +12,7 @@
         <div class="zone-map">
             @if (_ui.Board3D)
             {
-                <GameBoard3D View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+                <GameBoard3D View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
             }
             else
             {
