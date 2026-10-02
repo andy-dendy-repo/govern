@@ -2,7 +2,7 @@
 title: Govern knowledge base index
 tags: [index, docs]
 code: [docs]
-updated: 2026-09-30
+updated: 2026-10-02
 ---
 
 # Govern knowledge base
@@ -43,12 +43,13 @@ The project's knowledge base, used for RAG. Every document has front matter (tit
 
 ## Plans
 Priorities live only in the backlog. Plans sit in `active/`, `deferred/` or `done/` by state.
-- [plans/backlog.md](plans/backlog.md): **all open work**, prioritised in buckets (Now, Next, Deferred, Ideas) with stable ids: content slice C1 (rules reference G2, terrain G4, units and combat G9), rivers G6, builders and buildings G10a, tile yields G5, territory G7 and city costs and upkeep G8a done, the game log and board animations (F11a, F11b) done, G10c (buildings on territory tiles) done, Now empty until the owner picks; next player-chosen city names and the scale-out backplane; deferred rulesets in the database (G3b), the other game mechanics (G8b, G10b, G11–G15), shipping the game and the release follow-ups, simultaneous turns, more players and diplomacy.
+- [plans/backlog.md](plans/backlog.md): **all open work**, prioritised in buckets (Now, Next, Deferred, Ideas) with stable ids: content slice C1 (rules reference G2, terrain G4, units and combat G9), rivers G6, builders and buildings G10a, tile yields G5, territory G7 and city costs and upkeep G8a done, the game log and board animations (F11a, F11b) done, G10c (buildings on territory tiles) done, Now empty until the owner picks; next player-chosen city names, the scale-out backplane, Neon Postgres and the 3D board (F15); deferred rulesets in the database (G3b), the other game mechanics (G8b, G10b, G11–G15), shipping the game and the release follow-ups, simultaneous turns, more players and diplomacy.
 - [plans/done/G5-G7-G8-economy.md](plans/done/G5-G7-G8-economy.md): G5, G7 and G8a (done, PR #34 and PR #35) plan (owner's model): tile yields with water and desert, city territory grown with culture, each city's own stock, then resource costs paid when production begins, upkeep with a per-city priority, supply from the 7 tiles around a unit outside territory, shortage damage down to 1 HP and building health; two PRs, ruleset v6 and v7.
 - [plans/done/F11a-game-log.md](plans/done/F11a-game-log.md): F11a (done, PR #37): engine events filtered per player by visibility (`VisibilityCalculator.EventsFor`), per-seat log storage, the recent log in game snapshots, and the side panel log.
 - [plans/done/F11b-animations.md](plans/done/F11b-animations.md): F11b (done, PR #37): board animations from the filtered events (moves, attacks, destroyed units, pulses), skipping and reduced motion.
 - [plans/active/F13-scale-out-backplane.md](plans/active/F13-scale-out-backplane.md): F13 plan: a Postgres `LISTEN/NOTIFY` backplane for live game updates across Api instances, resync after a listener reconnect, and why it needs a paid Neon plan and the direct host.
 - [plans/active/F14-neon-postgres.md](plans/active/F14-neon-postgres.md): F14 plan: move the production database from Azure Flexible Server to Neon's free plan (Bicep, release secret, Key Vault), with the backup, storage and cold-start trade-offs.
+- [plans/active/F15-3d-board.md](plans/active/F15-3d-board.md): F15 plan: a 3D WebGL board (Three.js, low-poly models built in code) in place of the SVG board, drawn from a C# `BoardScene`; six PRs behind a preview toggle, then the SVG board is removed. Visuals only.
 - [plans/deferred/ruleset-b-store-and-pin.md](plans/deferred/ruleset-b-store-and-pin.md): deferred plan for Ruleset B: the `rulesets` table and seed migration, pinning games, a cached repository, `GET /api/rulesets/{key}/{version}`, the client fetching the pinned ruleset, lobby setups; its decided and open questions.
 - [plans/deferred/follow-ups.md](plans/deferred/follow-ups.md): details of the deferred follow-ups F1–F10: ship the game, least-privilege DB access, monitoring, the sign-up email in the transaction, email verification, invite code rotation, turn timers, simultaneous turns, more than two players.
 - [plans/done/G10c-building-sites.md](plans/done/G10c-building-sites.md): G10c (done, PR #38): every building stands on its own tile of the city's territory, picked when ordering and reserved while produced (site rules, view, previews, the client's placing mode); decisions made during implementation.
