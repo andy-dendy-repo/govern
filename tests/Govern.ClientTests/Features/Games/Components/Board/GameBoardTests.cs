@@ -1,8 +1,6 @@
-using System.Globalization;
-using System.Text.RegularExpressions;
-using AngleSharp.Dom;
+using System.Reflection;
+using Bunit.JSInterop;
 using Govern.Client.Features.Games.Components.Board;
-using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
@@ -11,435 +9,273 @@ using Govern.ClientTests.Support;
 using Govern.Core.Map;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
-using Microsoft.AspNetCore.Components.Web;
 using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Components.Board;
 
-public partial class GameBoardTests : ClientTestContext
+public class GameBoard3DTests : ClientTestContext
 {
+    private readonly BunitJSModuleInterop _module;
     private readonly List<HexCoord> _clicked = [];
 
-    public GameBoardTests()
+    public GameBoard3DTests()
     {
-        var module = JSInterop.SetupModule(BoardInteropService.ModulePath);
-        module.SetupVoid("init", _ => true).SetVoidResult();
-        module.Setup<BoardRect?>("measure", _ => true).SetResult(new BoardRect(0, 0, 800, 600));
-    }
-
-    [Fact]
-    public void Render_View_DrawsEveryTileWithWhatThePlayerKnows()
-    {
-        var view = Create(visibility: static coord => coord.R switch
+        _module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
+        _module.Setup<bool>("mount", _ => true).SetResult(true);
+        foreach (var call in new[] { "render", "renderOverlay", "renderMotion", "fit", "focus", "zoom", "unmount" })
         {
-            0 => TileVisibility.Unexplored,
-            1 => TileVisibility.Explored,
-            _ => TileVisibility.Visible,
-        });
+            _module.SetupVoid(call, _ => true).SetVoidResult();
+        }
+    }
 
+    [Fact]
+    public void Render_Mounted_DrawsTheViewsSceneAndOpensOnThePlayersPieces()
+    {
+        var view = Start();
+
+        RenderBoard(view);
+
+        var scene = Calls("render").Single().Arguments[1].ShouldBeOfType<BoardScene>();
+        scene.Tiles.Count.ShouldBe(Width * Height);
+        Calls("fit").Single().Arguments[1].ShouldBe(BoardSceneBuilder.Build(view).Start);
+    }
+
+    [Fact]
+    public void Render_SameView_IsNotSentAgain()
+    {
+        var view = Start();
         var cut = RenderBoard(view);
 
-        cut.FindAll("use.tile").Count.ShouldBe(Width * Height);
-        cut.FindAll("use.tile.unexplored").Count.ShouldBe(Width);
-        cut.FindAll("use.tile.explored").Count.ShouldBe(Width);
-        cut.FindAll("use.tile.visible.terrain-plains").Count.ShouldBe(Width * (Height - 2));
+        cut.Render(parameters => parameters.Add(static board => board.Disabled, true));
+
+        Calls("render").Count.ShouldBe(1);
     }
 
     [Fact]
-    public void Render_Pieces_AreMarkedOwnOrEnemyWithCityNamesAsText()
-    {
-        var view = Create([Settler(1, You, At(2, 2)), Soldier(3, Opponent, At(5, 2))], [City(8, Opponent, At(5, 4), "<b>Aria</b>")]);
-
-        var cut = RenderBoard(view);
-
-        cut.FindAll("use.unit.settler.own").Count.ShouldBe(1);
-        cut.FindAll("use.unit.soldier.enemy").Count.ShouldBe(1);
-        cut.Find("g.city.enemy text.city-name").TextContent.ShouldBe("<b>Aria</b>");
-        cut.FindAll("b").ShouldBeEmpty();
-    }
-
-    [Fact]
-    public void Render_Pieces_AreColouredBySeatAndDrawnFromTheIconSet()
-    {
-        var view = Create([Settler(1, You, At(2, 2)), Soldier(3, Opponent, At(5, 2))], [City(8, Opponent, At(5, 4), "Aria")]);
-
-        var cut = RenderBoard(view);
-
-        cut.Find("use.unit.settler").ClassList.ShouldContain("seat-1");
-        cut.Find("use.unit.settler").GetAttribute("href").ShouldBe("#unit-settler");
-        cut.Find("use.unit.soldier").ClassList.ShouldContain("seat-2");
-        cut.Find("g.city").ClassList.ShouldContain("seat-2");
-        cut.Find("g.city use").GetAttribute("href").ShouldBe("#city");
-    }
-
-    [Fact]
-    public void Render_Layers_FollowTheBoardLayerOrder()
+    public void Render_NewView_SendsItsScene()
     {
         var cut = RenderBoard(Start());
 
-        var rendered = cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")!).ToList();
+        cut.Render(parameters => parameters.Add(static board => board.View, Create(visibility: static _ => TileVisibility.Explored) with { Version = TestViews.Version + 1 }));
 
-        rendered.ShouldNotBeEmpty();
-        var order = Enum.GetNames<BoardLayer>().Select(static name => name.ToLowerInvariant()).ToList();
-        rendered.ShouldAllBe(layer => order.Contains(layer));
-        rendered.Select(layer => order.IndexOf(layer)).ShouldBeInOrder(SortDirection.Ascending);
+        Calls("render").Count.ShouldBe(2);
+        Calls("render")[1].Arguments[1].ShouldBeOfType<BoardScene>().Tiles.ShouldAllBe(static tile => tile.Visibility == "explored");
     }
 
     [Fact]
-    public void Render_KnownTerrain_DrawsItsSymbolExceptForTheDefaultTerrain()
-    {
-        var view = Create(
-            visibility: static coord => coord.R == 0 ? TileVisibility.Unexplored : coord.R == 1 ? TileVisibility.Explored : TileVisibility.Visible,
-            terrain: static coord => coord.Column == 3 ? Forest : coord.Column == 4 ? Mountains : Plains);
-
-        var cut = RenderBoard(view);
-
-        var symbols = cut.FindAll("use.terrain-symbol");
-        symbols.Count.ShouldBe(2 * (Height - 1));
-        cut.FindAll("use.terrain-symbol.terrain-forest.explored").Count.ShouldBe(1);
-        cut.FindAll("use.terrain-symbol.terrain-mountains.visible").Count.ShouldBe(Height - 2);
-        cut.Find("use.terrain-symbol.terrain-forest").GetAttribute("href").ShouldBe("#terrain-forest");
-    }
-
-    [Fact]
-    public void Render_KnownRivers_DrawALinePerEdgeWithItsKindAndATitle()
-    {
-        var view = Create(
-            visibility: static coord => coord.R == 0 ? TileVisibility.Unexplored : coord.R == 1 ? TileVisibility.Explored : TileVisibility.Visible,
-            rivers: static coord => coord.Column == 2 ? new TileRivers(East: River, NorthEast: DeepRiver) : null);
-
-        var cut = RenderBoard(view);
-
-        // Column 2 of rows 1–5 is known: two edges each; the unexplored row 0 shows none.
-        cut.FindAll("g[data-layer=rivers] line.river").Count.ShouldBe(2 * (Height - 1));
-        cut.FindAll("line.river-river.explored").Count.ShouldBe(1);
-        cut.FindAll("line.river-deep_river.visible").Count.ShouldBe(Height - 2);
-        cut.Find("line.river-river title").TextContent.ShouldBe("River: +1 movement to cross, +3 defence against melee attacks across it");
-        cut.Find("line.river-deep_river title").TextContent.ShouldBe("Deep river: land units can't cross, +5 defence against melee attacks across it");
-    }
-
-    [Fact]
-    public void Render_NoKnownRivers_DrawsNoRiversLayer()
+    public void Render_SameVersionAgain_IsNotSentAgain()
     {
         var cut = RenderBoard(Start());
-
-        cut.FindAll("g[data-layer=rivers]").ShouldBeEmpty();
-    }
-
-    [Fact]
-    public void Render_Rivers_SitBetweenTheTerrainAndTheLens()
-    {
-        var view = Create(rivers: static coord => coord == At(2, 2) ? new TileRivers(East: StreamRiver) : null);
-
-        var cut = RenderBoard(view, lens: new MovementCostLens(new RulesetService()));
-
-        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "rivers", "lens", "highlights", "cities", "units", "effects"]);
-    }
-
-    [Fact]
-    public void Render_MovementCostLens_MarksRiverCrossings()
-    {
-        var view = Create(rivers: static coord => coord == At(2, 2) ? new TileRivers(East: StreamRiver, NorthEast: River, NorthWest: DeepRiver) : null);
-
-        var cut = RenderBoard(view, lens: new MovementCostLens(new RulesetService()));
-
-        cut.FindAll("g.lens-edge-mark").Count.ShouldBe(2);
-        cut.Find("g.lens-edge-mark.costly text").TextContent.ShouldBe("+1");
-        cut.Find("g.lens-edge-mark.blocked title").TextContent.ShouldBe("Deep river: land units can't cross");
-    }
-
-    [Fact]
-    public void Render_Territories_DrawABorderInEachOwnersColourWhereTheTerritoryEnds()
-    {
-        var view = Create(cities: [City(7, You, At(2, 2)), City(8, Opponent, At(5, 2))]);
-
-        var cut = RenderBoard(view);
-
-        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "borders", "highlights", "cities", "units", "effects"]);
-        // Each city owns its tile and 6 neighbours: the outline of 7 hexes has 18 edges. Where the two touch, both draw the edge.
-        cut.FindAll("g[data-layer=borders] line.border.seat-1").Count.ShouldBe(18);
-        cut.FindAll("g[data-layer=borders] line.border.seat-2").Count.ShouldBe(18);
-    }
-
-    [Fact]
-    public void Render_NoTerritoryInSight_DrawsNoBorderLayer()
-    {
-        var cut = RenderBoard(Start());
-
-        cut.FindAll("g[data-layer=borders]").ShouldBeEmpty();
-    }
-
-    [Fact]
-    public void Render_YieldLens_MarksEveryKnownTileWithItsTotal()
-    {
-        var view = Create(terrain: static coord => coord.Column == 3 ? new TerrainType("desert") : Plains);
-
-        var cut = RenderBoard(view, lens: new YieldLens(new RulesetService()));
-
-        cut.Find("g[data-layer=lens]").ClassList.ShouldContain("lens-yields");
-        cut.FindAll("g.lens-mark.barren").Count.ShouldBe(Height);
-        cut.FindAll("g.lens-mark.poor text").Select(static text => text.TextContent).ShouldAllBe(label => label == "3");
-    }
-
-    [Fact]
-    public void Render_NoLens_DrawsNoLensLayer()
-    {
-        var cut = RenderBoard(Start());
-
-        cut.FindAll("g[data-layer=lens]").ShouldBeEmpty();
-    }
-
-    [Fact]
-    public void Render_MovementCostLens_MarksEveryKnownTileWithItsCost()
-    {
-        var view = Create(
-            visibility: static coord => coord.R == 0 ? TileVisibility.Unexplored : TileVisibility.Visible,
-            terrain: static coord => coord.Column == 3 ? Forest : coord.Column == 4 ? Mountains : Plains);
-
-        var cut = RenderBoard(view, lens: new MovementCostLens(new RulesetService()));
-
-        cut.Find("g[data-layer=lens]").ClassList.ShouldContain("lens-movement-cost");
-        cut.FindAll("g.lens-mark").Count.ShouldBe(Width * (Height - 1));
-        cut.FindAll("g.lens-mark.costly text").Select(static text => text.TextContent).ShouldAllBe(label => label == "2");
-        cut.FindAll("g.lens-mark.blocked").Count.ShouldBe(Height - 1);
-        cut.Find("g.lens-mark.blocked title").TextContent.ShouldBe("Mountains: land units can't enter");
-    }
-
-    [Fact]
-    public void Render_Lens_SitsBetweenTheTerrainAndTheHighlights()
-    {
-        var cut = RenderBoard(Start(), highlights: new BoardHighlights([At(1, 1)], [], [], []), lens: new MovementCostLens(new RulesetService()));
-
-        cut.FindAll("g[data-layer]").Select(static layer => layer.GetAttribute("data-layer")).ShouldBe(["terrain", "lens", "highlights", "cities", "units", "effects"]);
-    }
-
-    [Fact]
-    public void Render_SelectionAndHighlights_AreMarked()
-    {
-        var highlights = new BoardHighlights([At(1, 1), At(1, 2)], [At(4, 2)], [], []);
-
-        var cut = RenderBoard(Start(), BoardSelection.Of(new UnitId(1)), highlights);
-
-        cut.FindAll("use.unit.selected").Count.ShouldBe(1);
-        cut.FindAll("use.overlay.reachable").Count.ShouldBe(2);
-        cut.FindAll("use.overlay.attackable").Count.ShouldBe(1);
-    }
-
-    [Fact]
-    public void Click_Tile_RaisesTheTile()
-    {
-        var cut = RenderBoard(Start());
-
-        Tile(cut, At(1, 1)).Click();
-
-        _clicked.ShouldBe([At(1, 1)]);
-    }
-
-    [Fact]
-    public void Click_Disabled_IsIgnored()
-    {
-        var cut = RenderBoard(Start(), disabled: true);
-
-        Tile(cut, At(1, 1)).Click();
-
-        _clicked.ShouldBeEmpty();
-    }
-
-    [Fact]
-    public void Drag_Pressed_PansAndSwallowsTheClick()
-    {
-        var cut = RenderBoard(Start());
-        var before = Transform(cut);
-
-        Press(cut, 100, 100);
-        cut.Find("svg").PointerMove(new PointerEventArgs { ClientX = 140, ClientY = 90, Buttons = 1, IsPrimary = true });
-        cut.Find("svg").PointerUp(new PointerEventArgs { ClientX = 140, ClientY = 90, IsPrimary = true });
-        Tile(cut, At(1, 1)).Click();
-
-        Transform(cut).X.ShouldBe(before.X + 40, 0.01);
-        Transform(cut).Y.ShouldBe(before.Y - 10, 0.01);
-        _clicked.ShouldBeEmpty();
-
-        Press(cut, 100, 100);
-        Tile(cut, At(1, 1)).Click();
-        _clicked.ShouldBe([At(1, 1)]);
-    }
-
-    [Fact]
-    public void Drag_WithinTheThreshold_StillClicks()
-    {
-        var cut = RenderBoard(Start());
-        var before = Transform(cut);
-
-        Press(cut, 100, 100);
-        cut.Find("svg").PointerMove(new PointerEventArgs { ClientX = 102, ClientY = 101, Buttons = 1, IsPrimary = true });
-        Tile(cut, At(1, 1)).Click();
-
-        Transform(cut).ShouldBe(before);
-        _clicked.ShouldBe([At(1, 1)]);
-    }
-
-    [Fact]
-    public void Drag_LeavesTheBoard_EndsThePan()
-    {
-        var cut = RenderBoard(Start());
-        Press(cut, 100, 100);
-        cut.Find("svg").PointerMove(new PointerEventArgs { ClientX = 150, ClientY = 100, Buttons = 1, IsPrimary = true });
-        var afterDrag = Transform(cut);
-
-        cut.Find("svg").PointerLeave(new PointerEventArgs { ClientX = 150, ClientY = 100, IsPrimary = true });
-        cut.Find("svg").PointerMove(new PointerEventArgs { ClientX = 250, ClientY = 100, Buttons = 1, IsPrimary = true });
-
-        Transform(cut).ShouldBe(afterDrag);
-    }
-
-    [Fact]
-    public void Drag_SecondFinger_IsIgnored()
-    {
-        var cut = RenderBoard(Start());
-        var before = Transform(cut);
-        Press(cut, 100, 100);
-
-        cut.Find("svg").PointerDown(new PointerEventArgs { PointerId = 2, ClientX = 400, ClientY = 400, Buttons = 1, IsPrimary = false });
-        cut.Find("svg").PointerMove(new PointerEventArgs { PointerId = 2, ClientX = 500, ClientY = 500, Buttons = 1, IsPrimary = false });
-        cut.Find("svg").PointerMove(new PointerEventArgs { ClientX = 110, ClientY = 100, Buttons = 1, IsPrimary = true });
-
-        Transform(cut).X.ShouldBe(before.X + 10, 0.01);
-        Transform(cut).Y.ShouldBe(before.Y, 0.01);
-    }
-
-    [Fact]
-    public void Pan_AndZoom_NeverRenderTheTerrainAgain()
-    {
-        var cut = RenderBoard(Start());
-        var terrain = cut.FindComponent<BoardTerrain>();
-        var renders = terrain.RenderCount;
-
-        Press(cut, 100, 100);
-        cut.Find("svg").PointerMove(new PointerEventArgs { ClientX = 160, ClientY = 100, Buttons = 1, IsPrimary = true });
-        cut.Find("button.zoom-in").Click();
-
-        terrain.RenderCount.ShouldBe(renders);
-    }
-
-    [Fact]
-    public void Render_NewView_RendersTheTerrainAgain()
-    {
-        var cut = RenderBoard(Start());
-        var terrain = cut.FindComponent<BoardTerrain>();
-        var renders = terrain.RenderCount;
 
         cut.Render(parameters => parameters.Add(static board => board.View, Start()));
 
-        terrain.RenderCount.ShouldBe(renders + 1);
+        Calls("render").Count.ShouldBe(1);
     }
 
     [Fact]
-    public void Wheel_TrackpadDelta_ZoomsALittle()
+    public void Render_FocusFromBeforeTheBoard_IsNotFollowed()
+    {
+        Render<GameBoard3D>(parameters => parameters
+            .Add(static board => board.View, Start())
+            .Add(static board => board.Focus, new BoardFocus(At(7, 5), 3)));
+
+        _module.Invocations["focus"].ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Dispose_Board_UnmountsTheRenderer()
+    {
+        RenderBoard(Start());
+
+        await DisposeComponentsAsync();
+
+        Calls("unmount").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Render_WebGlUnavailable_SaysSoAndSendsNothing()
+    {
+        _module.Setup<bool>("mount", _ => true).SetResult(false);
+
+        var cut = RenderBoard(Start());
+
+        cut.Find(".board3d-unavailable").TextContent.ShouldContain("can't show the 3D board");
+        Calls("render").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Click_TileInTheRenderer_RaisesTileClicked()
+    {
+        RenderBoard(Start());
+
+        await ClickInRendererAsync(At(3, 2));
+
+        _clicked.ShouldBe([At(3, 2)]);
+    }
+
+    [Fact]
+    public async Task Click_WhileDisabled_IsIgnored()
+    {
+        RenderBoard(Start(), disabled: true);
+
+        await ClickInRendererAsync(At(3, 2));
+
+        _clicked.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_NewFocus_CentresTheCameraOnTheTile()
     {
         var cut = RenderBoard(Start());
-        var fitted = Transform(cut).Scale;
 
-        cut.Find("svg").Wheel(new WheelEventArgs { DeltaY = -10, ClientX = 400, ClientY = 300 });
+        cut.Render(parameters => parameters.Add(static board => board.Focus, new BoardFocus(At(5, 4), 1)));
 
-        cut.WaitForAssertion(() => Transform(cut).Scale.ShouldBe(fitted * Math.Pow(GameBoard.ZoomStep, 0.1), 0.001));
+        var (x, z) = BoardSceneBuilder.Center(At(5, 4));
+        Calls("focus").Single().Arguments.Skip(1).ShouldBe([x, z]);
     }
 
     [Fact]
-    public void Move_WithoutAPress_DoesNotPan()
+    public void Click_ZoomAndFitButtons_MoveTheCamera()
     {
         var cut = RenderBoard(Start());
-        var before = Transform(cut);
 
-        cut.Find("svg").PointerMove(new PointerEventArgs { ClientX = 300, ClientY = 300, Buttons = 0 });
+        cut.Find(".zoom-in").Click();
+        cut.Find(".zoom-fit").Click();
 
-        Transform(cut).ShouldBe(before);
+        Calls("zoom").Single().Arguments[1].ShouldBe(GameBoard.ZoomStep);
+        Calls("fit")[^1].Arguments[1].ShouldBe(BoardSceneBuilder.Build(Start()).Map);
     }
 
     [Fact]
-    public void Wheel_UpThenDown_ZoomsInThenOut()
+    public void Render_Mounted_SendsAnEmptyOverlay()
+    {
+        RenderBoard(Start());
+
+        Calls("renderOverlay").Single().Arguments[1].ShouldBe(BoardOverlay.None);
+    }
+
+    [Fact]
+    public void Render_NewSelection_SendsAnOverlayButNoScene()
     {
         var cut = RenderBoard(Start());
-        var fitted = Transform(cut).Scale;
 
-        cut.Find("svg").Wheel(new WheelEventArgs { DeltaY = -100, ClientX = 400, ClientY = 300 });
-        cut.WaitForAssertion(() => Transform(cut).Scale.ShouldBe(fitted * GameBoard.ZoomStep, 0.001));
+        cut.Render(parameters => parameters
+            .Add(static board => board.Selection, BoardSelection.Of(new UnitId(1)))
+            .Add(static board => board.Highlights, BoardHighlights.None with { Reachable = [At(1, 1)] }));
 
-        cut.Find("svg").Wheel(new WheelEventArgs { DeltaY = 100, ClientX = 400, ClientY = 300 });
-        cut.WaitForAssertion(() => Transform(cut).Scale.ShouldBe(fitted, 0.001));
+        Calls("render").Count.ShouldBe(1);
+        var overlay = Calls("renderOverlay")[^1].Arguments[1].ShouldBeOfType<BoardOverlay>();
+        overlay.Selected.ShouldNotBeNull();
+        overlay.Tiles.ShouldHaveSingleItem().Tint.ShouldBe("--gv-overlay-reachable");
     }
 
     [Fact]
-    public void ZoomButtons_ChangeTheScaleAndFitShowsTheWholeMap()
+    public void Render_SameSelectionAndHighlights_SendsNoOverlay()
+    {
+        var highlights = BoardHighlights.None with { Reachable = [At(1, 1)] };
+        var cut = RenderBoard(Start());
+        cut.Render(parameters => parameters.Add(static board => board.Selection, BoardSelection.Of(new UnitId(1))).Add(static board => board.Highlights, highlights));
+
+        cut.Render(parameters => parameters.Add(static board => board.Selection, BoardSelection.Of(new UnitId(1))).Add(static board => board.Disabled, true));
+
+        Calls("renderOverlay").Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Render_NewView_SendsItsOverlayAgain()
     {
         var cut = RenderBoard(Start());
-        var start = Transform(cut);
 
-        cut.Find("button.zoom-in").Click();
-        Transform(cut).Scale.ShouldBe(start.Scale * GameBoard.ZoomStep, 0.001);
-        cut.Find("button.zoom-out").Click();
-        cut.Find("button.zoom-out").Click();
-        Transform(cut).Scale.ShouldBe(start.Scale / GameBoard.ZoomStep, 0.001);
+        cut.Render(parameters => parameters.Add(static board => board.View, Start() with { Version = TestViews.Version + 1 }));
 
-        cut.Find("button.zoom-fit").Click();
-        cut.WaitForAssertion(() => ShouldShow(cut, HexLayout.Bounds(TestViews.Width, TestViews.Height)));
+        Calls("renderOverlay").Count.ShouldBe(2);
     }
 
     [Fact]
-    public void Render_FirstTime_AddsTheWheelListenerAndOpensOnTheOwnPieces()
+    public void Render_NewLensOnly_SendsOneOverlayAndNoScene()
     {
-        var cut = RenderBoard(Create([Settler(1, You, At(2, 2)), Soldier(3, Opponent, At(7, 5))], [City(7, You, At(4, 3))]));
+        var cut = RenderBoard(Start());
 
-        JSInterop.Invocations.Count(static invocation => invocation.Identifier == "init").ShouldBe(1);
-        cut.WaitForAssertion(() => ShouldShow(cut, HexLayout.Around([At(2, 2), At(4, 3)], 3)));
+        cut.Render(parameters => parameters.Add(static board => board.Lens, new MovementCostLens(new RulesetService())));
+
+        Calls("render").Count.ShouldBe(1);
+        Calls("renderOverlay").Count.ShouldBe(2);
     }
 
     [Fact]
-    public void Render_NoOwnPieces_FitsTheWholeMap()
+    public void Render_Lens_SendsItsMarksWithLabels()
     {
-        var cut = RenderBoard(Create([Soldier(3, Opponent, At(5, 2))]));
+        var cut = RenderBoard(Start());
 
-        cut.WaitForAssertion(() => ShouldShow(cut, HexLayout.Bounds(TestViews.Width, TestViews.Height)));
+        cut.Render(parameters => parameters.Add(static board => board.Lens, new MovementCostLens(new RulesetService())));
+
+        Calls("renderOverlay")[^1].Arguments[1].ShouldBeOfType<BoardOverlay>().Tiles.Count(static tile => tile.Label is not null).ShouldBe(Width * Height);
     }
 
-    // The board's transform is the fit of the bounds into the measured 800 by 600 element (rounded in the attribute).
-    private static void ShouldShow(IRenderedComponent<GameBoard> cut, BoardRect bounds)
+    [Fact]
+    public void Render_MaxHealth_GivesHurtUnitsTheirHealthShare()
     {
-        var expected = BoardViewport.Fit(bounds, 800, 600);
-        var actual = Transform(cut);
-        actual.Scale.ShouldBe(expected.Scale, 0.001);
-        actual.X.ShouldBe(expected.X, 0.01);
-        actual.Y.ShouldBe(expected.Y, 0.01);
+        Render<GameBoard3D>(parameters => parameters
+            .Add(static board => board.View, Create([Soldier(2, You, At(3, 2), health: 50)]))
+            .Add(static board => board.MaxHealth, 100));
+
+        Calls("render").Single().Arguments[1].ShouldBeOfType<BoardScene>().Pieces.ShouldHaveSingleItem().Health.ShouldBe(0.5);
     }
 
-    private IRenderedComponent<GameBoard> RenderBoard(
-        PlayerView view, BoardSelection? selection = null, BoardHighlights? highlights = null, bool disabled = false, IMapLens? lens = null)
+    [Fact]
+    public void Render_Mounted_SendsAnEmptyMotionAfterTheScene()
     {
-        var cut = Render<GameBoard>(parameters => parameters
+        RenderBoard(Start());
+
+        var motion = Calls("renderMotion").Single().Arguments[1].ShouldBeOfType<SceneMotion>();
+        (motion.Positions.Count, motion.Ghosts.Count, motion.Effects.Count).ShouldBe((0, 0, 0));
+        _module.Invocations.Select(static call => call.Identifier).ToList().IndexOf("renderMotion")
+            .ShouldBeGreaterThan(_module.Invocations.Select(static call => call.Identifier).ToList().IndexOf("render"));
+    }
+
+    [Fact]
+    public void Render_NewMotion_SendsItInSceneUnitsButNoScene()
+    {
+        var cut = RenderBoard(Start());
+        var (x, y) = HexLayout.Center(At(4, 2));
+
+        cut.Render(parameters => parameters.Add(static board => board.Motion, BoardMotion.None with
+        {
+            Positions = BoardMotion.None.Positions.Add(new UnitId(2), new BoardPoint(x, y)),
+        }));
+
+        Calls("render").Count.ShouldBe(1);
+        var position = Calls("renderMotion")[^1].Arguments[1].ShouldBeOfType<SceneMotion>().Positions.ShouldHaveSingleItem();
+        var (sceneX, sceneZ) = BoardSceneBuilder.Center(At(4, 2));
+        (position.Unit, position.X, position.Z).ShouldBe((2, sceneX, sceneZ));
+    }
+
+    [Fact]
+    public void Render_SameMotion_IsNotSentAgain()
+    {
+        var motion = BoardMotion.None with { Ghosts = [new BoardGhost(1, Opponent, SoldierType, new BoardPoint(0, 0), Fading: true)] };
+        var cut = RenderBoard(Start());
+        cut.Render(parameters => parameters.Add(static board => board.Motion, motion));
+
+        cut.Render(parameters => parameters.Add(static board => board.Motion, motion).Add(static board => board.Disabled, true));
+
+        Calls("renderMotion").Count.ShouldBe(2);
+    }
+
+    private IReadOnlyList<JSRuntimeInvocation> Calls(string identifier) => _module.Invocations[identifier];
+
+    private IRenderedComponent<GameBoard3D> RenderBoard(PlayerView view, bool disabled = false) =>
+        Render<GameBoard3D>(parameters => parameters
             .Add(static board => board.View, view)
-            .Add(static board => board.Lens, lens)
-            .Add(static board => board.Selection, selection ?? BoardSelection.None)
-            .Add(static board => board.Highlights, highlights ?? BoardHighlights.None)
             .Add(static board => board.Disabled, disabled)
             .Add(static board => board.TileClicked, coord => _clicked.Add(coord)));
-        cut.WaitForAssertion(() => JSInterop.Invocations.Count(static invocation => invocation.Identifier == "measure").ShouldBe(1));
-        return cut;
-    }
 
-    private static IElement Tile(IRenderedComponent<GameBoard> cut, HexCoord coord) =>
-        cut.Find($"use.tile[data-q='{coord.Q}'][data-r='{coord.R}']");
-
-    private static void Press(IRenderedComponent<GameBoard> cut, double x, double y) =>
-        cut.Find("svg").PointerDown(new PointerEventArgs { ClientX = x, ClientY = y, Buttons = 1, IsPrimary = true });
-
-    private static (double X, double Y, double Scale) Transform(IRenderedComponent<GameBoard> cut)
+    // What the renderer does on a click: it calls OnTileClicked on the .NET object it was mounted with.
+    private async Task ClickInRendererAsync(HexCoord coord)
     {
-        var match = TransformRegex().Match(cut.Find("g.layer").GetAttribute("transform")!);
-        return (Parse(match.Groups["x"].Value), Parse(match.Groups["y"].Value), Parse(match.Groups["scale"].Value));
+        var relay = Calls("mount").Single().Arguments[1]!;
+        var target = relay.GetType().GetProperty("Value")!.GetValue(relay)!;
+        var method = target.GetType().GetMethod("OnTileClicked", BindingFlags.Public | BindingFlags.Instance)!;
+        await (Task)method.Invoke(target, [coord.Q, coord.R])!;
     }
-
-    private static double Parse(string value) => double.Parse(value, CultureInfo.InvariantCulture);
-
-    [GeneratedRegex(@"^translate\((?<x>-?[\d.]+) (?<y>-?[\d.]+)\) scale\((?<scale>[\d.]+)\)$")]
-    private static partial Regex TransformRegex();
 }
