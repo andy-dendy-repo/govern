@@ -19,6 +19,10 @@ export function render(host, scene) {
     boards.get(host)?.setScene(scene);
 }
 
+export function renderOverlay(host, overlay) {
+    boards.get(host)?.setOverlay(overlay);
+}
+
 export function fit(host, rect) {
     boards.get(host)?.fit(rect);
 }

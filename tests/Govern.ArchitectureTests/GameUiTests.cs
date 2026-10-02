@@ -61,6 +61,18 @@ public partial class GameUiTests
     }
 
     [Fact]
+    public void Board3DPieces_HaveABuilderPerPieceModel()
+    {
+        var builders = PieceBuilderRegex().Matches(File.ReadAllText(Path.Combine(Board3DRoot, "pieces.js")))
+            .Select(static match => match.Groups[1].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missing = Enum.GetNames<PieceModel>().Select(static name => name.ToLowerInvariant()).Where(name => !builders.Contains(name)).ToList();
+
+        missing.ShouldBeEmpty("every PieceModel needs its builder in js/board3d/pieces.js, or it is drawn as a soldier");
+    }
+
+    [Fact]
     public void Board3DTerrain_SharesTheWaterLevelWithTerrainReliefs()
     {
         var match = WaterLevelRegex().Match(File.ReadAllText(Path.Combine(Board3DRoot, "terrain.js")));
@@ -150,6 +162,10 @@ public partial class GameUiTests
     // A model builder in models.js: `    name: c => [`.
     [GeneratedRegex(@"^ {4}([a-z]+): c => \[", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex ModelBuilderRegex();
+
+    // A piece builder in pieces.js: `    name: c => [`.
+    [GeneratedRegex(@"^ {4}([a-z]+): c => \[", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex PieceBuilderRegex();
 
     [GeneratedRegex(@"const WATER_LEVEL = ([0-9.]+);", RegexOptions.CultureInvariant)]
     private static partial Regex WaterLevelRegex();

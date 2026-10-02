@@ -5,7 +5,9 @@ import {
 } from '../../lib/three/three.module.js';
 import { CameraRig } from './camera.js';
 import { Palette } from './palette.js';
-import { buildBorders, disposeShared as disposeBorders } from './overlays.js';
+import { Labels } from './labels.js';
+import { buildBorders, buildOverlay, disposeShared as disposeBorders } from './overlays.js';
+import { buildPieces, disposeShared as disposePieces } from './pieces.js';
 import { buildFeatures, disposeShared as disposeFeatures } from './models.js';
 import { buildRivers, disposeShared as disposeRivers } from './rivers.js';
 import { disposeLayer } from './shapes.js';
@@ -40,6 +42,10 @@ export class Board3D {
         this.scene = null;
         this.terrain = null;
         this.layers = null;
+        this.pieces = null;
+        this.overlay = null;
+        this.overlayData = null;
+        this.labels = new Labels(host);
         this.frame = 0;
 
         this.listen();
@@ -67,7 +73,27 @@ export class Board3D {
     setScene(scene) {
         this.scene = scene;
         this.rig.setBounds(scene.map);
+        this.labels.setPieces(scene.pieces);
         this.rebuild();
+    }
+
+    // Draws the player's current choice (lens, highlights, selection) over the scene; the map stays as it is.
+    setOverlay(overlay) {
+        this.overlayData = overlay;
+        this.labels.setOverlay(overlay);
+        this.drawOverlay(new Palette(this.host));
+        this.requestRender();
+    }
+
+    drawOverlay(palette) {
+        if (this.overlay) {
+            this.world.remove(this.overlay);
+            disposeLayer(this.overlay);
+        }
+        this.overlay = buildOverlay(this.overlayData, palette);
+        if (this.overlay) {
+            this.world.add(this.overlay);
+        }
     }
 
     // Builds the ground again with the current theme's colours.
@@ -91,7 +117,10 @@ export class Board3D {
                 this.layers.add(layer);
             }
         }
+        this.pieces = buildPieces(this.scene, palette);
+        this.layers.add(this.pieces.group);
         this.world.add(this.layers);
+        this.drawOverlay(palette);
         this.requestRender();
     }
 
@@ -106,6 +135,7 @@ export class Board3D {
             this.world.remove(this.layers);
             disposeLayer(this.layers);
             this.layers = null;
+            this.pieces = null;
         }
     }
 
@@ -152,6 +182,7 @@ export class Board3D {
             this.frame = requestAnimationFrame(() => {
                 this.frame = 0;
                 this.renderer.render(this.world, this.rig.camera);
+                this.labels.place(this.rig.camera, this.canvas.clientWidth, this.canvas.clientHeight);
             });
         }
     }
@@ -196,17 +227,20 @@ export class Board3D {
         }
     }
 
-    // A click picks the tile under the pointer and tells .NET.
+    // A click picks what is under the pointer (a piece, else the ground) and tells .NET which tile it is on.
     click(at) {
         if (!this.terrain || !this.scene) {
             return;
         }
         this.raycaster.setFromCamera(new Vector2(at.x, at.y), this.rig.camera);
-        const hit = this.raycaster.intersectObject(this.terrain.pick, false)[0];
-        if (hit) {
-            const tile = this.scene.tiles[this.terrain.pick.userData.faceTile[hit.faceIndex]];
-            this.dotnet.invokeMethodAsync('OnTileClicked', tile.q, tile.r);
+        const hit = this.raycaster.intersectObjects([this.terrain.pick, ...(this.pieces?.pickable ?? [])], false)[0];
+        if (!hit) {
+            return;
         }
+        const tile = hit.object.userData.tiles
+            ? hit.object.userData.tiles[hit.instanceId]
+            : this.scene.tiles[this.terrain.pick.userData.faceTile[hit.faceIndex]];
+        this.dotnet.invokeMethodAsync('OnTileClicked', tile.q, tile.r);
     }
 
     // One mouse notch zooms by ZOOM_STEP; a trackpad's small deltas zoom smoothly.
@@ -227,7 +261,11 @@ export class Board3D {
         this.resizeObserver.disconnect();
         this.theme.removeEventListener('change', this.onTheme);
         this.clear();
-        for (const disposeShared of [disposeGround, disposeRivers, disposeFeatures, disposeBorders]) {
+        if (this.overlay) {
+            disposeLayer(this.overlay);
+        }
+        this.labels.dispose();
+        for (const disposeShared of [disposeGround, disposeRivers, disposeFeatures, disposeBorders, disposePieces]) {
             disposeShared();
         }
         this.sun.dispose();

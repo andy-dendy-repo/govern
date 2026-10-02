@@ -1,4 +1,5 @@
 using Govern.Client.Features.Games.Helpers;
+using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.Core.Map;
@@ -10,7 +11,8 @@ namespace Govern.Client.Features.Games.Components.Board;
 
 /// <summary>
 /// The 3D hex board (F15 preview). It turns the <see cref="PlayerView"/> into a <see cref="BoardScene"/>
-/// (<see cref="BoardSceneBuilder"/>), sends it to the renderer only when the view changes, and reports clicked tiles through
+/// (<see cref="BoardSceneBuilder"/>), sends it to the renderer only when the view changes, sends the <see cref="BoardOverlay"/>
+/// only when the selection, its highlights or the lens change, and reports clicked tiles through
 /// <see cref="TileClicked"/>; panning, zooming and telling a drag from a click happen in the renderer. Its
 /// <see cref="Board3DInteropService"/> comes from the component's own scope, so leaving the board unmounts the renderer.
 /// </summary>
@@ -22,6 +24,7 @@ public sealed partial class GameBoard3D
     private PlayerView? _drawn;
     private BoardScene? _scene;
     private BoardFocus? _focus;
+    private (PlayerView View, BoardSelection Selection, BoardHighlights Highlights, IMapLens? Lens)? _overlaid;
 
     /// <summary>The player's view to draw.</summary>
     [Parameter, EditorRequired]
@@ -30,6 +33,22 @@ public sealed partial class GameBoard3D
     /// <summary>The latest request to centre the board on a tile; a new request moves the camera.</summary>
     [Parameter]
     public BoardFocus? Focus { get; set; }
+
+    /// <summary>The selected unit or city, ringed on the board.</summary>
+    [Parameter]
+    public BoardSelection Selection { get; set; } = BoardSelection.None;
+
+    /// <summary>The tiles marked for the selection.</summary>
+    [Parameter]
+    public BoardHighlights Highlights { get; set; } = BoardHighlights.None;
+
+    /// <summary>The active map lens, or <see langword="null"/> when none is on.</summary>
+    [Parameter]
+    public IMapLens? Lens { get; set; }
+
+    /// <summary>The ruleset's full health; hurt units get a health bar. 0 draws none.</summary>
+    [Parameter]
+    public int MaxHealth { get; set; }
 
     /// <summary>Whether tile clicks are ignored (e.g. while a command is being sent); panning and zooming still work.</summary>
     [Parameter]
@@ -54,6 +73,7 @@ public sealed partial class GameBoard3D
         }
 
         await DrawAsync();
+        await OverlayAsync();
         await FollowFocusAsync();
     }
 
@@ -79,6 +99,7 @@ public sealed partial class GameBoard3D
         }
 
         await DrawAsync();
+        await OverlayAsync();
         await Interop.FitAsync(_scene!.Start, CancellationToken.None);
         await FollowFocusAsync();
     }
@@ -93,8 +114,22 @@ public sealed partial class GameBoard3D
         }
 
         _drawn = View;
-        _scene = BoardSceneBuilder.Build(View);
+        _scene = BoardSceneBuilder.Build(View, MaxHealth);
         await Interop.RenderAsync(_scene, CancellationToken.None);
+    }
+
+    // The overlay is sent when the drawn view, the selection, its highlights or the lens change (all replaced, never changed).
+    private async Task OverlayAsync()
+    {
+        var inputs = (View: _drawn!, Selection, Highlights, Lens);
+        if (_overlaid is { } last && ReferenceEquals(last.View, inputs.View) && last.Selection == Selection
+            && ReferenceEquals(last.Highlights, Highlights) && ReferenceEquals(last.Lens, Lens))
+        {
+            return;
+        }
+
+        _overlaid = inputs;
+        await Interop.RenderOverlayAsync(BoardOverlayBuilder.Build(_drawn!, Selection, Highlights, Lens), CancellationToken.None);
     }
 
     private async Task FollowFocusAsync()

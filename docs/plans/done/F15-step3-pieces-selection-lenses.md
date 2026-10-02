@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F15 step 3, pieces, selection and lenses on the 3D board
 
-**Status:** planned 2026-10-02 (backlog F15, step 3 of the [F15 plan](F15-3d-board.md)). Visuals only: Govern.Core, the server, the rules and the view stay as they are. The 3D board stays behind its preview toggle.
+**Status:** done 2026-10-02 in PR #43 (backlog F15, step 3 of the [F15 plan](../active/F15-3d-board.md)). Visuals only: Govern.Core, the server, the rules and the view stay as they are. The 3D board stays behind its preview toggle.
 
 ## Context
 Steps 1 and 2 (PRs #41, #42) put the terrain, rivers, bridges, improvements, buildings and borders on the 3D board, but no units or cities, so a 3D click may only select. This step draws everything the player acts on: units and cities, the selection, the move, attack, bridge and placing highlights, and the two map lenses. With them on screen, a 3D click acts like a 2D one, and the 3D board becomes playable. It also unblocks F16 (the full-screen game view).
@@ -19,7 +19,7 @@ Steps 1 and 2 (PRs #41, #42) put the terrain, rivers, bridges, improvements, bui
 ## Affected areas
 - `Client/Features/Games/Models/` (new): `ScenePiece.cs` (tile, position, height, kind `unit` or `city`, model, seat, own, health share, name for a city, sprite icon id) in the `BoardScene`; `BoardOverlay.cs` with `OverlayTile.cs` (tile, position, height, tint: `reachable`, `attackable`, `target`, `bridgeable`, `placeable` or a lens class, optional label and description) and `OverlayEdge.cs` (edge middle, height, label, class, description), plus the selected tile.
 - `Client/Features/Games/Enums/PieceModel.cs` (new): `Settler`, `Builder`, `Soldier`, `Spearman`, `Horseman`, `Archer`, `City`. `Helpers/PieceModels.cs` maps ruleset unit ids to a model, with a fallback (`Soldier`) so a new unit still draws; `PieceModelsTests` checks every ruleset unit has one.
-- `Client/Features/Games/Helpers/SceneLayerBuilder.cs`: a `Pieces` layer (units and cities from the view, with `Seats`, `Icons` and the ruleset's full health, as `BoardPieces`).
+- `Client/Features/Games/Helpers/ScenePieceBuilder.cs` (new; planned as a layer of `SceneLayerBuilder`, split out to keep that file small): units and cities from the view, with `Seats`, `Icons` and the ruleset's full health.
 - `Client/Features/Games/Helpers/BoardOverlayBuilder.cs` (new): `BoardSelection` + `BoardHighlights` + active `IMapLens` + view → `BoardOverlay`, reusing `IMapLens.MarkFor`/`EdgeMarksFor` and `HexLayout.EdgeMiddle`. Highlights are drawn over a lens, as on the 2D board.
 - `Client/Features/Games/Components/Board/GameBoard3D.razor(.cs)`: takes `Selection`, `Highlights`, `Lens` and `MaxHealth` like `GameBoard`, sends the overlay when one of them or the view changes (by reference, so panning and zooming never rebuild it), and gets `LensToolbar` next to the zoom buttons.
 - `Client/Features/Games/Components/GameTable.razor(.cs)`: passes the same parameters to `GameBoard3D` and drops the "3D clicks only select" guard.
@@ -34,7 +34,7 @@ Steps 1 and 2 (PRs #41, #42) put the terrain, rivers, bridges, improvements, bui
 
 ## Steps
 1. Client models and enum: `ScenePiece`, `PieceModel`, `BoardOverlay`, `OverlayTile`, `OverlayEdge`; `BoardScene` gains `Pieces`.
-2. Client helpers: `PieceModels`, the `Pieces` layer in `SceneLayerBuilder`, and `BoardOverlayBuilder`.
+2. Client helpers: `PieceModels`, `ScenePieceBuilder` and `BoardOverlayBuilder`.
 3. Components: `GameBoard3D` takes the overlay inputs and sends the overlay; it hosts the `LensToolbar`. `GameTable` passes them and lets 3D clicks act.
 4. Services: `Board3DInteropService.RenderOverlayAsync`.
 5. JS: `pieces.js`, the overlay in `overlays.js`, `labels.js`, `palette.tint`, and picking pieces in `scene.js`.
@@ -44,7 +44,7 @@ Steps 1 and 2 (PRs #41, #42) put the terrain, rivers, bridges, improvements, bui
 - Unit: none (client only; Core does not change).
 - Integration: none (no server change).
 - Client (bUnit):
-  - `SceneLayerBuilderTests`: units and cities appear with their model, seat, own flag, banner icon, health share and city name.
+  - `ScenePieceBuilderTests`: units and cities appear with their model, seat, own flag, banner icon, health share and city name.
   - `BoardOverlayBuilderTests`: each highlight kind gives its tint; the target is marked; the selected unit's or city's tile is the selection; a lens gives its marks and edge badges; with no selection and no lens the overlay is empty.
   - `PieceModelsTests`: every ruleset unit has a model.
   - `GameBoard3DTests`: a new selection, highlight or lens sends an overlay and no new scene; the same ones send nothing; the lens toolbar shows.
@@ -57,7 +57,7 @@ Steps 1 and 2 (PRs #41, #42) put the terrain, rivers, bridges, improvements, bui
 - `docs/features/game-ui.md`, "3D board (preview, F15)": pieces, banners and labels, the overlay and how it is sent apart from the scene, picking, and clicks that act.
 - `.claude/rules/game-ui.md`: "Every ruleset id has its UI" adds the 3D model (`PieceModels`) for a new unit.
 - `.claude/rules/blazor-client.md`: the 3D board's HTML labels are built without HTML sinks (`textContent`, `createElementNS`).
-- `docs/README.md` index; the [F15 plan](F15-3d-board.md) step 3 links here; the backlog F15 row and F16 (now unblocked, needs plan).
+- `docs/README.md` index; the [F15 plan](../active/F15-3d-board.md) step 3 links here; the backlog F15 row and F16 (now unblocked, needs plan).
 - At merge (in the step 3 PR): this plan moves to `docs/plans/done/`.
 
 ## Verification
