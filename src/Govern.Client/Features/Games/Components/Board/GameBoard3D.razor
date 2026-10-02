@@ -1,0 +1,23 @@
+@* The 3D hex board (F15 preview): a WebGL canvas drawn by wwwroot/js/board3d from a BoardScene. Step 1 draws the terrain;
+   pieces, rivers, lenses and highlights follow (docs/plans/active/F15-3d-board.md). Drag to pan; the wheel or the buttons zoom.
+   Without WebGL it says so, and the 2D board stays one click away. *@
+@inherits OwningComponentBase
+
+<div class="board-frame">
+    <div @ref="_host" class="@(Disabled ? "board3d busy" : "board3d")" role="application" aria-label="Game board (3D)"></div>
+    @if (_unavailable)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="board3d-unavailable">
+            This browser can't show the 3D board (WebGL is off or not supported). Switch back with the 2D button.
+        </RadzenAlert>
+    }
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem" class="board-zoom">
+        <RadzenButton Icon="add" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom in"
+                      Click="@(() => ZoomAsync(GameBoard.ZoomStep))" class="zoom-in"/>
+        <RadzenButton Icon="remove" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom out"
+                      Click="@(() => ZoomAsync(1 / GameBoard.ZoomStep))" class="zoom-out"/>
+        <RadzenButton Icon="fit_screen" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Fit the map"
+                      Click="@FitMapAsync" class="zoom-fit"/>
+        <BoardModeToggle/>
+    </RadzenStack>
+</div>

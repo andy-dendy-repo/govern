@@ -44,6 +44,7 @@ public static class DependencyInjection
             AddApiClient<GamesClient>(services, api);
             services.AddTransient<GameWatchService>();
             services.AddScoped<BoardInteropService>();
+            services.AddScoped<Board3DInteropService>();
             services.AddSingleton<RulesetService>();
             services.AddSingleton<IMapLens, MovementCostLens>();
             services.AddSingleton<IMapLens, YieldLens>();

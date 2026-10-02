@@ -10,7 +10,14 @@
             <TopBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
         </div>
         <div class="zone-map">
-            <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+            @if (_ui.Board3D)
+            {
+                <GameBoard3D View="@View" Focus="@_ui.Focus" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+            }
+            else
+            {
+                <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"/>
+            }
         </div>
         <div class="zone-actions">
             <ActionBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
