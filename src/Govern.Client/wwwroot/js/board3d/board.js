@@ -1,5 +1,6 @@
 // The 3D game board (Features/Games/Services/Board3DInteropService.cs). Each mounted host element has its own Board3D; the
 // calls below find it by the element. Drawing and camera only: what shows is decided in C# (BoardScene).
+import { measure as measureBoard } from './bench.js';
 import { Board3D } from './scene.js';
 
 const boards = new WeakMap();
@@ -37,6 +38,12 @@ export function focus(host, x, z) {
 
 export function zoom(host, factor) {
     boards.get(host)?.zoom(factor);
+}
+
+// Measures the board on the page (the bench at /design/board, Features/Design/Services/BoardBenchService.cs); null without one.
+export function measure() {
+    const host = document.querySelector('.board3d');
+    return host && boards.get(host) ? measureBoard(boards.get(host)) : null;
 }
 
 export function unmount(host) {
