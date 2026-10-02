@@ -67,7 +67,7 @@ public class Board3DInteropServiceTests : ClientTestContext
         var interop = Interop;
         await interop.MountAsync(Host, static _ => Task.CompletedTask, Ct);
 
-        await Should.NotThrowAsync(() => interop.RenderAsync(new BoardScene([], new BoardRect(0, 0, 1, 1), new BoardRect(0, 0, 1, 1)), Ct));
+        await Should.NotThrowAsync(() => interop.RenderAsync(new BoardScene([], new BoardRect(0, 0, 1, 1), new BoardRect(0, 0, 1, 1), [], [], [], []), Ct));
     }
 
     private sealed class FailingImportRuntime : IJSRuntime

@@ -83,4 +83,21 @@ public class BoardSceneBuilderTests
         scene.Start.ShouldBe(scene.Map);
         scene.Map.Width.ShouldBe(HexLayout.Bounds(Width, Height).Width / HexLayout.Size, 1e-9);
     }
+
+    [Fact]
+    public void Build_View_CarriesTheLayersAboveTheTiles()
+    {
+        var view = Create(
+            cities: [City(7, You, At(3, 3))],
+            rivers: static coord => coord == At(1, 1) ? new TileRivers(East: River) : null,
+            bridges: static coord => coord == At(1, 1) ? new TileBridges(East: true) : null,
+            improvements: static coord => coord == At(2, 3) ? Farm : null);
+
+        var scene = BoardSceneBuilder.Build(view);
+
+        scene.Rivers.ShouldHaveSingleItem();
+        scene.Bridges.ShouldHaveSingleItem();
+        scene.Features.ShouldHaveSingleItem().Model.ShouldBe("field");
+        scene.Borders.ShouldNotBeEmpty();
+    }
 }

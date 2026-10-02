@@ -61,6 +61,8 @@ public static class TestViews
 
     public static readonly TerrainType Mountains = new("mountains");
 
+    public static readonly TerrainType Lake = new("lake");
+
     public static readonly RiverType StreamRiver = new("stream");
 
     public static readonly RiverType River = new("river");
