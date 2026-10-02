@@ -1,3 +1,4 @@
+using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.ClientTests.Support;
@@ -38,6 +39,7 @@ public class Board3DInteropServiceTests : ClientTestContext
         (await interop.MountAsync(Host, static _ => Task.CompletedTask, Ct)).ShouldBeFalse();
         await interop.ZoomAsync(1.2, Ct);
         await interop.RenderOverlayAsync(BoardOverlay.None, Ct);
+        await interop.RenderMotionAsync(SceneMotionBuilder.Build(BoardMotion.None, null), Ct);
         await interop.DisposeAsync();
 
         js.Calls.ShouldBe(1);

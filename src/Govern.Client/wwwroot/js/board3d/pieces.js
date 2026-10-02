@@ -1,7 +1,7 @@
 // Units and cities: one small low-poly model per PieceModel (Features/Games/Enums/PieceModel). Units are characters baked from
 // the CC0 KayKit Adventurers pack (wwwroot/models/units, made by tools/unit-models) standing on a base in seat colour; the
 // horse and the city are built from simple shapes. Enemy pieces are a little darker. Each part remembers its tile, so clicking
-// a piece clicks its tile. Built from a BoardScene's pieces.
+// a piece clicks its tile. Built from a BoardScene's pieces; a unit that animates is built on its own (an actor) so it can move.
 import {
     BoxGeometry, BufferAttribute, BufferGeometry, ConeGeometry, CylinderGeometry, Group, MeshLambertMaterial,
     Vector3,
@@ -96,36 +96,89 @@ function colours(piece, palette) {
     };
 }
 
-// Builds the pieces of a scene: the group to add and the meshes a click can hit (`userData.tiles`: the tile per instance).
-export function buildPieces(scene, palette) {
-    const parts = new Map();
-    for (const piece of scene.pieces ?? []) {
-        const build = models[piece.model] ?? models.soldier;
-        for (const [shape, x, y, z, sx, sy, sz, colour, turn = 0] of build(colours(piece, palette))) {
-            if (!shapes[shape] && !figures.has(shape)) {
-                if (!FIGURES.includes(shape.replace(':seat', ''))) {
-                    throw new Error(`pieces.js has no shape or figure named ${shape}`);
-                }
-                continue;
+// The parts of a piece, placed relative to (ox, oy, oz): each a shape or figure with its place, size, colour and turn.
+function partsOf(piece, palette, ox, oy, oz) {
+    const build = models[piece.model] ?? models.soldier;
+    const parts = [];
+    for (const [shape, x, y, z, sx, sy, sz, colour, turn = 0] of build(colours(piece, palette))) {
+        if (!shapes[shape] && !figures.has(shape)) {
+            if (!FIGURES.includes(shape.replace(':seat', ''))) {
+                throw new Error(`pieces.js has no shape or figure named ${shape}`);
             }
-            if (!parts.has(shape)) {
-                parts.set(shape, []);
-            }
-            parts.get(shape).push({
-                x: piece.x + x * PIECE_SCALE, y: piece.height + y * PIECE_SCALE, z: piece.z + z * PIECE_SCALE,
-                sx: sx * PIECE_SCALE, sy: sy * PIECE_SCALE, sz: sz * PIECE_SCALE, colour, turn, tile: { q: piece.q, r: piece.r },
-            });
+            continue;
         }
+        parts.push({
+            shape, x: piece.x - ox + x * PIECE_SCALE, y: piece.height - oy + y * PIECE_SCALE, z: piece.z - oz + z * PIECE_SCALE,
+            sx: sx * PIECE_SCALE, sy: sy * PIECE_SCALE, sz: sz * PIECE_SCALE, colour, turn, tile: { q: piece.q, r: piece.r },
+        });
+    }
+    return parts;
+}
+
+// One instanced mesh per shape for a list of parts, in a group; the meshes a click can hit carry `userData.tiles`.
+function meshesOf(parts, materials) {
+    const byShape = new Map();
+    for (const part of parts) {
+        if (!byShape.has(part.shape)) {
+            byShape.set(part.shape, []);
+        }
+        byShape.get(part.shape).push(part);
     }
     const group = new Group();
     const pickable = [];
-    for (const [shape, items] of parts) {
-        const mesh = shapes[shape] ? instances(shapes[shape], solid, items) : instances(figures.get(shape), painted, items);
+    for (const [shape, items] of byShape) {
+        const mesh = shapes[shape] ? instances(shapes[shape], materials.solid, items) : instances(figures.get(shape), materials.painted, items);
         mesh.userData.tiles = items.map(item => item.tile);
         group.add(mesh);
         pickable.push(mesh);
     }
     return { group, pickable };
+}
+
+// Builds the pieces of a scene: the group to add and the meshes a click can hit (`userData.tiles`: the tile per instance).
+// Units whose id is in `moving` are left out of the shared meshes and built as actors of their own (see buildActor), so the
+// motion can move them one by one.
+export function buildPieces(scene, palette, moving = new Set()) {
+    const parts = [];
+    const actors = new Map();
+    for (const piece of scene.pieces ?? []) {
+        if (piece.unit != null && moving.has(piece.unit)) {
+            actors.set(piece.unit, buildActor(piece, palette));
+        } else {
+            parts.push(...partsOf(piece, palette, 0, 0, 0));
+        }
+    }
+    const { group, pickable } = meshesOf(parts, { solid, painted });
+    for (const actor of actors.values()) {
+        group.add(actor.group);
+        pickable.push(...actor.pickable);
+    }
+    return { group, pickable, actors };
+}
+
+// One piece as a group of its own, standing at the group's origin, which is placed at the piece: moving or turning the group
+// moves the piece. A fading actor (a destroyed unit's ghost) has its own see-through materials, freed by disposeActor.
+export function buildActor(piece, palette, fading = false) {
+    const materials = fading
+        ? { solid: solid.clone(), painted: painted.clone(), own: true }
+        : { solid, painted, own: false };
+    if (fading) {
+        materials.solid.transparent = materials.painted.transparent = true;
+    }
+    const { group, pickable } = meshesOf(partsOf(piece, palette, piece.x, piece.height, piece.z), materials);
+    group.position.set(piece.x, piece.height, piece.z);
+    // A fading ghost casts no shadow, which would stay dark while the model fades.
+    group.traverse(object => { object.castShadow &&= !fading; });
+    return { group, pickable, piece, materials };
+}
+
+// Frees an actor's instance buffers and, for a fading one, its own materials.
+export function disposeActor(actor) {
+    actor.group.traverse(object => object.isInstancedMesh && object.dispose());
+    if (actor.materials.own) {
+        actor.materials.solid.dispose();
+        actor.materials.painted.dispose();
+    }
 }
 
 // How high a banner floats over a piece, in board units: over a standing character's head, over a rider or over a city.

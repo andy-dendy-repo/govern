@@ -7,10 +7,10 @@ updated: 2026-10-02
 
 # Plan: F15 step 4, animations on the 3D board
 
-**Status:** planned 2026-10-02 (backlog F15, step 4 of the [F15 plan](F15-3d-board.md), after [step 3b](../done/F15-step3b-unit-models.md)). Visuals only: Govern.Core, the server, the rules, the view and the game log stay as they are.
+**Status:** done 2026-10-02 (backlog F15, step 4 of the [F15 plan](../active/F15-3d-board.md), after [step 3b](F15-step3b-unit-models.md)); decisions made while building it are at the end. Visuals only: Govern.Core, the server, the rules, the view and the game log stay as they are.
 
 ## Context
-The 2D board animates what happens since F11b ([plan](../done/F11b-animations.md)): units walk, attacks lunge with floating damage, destroyed units fade and new cities and builds pulse. The 3D board still jumps straight to each new view, so an opponent's turn is easy to miss there. This step plays the same animations on the 3D board from the same source: `BoardAnimationService` and its `BoardMotion`, built from the game log's events. No new event, timing rule or mechanic is added; the 3D board only draws the motion the 2D board already gets.
+The 2D board animates what happens since F11b ([plan](F11b-animations.md)): units walk, attacks lunge with floating damage, destroyed units fade and new cities and builds pulse. The 3D board still jumps straight to each new view, so an opponent's turn is easy to miss there. This step plays the same animations on the 3D board from the same source: `BoardAnimationService` and its `BoardMotion`, built from the game log's events. No new event, timing rule or mechanic is added; the 3D board only draws the motion the 2D board already gets.
 
 ## Scope
 - In: the F11b set on the 3D board: walking tile by tile (turned to face the way they walk, following the ground's height), the attack lunge, floating damage numbers, a destroyed unit fading, the tile pulse for a city founded or captured and an improvement or bridge built; a banner and health bar that move with their piece; skipping on a click or a newer view; reduced motion.
@@ -58,3 +58,12 @@ The 2D board animates what happens since F11b ([plan](../done/F11b-animations.md
 - **Rebuilding the batch when an animation starts or ends** costs one pieces rebuild each time (not per step). Fine for the 2-player maps of today; step 5's performance pass checks a 40×40 map.
 - **Static characters slide rather than walk.** The baked KayKit figures have no skeleton, so a walk is a turn, a glide and a small hop per tile. A real walk cycle would mean baking the pack's animations, which is out of scope; it can be a later item if the glide reads poorly.
 - **Durations live in C#.** If the 2D board is retired (backlog F17), `BoardAnimationService` stays as the one place they are set.
+
+## Decisions made during implementation
+- **The selection ring stays on the tile** while the selected unit walks (the overlay is not rebuilt per step); the banner and health bar do follow the piece.
+- **The pulse is drawn over the pieces** (no depth test), like the 2D effects layer, since a city's model otherwise hides most of it; it grows from 0.8 to 1.15 of the tile, as the 2D pulse does.
+- **A walk's first place is drawn at once.** The view is applied before the motion, so the scene already has the unit on its last tile; a first place a step or more from it is where the walk starts and is drawn there directly, while a shorter one (a lunge) glides from the tile.
+- **Actors live until everything settles**, so a lunge's way back glides too and the shared meshes are rebuilt only when a unit starts animating and once at the end.
+- **`HexLayout.Nearest`** (new) finds the tile under a point for its surface height; a point between tiles takes the nearer tile's.
+- **A fading ghost casts no shadow**, which would otherwise stay dark while the model fades.
+- **Played-out effects stay played out.** The service keeps every effect and fading ghost in its motion until the batch ends, so `motion.js` remembers the ones that have run their time and never starts them again.
