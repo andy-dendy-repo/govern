@@ -30,6 +30,29 @@ public static class HexLayout
     /// <returns>The centre's x and y.</returns>
     public static (double X, double Y) Center(HexCoord coord) => (Width * (coord.Q + (coord.R / 2.0)), Size * 1.5 * coord.R);
 
+    /// <summary>The hex whose area holds a point (the nearest centre).</summary>
+    /// <param name="x">The point's x.</param>
+    /// <param name="y">The point's y.</param>
+    /// <returns>The hex.</returns>
+    public static HexCoord Nearest(double x, double y)
+    {
+        var q = ((Math.Sqrt(3) / 3 * x) - (y / 3)) / Size;
+        var r = 2.0 / 3 * y / Size;
+        var s = -q - r;
+        var (rq, rr, rs) = (Math.Round(q), Math.Round(r), Math.Round(s));
+        var (dq, dr, ds) = (Math.Abs(rq - q), Math.Abs(rr - r), Math.Abs(rs - s));
+        if (dq > dr && dq > ds)
+        {
+            rq = -rr - rs;
+        }
+        else if (dr > ds)
+        {
+            rr = -rq - rs;
+        }
+
+        return new HexCoord((int)rq, (int)rr);
+    }
+
     /// <summary>The two corners at the ends of a tile edge (where a river runs).</summary>
     /// <param name="edge">The edge.</param>
     /// <returns>Both corners' x and y.</returns>

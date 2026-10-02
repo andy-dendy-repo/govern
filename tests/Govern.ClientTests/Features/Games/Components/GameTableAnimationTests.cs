@@ -66,6 +66,26 @@ public class GameTableAnimationTests : ClientTestContext
         UnitStyle(cut).ShouldBe(StyleAt(At(3, 2)));
     }
 
+    [Fact]
+    public void NewerView_On3DBoard_SendsTheWalkToTheRenderer()
+    {
+        var module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
+        module.Setup<bool>("mount", _ => true).SetResult(true);
+        foreach (var call in new[] { "render", "renderOverlay", "renderMotion", "fit", "focus", "unmount" })
+        {
+            module.SetupVoid(call, _ => true).SetVoidResult();
+        }
+
+        var cut = RenderTable(Before, []);
+        cut.Find("button.board-mode").Click();
+
+        Update(cut, After, [new(1, 1, [Moved()])]);
+
+        var (x, z) = BoardSceneBuilder.Center(At(2, 2));
+        var walk = module.Invocations["renderMotion"][^1].Arguments[1].ShouldBeOfType<SceneMotion>().Positions.ShouldHaveSingleItem();
+        (walk.Unit, walk.X, walk.Z).ShouldBe((1, x, z));
+    }
+
     private static UnitMovedEvent Moved() => new(new UnitId(1), You, SoldierType, [At(3, 2)]);
 
     private static string? UnitStyle(IRenderedComponent<GameTable> cut) => cut.Find("use.unit.own").ParentElement!.GetAttribute("style");

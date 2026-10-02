@@ -1,5 +1,5 @@
 // HTML over the canvas: a banner with the sprite symbol above every piece (with a health bar under a hurt unit's), city names,
-// and the active lens's labels and edge badges. Built with createElement, createElementNS and textContent only (no HTML is
+// the active lens's labels and edge badges, and damage numbers while an attack plays. Built with createElement, createElementNS and textContent only (no HTML is
 // parsed), placed by projecting their anchor points after every draw, and hidden from assistive technology, since the side
 // panel says the same.
 import { Vector3 } from '../../lib/three/three.module.js';
@@ -15,6 +15,7 @@ export class Labels {
         host.append(this.layer);
         this.pieces = [];
         this.marks = [];
+        this.damage = new Map();
         this.point = new Vector3();
     }
 
@@ -23,7 +24,8 @@ export class Labels {
         this.clear(this.pieces);
         this.pieces = [];
         for (const piece of pieces ?? []) {
-            this.pieces.push({ element: this.banner(piece), anchor: bannerAnchor(piece) });
+            const anchor = bannerAnchor(piece);
+            this.pieces.push({ element: this.banner(piece), anchor, base: anchor.clone(), unit: piece.unit });
             if (piece.name) {
                 const name = this.element('div', 'board3d-city-name');
                 name.textContent = piece.name;
@@ -48,6 +50,27 @@ export class Labels {
             badge.textContent = edge.label;
             this.marks.push({ element: badge, anchor: new Vector3(edge.x, edge.height + 0.05, edge.z) });
         }
+    }
+
+    // Moves a unit's banner with its piece while it animates (offset from where the scene has it).
+    follow(unit, dx, dy, dz) {
+        for (const label of this.pieces) {
+            if (label.unit === unit) {
+                label.anchor.set(label.base.x + dx, label.base.y + dy, label.base.z + dz);
+            }
+        }
+    }
+
+    // A damage number over a tile; its CSS animation floats it up and fades it.
+    addDamage(key, text, x, height, z) {
+        const label = this.element('div', 'board3d-damage');
+        label.textContent = text;
+        this.damage.set(key, { element: label, anchor: new Vector3(x, height + 0.9, z) });
+    }
+
+    removeDamage(key) {
+        this.damage.get(key)?.element.remove();
+        this.damage.delete(key);
     }
 
     banner(piece) {
@@ -86,7 +109,7 @@ export class Labels {
 
     // Moves every label over its anchor as the camera sees it; those behind the camera or off the canvas are hidden.
     place(camera, width, height) {
-        for (const label of [...this.marks, ...this.pieces]) {
+        for (const label of [...this.marks, ...this.pieces, ...this.damage.values()]) {
             this.point.copy(label.anchor).project(camera);
             const visible = this.point.z < 1 && Math.abs(this.point.x) <= 1.1 && Math.abs(this.point.y) <= 1.1;
             label.element.hidden = !visible;

@@ -590,7 +590,7 @@ public class GameTableTests : ClientTestContext
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(after));
         var module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
         module.Setup<bool>("mount", _ => true).SetResult(true);
-        foreach (var call in new[] { "render", "renderOverlay", "fit", "focus", "unmount" })
+        foreach (var call in new[] { "render", "renderOverlay", "renderMotion", "fit", "focus", "unmount" })
         {
             module.SetupVoid(call, _ => true).SetVoidResult();
         }

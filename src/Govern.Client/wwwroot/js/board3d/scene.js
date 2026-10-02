@@ -1,5 +1,5 @@
 // One 3D board: the WebGL renderer in its host element, the light, the camera and the pointer. It draws on demand (after a
-// scene, a camera move or a resize), never in a constant loop.
+// scene, a camera move or a resize), and every frame only while an animation plays (motion.js).
 import {
     DirectionalLight, Group, HemisphereLight, NeutralToneMapping, PCFShadowMap, Raycaster, Scene, Vector2, WebGLRenderer,
 } from '../../lib/three/three.module.js';
@@ -7,6 +7,7 @@ import { CameraRig } from './camera.js';
 import { Palette } from './palette.js';
 import { Labels } from './labels.js';
 import { buildBorders, buildOverlay, disposeShared as disposeBorders } from './overlays.js';
+import { Motion } from './motion.js';
 import { buildPieces, disposeShared as disposePieces, loadFigures } from './pieces.js';
 import { buildFeatures, disposeShared as disposeFeatures } from './models.js';
 import { buildRivers, disposeShared as disposeRivers } from './rivers.js';
@@ -46,6 +47,8 @@ export class Board3D {
         this.overlay = null;
         this.overlayData = null;
         this.labels = new Labels(host);
+        this.pieceByUnit = new Map();
+        this.motion = new Motion(this);
         this.frame = 0;
 
         this.listen();
@@ -76,7 +79,38 @@ export class Board3D {
         this.scene = scene;
         this.rig.setBounds(scene.map);
         this.labels.setPieces(scene.pieces);
+        this.pieceByUnit = new Map((scene.pieces ?? []).filter(piece => piece.unit != null).map(piece => [piece.unit, piece]));
         this.rebuild();
+    }
+
+    // Animates the scene (BoardAnimationService's motion); the scene itself stays as it is.
+    setMotion(motion) {
+        this.motion.set(motion, performance.now());
+        this.requestRender();
+    }
+
+    // A unit's piece in the scene, by its id.
+    pieceOf(unit) {
+        return this.pieceByUnit.get(unit);
+    }
+
+    palette() {
+        return new Palette(this.host);
+    }
+
+    // Builds the pieces again, with the units the motion moves as actors of their own, placed where they are drawn.
+    rebuildPieces() {
+        if (!this.layers || !this.scene) {
+            return;
+        }
+        if (this.pieces) {
+            this.layers.remove(this.pieces.group);
+            disposeLayer(this.pieces.group);
+        }
+        this.pieces = buildPieces(this.scene, this.palette(), this.motion.moving);
+        this.layers.add(this.pieces.group);
+        this.motion.reapply();
+        this.requestRender();
     }
 
     // Draws the player's current choice (lens, highlights, selection) over the scene; the map stays as it is.
@@ -119,8 +153,9 @@ export class Board3D {
                 this.layers.add(layer);
             }
         }
-        this.pieces = buildPieces(this.scene, palette);
+        this.pieces = buildPieces(this.scene, palette, this.motion.moving);
         this.layers.add(this.pieces.group);
+        this.motion.reapply();
         this.world.add(this.layers);
         this.drawOverlay(palette);
         this.requestRender();
@@ -183,8 +218,12 @@ export class Board3D {
         if (!this.frame) {
             this.frame = requestAnimationFrame(() => {
                 this.frame = 0;
+                const animating = this.motion.tick(performance.now());
                 this.renderer.render(this.world, this.rig.camera);
                 this.labels.place(this.rig.camera, this.canvas.clientWidth, this.canvas.clientHeight);
+                if (animating) {
+                    this.requestRender();
+                }
             });
         }
     }
@@ -263,6 +302,7 @@ export class Board3D {
         }
         this.resizeObserver.disconnect();
         this.theme.removeEventListener('change', this.onTheme);
+        this.motion.dispose();
         this.clear();
         if (this.overlay) {
             disposeLayer(this.overlay);
