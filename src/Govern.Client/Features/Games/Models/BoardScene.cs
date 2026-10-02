@@ -12,6 +12,7 @@ namespace Govern.Client.Features.Games.Models;
 /// <param name="Bridges">The bridges in sight.</param>
 /// <param name="Features">The improvements and buildings in sight, and the buildings the player's cities are producing.</param>
 /// <param name="Borders">The territory borders in sight.</param>
+/// <param name="Pieces">The units and cities in sight (cities first, so a unit stands in front of its city).</param>
 public sealed record BoardScene(
     IReadOnlyList<SceneTile> Tiles,
     BoardRect Map,
@@ -19,4 +20,5 @@ public sealed record BoardScene(
     IReadOnlyList<SceneRiver> Rivers,
     IReadOnlyList<SceneBridge> Bridges,
     IReadOnlyList<SceneFeature> Features,
-    IReadOnlyList<SceneBorder> Borders);
+    IReadOnlyList<SceneBorder> Borders,
+    IReadOnlyList<ScenePiece> Pieces);

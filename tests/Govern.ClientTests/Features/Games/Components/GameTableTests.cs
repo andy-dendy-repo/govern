@@ -584,11 +584,13 @@ public class GameTableTests : ClientTestContext
     }
 
     [Fact]
-    public async Task Click_On3DBoard_SelectsButNeverActs()
+    public async Task Click_On3DBoard_MovesTheSelectedUnit()
     {
+        var after = TestGames.Started(view: Create([Settler(1, You, At(1, 1), movementLeft: 1)]));
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(after));
         var module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
         module.Setup<bool>("mount", _ => true).SetResult(true);
-        foreach (var call in new[] { "render", "fit", "focus", "unmount" })
+        foreach (var call in new[] { "render", "renderOverlay", "fit", "focus", "unmount" })
         {
             module.SetupVoid(call, _ => true).SetVoidResult();
         }
@@ -602,8 +604,8 @@ public class GameTableTests : ClientTestContext
         await cut.InvokeAsync(() => (Task)click.Invoke(target, [At(2, 2).Q, At(2, 2).R])!);
         await cut.InvokeAsync(() => (Task)click.Invoke(target, [At(1, 1).Q, At(1, 1).R])!);
 
-        cut.WaitForAssertion(() => cut.Find(".unit-panel").ShouldNotBeNull());
-        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
+        cut.WaitForAssertion(() => _changed.Count.ShouldBe(1));
+        Command(0)["command"]!["type"]!.GetValue<string>().ShouldBe("move_unit");
     }
 
     private static PlayerView AdjacentSoldiers() => Create([Settler(1, You, At(1, 1)), Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);

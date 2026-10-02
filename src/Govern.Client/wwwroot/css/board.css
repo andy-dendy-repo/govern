@@ -411,6 +411,7 @@
 
 /* The 3D board (F15, a preview behind GameUiService.Board3D): a WebGL canvas drawn by js/board3d over the backdrop. */
 .board3d {
+    position: relative;
     display: block;
     width: 100%;
     height: min(70vh, 40rem);
@@ -430,6 +431,95 @@
     display: block;
     width: 100%;
     height: 100%;
+}
+
+/* HTML over the 3D board (js/board3d/labels.js): every label is placed by a transform from the layer's top left, and never
+   takes a click, so clicks reach the canvas. A banner shows a piece's sprite symbol in its seat colour (the seat-N class). */
+.board3d-labels {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/* Labels off the canvas or behind the camera are hidden; this wins over a label's own display. */
+.board3d-labels > [hidden] {
+    display: none;
+}
+
+.board3d-labels > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    white-space: nowrap;
+}
+
+.board3d-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    background: var(--gv-label-outline);
+    box-shadow: 0 0 0 1.5px currentColor;
+}
+
+.board3d-banner.city {
+    border-radius: var(--gv-radius);
+}
+
+.board3d-banner-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+.board3d-health {
+    width: 18px;
+    height: 3px;
+    background: var(--gv-health-track);
+}
+
+.board3d-health-fill {
+    height: 100%;
+    background: var(--gv-health-good);
+}
+
+.board3d-health-fill.low {
+    background: var(--gv-health-low);
+}
+
+.board3d-city-name {
+    color: var(--gv-label);
+    font-size: 12px;
+    font-weight: 600;
+    text-shadow: 0 0 3px var(--gv-label-outline), 0 0 2px var(--gv-label-outline);
+}
+
+.board3d-lens-label {
+    color: var(--gv-lens-label);
+    font-size: 15px;
+    font-weight: 700;
+    text-shadow: 0 0 3px var(--gv-lens-label-outline), 0 0 2px var(--gv-lens-label-outline);
+}
+
+.board3d-edge-badge {
+    min-width: 16px;
+    padding: 0 3px;
+    border: 1.5px solid var(--gv-lens-label);
+    border-radius: 999px;
+    background: var(--gv-lens-label-outline);
+    color: var(--gv-lens-label);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 14px;
+    text-align: center;
+}
+
+.board3d-edge-badge.blocked {
+    background: var(--gv-danger);
 }
 
 .board3d-unavailable {
