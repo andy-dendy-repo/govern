@@ -1,6 +1,6 @@
 ---
 name: client-checks
-description: Govern Blazor client review checks - arch-rule namespace exemptions, configure-client.sh behaviour, NotFoundPage layout, board/page traps, G1 game-UI (cascade IsFixed, Esc focus, seat CSS) traps
+description: Govern Blazor client review checks - arch-rule exemptions, configure-client.sh, board/page traps, G1 game-UI traps, F15 3D board (Three.js disposal, mount race)
 metadata:
   type: project
 ---
@@ -35,3 +35,10 @@ Review 9 (2026-09-30, G1 game UI design system, phases 1-4). Traps for later gam
 Review 10 (2026-09-30, G4 terrain + lenses). Check on later board work: new tokens are often added only to the light `:root` block (G4 `--gv-terrain-mark`, `--gv-lens-*`), so a dark-on-dark mark ends up on dark explored tiles; `<title>` inside a layer with `pointer-events: none` never shows as a hover tooltip; param-less children (LensToolbar) re-render only from their own handlers, not from the parent.
 
 Review 11 (2026-10-01, F11b BoardAnimationService). Traps: GameWatchService doesn't dedupe snapshots by view version, and GamePage replaces `_game` with every SSE snapshot, so a component that reacts to `!ReferenceEquals(View, _view)` fires twice per own command (response + SSE echo); anything "ended by a newer view" gets cut by the echo. Timer-driven `StateHasChanged` on GameTable re-renders TopBar/ActionBar/SidePanel/GameLog (no ShouldRender) every step. In WASM, `CancellationTokenSource.Cancel` runs the cancelled Delay's continuation inline, so stale-step races after Finish are not reachable there.
+
+Review 12 (2026-10-02, F15 step 1, 3D board / Three.js 0.186.1 vendored in wwwroot/lib/three, byte-identical to npm). Traps for later F15 steps:
+- `WebGLRenderer.dispose()` does NOT remove its 'dispose' listeners from geometries/materials it used, and does not release the context. Module-level shared geometries/materials (terrain.js) therefore keep every old renderer reachable; each 2D/3D toggle leaks a GL context. Check that unmount disposes shared resources (or makes them per-board) and calls `renderer.forceContextLoss()`.
+- `Board3DInteropService` mount is async (2 MB import); a component disposed before `MountAsync` returns leaves a live board + DotNetObjectReference. Look for a disposed flag checked after the await.
+- Transient IAsyncDisposable services injected into components are tracked by the WASM app scope until exit (never collected).
+- A pre-existing `GameUiService.Focus` is replayed when the 3D board mounts (2D refits after it, 3D focuses after Fit).
+- `ReferenceEquals(View, _drawn)` rebuilds the whole scene twice per own command (SSE echo, see Review 11); compare `View.Version`.

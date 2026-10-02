@@ -4,6 +4,7 @@ using AngleSharp.Dom;
 using Govern.Client.Features.Games.Components;
 using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
+using Govern.Client.Features.Games.Services;
 using Govern.ClientTests.Support;
 using Govern.Core.Map;
 using Govern.Core.State;
@@ -566,6 +567,43 @@ public class GameTableTests : ClientTestContext
 
         cut.FindAll("g[data-layer=lens]").ShouldBeEmpty();
         cut.Find(".lens-toolbar button[data-lens=movement-cost]").GetAttribute("aria-pressed").ShouldBe("false");
+    }
+
+    [Fact]
+    public void BoardModeToggle_Clicked_ShowsThe3DBoardAndBack()
+    {
+        var cut = RenderTable(TestGames.Started());
+
+        cut.Find("button.board-mode").Click();
+
+        cut.FindAll(".board3d").Count.ShouldBe(1);
+        cut.FindAll("svg.board").ShouldBeEmpty();
+        cut.Find("button.board-mode").Click();
+        cut.FindAll("svg.board").Count.ShouldBe(1);
+        cut.FindAll(".board3d").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Click_On3DBoard_SelectsButNeverActs()
+    {
+        var module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
+        module.Setup<bool>("mount", _ => true).SetResult(true);
+        foreach (var call in new[] { "render", "fit", "focus", "unmount" })
+        {
+            module.SetupVoid(call, _ => true).SetVoidResult();
+        }
+
+        var cut = RenderTable(TestGames.Started());
+        cut.Find("button.board-mode").Click();
+        var relay = module.Invocations["mount"].Single().Arguments[1]!;
+        var target = relay.GetType().GetProperty("Value")!.GetValue(relay)!;
+        var click = target.GetType().GetMethod("OnTileClicked")!;
+
+        await cut.InvokeAsync(() => (Task)click.Invoke(target, [At(2, 2).Q, At(2, 2).R])!);
+        await cut.InvokeAsync(() => (Task)click.Invoke(target, [At(1, 1).Q, At(1, 1).R])!);
+
+        cut.WaitForAssertion(() => cut.Find(".unit-panel").ShouldNotBeNull());
+        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
     }
 
     private static PlayerView AdjacentSoldiers() => Create([Settler(1, You, At(1, 1)), Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);

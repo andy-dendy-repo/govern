@@ -1,0 +1,14 @@
+@* Switches the game screen between the 2D board and the 3D board preview (GameUiService.Board3D). Renders nothing outside a
+   game screen (no GameUiService cascaded). *@
+@using Govern.Client.Features.Games.Services
+
+@if (Ui is not null)
+{
+    <RadzenButton Text="@(Ui.Board3D ? "2D" : "3D")" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" class="board-mode"
+                  title="@(Ui.Board3D ? "Show the 2D board" : "Show the 3D board (preview)")" aria-pressed="@(Ui.Board3D ? "true" : "false")"
+                  Click="@Ui.ToggleBoard3D"/>
+}
+
+@code {
+    [CascadingParameter] public GameUiService? Ui { get; set; }
+}

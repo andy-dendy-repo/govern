@@ -1,0 +1,147 @@
+using Govern.Client.Features.Games.Models;
+using Govern.Core.Map;
+using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
+
+namespace Govern.Client.Features.Games.Services;
+
+/// <summary>
+/// The 3D board's JavaScript (<c>wwwroot/js/board3d/board.js</c>, drawn with Three.js from <c>wwwroot/lib/three</c>): mounting a
+/// WebGL canvas in an element, drawing a <see cref="BoardScene"/>, moving the camera and reporting clicked tiles. One instance
+/// per board: registered scoped and resolved from the board's own scope (<c>GameBoard3D</c> is an <c>OwningComponentBase</c>),
+/// so it is disposed with the board. Every call degrades to a no-op when the module or WebGL can't run; <see cref="MountAsync"/>
+/// says so.
+/// </summary>
+public sealed class Board3DInteropService(IJSRuntime js) : IAsyncDisposable
+{
+    /// <summary>The module path, relative to the app's base URL.</summary>
+    public const string ModulePath = "./js/board3d/board.js";
+
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<ClickRelay>? _relay;
+    private ElementReference _host;
+    private bool _disposed;
+
+    /// <summary>Creates the board's canvas inside <paramref name="host"/> and starts listening for clicks.</summary>
+    /// <param name="host">The element the canvas fills.</param>
+    /// <param name="tileClicked">Called with the tile the player clicked (a drag is never a click).</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns><see langword="true"/> when the board runs; <see langword="false"/> when the module or WebGL is unavailable.</returns>
+    public async Task<bool> MountAsync(ElementReference host, Func<HexCoord, Task> tileClicked, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(tileClicked);
+        try
+        {
+            _host = host;
+            _module = await js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath);
+            if (_disposed)
+            {
+                await ReleaseAsync();
+                return false;
+            }
+
+            _relay = DotNetObjectReference.Create(new ClickRelay(tileClicked));
+            var mounted = await _module.InvokeAsync<bool>("mount", cancellationToken, host, _relay);
+
+            // The board may have gone away while the module was downloading; then nothing may stay mounted.
+            if (_disposed)
+            {
+                await ReleaseAsync();
+                return false;
+            }
+
+            return mounted;
+        }
+        catch (JSException)
+        {
+            await ReleaseAsync();
+            return false;
+        }
+    }
+
+    /// <summary>Draws a scene, replacing the one on the board.</summary>
+    /// <param name="scene">The scene.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>A task that completes when the scene is sent.</returns>
+    public Task RenderAsync(BoardScene scene, CancellationToken cancellationToken) => CallAsync("render", cancellationToken, scene);
+
+    /// <summary>Moves the camera so a rectangle of the board fills the view.</summary>
+    /// <param name="bounds">The rectangle in board units (x and depth).</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>A task that completes when the camera is moved.</returns>
+    public Task FitAsync(BoardRect bounds, CancellationToken cancellationToken) => CallAsync("fit", cancellationToken, bounds);
+
+    /// <summary>Centres the camera on a point of the board.</summary>
+    /// <param name="x">The point's x in board units.</param>
+    /// <param name="z">The point's depth in board units.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>A task that completes when the camera is moved.</returns>
+    public Task FocusAsync(double x, double z, CancellationToken cancellationToken) => CallAsync("focus", cancellationToken, x, z);
+
+    /// <summary>Zooms around the middle of the view.</summary>
+    /// <param name="factor">Above 1 zooms in, below 1 zooms out.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>A task that completes when the camera is moved.</returns>
+    public Task ZoomAsync(double factor, CancellationToken cancellationToken) => CallAsync("zoom", cancellationToken, factor);
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        await ReleaseAsync();
+    }
+
+    // Unmounts the board and lets go of the module and the click relay; safe to call more than once.
+    private async Task ReleaseAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("unmount", _host);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is already gone.
+        }
+        catch (JSException)
+        {
+            // The board was never mounted.
+        }
+
+        _module = null;
+        _relay?.Dispose();
+        _relay = null;
+    }
+
+    private async Task CallAsync(string identifier, CancellationToken cancellationToken, params object?[] args)
+    {
+        if (_module is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _module.InvokeVoidAsync(identifier, cancellationToken, [_host, .. args]);
+        }
+        catch (JSException)
+        {
+            // A failed draw leaves the board as it was; the next scene tries again.
+        }
+    }
+
+    /// <summary>Receives clicks from the board's JavaScript.</summary>
+    /// <param name="tileClicked">Called with the clicked tile.</param>
+    private sealed class ClickRelay(Func<HexCoord, Task> tileClicked)
+    {
+        /// <summary>Called by the board's JavaScript when the player clicks a tile.</summary>
+        /// <param name="q">The tile's axial column.</param>
+        /// <param name="r">The tile's axial row.</param>
+        /// <returns>A task that completes when the click is handled.</returns>
+        [JSInvokable]
+        public Task OnTileClicked(int q, int r) => tileClicked(new HexCoord(q, r));
+    }
+}

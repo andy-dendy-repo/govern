@@ -250,4 +250,17 @@ public class GameUiServiceTests
         _ui.Selection.ShouldBe(BoardSelection.Of(new CityId(7)));
         _changes.ShouldBe(0);
     }
+
+    [Fact]
+    public void ToggleBoard3D_Twice_SwitchesToThe3DBoardAndBackAndNotifies()
+    {
+        _ui.Board3D.ShouldBeFalse();
+
+        _ui.ToggleBoard3D();
+        _ui.Board3D.ShouldBeTrue();
+        _ui.ToggleBoard3D();
+
+        _ui.Board3D.ShouldBeFalse();
+        _changes.ShouldBe(2);
+    }
 }

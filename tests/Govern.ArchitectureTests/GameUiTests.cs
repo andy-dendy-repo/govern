@@ -15,6 +15,7 @@ public partial class GameUiTests
     private static readonly string ClientRoot = Path.Combine(SourceTree.SourceRoot, "Govern.Client");
     private static readonly string CssRoot = Path.Combine(ClientRoot, "wwwroot", "css");
     private static readonly string TokensFile = Path.Combine(CssRoot, "tokens.css");
+    private static readonly string Board3DRoot = Path.Combine(ClientRoot, "wwwroot", "js", "board3d");
 
     [Fact]
     public void Css_UsesColourValuesOnlyInTokens()
@@ -29,6 +30,19 @@ public partial class GameUiTests
             .ToList();
 
         violations.ShouldBeEmpty("colours are design tokens: define them in wwwroot/css/tokens.css and use var(--gv-…)");
+    }
+
+    [Fact]
+    public void Board3DScripts_TakeColoursOnlyFromTokens()
+    {
+        var violations = Directory.EnumerateFiles(Board3DRoot, "*.js", SearchOption.AllDirectories)
+            .SelectMany(static file => File.ReadLines(file)
+                .Select((line, index) => (line, index))
+                .Where(static entry => ScriptColourValueRegex().IsMatch(entry.line))
+                .Select(entry => $"{SourceTree.Relative(file)}:{entry.index + 1}: {entry.line.Trim()}"))
+            .ToList();
+
+        violations.ShouldBeEmpty("the 3D board reads its colours from the --gv-* tokens (js/board3d/palette.js), never literals");
     }
 
     [Fact]
@@ -102,6 +116,11 @@ public partial class GameUiTests
     // as a property value.
     [GeneratedRegex(@"#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(|:\s*[^;{]*\b(white|black|red|green|blue|yellow|orange|purple|gray|grey|silver|lightyellow|navy|teal|maroon)\b", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex ColourValueRegex();
+
+    // A colour literal in a script: a CSS hex or functional colour in a string, a 0xRRGGBB number, or a named colour passed to
+    // Three.js (new Color('white'), setStyle('red')).
+    [GeneratedRegex(@"#[0-9a-fA-F]{3,8}\b|\b0x[0-9a-fA-F]{6}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(|\b(Color|setStyle|setColorName)\(\s*['""`]", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex ScriptColourValueRegex();
 
     // fill, stroke, color, background or style attributes carrying a colour value (hex, functional or a common name).
     [GeneratedRegex(@"\b(fill|stroke|color|background|style)\s*=\s*""[^""]*(#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?)\(|\b(white|black|red|green|blue|yellow|orange|purple|gray|grey)\b)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
