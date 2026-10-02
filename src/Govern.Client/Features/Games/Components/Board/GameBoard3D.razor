@@ -12,6 +12,10 @@
             This browser can't show the 3D board (WebGL is off or not supported). Switch back with the 2D button.
         </RadzenAlert>
     }
+    @if (AnchorAt is not null && Anchored is not null)
+    {
+        <div @ref="_anchor" class="board-anchor">@Anchored</div>
+    }
     <LensToolbar/>
     <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem" class="board-zoom">
         <RadzenButton Icon="add" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom in"

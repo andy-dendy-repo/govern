@@ -1,0 +1,29 @@
+@* The forecast of a pending attack (BoardSelection.Target) as a card, which the board keeps beside the target (its Anchored
+   slot; on phones a bottom sheet). Renders nothing without a target the selected unit can fight. *@
+@using Govern.Client.Features.Games.Services
+@using Govern.Core.Actions
+@using Govern.Core.Engine
+@using Govern.Core.Rulesets
+@using Govern.Core.Visibility
+
+@if (Ui.Selection is { Unit: { } unitId, Target: { } target } && View.FindOwnUnit(unitId) is { } unit && View.UnitAt(target) is { } defender
+     && GameEngine.CombatForecast(Ruleset, View, unitId, target) is { } forecast)
+{
+    <div class="hud-card forecast-card">
+        <CombatForecastPanel View="@View" Ruleset="@Ruleset" Attacker="@unit" Defender="@defender" Forecast="@forecast" Busy="@Busy"
+                             Attack="@(() => Command.InvokeAsync(new AttackCommand(unitId, target)))"
+                             Cancel="@(() => Ui.CancelAttack())"/>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public GameUiService Ui { get; set; } = null!;
+
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback<GameCommand> Command { get; set; }
+}

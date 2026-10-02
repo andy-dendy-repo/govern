@@ -11,7 +11,8 @@ namespace Govern.Client.Features.Games.Services;
 /// <summary>
 /// The UI state of one game screen: what is selected, which tiles are highlighted for it, and which map lens is on.
 /// <c>GameTable</c> creates one per game and passes it down as a cascading value, so the panels read the selection instead of
-/// receiving it through parameter chains. Later mechanics add their UI state here (an open full-screen view).
+/// receiving it through parameter chains. It also holds the screen's own UI state (the collapsed selection card, the log
+/// drawer, browser full screen); later mechanics add theirs here (an open large view).
 /// It holds no game state: the view stays the server's, and every method takes the view it applies to.
 /// </summary>
 public sealed class GameUiService
@@ -31,8 +32,17 @@ public sealed class GameUiService
     /// </summary>
     public int CityTab { get; set; }
 
-    /// <summary>Whether the game log in the side panel is open (it is, until the player collapses it).</summary>
-    public bool LogOpen { get; set; } = true;
+    /// <summary>Whether the game log drawer is open (closed until the player opens it with the top bar's Log button).</summary>
+    public bool LogOpen { get; private set; }
+
+    /// <summary>The newest log entry's <see cref="GameLogItem.Sequence"/> when the drawer was last open (or the screen opened).</summary>
+    public int LogSeen { get; private set; }
+
+    /// <summary>Whether the selection card shows only its heading; selecting something else opens it again.</summary>
+    public bool SelectionCollapsed { get; private set; }
+
+    /// <summary>Whether the game screen fills the whole display (the browser's full screen mode).</summary>
+    public bool FullScreen { get; private set; }
 
     /// <summary>The latest request to centre the board on a tile, or <see langword="null"/> before the first.</summary>
     public BoardFocus? Focus { get; private set; }
@@ -52,6 +62,7 @@ public sealed class GameUiService
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(view);
         ArgumentNullException.ThrowIfNull(selection);
+        SelectionCollapsed &= SameThing(Selection, selection);
         Selection = selection;
         Highlights = BoardClickResolver.Highlights(ruleset, view, selection);
         Changed?.Invoke();
@@ -151,12 +162,19 @@ public sealed class GameUiService
         Select(ruleset, view, BoardSelection.Of(next.Id));
     }
 
-    /// <summary>Handles Escape: cancels a pending attack, bridge mode or placing a building, otherwise clears the selection.</summary>
+    /// <summary>Handles Escape: closes the log drawer, else cancels a pending attack, bridge mode or placing a building, else clears the selection.</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The view on screen.</param>
     /// <returns>Whether anything changed.</returns>
     public bool Escape(Ruleset ruleset, PlayerView view)
     {
+        if (LogOpen)
+        {
+            LogOpen = false;
+            Changed?.Invoke();
+            return true;
+        }
+
         if (Selection.Bridge || Selection.Placing is not null)
         {
             Select(ruleset, view, Selection with { Bridge = false, Placing = null });
@@ -194,4 +212,49 @@ public sealed class GameUiService
         Board3D = !Board3D;
         Changed?.Invoke();
     }
+
+    /// <summary>Opens the log drawer, or closes it when it is open; opening marks the log as seen.</summary>
+    /// <param name="log">The player's log on screen.</param>
+    public void ToggleLog(IReadOnlyList<GameLogItem>? log)
+    {
+        LogOpen = !LogOpen;
+        MarkLogSeen(log);
+        Changed?.Invoke();
+    }
+
+    /// <summary>Marks every entry of the log as seen, so <see cref="UnreadLog"/> counts only later ones.</summary>
+    /// <param name="log">The player's log on screen.</param>
+    public void MarkLogSeen(IReadOnlyList<GameLogItem>? log) => LogSeen = Math.Max(LogSeen, Newest(log));
+
+    /// <summary>How many log entries arrived since the drawer was last open; 0 while it is open.</summary>
+    /// <param name="log">The player's log on screen.</param>
+    /// <returns>The number of entries.</returns>
+    public int UnreadLog(IReadOnlyList<GameLogItem>? log) =>
+        LogOpen ? 0 : (log ?? []).Count(item => item.Sequence > LogSeen);
+
+    /// <summary>Shows only the selection card's heading, or the whole card again.</summary>
+    public void ToggleSelectionCollapsed()
+    {
+        SelectionCollapsed = !SelectionCollapsed;
+        Changed?.Invoke();
+    }
+
+    /// <summary>Records whether the browser shows the game screen in full screen (it can also leave on its own, by Esc).</summary>
+    /// <param name="fullScreen">Whether the screen is in full screen now.</param>
+    public void SetFullScreen(bool fullScreen)
+    {
+        if (FullScreen == fullScreen)
+        {
+            return;
+        }
+
+        FullScreen = fullScreen;
+        Changed?.Invoke();
+    }
+
+    private static int Newest(IReadOnlyList<GameLogItem>? log) => log is { Count: > 0 } ? log.Max(static item => item.Sequence) : 0;
+
+    // The same unit or city, whatever mode it is in (a pending attack, bridge mode, placing a building).
+    private static bool SameThing(BoardSelection current, BoardSelection next) =>
+        current.Unit == next.Unit && current.City == next.City;
 }

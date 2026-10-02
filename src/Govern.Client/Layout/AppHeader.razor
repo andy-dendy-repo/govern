@@ -1,0 +1,26 @@
+@* The app's header bar: what comes first (the sidebar toggle, or the way back from a game), the app's name, and the signed-in
+   user with Sign out (or Sign in). Used by MainLayout and GameLayout. *@
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween"
+             Gap="0" class="rz-pe-4">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+        @Start
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.Span" class="rz-m-0">Govern</RadzenText>
+    </RadzenStack>
+    <AuthorizeView>
+        <Authorized>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenText TextStyle="TextStyle.Body2" TagName="TagName.Span" class="rz-m-0 user-name">@context.User.Identity?.Name</RadzenText>
+                <SignOutButton/>
+            </RadzenStack>
+        </Authorized>
+        <NotAuthorized>
+            <RadzenLink Path="login" Text="Sign in" class="sign-in"/>
+        </NotAuthorized>
+    </AuthorizeView>
+</RadzenStack>
+
+@code {
+    /// <summary>What comes before the app's name.</summary>
+    [Parameter] public RenderFragment? Start { get; set; }
+}

@@ -1,41 +1,35 @@
-@* The game log at the bottom of the side panel: what happened in the previous round and this one, newest first and grouped
+@* The game log in the log drawer (Screen/LogDrawer): what happened in the previous round and this one, newest first and grouped
    by round, only what the player could see (the server filters it). A line with a place centres the board on it and selects
-   the player's own unit or city there. The header collapses it. *@
+   the player's own unit or city there. *@
 @using Govern.Client.Features.Games.Helpers
 @using Govern.Client.Features.Games.Models
 @using Govern.Client.Features.Games.Services
 @using Govern.Core.Rulesets
 @using Govern.Core.Visibility
 
-<section class="game-log" aria-label="Game log">
-    <RadzenButton Text="Game log" Icon="@(Ui.LogOpen ? "expand_less" : "expand_more")" ButtonStyle="ButtonStyle.Base"
-                  Variant="Variant.Text" Size="ButtonSize.Small" class="game-log-toggle" aria-expanded="@(Ui.LogOpen ? "true" : "false")"
-                  Click="@(() => Ui.LogOpen = !Ui.LogOpen)"/>
-    @if (Ui.LogOpen)
+<section class="game-log">
+    @if (Rounds.Count == 0)
     {
-        @if (Rounds.Count == 0)
-        {
-            <RadzenText TextStyle="TextStyle.Body2" class="game-log-empty">Nothing has happened yet.</RadzenText>
-        }
-        @foreach (var (turn, lines) in Rounds)
-        {
-            <RadzenText TextStyle="TextStyle.Overline" TagName="TagName.H3" class="game-log-round">Turn @turn</RadzenText>
-            <ul class="game-log-lines">
-                @foreach (var line in lines)
-                {
-                    <li class="@(line.IsYours ? "game-log-line yours" : "game-log-line theirs")">
-                        @if (line.Tile is { } tile)
-                        {
-                            <button type="button" class="game-log-show" @onclick="@(() => Ui.Show(Ruleset, View, tile))">@line.Text</button>
-                        }
-                        else
-                        {
-                            <span>@line.Text</span>
-                        }
-                    </li>
-                }
-            </ul>
-        }
+        <RadzenText TextStyle="TextStyle.Body2" class="game-log-empty">Nothing has happened yet.</RadzenText>
+    }
+    @foreach (var (turn, lines) in Rounds)
+    {
+        <RadzenText TextStyle="TextStyle.Overline" TagName="TagName.H3" class="game-log-round">Turn @turn</RadzenText>
+        <ul class="game-log-lines">
+            @foreach (var line in lines)
+            {
+                <li class="@(line.IsYours ? "game-log-line yours" : "game-log-line theirs")">
+                    @if (line.Tile is { } tile)
+                    {
+                        <button type="button" class="game-log-show" @onclick="@(() => Ui.Show(Ruleset, View, tile))">@line.Text</button>
+                    }
+                    else
+                    {
+                        <span>@line.Text</span>
+                    }
+                </li>
+            }
+        </ul>
     }
 </section>
 
@@ -49,12 +43,12 @@
     /// <summary>The player's recent log, oldest first (from the game response).</summary>
     [Parameter] public IReadOnlyList<GameLogItem>? Log { get; set; }
 
-    private (IReadOnlyList<GameLogItem>? Log, PlayerView View, bool Open)? _rendered;
+    private (IReadOnlyList<GameLogItem>? Log, PlayerView View)? _rendered;
 
-    // The table re-renders on every animation step; the log only changes with a new log, view or toggle.
-    protected override bool ShouldRender() => _rendered != (Log, View, Ui.LogOpen);
+    // The table re-renders on every animation step; the log only changes with a new log or view.
+    protected override bool ShouldRender() => _rendered != (Log, View);
 
-    protected override void OnAfterRender(bool firstRender) => _rendered = (Log, View, Ui.LogOpen);
+    protected override void OnAfterRender(bool firstRender) => _rendered = (Log, View);
 
     // Newest round first, and the newest line first within it.
     private List<(int Turn, List<GameLogLine> Lines)> Rounds => (Log ?? [])

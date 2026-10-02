@@ -245,6 +245,17 @@ export class Board3D {
         shadow.updateProjectionMatrix();
     }
 
+    // Keeps a page element (the attack forecast) next to a tile; null lets go of it.
+    anchor(element, q, r) {
+        const tile = element && this.scene?.tiles.find(candidate => candidate.q === q && candidate.r === r);
+        if (tile) {
+            this.labels.setAnchor(element, tile.x, tile.height + 0.4, tile.z);
+        } else {
+            this.labels.clearAnchor();
+        }
+        this.requestRender();
+    }
+
     fit(rect) {
         this.rig.fit(rect);
         this.requestRender();
