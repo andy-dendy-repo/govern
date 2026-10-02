@@ -2,8 +2,8 @@
 // the wheel zooms, and a press that hardly moved is a click. A gesture that ever had two fingers never ends in a click, and
 // lifting one of two fingers hands the pan to the other without a jump.
 
-// How far, in pixels, a press may move and still count as a click: the mouse as the 2D board (GameBoard.DragThreshold), a
-// finger more, since a tap wobbles.
+// How far, in pixels, a press may move and still count as a click: a little for the mouse, a finger more, since a tap
+// wobbles.
 const DRAG_THRESHOLD = 4;
 const TAP_THRESHOLD = 10;
 const ZOOM_STEP = 1.2;

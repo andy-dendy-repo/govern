@@ -6,8 +6,7 @@ using Govern.Core.Visibility;
 namespace Govern.Client.Features.Games.Helpers;
 
 /// <summary>
-/// Builds the <see cref="BoardOverlay"/> the 3D board draws over its scene, with the 2D board's rules (<c>BoardLens</c>,
-/// <c>BoardPieces</c>): the active lens's marks and edge badges, then the selection's highlights (the pending target in its own
+/// Builds the <see cref="BoardOverlay"/> the board draws over its scene: the active lens's marks and edge badges, then the selection's highlights (the pending target in its own
 /// tint), and the selected unit's or city's tile.
 /// </summary>
 public static class BoardOverlayBuilder

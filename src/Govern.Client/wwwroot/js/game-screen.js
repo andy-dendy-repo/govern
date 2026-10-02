@@ -1,5 +1,6 @@
 // The full-screen game view (Features/Games/Services/GameScreenInteropService.cs): keeps the height of the top strip in the
-// screen's --gv-hud-top property, so the board's own controls sit below it, and enters and leaves the browser's full screen.
+// screen's --gv-hud-top property, so the board's own controls sit below it, enters and leaves the browser's full screen, and
+// reads the reduced-motion preference.
 
 const watched = new WeakMap();
 
@@ -26,6 +27,11 @@ export function watch(screen, strip, dotnet) {
 export function unwatch(screen) {
     watched.get(screen)?.();
     watched.delete(screen);
+}
+
+// Whether the player asked for reduced motion, so the board's animations skip moving units.
+export function prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 export async function enter(screen) {

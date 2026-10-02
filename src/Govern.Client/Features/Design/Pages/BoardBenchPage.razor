@@ -1,7 +1,6 @@
 @page "/design/board"
 @* The 3D board bench (F15 step 5): the board on the largest map the ruleset allows, generated locally (no Api, no sign-in), with
-   buttons to move the army and to measure the board (docs/features/game-ui.md, Performance). The 2D/3D button swaps in the 2D
-   board to compare. Development only: elsewhere it shows the not-found text. *@
+   buttons to move the army and to measure the board (docs/features/game-ui.md, Performance). Development only: elsewhere it shows the not-found text. *@
 @using System.Globalization
 @using Govern.Client.Features.Games.Components.Board
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting
@@ -28,16 +27,8 @@ else
                 <RadzenButton Text="March" Icon="arrow_forward" ButtonStyle="ButtonStyle.Light" Click="@March" class="bench-march"/>
                 <RadzenButton Text="Measure" Icon="speed" ButtonStyle="ButtonStyle.Primary" Click="@MeasureAsync" Disabled="@_measuring" class="bench-measure"/>
             </RadzenStack>
-            @if (_ui.Board3D)
-            {
-                <GameBoard3D View="@_view" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens"
-                             MaxHealth="@Ruleset.Combat.MaxHealth" TileClicked="@Select"/>
-            }
-            else
-            {
-                <GameBoard View="@_view" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens"
-                           MaxHealth="@Ruleset.Combat.MaxHealth" TileClicked="@Select"/>
-            }
+            <GameBoard View="@_view" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens"
+                       MaxHealth="@Ruleset.Combat.MaxHealth" TileClicked="@Select"/>
             @if (_result is { } result)
             {
                 <table class="bench-result">
@@ -55,7 +46,7 @@ else
             }
             else if (_missing)
             {
-                <RadzenText TextStyle="TextStyle.Body2" class="bench-missing">The 3D board isn't running here (the 2D board is on, or WebGL is off), so there is nothing to measure.</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2" class="bench-missing">The board isn't running here (WebGL is off), so there is nothing to measure.</RadzenText>
             }
         </RadzenStack>
     </CascadingValue>

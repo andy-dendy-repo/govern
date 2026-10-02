@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text.Json.Nodes;
-using AngleSharp.Dom;
 using Govern.Client.Features.Games.Components;
 using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
@@ -18,7 +17,13 @@ public class GameTableTests : ClientTestContext
 {
     private readonly List<GetGameResponse> _changed = [];
 
-    public GameTableTests() => SignIn();
+    private readonly FakeBoardRenderer _board;
+
+    public GameTableTests()
+    {
+        SignIn();
+        _board = new FakeBoardRenderer(JSInterop);
+    }
 
     [Fact]
     public void Move_SettlerToAReachableTile_SendsTheMoveWithTheViewVersion()
@@ -27,9 +32,9 @@ public class GameTableTests : ClientTestContext
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(after));
         var cut = RenderTable(TestGames.Started());
 
-        Tile(cut, At(2, 2)).Click();
-        cut.FindAll("use.overlay.reachable").ShouldNotBeEmpty();
-        Tile(cut, At(1, 1)).Click();
+        _board.Click(At(2, 2));
+        _board.Tinted("--gv-overlay-reachable").ShouldNotBeEmpty();
+        _board.Click(At(1, 1));
 
         cut.WaitForAssertion(() => _changed.Count.ShouldBe(1));
         _changed.Single().View!.Units.Single().Position.ShouldBe(At(1, 1));
@@ -44,8 +49,8 @@ public class GameTableTests : ClientTestContext
         var after = TestGames.Started(view: Create([Settler(1, You, At(1, 1), movementLeft: 1)]));
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(after));
         var cut = RenderTable(TestGames.Started());
-        Tile(cut, At(2, 2)).Click();
-        Tile(cut, At(1, 1)).Click();
+        _board.Click(At(2, 2));
+        _board.Click(At(1, 1));
         cut.WaitForAssertion(() => _changed.Count.ShouldBe(1));
 
         cut.Render(parameters => parameters.Add(static table => table.Game, after));
@@ -90,11 +95,11 @@ public class GameTableTests : ClientTestContext
 
         cut.Find("button.end-turn").Click();
         cut.WaitForAssertion(() => cut.Find("button.end-turn").HasAttribute("disabled").ShouldBeTrue());
-        Tile(cut, At(2, 2)).Click();
-        Tile(cut, At(1, 1)).Click();
+        _board.Click(At(2, 2));
+        _board.Click(At(1, 1));
 
         Api.RequestsTo(TestGames.CommandsPath()).Count.ShouldBe(1);
-        cut.Find("svg.board").ClassList.ShouldContain("busy");
+        cut.Find(".board3d").ClassList.ShouldContain("busy");
         response.SetResult(FakeApiHandler.Json(TestGames.Started()));
         await Eventually.HoldsAsync(() => _changed.Count == 1, "the first command finishes");
         cut.WaitForAssertion(() => cut.Find("button.end-turn").HasAttribute("disabled").ShouldBeFalse());
@@ -194,7 +199,7 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started(view: Create([Settler(1, You, At(2, 2))], [City(7, You, At(4, 2))])));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find("button.found-city").HasAttribute("disabled").ShouldBeTrue();
         cut.Find(".found-city-reason").TextContent.ShouldBe("Another city is too close.");
@@ -206,7 +211,7 @@ public class GameTableTests : ClientTestContext
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var cut = RenderTable(TestGames.Started());
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
         cut.Find("button.found-city").Click();
 
         cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString().ShouldBe("""{"type":"found_city","unitId":{"value":1}}"""));
@@ -218,7 +223,7 @@ public class GameTableTests : ClientTestContext
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var cut = RenderTable(TestGames.Started(view: Create(cities: [City(7, You, At(2, 2), "Home")])));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find(".city-panel .city-name").TextContent.ShouldBe("Home");
         cut.Find(".production").TextContent.ShouldBe("Producing a Settler: 2 of 6");
@@ -233,7 +238,7 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started(view: Create(cities: [City(8, Opponent, At(5, 4), "Aria")])));
 
-        Tile(cut, At(5, 4)).Click();
+        _board.Click(At(5, 4));
 
         cut.Find(".city-panel .city-name").TextContent.ShouldBe("Aria");
         cut.FindAll(".enemy-city").Count.ShouldBe(1);
@@ -245,24 +250,24 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started());
 
-        Tile(cut, At(5, 2)).Click();
+        _board.Click(At(5, 2));
 
         cut.Find(".unit-name").TextContent.Trim().ShouldBe("Enemy Soldier");
         cut.FindAll(".movement, button.found-city").ShouldBeEmpty();
-        cut.FindAll("use.overlay").ShouldBeEmpty();
+        _board.Highlights.ShouldBeEmpty();
     }
 
     [Fact]
     public void Render_NewViewWithoutTheSelectedUnit_DropsTheSelection()
     {
         var cut = RenderTable(TestGames.Started());
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
         cut.FindAll(".unit-panel").Count.ShouldBe(1);
 
         cut.Render(parameters => parameters.Add(static table => table.Game, TestGames.Started(view: Create([Settler(1, You, At(2, 2))]))));
 
         cut.FindAll(".unit-panel").ShouldBeEmpty();
-        cut.FindAll("use.overlay").ShouldBeEmpty();
+        _board.Highlights.ShouldBeEmpty();
     }
 
     [Fact]
@@ -279,7 +284,7 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started());
 
-        cut.FindAll(".game-screen .hud-board svg.board").Count.ShouldBe(1);
+        cut.FindAll(".game-screen .hud-board .board3d").Count.ShouldBe(1);
         cut.FindAll(".game-screen .hud-top .top-bar").Count.ShouldBe(1);
         cut.FindAll(".game-screen .hud-notices").Count.ShouldBe(1);
         cut.FindAll(".game-screen .hud-selection").Count.ShouldBe(1);
@@ -293,12 +298,13 @@ public class GameTableTests : ClientTestContext
     public void Escape_WithAUnitSelected_ClearsTheSelection()
     {
         var cut = RenderTable(TestGames.Started());
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
         cut.FindAll(".unit-panel").Count.ShouldBe(1);
 
         cut.Find(".game-screen").KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
-        cut.FindAll(".unit-panel, .action-bar, use.overlay").ShouldBeEmpty();
+        cut.FindAll(".unit-panel, .action-bar").ShouldBeEmpty();
+        _board.Highlights.ShouldBeEmpty();
         cut.FindAll(".selection-hint").Count.ShouldBe(1);
     }
 
@@ -307,7 +313,7 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started());
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         var settler = Ruleset.Unit(SettlerType);
         cut.Find(".unit-panel .movement .stat-value").TextContent.ShouldContain($"{settler.Movement} of {settler.Movement}");
@@ -350,7 +356,7 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started(view: Start() with { CurrentPlayer = Opponent }));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find("button.found-city").HasAttribute("disabled").ShouldBeTrue();
     }
@@ -360,7 +366,7 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started(view: Create(cities: [City(7, You, At(2, 2), "Home")])));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         // TestViews: your city produces a settler with 2 production so far.
         var left = (Ruleset.Unit(SettlerType).ProductionCost - 2 + Ruleset.Cities.ProductionPerTurn - 1) / Ruleset.Cities.ProductionPerTurn;
@@ -373,7 +379,7 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started(view: Create([Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(5, 2), health: 70)])));
 
-        Tile(cut, At(5, 2)).Click();
+        _board.Click(At(5, 2));
 
         cut.FindAll(".unit-panel").Count.ShouldBe(1);
         cut.Find(".unit-panel use").GetAttribute("href").ShouldBe("#unit-soldier");
@@ -387,7 +393,7 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started(view: Create([Unit(2, You, ArcherType, At(3, 2))])));
 
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
 
         cut.Find(".unit-panel .ranged .stat-value .number").TextContent.ShouldBe("22, range 2");
         cut.Find(".unit-panel .strength .stat-value .number").TextContent.ShouldBe("10");
@@ -398,7 +404,7 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started());
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find(".unit-panel .strength .stat-value").TextContent.ShouldContain("—");
         cut.Find(".unit-panel .strength .number-tooltip").GetAttribute("title")!.ShouldContain("can't fight");
@@ -409,26 +415,24 @@ public class GameTableTests : ClientTestContext
     {
         var cut = RenderTable(TestGames.Started(view: Create([Soldier(2, You, At(3, 2), health: 25), Soldier(3, Opponent, At(5, 2))])));
 
-        var fill = cut.Find("g.health rect.health-fill");
-        fill.GetAttribute("width").ShouldBe("6");
-        fill.ClassList.ShouldContain("low");
-        cut.FindAll("g.health").Count.ShouldBe(1);
+        var hurt = _board.Scene.Pieces.Where(static piece => piece.Health < 1).ShouldHaveSingleItem();
+        (hurt.Unit, hurt.Health).ShouldBe((2, 0.25));
     }
 
     [Fact]
     public void Attack_ClickEnemy_ShowsTheForecastAndMarksTheTarget()
     {
         var cut = RenderTable(TestGames.Started(view: AdjacentSoldiers()));
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
 
-        Tile(cut, At(4, 2)).Click();
+        _board.Click(At(4, 2));
 
         Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
         cut.Find(".combat-forecast .combat-title").TextContent.ShouldContain("Attack the enemy Soldier?");
         cut.Find(".combat-attacker .combat-outcome").TextContent.ShouldBe("Takes 24–36 damage.");
         cut.Find(".combat-defender .combat-outcome").TextContent.ShouldBe("Takes 24–36 damage.");
         cut.Find(".combat-defender .combat-strength .number").TextContent.ShouldBe("20");
-        cut.FindAll("use.overlay.target").Count.ShouldBe(1);
+        _board.Tinted("--gv-overlay-target").Count.ShouldBe(1);
     }
 
     [Fact]
@@ -436,8 +440,8 @@ public class GameTableTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started(view: AdjacentSoldiers())));
         var cut = RenderTable(TestGames.Started(view: AdjacentSoldiers()));
-        Tile(cut, At(3, 2)).Click();
-        Tile(cut, At(4, 2)).Click();
+        _board.Click(At(3, 2));
+        _board.Click(At(4, 2));
 
         cut.Find("button.combat-attack").Click();
 
@@ -449,10 +453,10 @@ public class GameTableTests : ClientTestContext
     public void Attack_SecondClickOnTheTarget_KeepsTheForecastAndSendsNothing()
     {
         var cut = RenderTable(TestGames.Started(view: AdjacentSoldiers()));
-        Tile(cut, At(3, 2)).Click();
-        Tile(cut, At(4, 2)).Click();
+        _board.Click(At(3, 2));
+        _board.Click(At(4, 2));
 
-        Tile(cut, At(4, 2)).Click();
+        _board.Click(At(4, 2));
 
         cut.FindAll(".combat-forecast").Count.ShouldBe(1);
         Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
@@ -462,15 +466,15 @@ public class GameTableTests : ClientTestContext
     public void Attack_CancelOrEscape_ClosesTheForecastAndKeepsTheUnit()
     {
         var cut = RenderTable(TestGames.Started(view: AdjacentSoldiers()));
-        Tile(cut, At(3, 2)).Click();
-        Tile(cut, At(4, 2)).Click();
+        _board.Click(At(3, 2));
+        _board.Click(At(4, 2));
 
         cut.Find("button.combat-cancel").Click();
 
         cut.FindAll(".combat-forecast").ShouldBeEmpty();
         cut.FindAll(".unit-panel").Count.ShouldBe(1);
 
-        Tile(cut, At(4, 2)).Click();
+        _board.Click(At(4, 2));
         cut.Find(".game-screen").KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
         cut.FindAll(".combat-forecast").ShouldBeEmpty();
@@ -482,9 +486,9 @@ public class GameTableTests : ClientTestContext
     public void Attack_ArcherForecast_SaysTheEnemyCantHitBack()
     {
         var cut = RenderTable(TestGames.Started(view: Create([Unit(2, You, ArcherType, At(3, 2)), Unit(3, Opponent, HorsemanType, At(5, 2), health: 40)])));
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
 
-        Tile(cut, At(5, 2)).Click();
+        _board.Click(At(5, 2));
 
         cut.Find(".combat-title").TextContent.ShouldContain("Shoot at the enemy Horseman?");
         cut.Find(".combat-attacker .combat-outcome").TextContent.ShouldBe("Takes no damage.");
@@ -500,9 +504,9 @@ public class GameTableTests : ClientTestContext
             [Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))],
             rivers: static coord => coord == At(3, 2) ? new TileRivers(East: River) : null);
         var cut = RenderTable(TestGames.Started(view: view));
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
 
-        Tile(cut, At(4, 2)).Click();
+        _board.Click(At(4, 2));
 
         cut.Find(".combat-defender .combat-strength .number-tooltip").GetAttribute("title").ShouldBe("20 base, +3 behind River = 23.");
     }
@@ -511,7 +515,7 @@ public class GameTableTests : ClientTestContext
     public void Render_FinishedWithOwnUnitSelected_ShowsNoActionBar()
     {
         var cut = RenderTable(TestGames.Started());
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
         cut.FindAll(".action-bar").Count.ShouldBe(1);
 
         cut.Render(parameters => parameters.Add(static table => table.Game, TestGames.Started(view: Start() with { Status = GameStatus.Finished })));
@@ -523,7 +527,7 @@ public class GameTableTests : ClientTestContext
     public void Escape_WhileConfirmingResign_BacksOutAndKeepsTheSelection()
     {
         var cut = RenderTable(TestGames.Started());
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
         cut.Find("button.resign").Click();
 
         cut.Find(".confirm-button").KeyDown(new KeyboardEventArgs { Key = "Escape" });
@@ -539,7 +543,7 @@ public class GameTableTests : ClientTestContext
         var view = Create([Settler(1, You, At(2, 2))], terrain: static coord => coord == At(2, 2) ? Hills : Plains);
         var cut = RenderTable(TestGames.Started(view: view));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         var sight = Ruleset.Unit(SettlerType).Sight;
         cut.Find(".unit-panel .sight .stat-value .number").TextContent.ShouldBe($"{sight + 1}");
@@ -556,7 +560,7 @@ public class GameTableTests : ClientTestContext
         button.Click();
 
         cut.Find(".lens-toolbar button[data-lens=movement-cost]").GetAttribute("aria-pressed").ShouldBe("true");
-        cut.FindAll("g[data-layer=lens] g.lens-mark").Count.ShouldBe(Width * Height);
+        _board.LensMarks.Count.ShouldBe(Width * Height);
     }
 
     [Fact]
@@ -567,47 +571,8 @@ public class GameTableTests : ClientTestContext
 
         cut.Find(".lens-toolbar button[data-lens=movement-cost]").Click();
 
-        cut.FindAll("g[data-layer=lens]").ShouldBeEmpty();
+        _board.LensMarks.ShouldBeEmpty();
         cut.Find(".lens-toolbar button[data-lens=movement-cost]").GetAttribute("aria-pressed").ShouldBe("false");
-    }
-
-    [Fact]
-    public void BoardModeToggle_Clicked_ShowsThe3DBoardAndBack()
-    {
-        var cut = RenderTable(TestGames.Started());
-
-        cut.Find("button.board-mode").Click();
-
-        cut.FindAll(".board3d").Count.ShouldBe(1);
-        cut.FindAll("svg.board").ShouldBeEmpty();
-        cut.Find("button.board-mode").Click();
-        cut.FindAll("svg.board").Count.ShouldBe(1);
-        cut.FindAll(".board3d").ShouldBeEmpty();
-    }
-
-    [Fact]
-    public async Task Click_On3DBoard_MovesTheSelectedUnit()
-    {
-        var after = TestGames.Started(view: Create([Settler(1, You, At(1, 1), movementLeft: 1)]));
-        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(after));
-        var module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
-        module.Setup<bool>("mount", _ => true).SetResult(true);
-        foreach (var call in new[] { "render", "renderOverlay", "renderMotion", "fit", "focus", "unmount" })
-        {
-            module.SetupVoid(call, _ => true).SetVoidResult();
-        }
-
-        var cut = RenderTable(TestGames.Started());
-        cut.Find("button.board-mode").Click();
-        var relay = module.Invocations["mount"].Single().Arguments[1]!;
-        var target = relay.GetType().GetProperty("Value")!.GetValue(relay)!;
-        var click = target.GetType().GetMethod("OnTileClicked")!;
-
-        await cut.InvokeAsync(() => (Task)click.Invoke(target, [At(2, 2).Q, At(2, 2).R])!);
-        await cut.InvokeAsync(() => (Task)click.Invoke(target, [At(1, 1).Q, At(1, 1).R])!);
-
-        cut.WaitForAssertion(() => _changed.Count.ShouldBe(1));
-        Command(0)["command"]!["type"]!.GetValue<string>().ShouldBe("move_unit");
     }
 
     private static PlayerView AdjacentSoldiers() => Create([Settler(1, You, At(1, 1)), Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
@@ -616,9 +581,6 @@ public class GameTableTests : ClientTestContext
         Render<GameTable>(parameters => parameters
             .Add(static table => table.Game, game)
             .Add(static table => table.GameChanged, changed => _changed.Add(changed)));
-
-    private static IElement Tile(IRenderedComponent<GameTable> cut, HexCoord coord) =>
-        cut.Find($"use.tile[data-q='{coord.Q}'][data-r='{coord.R}']");
 
     private JsonNode Command(int index) => JsonNode.Parse(Api.RequestsTo(TestGames.CommandsPath())[index].Body!)!;
 }

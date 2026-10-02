@@ -67,9 +67,6 @@ public partial class GameTable : IAsyncDisposable
     [Inject]
     private TimeProvider Time { get; set; } = null!;
 
-    [Inject]
-    private BoardInteropService Interop { get; set; } = null!;
-
     private Ruleset Ruleset => Rulesets.Ruleset;
 
     private PlayerView View => Game.View ?? throw new InvalidOperationException("The game table needs a started game with a view.");
@@ -130,7 +127,7 @@ public partial class GameTable : IAsyncDisposable
         {
             // Read once: the table can be disposed (and its token source with it) during the awaits.
             var cancellationToken = _lifetime.Token;
-            _animation.ReducedMotion = await Interop.PrefersReducedMotionAsync(cancellationToken);
+            _animation.ReducedMotion = await Screen.PrefersReducedMotionAsync(cancellationToken);
             _fullScreenSupported = !cancellationToken.IsCancellationRequested
                 && await Screen.WatchAsync(_screen, _strip, OnFullScreenChanged, cancellationToken);
             if (_fullScreenSupported)

@@ -11,8 +11,7 @@ const STEP_DISTANCE = 1;
 // How high a unit hops on each step, and how far a fading ghost sinks.
 const HOP = 0.12;
 const SINK = 0.2;
-// A pulse: a flat hexagonal ring along the tile's edge that grows from PULSE_FROM to PULSE_TO times its size and fades, as
-// on the 2D board.
+// A pulse: a flat hexagonal ring along the tile's edge that grows from PULSE_FROM to PULSE_TO times its size and fades.
 const PULSE_FROM = 0.8;
 const PULSE_TO = 1.15;
 const ring = new RingGeometry(0.72, 0.95, 6).rotateX(-Math.PI / 2).rotateY(Math.PI / 6);
@@ -56,7 +55,7 @@ export class Motion {
     // Takes a new motion: retargets moving units, adds and removes ghosts and effects.
     set(data, now) {
         this.data = data;
-        // An empty motion (a click, a newer view, or the end) puts every unit back on its tile at once, as the 2D board does.
+        // An empty motion (a click, a newer view, or the end) puts every unit back on its tile at once.
         const finished = !data?.positions?.length && !data?.ghosts?.length && !data?.effects?.length;
         const keys = new Set([...(data?.ghosts ?? []).map(ghost => `g${ghost.key}`), ...(data?.effects ?? []).map(effect => `e${effect.key}`)]);
         for (const key of this.expired) {
@@ -260,7 +259,7 @@ export class Motion {
         const material = new MeshBasicMaterial({
             color: this.board.palette().token('--gv-selected'), transparent: true, depthWrite: false, depthTest: false, side: DoubleSide,
         });
-        // Drawn over everything on the tile (a city or a unit would hide it), like the 2D board's top effects layer.
+        // Drawn over everything on the tile (a city or a unit would hide it).
         const mesh = new Mesh(ring, material);
         mesh.renderOrder = 10;
         mesh.position.set(effect.x, effect.height + 0.06, effect.z);

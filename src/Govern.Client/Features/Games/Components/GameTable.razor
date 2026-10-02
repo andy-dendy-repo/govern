@@ -8,16 +8,8 @@
     <GameSprite/>
     <div @ref="_screen" class="game-screen" tabindex="-1" @onkeydown="@OnKeyDown">
         <div class="hud-board">
-            @if (_ui.Board3D)
-            {
-                <GameBoard3D View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"
-                             Anchored="@ForecastCard" AnchorAt="@ForecastAt"/>
-            }
-            else
-            {
-                <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"
-                           Anchored="@ForecastCard" AnchorAt="@ForecastAt"/>
-            }
+            <GameBoard View="@View" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens" MaxHealth="@Ruleset.Combat.MaxHealth" Focus="@_ui.Focus" Motion="@_animation.Motion" Disabled="@_sending" TileClicked="@OnTileClickedAsync"
+                       Anchored="@ForecastCard" AnchorAt="@ForecastAt"/>
         </div>
         <div @ref="_strip" class="hud hud-top">
             <TopBar View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync" Title="@Title" Connection="@Connection" Log="@Game.Log"

@@ -45,7 +45,6 @@ public sealed partial class BoardBenchPage
     protected override void OnInitialized()
     {
         _view = BoardBenchBuilder.Build(Ruleset, _revealed);
-        _ui.ToggleBoard3D();
         _ui.Changed += OnUiChanged;
     }
 

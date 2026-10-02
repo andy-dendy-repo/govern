@@ -5,9 +5,8 @@ using Govern.Core.Visibility;
 namespace Govern.Client.Features.Games.Helpers;
 
 /// <summary>
-/// Converts the <see cref="BoardMotion"/> of <see cref="BoardAnimationService"/> (in 2D board points) into the
-/// <see cref="SceneMotion"/> the 3D board draws (in board units, with the surface of the tile under each point), so both boards
-/// play the same animations from one source.
+/// Converts the <see cref="BoardMotion"/> of <see cref="BoardAnimationService"/> (in <see cref="HexLayout"/> points) into
+/// the <see cref="SceneMotion"/> the board draws (in board units, with the surface of the tile under each point).
 /// </summary>
 public static class SceneMotionBuilder
 {
