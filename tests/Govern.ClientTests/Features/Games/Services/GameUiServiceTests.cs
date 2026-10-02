@@ -252,19 +252,6 @@ public class GameUiServiceTests
     }
 
     [Fact]
-    public void ToggleBoard3D_Twice_SwitchesToThe3DBoardAndBackAndNotifies()
-    {
-        _ui.Board3D.ShouldBeFalse();
-
-        _ui.ToggleBoard3D();
-        _ui.Board3D.ShouldBeTrue();
-        _ui.ToggleBoard3D();
-
-        _ui.Board3D.ShouldBeFalse();
-        _changes.ShouldBe(2);
-    }
-
-    [Fact]
     public void ToggleLog_Opened_MarksTheLogSeenAndCountsOnlyLaterEntries()
     {
         GameLogItem[] log = [new(1, 1, []), new(2, 1, [])];

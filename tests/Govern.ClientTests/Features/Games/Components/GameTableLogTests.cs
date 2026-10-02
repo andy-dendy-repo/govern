@@ -12,7 +12,13 @@ namespace Govern.ClientTests.Features.Games.Components;
 /// <summary>The game log in its drawer, opened by the top strip's Log button.</summary>
 public class GameTableLogTests : ClientTestContext
 {
-    public GameTableLogTests() => SignIn();
+    private readonly FakeBoardRenderer _board;
+
+    public GameTableLogTests()
+    {
+        SignIn();
+        _board = new FakeBoardRenderer(JSInterop);
+    }
 
     [Fact]
     public void Log_ShowsRoundsNewestFirstWithTheNewestLineOnTop()
@@ -94,7 +100,7 @@ public class GameTableLogTests : ClientTestContext
     public void Escape_WithTheLogOpenAndAUnitSelected_ClosesTheLogFirst()
     {
         var cut = RenderTable(Create(units: [Soldier(1, You, At(2, 2))]), []);
-        cut.Find($"use.tile[data-q='{At(2, 2).Q}'][data-r='{At(2, 2).R}']").Click();
+        _board.Click(At(2, 2));
         cut.Find(".log-toggle").Click();
 
         cut.Find(".game-screen").KeyDown(new KeyboardEventArgs { Key = "Escape" });

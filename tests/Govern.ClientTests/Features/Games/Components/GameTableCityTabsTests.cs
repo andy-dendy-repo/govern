@@ -10,14 +10,20 @@ namespace Govern.ClientTests.Features.Games.Components;
 /// <summary>The tabs of the player's own city panel: Units, Buildings and Economy.</summary>
 public class GameTableCityTabsTests : ClientTestContext
 {
-    public GameTableCityTabsTests() => SignIn();
+    private readonly FakeBoardRenderer _board;
+
+    public GameTableCityTabsTests()
+    {
+        SignIn();
+        _board = new FakeBoardRenderer(JSInterop);
+    }
 
     [Fact]
     public void SelectOwnCity_OpensUnitsWithTheProductionAboveTheTabs()
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         TabNames(cut).ShouldBe(["Units", "Buildings", "Economy"]);
         SelectedTab(cut).ShouldBe("Units");
@@ -32,11 +38,11 @@ public class GameTableCityTabsTests : ClientTestContext
     public void Tab_Clicked_OpensItAndStaysOpenForTheNextCity()
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2)), City(8, You, At(6, 4), "Second")]));
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         Tab(cut, "Buildings").Click();
         SelectedTab(cut).ShouldBe("Buildings");
-        Tile(cut, At(6, 4)).Click();
+        _board.Click(At(6, 4));
 
         cut.Find(".city-panel .city-name").TextContent.ShouldBe("Second");
         SelectedTab(cut).ShouldBe("Buildings");
@@ -48,7 +54,7 @@ public class GameTableCityTabsTests : ClientTestContext
         var city = City(7, You, At(2, 2)) with { Buildings = [Campus] };
         var cut = RenderTable(Create(cities: [city]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         Tab(cut, "Economy").QuerySelector(".rz-tabview-icon")!.TextContent.ShouldBe("warning");
         Tab(cut, "Units").QuerySelector(".rz-tabview-icon").ShouldBeNull();
@@ -59,7 +65,7 @@ public class GameTableCityTabsTests : ClientTestContext
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         Tab(cut, "Economy").QuerySelector(".rz-tabview-icon").ShouldBeNull();
     }
@@ -69,16 +75,13 @@ public class GameTableCityTabsTests : ClientTestContext
     {
         var cut = RenderTable(Create(cities: [City(8, Opponent, At(5, 4), "Aria")]));
 
-        Tile(cut, At(5, 4)).Click();
+        _board.Click(At(5, 4));
 
         cut.FindAll(".city-tabs").ShouldBeEmpty();
     }
 
     private IRenderedComponent<GameTable> RenderTable(PlayerView view) =>
         Render<GameTable>(parameters => parameters.Add(static table => table.Game, TestGames.Started(view: view)));
-
-    private static IElement Tile(IRenderedComponent<GameTable> cut, HexCoord coord) =>
-        cut.Find($"use.tile[data-q='{coord.Q}'][data-r='{coord.R}']");
 
     private static IEnumerable<string> TabNames(IRenderedComponent<GameTable> cut) =>
         cut.FindAll(".city-tabs [role=tab]").Select(static tab => tab.TextContent.Replace("warning", string.Empty, StringComparison.Ordinal).Trim());

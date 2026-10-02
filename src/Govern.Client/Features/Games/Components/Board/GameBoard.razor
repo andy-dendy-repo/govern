@@ -1,15 +1,15 @@
-@* The 3D hex board (F15 preview): a WebGL canvas drawn by wwwroot/js/board3d from a BoardScene (the map and its pieces) and a
+@* The game board: a WebGL canvas drawn by wwwroot/js/board3d from a BoardScene (the map and its pieces) and a
    BoardOverlay (the lens, the selection and its highlights), animated by the BoardAnimationService's motion. Drag to pan; the
    wheel or the buttons zoom.
-   Without WebGL it says so, and the 2D board stays one click away. *@
+   Without WebGL it says so; the rest of the game screen still works. *@
 @inherits OwningComponentBase
 
 <div class="board-frame">
-    <div @ref="_host" class="@(Disabled ? "board3d busy" : "board3d")" role="application" aria-label="Game board (3D)"></div>
+    <div @ref="_host" class="@(Disabled ? "board3d busy" : "board3d")" role="application" aria-label="Game board"></div>
     @if (_unavailable)
     {
         <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="board3d-unavailable">
-            This browser can't show the 3D board (WebGL is off or not supported). Switch back with the 2D button.
+            This browser can't show the game board (WebGL is off or not supported). Try another browser, or turn on hardware acceleration.
         </RadzenAlert>
     }
     @if (AnchorAt is not null && Anchored is not null)
@@ -19,11 +19,10 @@
     <LensToolbar/>
     <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem" class="board-zoom">
         <RadzenButton Icon="add" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom in"
-                      Click="@(() => ZoomAsync(GameBoard.ZoomStep))" class="zoom-in"/>
+                      Click="@(() => ZoomAsync(ZoomStep))" class="zoom-in"/>
         <RadzenButton Icon="remove" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom out"
-                      Click="@(() => ZoomAsync(1 / GameBoard.ZoomStep))" class="zoom-out"/>
+                      Click="@(() => ZoomAsync(1 / ZoomStep))" class="zoom-out"/>
         <RadzenButton Icon="fit_screen" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Fit the map"
                       Click="@FitMapAsync" class="zoom-fit"/>
-        <BoardModeToggle/>
     </RadzenStack>
 </div>

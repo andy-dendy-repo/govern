@@ -13,12 +13,12 @@ using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Components.Board;
 
-public class GameBoard3DTests : ClientTestContext
+public class GameBoardTests : ClientTestContext
 {
     private readonly BunitJSModuleInterop _module;
     private readonly List<HexCoord> _clicked = [];
 
-    public GameBoard3DTests()
+    public GameBoardTests()
     {
         _module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
         _module.Setup<bool>("mount", _ => true).SetResult(true);
@@ -75,7 +75,7 @@ public class GameBoard3DTests : ClientTestContext
     [Fact]
     public void Render_FocusFromBeforeTheBoard_IsNotFollowed()
     {
-        Render<GameBoard3D>(parameters => parameters
+        Render<GameBoard>(parameters => parameters
             .Add(static board => board.View, Start())
             .Add(static board => board.Focus, new BoardFocus(At(7, 5), 3)));
 
@@ -99,7 +99,7 @@ public class GameBoard3DTests : ClientTestContext
 
         var cut = RenderBoard(Start());
 
-        cut.Find(".board3d-unavailable").TextContent.ShouldContain("can't show the 3D board");
+        cut.Find(".board3d-unavailable").TextContent.ShouldContain("can't show the game board");
         Calls("render").ShouldBeEmpty();
     }
 
@@ -215,7 +215,7 @@ public class GameBoard3DTests : ClientTestContext
     [Fact]
     public void Render_MaxHealth_GivesHurtUnitsTheirHealthShare()
     {
-        Render<GameBoard3D>(parameters => parameters
+        Render<GameBoard>(parameters => parameters
             .Add(static board => board.View, Create([Soldier(2, You, At(3, 2), health: 50)]))
             .Add(static board => board.MaxHealth, 100));
 
@@ -264,8 +264,8 @@ public class GameBoard3DTests : ClientTestContext
 
     private IReadOnlyList<JSRuntimeInvocation> Calls(string identifier) => _module.Invocations[identifier];
 
-    private IRenderedComponent<GameBoard3D> RenderBoard(PlayerView view, bool disabled = false) =>
-        Render<GameBoard3D>(parameters => parameters
+    private IRenderedComponent<GameBoard> RenderBoard(PlayerView view, bool disabled = false) =>
+        Render<GameBoard>(parameters => parameters
             .Add(static board => board.View, view)
             .Add(static board => board.Disabled, disabled)
             .Add(static board => board.TileClicked, coord => _clicked.Add(coord)));

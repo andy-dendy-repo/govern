@@ -7,20 +7,20 @@ namespace Govern.Client.Features.Games.Helpers;
 
 /// <summary>
 /// Builds the layers of a <see cref="BoardScene"/> above the tiles: rivers, bridges, improvements and buildings, and territory
-/// borders. It shows what the 2D board shows (<c>BoardRivers</c>, <c>BoardImprovements</c>, <c>BoardBorders</c>): known rivers on
+/// borders. It shows known rivers on
 /// visible and explored tiles, the rest only in sight, plus the buildings the player's cities are producing.
 /// </summary>
 public static class SceneLayerBuilder
 {
     // Where an improvement or building stands: this far towards the tile's upper left (on both axes), in board units, so the
-    // middle stays free for a unit or city, like the 2D board's symbols.
+    // middle stays free for a unit or city.
     private const double FeatureOffset = 0.36;
 
-    // How far towards the owned tile's centre a border is moved, as a share of the way (as BoardBorders).
+    // How far towards the owned tile's centre a border is moved, as a share of the way.
     private const double BorderInset = 0.12;
 
-    // How far a bridge reaches into each tile, as a share of the way from the edge to the tile's centre: a little further than
-    // the 2D board's plank, so the deck rests on both banks.
+    // How far a bridge reaches into each tile, as a share of the way from the edge to the tile's centre: far enough that the
+    // deck rests on both banks.
     private const double BridgeReach = 0.45;
 
     /// <summary>The known rivers, one per river edge.</summary>

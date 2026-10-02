@@ -1,6 +1,6 @@
 ---
 name: client-checks
-description: Govern Blazor client review checks - arch-rule exemptions, configure-client.sh, board/page traps, G1 game-UI traps, F15 3D board (Three.js disposal, mount race)
+description: Govern Blazor client review checks - arch-rule exemptions, configure-client.sh, board/page traps, G1 game-UI traps, F15 3D board (Three.js disposal, mount race), F17 SVG retirement (version dedupe, FakeBoardRenderer)
 metadata:
   type: project
 ---
@@ -65,3 +65,9 @@ Review 17 (2026-10-02, F15 step 5, partial layer rebuilds + gestures.js + bench)
 - Real own moves change tile visibility, so the terrain (whole map) and features still rebuild; the bench's "march" keeps tiles equal (best case).
 - gestures.js keeps a `pointers` map that only up/cancel clears; any missed up (failed capture, lostpointercapture) sticks it (size 2 ignores all downs). Look for a reset on an `isPrimary` down.
 - Labels skip work by comparing camera matrices + size as text; anything that moves a label's anchor must set `label.placed = false`.
+
+Review 18 (2026-10-02, F17 SVG board retired; GameBoard3D renamed GameBoard, the only board). Reviews 8-10 and 16 mentions of SVG components (BoardTerrain/BoardPieces ShouldRender, `<title>` in layers, CSS `forwards`) are history now. Traps for later board work:
+- `GameBoard.DrawAsync` skips a view whose `Version` equals the drawn one. All `TestViews` share `Version = 4242`, so a test's "newer view" must bump `Version` or the scene assertions read the old scene (vacuous negatives). Views of different games are safe only because `GamePage` keys `GameTable` by game id.
+- `Support/FakeBoardRenderer.Click` calls the JS relay off the renderer's event path: an exception after the handler's first await is lost (bUnit only surfaces renderer-dispatched failures), so a "nothing happened" assertion after Click can pass on a crash.
+- After F17 `--gv-terrain-<id>-explored` has no reader (palette.js lerps `--gv-terrain-<id>` to `--gv-board3d-memory`) but `Tokens_DefineAPaletteForEveryTerrain`, game-ui rule and docs still require it. Lens/overlay tint tokens are built in C# (`$"--gv-lens-{Class}"`), which `Board3DScripts_ReadOnlyTokensThatExist` (JS literals only) never checks.
+- Rule sweeps miss the "Where game UI goes" table in `.claude/rules/game-ui.md` (BoardLayer row survived F17). Related: [[convention-sweep-gaps]].

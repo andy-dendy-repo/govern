@@ -1,4 +1,3 @@
-using AngleSharp.Dom;
 using Govern.Client.Features.Games.Components;
 using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
@@ -13,7 +12,13 @@ namespace Govern.ClientTests.Features.Games.Components;
 /// <summary>The full-screen game view: the top strip, the selection card, the forecast beside its target and browser full screen.</summary>
 public class GameTableScreenTests : ClientTestContext
 {
-    public GameTableScreenTests() => SignIn();
+    private readonly FakeBoardRenderer _board;
+
+    public GameTableScreenTests()
+    {
+        SignIn();
+        _board = new FakeBoardRenderer(JSInterop);
+    }
 
     [Fact]
     public void Render_WithTitleAndConnection_ShowsThemInTheTopStrip()
@@ -28,7 +33,7 @@ public class GameTableScreenTests : ClientTestContext
     public void SelectionCollapse_Clicked_ShowsOnlyTheHeadingUntilAnotherSelection()
     {
         var cut = RenderTable(Create([Soldier(1, You, At(2, 2)), Settler(2, You, At(4, 3))]));
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find(".selection-collapse").Click();
 
@@ -36,7 +41,7 @@ public class GameTableScreenTests : ClientTestContext
         cut.Find(".selection-summary").TextContent.Trim().ShouldBe("Your Soldier");
         cut.Find(".selection-collapse").GetAttribute("aria-expanded").ShouldBe("false");
 
-        Tile(cut, At(4, 3)).Click();
+        _board.Click(At(4, 3));
 
         cut.Find(".selection-card .unit-panel .unit-name").TextContent.Trim().ShouldBe("Your Settler");
     }
@@ -46,36 +51,17 @@ public class GameTableScreenTests : ClientTestContext
     {
         var cut = RenderTable(Start());
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.FindAll(".hud-selection .selection-card .action-bar button.found-city").Count.ShouldBe(1);
-    }
-
-    [Fact]
-    public void Attack_ClickEnemy_ShowsTheForecastBesideTheTargetAndFollowsTheBoard()
-    {
-        var cut = RenderTable(AdjacentSoldiers());
-        Tile(cut, At(3, 2)).Click();
-
-        Tile(cut, At(4, 2)).Click();
-
-        var anchor = cut.Find(".hud-board .board-anchor");
-        anchor.QuerySelector(".forecast-card .combat-forecast").ShouldNotBeNull();
-        var style = anchor.GetAttribute("style")!;
-        style.ShouldContain("--anchor-x:");
-        style.ShouldContain("--anchor-flip:");
-
-        cut.Find("button.zoom-in").Click();
-
-        cut.Find(".board-anchor").GetAttribute("style").ShouldNotBe(style);
     }
 
     [Fact]
     public void Attack_Cancelled_RemovesTheAnchoredForecast()
     {
         var cut = RenderTable(AdjacentSoldiers());
-        Tile(cut, At(3, 2)).Click();
-        Tile(cut, At(4, 2)).Click();
+        _board.Click(At(3, 2));
+        _board.Click(At(4, 2));
 
         cut.Find("button.combat-cancel").Click();
 
@@ -83,25 +69,20 @@ public class GameTableScreenTests : ClientTestContext
     }
 
     [Fact]
-    public async Task Attack_On3DBoard_AnchorsTheForecastToTheTargetAndLetsGoOnCancel()
+    public void Attack_ClickEnemy_AnchorsTheForecastToTheTargetAndLetsGoOnCancel()
     {
-        var module = Setup3D();
         var cut = RenderTable(AdjacentSoldiers());
-        cut.Find("button.board-mode").Click();
-        var relay = module.Invocations["mount"].Single().Arguments[1]!;
-        var target = relay.GetType().GetProperty("Value")!.GetValue(relay)!;
-        var click = target.GetType().GetMethod("OnTileClicked")!;
 
-        await cut.InvokeAsync(() => (Task)click.Invoke(target, [At(3, 2).Q, At(3, 2).R])!);
-        await cut.InvokeAsync(() => (Task)click.Invoke(target, [At(4, 2).Q, At(4, 2).R])!);
+        _board.Click(At(3, 2));
+        _board.Click(At(4, 2));
 
-        cut.WaitForAssertion(() => module.Invocations["anchor"].Count.ShouldBe(1));
-        module.Invocations["anchor"].Single().Arguments.Skip(2).ShouldBe([At(4, 2).Q, At(4, 2).R]);
-        cut.Find(".board-frame .board-anchor .combat-forecast").ShouldNotBeNull();
+        cut.WaitForAssertion(() => _board.Calls("anchor").Count.ShouldBe(1));
+        _board.Calls("anchor").Single().Arguments.Skip(2).ShouldBe([At(4, 2).Q, At(4, 2).R]);
+        cut.Find(".hud-board .board-frame .board-anchor .forecast-card .combat-forecast").ShouldNotBeNull();
 
         cut.Find("button.combat-cancel").Click();
 
-        cut.WaitForAssertion(() => module.Invocations["unanchor"].Count.ShouldBe(1));
+        cut.WaitForAssertion(() => _board.Calls("unanchor").Count.ShouldBe(1));
     }
 
     [Fact]
@@ -139,18 +120,6 @@ public class GameTableScreenTests : ClientTestContext
         module.Invocations["unwatch"].Count.ShouldBe(1);
     }
 
-    private BunitJSModuleInterop Setup3D()
-    {
-        var module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
-        module.Setup<bool>("mount", _ => true).SetResult(true);
-        foreach (var call in new[] { "render", "renderOverlay", "renderMotion", "fit", "focus", "unmount", "anchor", "unanchor" })
-        {
-            module.SetupVoid(call, _ => true).SetVoidResult();
-        }
-
-        return module;
-    }
-
     private static PlayerView AdjacentSoldiers() => Create([Settler(1, You, At(1, 1)), Soldier(2, You, At(3, 2)), Soldier(3, Opponent, At(4, 2))]);
 
     private IRenderedComponent<GameTable> RenderTable(PlayerView view, GameWatchUpdate? connection = null) =>
@@ -158,7 +127,4 @@ public class GameTableScreenTests : ClientTestContext
             .Add(static table => table.Game, TestGames.Started(view: view))
             .Add(static table => table.Title, "Game in progress")
             .Add(static table => table.Connection, connection));
-
-    private static IElement Tile(IRenderedComponent<GameTable> cut, HexCoord coord) =>
-        cut.Find($"use.tile[data-q='{coord.Q}'][data-r='{coord.R}']");
 }

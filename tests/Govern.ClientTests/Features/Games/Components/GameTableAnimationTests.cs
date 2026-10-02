@@ -15,17 +15,25 @@ namespace Govern.ClientTests.Features.Games.Components;
 public class GameTableAnimationTests : ClientTestContext
 {
     private static readonly PlayerView Before = Create(units: [Soldier(1, You, At(2, 2)), Soldier(2, Opponent, At(4, 2))]);
-    private static readonly PlayerView After = Create(units: [Soldier(1, You, At(3, 2)), Soldier(2, Opponent, At(4, 2))]);
+    // A newer view has a new version, which is what makes the board draw its scene again.
+    private static readonly PlayerView After =
+        Create(units: [Soldier(1, You, At(3, 2)), Soldier(2, Opponent, At(4, 2))]) with { Version = TestViews.Version + 1 };
 
-    public GameTableAnimationTests() => SignIn();
+    private readonly FakeBoardRenderer _board;
+
+    public GameTableAnimationTests()
+    {
+        SignIn();
+        _board = new FakeBoardRenderer(JSInterop);
+    }
 
     [Fact]
     public void OpeningTheGame_DrawsUnitsOnTheirTilesWithoutPlayingTheLog()
     {
         var cut = RenderTable(After, [new(1, 1, [Moved()])]);
 
-        UnitStyle(cut).ShouldBe(StyleAt(At(3, 2)));
-        cut.FindAll(".effect").ShouldBeEmpty();
+        UnitAt().ShouldBe(Center(At(3, 2)));
+        _board.Motion.Effects.ShouldBeEmpty();
     }
 
     [Fact]
@@ -35,24 +43,36 @@ public class GameTableAnimationTests : ClientTestContext
 
         Update(cut, After, [new(1, 1, [Moved()])]);
 
-        UnitStyle(cut).ShouldBe(StyleAt(At(2, 2)));
+        UnitAt().ShouldBe(Center(At(2, 2)));
         Time.Advance(BoardAnimationService.Step);
-        cut.WaitForAssertion(() => UnitStyle(cut).ShouldBe(StyleAt(At(3, 2))));
+        cut.WaitForAssertion(() => UnitAt().ShouldBe(Center(At(3, 2))));
     }
 
     [Fact]
-    public void NewerView_WithAnAttack_FloatsTheDamageOnTheEffectsLayer()
+    public void NewerView_WithAnAttack_LungesAndFloatsTheDamage()
     {
         var cut = RenderTable(After, []);
         var attack = new UnitAttackedEvent(new UnitId(1), You, SoldierType, At(3, 2), new UnitId(2), Opponent, SoldierType, At(4, 2), 22, 0);
 
         Update(cut, After with { Turn = 2 }, [new(1, 1, [attack])]);
-        UnitStyle(cut).ShouldNotBe(StyleAt(At(3, 2)));
+        UnitAt().ShouldNotBe(Center(At(3, 2)));
         Time.Advance(BoardAnimationService.Lunge / 2);
-        cut.WaitForAssertion(() => UnitStyle(cut).ShouldBe(StyleAt(At(3, 2))));
+        cut.WaitForAssertion(() => UnitAt().ShouldBe(Center(At(3, 2))));
         Time.Advance(BoardAnimationService.Lunge / 2);
 
-        cut.WaitForAssertion(() => cut.Find("[data-layer=effects] .effect.damage").TextContent.Trim().ShouldBe("-22"));
+        cut.WaitForAssertion(() => _board.Motion.Effects.Where(static effect => effect.Kind == "damage")
+            .Select(static effect => effect.Text).ShouldContain("-22"));
+    }
+
+    [Fact]
+    public void NewerView_PlayerAskedForReducedMotion_ShowsTheUnitOnItsNewTileAtOnce()
+    {
+        JSInterop.SetupModule(GameScreenInteropService.ModulePath).Setup<bool>("prefersReducedMotion", _ => true).SetResult(true);
+        var cut = RenderTable(Before, []);
+
+        Update(cut, After, [new(1, 1, [Moved()])]);
+
+        UnitAt().ShouldBe(Center(At(3, 2)));
     }
 
     [Fact]
@@ -61,40 +81,27 @@ public class GameTableAnimationTests : ClientTestContext
         var cut = RenderTable(Before, []);
         Update(cut, After, [new(1, 1, [Moved()])]);
 
-        cut.FindAll("[data-layer=terrain] use")[0].Click();
+        _board.Click(At(0, 0));
 
-        UnitStyle(cut).ShouldBe(StyleAt(At(3, 2)));
-    }
-
-    [Fact]
-    public void NewerView_On3DBoard_SendsTheWalkToTheRenderer()
-    {
-        var module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
-        module.Setup<bool>("mount", _ => true).SetResult(true);
-        foreach (var call in new[] { "render", "renderOverlay", "renderMotion", "fit", "focus", "unmount" })
-        {
-            module.SetupVoid(call, _ => true).SetVoidResult();
-        }
-
-        var cut = RenderTable(Before, []);
-        cut.Find("button.board-mode").Click();
-
-        Update(cut, After, [new(1, 1, [Moved()])]);
-
-        var (x, z) = BoardSceneBuilder.Center(At(2, 2));
-        var walk = module.Invocations["renderMotion"][^1].Arguments[1].ShouldBeOfType<SceneMotion>().Positions.ShouldHaveSingleItem();
-        (walk.Unit, walk.X, walk.Z).ShouldBe((1, x, z));
+        cut.WaitForAssertion(() => UnitAt().ShouldBe(Center(At(3, 2))));
     }
 
     private static UnitMovedEvent Moved() => new(new UnitId(1), You, SoldierType, [At(3, 2)]);
 
-    private static string? UnitStyle(IRenderedComponent<GameTable> cut) => cut.Find("use.unit.own").ParentElement!.GetAttribute("style");
+    // Where the board draws unit 1: where the motion holds it, else on its tile in the scene. Rounded, as the motion's points
+    // pass through the 2D layout first.
+    private (double X, double Z) UnitAt() =>
+        _board.Motion.Positions.Where(static position => position.Unit == 1).Select(static position => Round(position.X, position.Z))
+            .Concat(_board.Scene.Pieces.Where(static piece => piece.Unit == 1).Select(static piece => Round(piece.X, piece.Z)))
+            .First();
 
-    private static string StyleAt(HexCoord tile)
+    private static (double X, double Z) Center(HexCoord tile)
     {
-        var (x, y) = HexLayout.Center(tile);
-        return $"transform: translate({HexLayout.Format(x)}px, {HexLayout.Format(y)}px)";
+        var (x, z) = BoardSceneBuilder.Center(tile);
+        return Round(x, z);
     }
+
+    private static (double X, double Z) Round(double x, double z) => (Math.Round(x, 6), Math.Round(z, 6));
 
     private IRenderedComponent<GameTable> RenderTable(PlayerView view, IReadOnlyList<GameLogItem> log) =>
         Render<GameTable>(parameters => parameters.Add(static table => table.Game, TestGames.Started(view: view) with { Log = log }));

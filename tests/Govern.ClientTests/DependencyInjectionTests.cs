@@ -91,8 +91,8 @@ public class DependencyInjectionTests
 
         await using var scope = provider.CreateAsyncScope();
 
-        scope.ServiceProvider.GetRequiredService<BoardInteropService>()
-            .ShouldBeSameAs(scope.ServiceProvider.GetRequiredService<BoardInteropService>());
+        scope.ServiceProvider.GetRequiredService<Board3DInteropService>()
+            .ShouldBeSameAs(scope.ServiceProvider.GetRequiredService<Board3DInteropService>());
     }
 
     private sealed class UnusedJsRuntime : IJSRuntime

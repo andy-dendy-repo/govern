@@ -47,9 +47,6 @@ public sealed class GameUiService
     /// <summary>The latest request to centre the board on a tile, or <see langword="null"/> before the first.</summary>
     public BoardFocus? Focus { get; private set; }
 
-    /// <summary>Whether the game screen shows the 3D board preview (F15) instead of the 2D board.</summary>
-    public bool Board3D { get; private set; }
-
     /// <summary>Raised after the state changed.</summary>
     public event Action? Changed;
 
@@ -203,13 +200,6 @@ public sealed class GameUiService
     {
         ArgumentNullException.ThrowIfNull(lens);
         ActiveLens = ActiveLens?.Id == lens.Id ? null : lens;
-        Changed?.Invoke();
-    }
-
-    /// <summary>Switches between the 2D board and the 3D board preview.</summary>
-    public void ToggleBoard3D()
-    {
-        Board3D = !Board3D;
         Changed?.Invoke();
     }
 

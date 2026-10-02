@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
-using AngleSharp.Dom;
 using Govern.Client.Features.Games.Components;
+using Govern.Client.Features.Games.Enums;
+using Govern.Client.Features.Games.Helpers;
 using Govern.ClientTests.Support;
 using Govern.Core.Economy;
 using Govern.Core.Map;
@@ -14,7 +15,13 @@ namespace Govern.ClientTests.Features.Games.Components;
 /// <summary>Builders, improvements, bridges, city buildings and the stockpile on the game screen.</summary>
 public class GameTableBuildTests : ClientTestContext
 {
-    public GameTableBuildTests() => SignIn();
+    private readonly FakeBoardRenderer _board;
+
+    public GameTableBuildTests()
+    {
+        SignIn();
+        _board = new FakeBoardRenderer(JSInterop);
+    }
 
     [Fact]
     public void BuildImprovement_BuilderInTheTerritory_SendsIt()
@@ -22,7 +29,7 @@ public class GameTableBuildTests : ClientTestContext
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var cut = RenderTable(Create([Unit(1, You, BuilderType, At(3, 2))], [City(7, You, At(2, 2))]));
 
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
         cut.Find("button.build-farm").Click();
 
         cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
@@ -34,7 +41,7 @@ public class GameTableBuildTests : ClientTestContext
     {
         var cut = RenderTable(Create([Unit(1, You, BuilderType, At(6, 4))], [City(7, You, At(2, 2))]));
 
-        Tile(cut, At(6, 4)).Click();
+        _board.Click(At(6, 4));
 
         cut.Find("button.build-farm").HasAttribute("disabled").ShouldBeTrue();
         cut.Find(".build-improvement-reason").TextContent.ShouldBe("Improvements can only be built in your cities' territory, off the city tiles.");
@@ -46,7 +53,7 @@ public class GameTableBuildTests : ClientTestContext
         var cut = RenderTable(Create([Unit(1, You, BuilderType, At(3, 2))], [City(7, You, At(2, 2))],
             terrain: static coord => coord == At(3, 2) ? new TerrainType("lake") : Plains));
 
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
 
         cut.FindAll("button.build-improvement").ShouldBeEmpty();
         cut.Find(".no-improvement").TextContent.ShouldBe("No improvement fits this terrain.");
@@ -57,12 +64,12 @@ public class GameTableBuildTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var cut = RenderTable(RiverView([Soldier(2, You, At(3, 2))]));
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
 
         cut.Find("button.build-bridge").Click();
-        cut.FindAll("use.overlay.bridgeable").Count.ShouldBe(1);
-        cut.FindAll("use.overlay.reachable").ShouldBeEmpty();
-        Tile(cut, At(4, 2)).Click();
+        _board.Tinted("--gv-overlay-bridgeable").Count.ShouldBe(1);
+        _board.Tinted("--gv-overlay-reachable").ShouldBeEmpty();
+        _board.Click(At(4, 2));
 
         cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
             .ShouldBe($$$"""{"type":"build_bridge","unitId":{"value":2},"target":{"q":{{{At(4, 2).Q}}},"r":{{{At(4, 2).R}}}}}"""));
@@ -72,12 +79,12 @@ public class GameTableBuildTests : ClientTestContext
     public void BuildBridge_EscapeOrAnotherClick_LeavesBridgeModeWithoutSending()
     {
         var cut = RenderTable(RiverView([Soldier(2, You, At(3, 2))]));
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
         cut.Find("button.build-bridge").Click();
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
-        cut.FindAll("use.overlay.bridgeable").ShouldBeEmpty();
+        _board.Tinted("--gv-overlay-bridgeable").ShouldBeEmpty();
         cut.Find("button.build-bridge").TextContent.ShouldContain("Build bridge");
         Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
     }
@@ -87,7 +94,7 @@ public class GameTableBuildTests : ClientTestContext
     {
         var cut = RenderTable(Create([Soldier(2, You, At(3, 2))]));
 
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
 
         cut.Find("button.build-bridge").HasAttribute("disabled").ShouldBeTrue();
         cut.Find(".build-bridge-reason").TextContent.ShouldBe("No river next to this unit can be bridged now.");
@@ -99,7 +106,7 @@ public class GameTableBuildTests : ClientTestContext
         var builder = Unit(1, You, BuilderType, At(3, 2), movementLeft: 0) with { Job = new UnitJob(2, 1, Improvement: Farm) };
         var cut = RenderTable(Create([builder]));
 
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
 
         cut.Find(".unit-job").TextContent.ShouldBe($"Building a Farm: 2 of {Ruleset.Improvement(Farm).Cost}");
         cut.Find(".unit-panel .build").TextContent.ShouldContain($"{Ruleset.Unit(BuilderType).BuildProduction} per turn");
@@ -112,7 +119,7 @@ public class GameTableBuildTests : ClientTestContext
         var builder = Unit(1, You, BuilderType, At(3, 2), movementLeft: 0) with { Job = new UnitJob(0, 3, Improvement: Farm) };
         var cut = RenderTable(Create([builder], [City(7, You, At(2, 2))]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find(".lent-production").TextContent.ShouldContain("goes to a unit building on its land");
         cut.Find(".city-panel .progress-turns").TextContent.ShouldBe("Never at this rate");
@@ -123,13 +130,13 @@ public class GameTableBuildTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find("button.produce-building-campus").Click();
-        cut.FindAll("use.overlay.placeable").Count.ShouldBe(6);
+        _board.Tinted("--gv-overlay-placeable").Count.ShouldBe(6);
         cut.Find(".building-placing").TextContent.ShouldStartWith("Pick a highlighted tile");
         Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
-        Tile(cut, At(3, 2)).Click();
+        _board.Click(At(3, 2));
 
         cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
             .ShouldBe($$$"""{"type":"produce_building","cityId":{"value":7},"building":"campus","site":{"q":{{{At(3, 2).Q}}},"r":{{{At(3, 2).R}}}}}"""));
@@ -139,16 +146,16 @@ public class GameTableBuildTests : ClientTestContext
     public void ProduceBuilding_ClickOutsideOrTheButtonAgain_StopsPlacingWithoutSending()
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find("button.produce-building-campus").Click();
-        Tile(cut, At(6, 4)).Click();
-        cut.FindAll("use.overlay.placeable").ShouldBeEmpty();
+        _board.Click(At(6, 4));
+        _board.Tinted("--gv-overlay-placeable").ShouldBeEmpty();
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
         cut.Find("button.produce-building-campus").Click();
         cut.Find("button.produce-building-campus").Click();
-        cut.FindAll("use.overlay.placeable").ShouldBeEmpty();
+        _board.Tinted("--gv-overlay-placeable").ShouldBeEmpty();
         cut.FindAll(".building-placing").ShouldBeEmpty();
         Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
     }
@@ -159,15 +166,15 @@ public class GameTableBuildTests : ClientTestContext
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var city = City(7, You, At(2, 2)) with { ProducingBuilding = Campus, ProducingBuildingSite = At(3, 2) };
         var cut = RenderTable(Create(cities: [city]));
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find("button.produce-building-campus").Click();
-        Tile(cut, At(3, 2)).Click();
-        cut.FindAll("use.overlay.placeable").ShouldBeEmpty();
+        _board.Click(At(3, 2));
+        _board.Tinted("--gv-overlay-placeable").ShouldBeEmpty();
         Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
 
         cut.Find("button.produce-building-campus").Click();
-        Tile(cut, At(2, 3)).Click();
+        _board.Click(At(2, 3));
 
         cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
             .ShouldBe($$$"""{"type":"produce_building","cityId":{"value":7},"building":"campus","site":{"q":{{{At(2, 3).Q}}},"r":{{{At(2, 3).R}}}}}"""));
@@ -177,14 +184,14 @@ public class GameTableBuildTests : ClientTestContext
     public void ProduceBuilding_PlacingStarts_FocusesTheScreenSoEscapeCancelsIt()
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
         var focusesBefore = Focuses();
 
         cut.Find("button.produce-building-campus").Click();
 
         Focuses().ShouldBe(focusesBefore + 1, "the city panel's tabs keep Esc from the screen, so the screen takes focus back");
         cut.Find(".game-screen").KeyDown(new KeyboardEventArgs { Key = "Escape" });
-        cut.FindAll("use.overlay.placeable").ShouldBeEmpty();
+        _board.Tinted("--gv-overlay-placeable").ShouldBeEmpty();
         cut.Find("button.produce-building-campus").ShouldNotBeNull("the city stays selected");
     }
 
@@ -193,7 +200,7 @@ public class GameTableBuildTests : ClientTestContext
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find("button.produce-building-harbour").HasAttribute("disabled").ShouldBeTrue();
         cut.Find(".building-reason").TextContent.ShouldBe("This building needs a different terrain next to its tile.");
@@ -208,15 +215,15 @@ public class GameTableBuildTests : ClientTestContext
             terrain: static coord => coord == At(1, 2) ? new TerrainType("lake") : Plains,
             buildings: static coord => coord == At(2, 3) ? Campus : null));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find(".buildings .building-campus").TextContent.ShouldContain("Campus");
         cut.FindAll("button.produce-building-campus").ShouldBeEmpty();
         cut.Find(".production").TextContent.ShouldBe($"Producing a Harbour: 2 of {Ruleset.Building(Harbour).Cost}");
         cut.Find("button.produce-building-harbour").TextContent.ShouldContain("Move Harbour");
         cut.Find("button.produce-settler").HasAttribute("disabled").ShouldBeFalse();
-        cut.Find("[data-layer='improvements'] use.tile-building-campus").GetAttribute("href").ShouldBe("#building-campus");
-        cut.Find("[data-layer='improvements'] use.tile-building-harbour.planned").GetAttribute("href").ShouldBe("#building-harbour");
+        Feature(At(2, 3)).ShouldBe((Model(FeatureModels.For(Campus)), false));
+        Feature(At(1, 1)).ShouldBe((Model(FeatureModels.For(Harbour)), true));
     }
 
     [Fact]
@@ -224,7 +231,7 @@ public class GameTableBuildTests : ClientTestContext
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2), stock: [new ResourceAmount(Food, 5), new ResourceAmount(Culture, 2)])]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         // 7 plains tiles (2 food, 1 water each) and the city's own culture, less the settler's 4 food and 2 water paid to begin.
         cut.Find(".city-resource-food .cost-amount").TextContent.ShouldBe("5");
@@ -260,8 +267,8 @@ public class GameTableBuildTests : ClientTestContext
 
         var cut = RenderTable(view);
 
-        cut.Find("[data-layer='improvements'] use.improvement-farm").GetAttribute("href").ShouldBe("#improvement-farm");
-        cut.FindAll("[data-layer='rivers'] line.bridge").Count.ShouldBe(1);
+        cut.WaitForAssertion(() => _board.Scene.Bridges.Count.ShouldBe(1));
+        Feature(At(1, 1)).ShouldBe((Model(FeatureModels.For(Farm)), false));
     }
 
     private static PlayerView RiverView(IEnumerable<UnitView> units) =>
@@ -270,10 +277,15 @@ public class GameTableBuildTests : ClientTestContext
     private IRenderedComponent<GameTable> RenderTable(PlayerView view) =>
         Render<GameTable>(parameters => parameters.Add(static table => table.Game, TestGames.Started(view: view)));
 
-    private static IElement Tile(IRenderedComponent<GameTable> cut, HexCoord coord) =>
-        cut.Find($"use.tile[data-q='{coord.Q}'][data-r='{coord.R}']");
+    // Element focus (Blazor's FocusAsync), not the board's camera focus.
+    private int Focuses() => JSInterop.Invocations.Count(static call => call.Identifier.EndsWith(".focus", StringComparison.Ordinal));
 
-    private int Focuses() => JSInterop.Invocations.Count(static call => call.Identifier.EndsWith("focus", StringComparison.Ordinal));
+    // The model and planned flag of the improvement or building the board draws on a tile.
+    private (string Model, bool Planned) Feature(HexCoord tile) =>
+        _board.Scene.Features.Where(feature => feature.Q == tile.Q && feature.R == tile.R)
+            .Select(static feature => (feature.Model, feature.Planned)).ShouldHaveSingleItem();
+
+    private static string Model(FeatureModel model) => model.ToString().ToLowerInvariant();
 
     private JsonNode Command(int index) => JsonNode.Parse(Api.RequestsTo(TestGames.CommandsPath())[index].Body!)!;
 }
