@@ -7,7 +7,7 @@ namespace Govern.Client.Features.Games.Services;
 
 /// <summary>
 /// The 3D board's JavaScript (<c>wwwroot/js/board3d/board.js</c>, drawn with Three.js from <c>wwwroot/lib/three</c>): mounting a
-/// WebGL canvas in an element, drawing a <see cref="BoardScene"/>, moving the camera and reporting clicked tiles. One instance
+/// WebGL canvas in an element, drawing a <see cref="BoardScene"/> and the <see cref="BoardOverlay"/> over it, moving the camera and reporting clicked tiles. One instance
 /// per board: registered scoped and resolved from the board's own scope (<c>GameBoard3D</c> is an <c>OwningComponentBase</c>),
 /// so it is disposed with the board. Every call degrades to a no-op when the module or WebGL can't run; <see cref="MountAsync"/>
 /// says so.
@@ -64,6 +64,13 @@ public sealed class Board3DInteropService(IJSRuntime js) : IAsyncDisposable
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>A task that completes when the scene is sent.</returns>
     public Task RenderAsync(BoardScene scene, CancellationToken cancellationToken) => CallAsync("render", cancellationToken, scene);
+
+    /// <summary>Draws the overlay (lens, highlights, selection) over the scene, replacing the one before.</summary>
+    /// <param name="overlay">The overlay.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>A task that completes when the overlay is sent.</returns>
+    public Task RenderOverlayAsync(BoardOverlay overlay, CancellationToken cancellationToken) =>
+        CallAsync("renderOverlay", cancellationToken, overlay);
 
     /// <summary>Moves the camera so a rectangle of the board fills the view.</summary>
     /// <param name="bounds">The rectangle in board units (x and depth).</param>

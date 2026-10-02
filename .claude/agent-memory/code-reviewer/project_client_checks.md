@@ -46,3 +46,8 @@ Review 12 (2026-10-02, F15 step 1, 3D board / Three.js 0.186.1 vendored in wwwro
 Review 13 (2026-10-02, F15 step 2, rivers/bridges/features/borders in 3D). Traps for later F15 steps (pieces, lenses):
 - Heights in C# (`TerrainReliefs.Surface`) ignore the JS per-tile jitter (±0.02, `tileTop`); every layer lift must exceed 0.02. Unexplored tiles report height 0.02, so "lower of both sides" logic sinks things at the fog frontier; lake tiles' `Height` (0.03) sits under the 0.1 water, so use `Surface`, not `For(tile).Height`.
 - Layer modules keep module-level geometries/materials and must be added to Board3D.dispose's disposeShared list; per-build InstancedMesh/geometry freed by `shapes.disposeLayer`.
+
+Review 14 (2026-10-02, F15 step 3, pieces/overlay/labels). Traps for later F15 steps:
+- The HTML `hidden` attribute loses to any author `display` rule (no global `[hidden]{display:none}` in app.css or Radzen material.css); `.board3d-banner` is `display:flex`, so `labels.js` hiding by `element.hidden` doesn't hide banners. Prefer `style.display`/`visibility` or a `[hidden]` rule.
+- Per-index y lifts (`i * 0.0004` in overlays.js buildTints) grow with the tile count (a lens marks every explored tile; maps up to 40x40). With `depthWrite:false` in one draw call, buffer order already layers coplanar tris; no lift needed.
+- `GameUiService.Select/Refresh` replaces `Highlights` on every call (even unchanged), so reference-compare dedupes in GameBoard3D re-send on every SSE snapshot.

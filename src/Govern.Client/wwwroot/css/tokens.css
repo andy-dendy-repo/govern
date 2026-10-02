@@ -79,6 +79,9 @@
     --gv-board3d-field: #c9a85a;
     --gv-board3d-rock: #8b8680;
     --gv-board3d-canvas: #ece3c8;
+    /* 3D units (js/board3d/pieces.js): faces and hands, and horses; clothes and banners take the seat colour. */
+    --gv-board3d-figure: #f0c9a0;
+    --gv-board3d-horse: #8a5f3c;
 
     /* Map lenses: tints over the tiles and the label on each (Features/Games/Lenses). */
     --gv-lens-cheap: rgba(255, 255, 255, 0.12);
@@ -156,6 +159,8 @@
         --gv-board3d-field: #8f7a44;
         --gv-board3d-rock: #5f5c58;
         --gv-board3d-canvas: #b3ab95;
+        --gv-board3d-figure: #c49a74;
+        --gv-board3d-horse: #6a4a30;
         --gv-boot-track: #3a3f47;
         --gv-shadow: rgba(0, 0, 0, 0.7);
     }

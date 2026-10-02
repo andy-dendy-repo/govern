@@ -1,5 +1,6 @@
-@* The 3D hex board (F15 preview): a WebGL canvas drawn by wwwroot/js/board3d from a BoardScene. Step 1 draws the terrain;
-   pieces, rivers, lenses and highlights follow (docs/plans/active/F15-3d-board.md). Drag to pan; the wheel or the buttons zoom.
+@* The 3D hex board (F15 preview): a WebGL canvas drawn by wwwroot/js/board3d from a BoardScene (the map and its pieces) and a
+   BoardOverlay (the lens, the selection and its highlights). Animations follow (docs/plans/active/F15-3d-board.md). Drag to
+   pan; the wheel or the buttons zoom.
    Without WebGL it says so, and the 2D board stays one click away. *@
 @inherits OwningComponentBase
 
@@ -11,6 +12,7 @@
             This browser can't show the 3D board (WebGL is off or not supported). Switch back with the 2D button.
         </RadzenAlert>
     }
+    <LensToolbar/>
     <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem" class="board-zoom">
         <RadzenButton Icon="add" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" aria-label="Zoom in"
                       Click="@(() => ZoomAsync(GameBoard.ZoomStep))" class="zoom-in"/>

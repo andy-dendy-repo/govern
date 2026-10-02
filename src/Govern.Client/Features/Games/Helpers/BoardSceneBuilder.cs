@@ -15,8 +15,9 @@ public static class BoardSceneBuilder
 
     /// <summary>Builds the scene of a view.</summary>
     /// <param name="view">The player's view.</param>
+    /// <param name="maxHealth">The ruleset's full health, for the units' health bars; 0 draws none.</param>
     /// <returns>The scene.</returns>
-    public static BoardScene Build(PlayerView view)
+    public static BoardScene Build(PlayerView view, int maxHealth = 0)
     {
         ArgumentNullException.ThrowIfNull(view);
         var tiles = new SceneTile[view.Tiles.Length];
@@ -33,7 +34,8 @@ public static class BoardSceneBuilder
             SceneLayerBuilder.Rivers(view),
             SceneLayerBuilder.Bridges(view),
             SceneLayerBuilder.Features(view),
-            SceneLayerBuilder.Borders(view));
+            SceneLayerBuilder.Borders(view),
+            ScenePieceBuilder.Pieces(view, maxHealth));
     }
 
     /// <summary>The centre of a tile in board units.</summary>
