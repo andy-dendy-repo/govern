@@ -1,4 +1,5 @@
 using Govern.Client.Auth;
+using Govern.Client.Features.Design.Services;
 using Govern.Client.Features.Games.Clients;
 using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Services;
@@ -49,6 +50,7 @@ public static class DependencyInjection
             services.AddSingleton<IMapLens, MovementCostLens>();
             services.AddSingleton<IMapLens, YieldLens>();
             services.AddScoped<ClipboardService>();
+            services.AddScoped<BoardBenchService>();
 
             // AddHttpClient also registers a plain HttpClient; components must use typed clients instead.
             services.RemoveAll<HttpClient>();

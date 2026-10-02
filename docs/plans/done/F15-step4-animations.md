@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F15 step 4, animations on the 3D board
 
-**Status:** done 2026-10-02 (backlog F15, step 4 of the [F15 plan](../active/F15-3d-board.md), after [step 3b](F15-step3b-unit-models.md)); decisions made while building it are at the end. Visuals only: Govern.Core, the server, the rules, the view and the game log stay as they are.
+**Status:** done 2026-10-02 (backlog F15, step 4 of the [F15 plan](F15-3d-board.md), after [step 3b](F15-step3b-unit-models.md)); decisions made while building it are at the end. Visuals only: Govern.Core, the server, the rules, the view and the game log stay as they are.
 
 ## Context
 The 2D board animates what happens since F11b ([plan](F11b-animations.md)): units walk, attacks lunge with floating damage, destroyed units fade and new cities and builds pulse. The 3D board still jumps straight to each new view, so an opponent's turn is easy to miss there. This step plays the same animations on the 3D board from the same source: `BoardAnimationService` and its `BoardMotion`, built from the game log's events. No new event, timing rule or mechanic is added; the 3D board only draws the motion the 2D board already gets.
