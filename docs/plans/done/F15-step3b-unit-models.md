@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F15 step 3b, real unit models on the 3D board
 
-**Status:** done 2026-10-02 (backlog F15, after [step 3](F15-step3-pieces-selection-lenses.md) of the [F15 plan](../active/F15-3d-board.md)). Visuals only. The owner asked for real unit models in place of the code-built figures on 2026-10-02 and picked the CC0 KayKit Adventurers pack.
+**Status:** done 2026-10-02 in PR #44 (backlog F15, after [step 3](F15-step3-pieces-selection-lenses.md) of the [F15 plan](../active/F15-3d-board.md)). Visuals only. The owner asked for real unit models in place of the code-built figures on 2026-10-02 and picked the CC0 KayKit Adventurers pack.
 
 ## Context
 Step 3 drew units as figures built in code from boxes and cones, which read poorly next to the terrain. KayKit Adventurers (CC0, no attribution needed) has stylised low-poly characters with weapons that suit the board. This step bakes them into small static models and draws them in place of the figures.
