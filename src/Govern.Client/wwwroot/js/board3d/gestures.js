@@ -1,6 +1,7 @@
 // The board's pointer gestures: one finger or the mouse drags to pan, two fingers pinch to zoom around them and pan with them,
 // the wheel zooms, and a press that hardly moved is a click. A gesture that ever had two fingers never ends in a click, and
-// lifting one of two fingers hands the pan to the other without a jump.
+// lifting one of two fingers hands the pan to the other without a jump. A mouse or pen moving with no button down hovers (the
+// board's tile card); touch never hovers.
 
 // How far, in pixels, a press may move and still count as a click: a little for the mouse, a finger more, since a tap
 // wobbles.
@@ -22,6 +23,7 @@ export class Gestures {
             pointercancel: event => this.up(event, false),
             // A pointer whose up the canvas never saw (it went up elsewhere) is dropped when its capture ends.
             lostpointercapture: event => this.up(event, false),
+            pointerleave: event => event.pointerType !== 'touch' && this.board.hover(null),
             wheel: event => this.wheel(event),
         };
         for (const [type, handler] of Object.entries(this.handlers)) {
@@ -61,6 +63,9 @@ export class Gestures {
     move(event) {
         const before = this.pointers.get(event.pointerId);
         if (!before) {
+            if (this.pointers.size === 0 && event.pointerType !== 'touch') {
+                this.board.hover(this.ndc({ x: event.clientX, y: event.clientY }));
+            }
             return;
         }
         const after = { x: event.clientX, y: event.clientY };
@@ -74,7 +79,10 @@ export class Gestures {
         if (!press || press.id !== event.pointerId) {
             return;
         }
-        press.dragged ||= Math.abs(after.x - press.x) + Math.abs(after.y - press.y) > press.slop;
+        if (!press.dragged && Math.abs(after.x - press.x) + Math.abs(after.y - press.y) > press.slop) {
+            press.dragged = true;
+            this.board.hover(null);
+        }
         if (press.dragged) {
             this.board.rig.pan(this.ndc(before), this.ndc(after));
             this.board.requestRender();
@@ -108,8 +116,13 @@ export class Gestures {
             return;
         }
         this.press = null;
+        const at = this.ndc({ x: event.clientX, y: event.clientY });
         if (released && press && press.id === event.pointerId && !press.dragged && !press.pinched) {
-            this.board.click(this.ndc({ x: event.clientX, y: event.clientY }));
+            this.board.click(at);
+        }
+        // After a drag the mouse hovers again where it stopped.
+        if (released && event.pointerType !== 'touch') {
+            this.board.hover(at);
         }
     }
 
@@ -118,8 +131,11 @@ export class Gestures {
         event.preventDefault();
         const pixels = event.deltaMode === 1 ? event.deltaY * 100 / 3 : event.deltaMode === 2 ? event.deltaY * 800 : event.deltaY;
         if (pixels !== 0) {
-            this.board.rig.zoomAt(this.ndc({ x: event.clientX, y: event.clientY }), Math.pow(ZOOM_STEP, -Math.max(-3, Math.min(3, pixels / 100))));
+            const at = this.ndc({ x: event.clientX, y: event.clientY });
+            this.board.rig.zoomAt(at, Math.pow(ZOOM_STEP, -Math.max(-3, Math.min(3, pixels / 100))));
             this.board.requestRender();
+            // The ground moved under a still mouse.
+            this.board.hover(at);
         }
     }
 

@@ -1,7 +1,8 @@
 @* The game board: a WebGL canvas drawn by wwwroot/js/board3d from a BoardScene (the map and its pieces) and a
    BoardOverlay (the lens, the selection and its highlights), animated by the BoardAnimationService's motion. Drag to pan; the
-   wheel or the buttons zoom.
-   Without WebGL it says so; the rest of the game screen still works. *@
+   wheel or the buttons zoom. A card in the corner says what is on the tile under the mouse (or the tile last tapped), and a
+   hidden live region reads the clicked tile's card out to screen readers.
+   Without WebGL it says so; the rest of the game screen still works. A lost WebGL context says so until the browser restores it. *@
 @inherits OwningComponentBase
 
 <div class="board-frame">
@@ -12,6 +13,18 @@
             This browser can't show the game board (WebGL is off or not supported). Try another browser, or turn on hardware acceleration.
         </RadzenAlert>
     }
+    <BoardGraphicsLost Lost="@_lost"/>
+    @if (Card is { } card)
+    {
+        <div class="board-tile-card" aria-hidden="true">
+            <div class="board-tile-card-title">@card.Title</div>
+            @foreach (var line in card.Lines)
+            {
+                <div class="board-tile-card-line">@line</div>
+            }
+        </div>
+    }
+    <div class="board-live" role="status" aria-live="polite">@_announced</div>
     @if (AnchorAt is not null && Anchored is not null)
     {
         <div @ref="_anchor" class="board-anchor">@Anchored</div>

@@ -9,7 +9,8 @@ namespace Govern.ClientTests.Support;
 
 /// <summary>
 /// The game board's renderer (<c>wwwroot/js/board3d</c>) as a test double: the module mounts (WebGL works), every call is
-/// recorded, and a tile is clicked the way the renderer does it, through the click relay the board mounted with. Clicks run
+/// recorded, and a tile is clicked or hovered (and the WebGL context lost) the way the renderer reports it, through the relay
+/// the board mounted with. Clicks run
 /// outside bUnit's event dispatch, so a click that fails later (after an await) is rethrown by the next read of what the board
 /// sent, or by <see cref="ThrowIfAnyClickFailed"/>.
 /// </summary>
@@ -18,7 +19,7 @@ public sealed class FakeBoardRenderer
     private readonly List<Task> _clicks = [];
 
     private static readonly string[] VoidCalls =
-        ["render", "renderOverlay", "renderMotion", "fit", "focus", "zoom", "anchor", "unanchor", "unmount"];
+        ["render", "renderOverlay", "renderMotion", "fit", "focus", "zoom", "anchor", "unanchor", "setPointer", "unmount"];
 
     /// <summary>Sets up the renderer's module on <paramref name="js"/>.</summary>
     /// <param name="js">The test context's JS interop.</param>
@@ -80,12 +81,28 @@ public sealed class FakeBoardRenderer
     /// <returns>A task that completes when the click is handled.</returns>
     public Task ClickAsync(HexCoord tile)
     {
-        var relay = Module.Invocations["mount"][^1].Arguments[1]!;
-        var target = relay.GetType().GetProperty("Value")!.GetValue(relay)!;
-        var click = target.GetType().GetMethod("OnTileClicked", BindingFlags.Public | BindingFlags.Instance)!;
-        var handled = (Task)click.Invoke(target, [tile.Q, tile.R])!;
+        var handled = Report("OnTileClicked", tile.Q, tile.R);
         _clicks.Add(handled);
         return handled;
+    }
+
+    /// <summary>Moves the mouse over <paramref name="tile"/> as the renderer reports it, or off the map for <see langword="null"/>.</summary>
+    /// <param name="tile">The hovered tile, or <see langword="null"/> when the pointer left or a drag started.</param>
+    /// <returns>A task that completes when the hover is handled.</returns>
+    public Task HoverAsync(HexCoord? tile) =>
+        tile is { } at ? Report("OnTileHovered", at.Q, at.R) : Report("OnHoverEnded");
+
+    /// <summary>Reports that the browser took the WebGL context away (<see langword="true"/>) or gave it back.</summary>
+    /// <param name="lost">Whether the context is lost.</param>
+    /// <returns>A task that completes when the report is handled.</returns>
+    public Task ContextAsync(bool lost) => Report(lost ? "OnContextLost" : "OnContextRestored");
+
+    // Calls a method of the .NET relay the latest mount passed, as the renderer does.
+    private Task Report(string method, params object[] args)
+    {
+        var relay = Module.Invocations["mount"][^1].Arguments[1]!;
+        var target = relay.GetType().GetProperty("Value")!.GetValue(relay)!;
+        return (Task)target.GetType().GetMethod(method, BindingFlags.Public | BindingFlags.Instance)!.Invoke(target, args)!;
     }
 
     /// <summary>Clicks <paramref name="tile"/> like a DOM click: started, not awaited; a failure so far is thrown.</summary>
