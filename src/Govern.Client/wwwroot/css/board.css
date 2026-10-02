@@ -408,3 +408,33 @@
         animation-name: gv-fade;
     }
 }
+
+/* The 3D board (F15, a preview behind GameUiService.Board3D): a WebGL canvas drawn by js/board3d over the backdrop. */
+.board3d {
+    display: block;
+    width: 100%;
+    height: min(70vh, 40rem);
+    overflow: hidden;
+    background: linear-gradient(var(--gv-board3d-backdrop-top), var(--gv-board3d-backdrop-bottom));
+    border-radius: var(--gv-radius);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.board3d.busy {
+    cursor: progress;
+}
+
+.board3d-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.board3d-unavailable {
+    position: absolute;
+    left: var(--gv-space-2);
+    right: var(--gv-space-2);
+    bottom: var(--gv-space-2);
+}

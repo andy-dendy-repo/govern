@@ -122,6 +122,13 @@ public partial class GameTable : IDisposable
         // Acting ends the animation, so the board shows exactly what the click is resolved against.
         _animation.Finish();
         var click = BoardClickResolver.Resolve(Ruleset, View, _ui.Selection, coord);
+
+        // The 3D preview doesn't draw pieces or highlights yet (F15 step 3), so a click there only selects, never acts.
+        if (_ui.Board3D && click.Command is not null)
+        {
+            return;
+        }
+
         _ui.Select(Ruleset, View, click.Next);
         if (click.Command is { } command)
         {

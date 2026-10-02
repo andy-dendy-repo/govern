@@ -1,8 +1,8 @@
 ---
 title: Blazor client
 tags: [client, blazor, webassembly, radzen, csp, static-web-apps, security-headers, bunit, configuration, auth, jwt, refresh-token, web-locks, login, games, lobby, invite-link, sse, server-sent-events, reconnect, backoff, board, hex, svg, pan, zoom, commands, stale-version]
-code: [src/Govern.Client, src/Govern.Client/Auth, src/Govern.Client/Features/Games, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/wwwroot/js/board.js, tests/Govern.ClientTests, tests/Govern.ArchitectureTests/ClientSecurityTests.cs, tests/Govern.ArchitectureTests/ClientContractTests.cs, .github/scripts/configure-client.sh, .github/workflows/release.yml]
-updated: 2026-10-01
+code: [src/Govern.Client, src/Govern.Client/Auth, src/Govern.Client/Features/Games, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/wwwroot/js/board.js, src/Govern.Client/wwwroot/js/board3d, src/Govern.Client/wwwroot/lib/three, tests/Govern.ClientTests, tests/Govern.ArchitectureTests/ClientSecurityTests.cs, tests/Govern.ArchitectureTests/ClientContractTests.cs, .github/scripts/configure-client.sh, .github/workflows/release.yml]
+updated: 2026-10-02
 ---
 
 # Blazor client
@@ -167,6 +167,10 @@ A started game on `/games/{id}` shows `Features/Games/Components/GameTable`: the
 | +, −, Fit buttons | Zoom at the centre, or fit the whole map (re-measuring the element) |
 
 `wwwroot/js/board.js` exists for two things Blazor can't do: a **non-passive** `wheel` listener that calls `preventDefault` (Blazor's may be passive, and a passive listener can't stop the page scrolling), and `getBoundingClientRect` to fit the map and anchor the wheel zoom. It is imported lazily by `Features/Games/Services/BoardInteropService` (scoped); if the module fails, the board keeps working at a default size.
+
+### 3D board preview and vendored scripts
+
+The 3D board (F15, behind the 3D button) is drawn by ES modules in `wwwroot/js/board3d/` with **Three.js**, vendored in `wwwroot/lib/three/` (`three.module.js`, `three.core.js` and its MIT `LICENSE`, copied unchanged from the npm release, 0.186.1). Vendored files are served from the app's own origin, so the CSP stays as it is, and Blazor's import map fingerprints them like any other module. They pass `ClientSecurityTests` as they are (no HTML sinks, eval or browser storage); a library that doesn't is not vendored. `Features/Games/Services/Board3DInteropService` (scoped, resolved from `GameBoard3D`'s own scope as an `OwningComponentBase`, so it is disposed with the board and unmounts the renderer, also when the board goes away while the module is still loading) is the only door to them; the 3D board itself is described in [game UI](game-ui.md#3d-board-preview-f15).
 
 ### Sending commands (one at a time, stale handling)
 
