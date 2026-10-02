@@ -1,9 +1,10 @@
-// One 3D board: the WebGL renderer in its host element, the light, the camera and the pointer. It draws on demand (after a
-// scene, a camera move or a resize), and every frame only while an animation plays (motion.js).
+// One 3D board: the WebGL renderer in its host element, the light, the camera and the gestures (gestures.js). It draws on
+// demand (after a scene, a camera move or a resize), and every frame only while an animation plays (motion.js).
 import {
     DirectionalLight, Group, HemisphereLight, NeutralToneMapping, PCFShadowMap, Raycaster, Scene, Vector2, WebGLRenderer,
 } from '../../lib/three/three.module.js';
 import { CameraRig } from './camera.js';
+import { Gestures } from './gestures.js';
 import { Palette } from './palette.js';
 import { Labels } from './labels.js';
 import { buildBorders, buildOverlay, disposeShared as disposeBorders } from './overlays.js';
@@ -14,9 +15,23 @@ import { buildRivers, disposeShared as disposeRivers } from './rivers.js';
 import { disposeLayer } from './shapes.js';
 import { buildTerrain, disposeShared as disposeGround, disposeTerrain } from './terrain.js';
 
-// How far, in pixels, a press may move and still count as a click (as the 2D board's GameBoard.DragThreshold).
-const DRAG_THRESHOLD = 4;
-const ZOOM_STEP = 1.2;
+// The layers drawn on the ground besides the terrain and the pieces, each built from its own part of the scene.
+const builders = { rivers: buildRivers, features: buildFeatures, borders: buildBorders };
+
+// What each layer is built from, as text to compare: a layer is built again only when its text changes. The terrain also reads
+// the features (no trees under a building), and the features the tiles they stand on.
+function layerKeys(scene) {
+    const tiles = new Map(scene.tiles.map(tile => [`${tile.q},${tile.r}`, tile]));
+    const under = (scene.features ?? []).map(feature => tiles.get(`${feature.q},${feature.r}`));
+    return {
+        terrain: JSON.stringify([scene.tiles, scene.features]),
+        rivers: JSON.stringify([scene.rivers, scene.bridges]),
+        features: JSON.stringify([scene.features, under]),
+        borders: JSON.stringify(scene.borders),
+        pieces: JSON.stringify(scene.pieces),
+    };
+}
+
 
 export class Board3D {
     constructor(host, dotnet) {
@@ -47,6 +62,8 @@ export class Board3D {
         this.overlay = null;
         this.overlayData = null;
         this.labels = new Labels(host);
+        this.drawn = {};
+        this.keys = null;
         this.pieceByUnit = new Map();
         this.motion = new Motion(this);
         this.frame = 0;
@@ -54,20 +71,11 @@ export class Board3D {
         this.listen();
         this.resize();
         // Units show only their base until the baked characters arrive; then the pieces are built again.
-        loadFigures().then(loaded => loaded && !this.disposed && this.rebuild()).catch(error => console.error(error));
+        loadFigures().then(loaded => loaded && !this.disposed && this.rebuildPieces()).catch(error => console.error(error));
     }
 
     listen() {
-        this.handlers = {
-            pointerdown: event => this.onPointerDown(event),
-            pointermove: event => this.onPointerMove(event),
-            pointerup: event => this.onPointerUp(event),
-            pointercancel: () => { this.press = null; },
-            wheel: event => this.onWheel(event),
-        };
-        for (const [type, handler] of Object.entries(this.handlers)) {
-            this.canvas.addEventListener(type, handler, { passive: type !== 'wheel' });
-        }
+        this.gestures = new Gestures(this);
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(this.host);
         this.theme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -75,12 +83,15 @@ export class Board3D {
         this.theme.addEventListener('change', this.onTheme);
     }
 
+    // Draws a new scene, building again only the layers whose part of the scene changed (a move usually changes the pieces
+    // and the tiles coming into sight, not the rivers or the borders).
     setScene(scene) {
+        const previous = this.scene;
         this.scene = scene;
         this.rig.setBounds(scene.map);
-        this.labels.setPieces(scene.pieces);
         this.pieceByUnit = new Map((scene.pieces ?? []).filter(piece => piece.unit != null).map(piece => [piece.unit, piece]));
-        this.rebuild();
+        const sameMap = previous && JSON.stringify(previous.map) === JSON.stringify(scene.map);
+        this.rebuild(sameMap ? 'changed' : 'all');
     }
 
     // Animates the scene (BoardAnimationService's motion); the scene itself stays as it is.
@@ -103,13 +114,7 @@ export class Board3D {
         if (!this.layers || !this.scene) {
             return;
         }
-        if (this.pieces) {
-            this.layers.remove(this.pieces.group);
-            disposeLayer(this.pieces.group);
-        }
-        this.pieces = buildPieces(this.scene, this.palette(), this.motion.moving);
-        this.layers.add(this.pieces.group);
-        this.motion.reapply();
+        this.replaceLayer('pieces', this.palette());
         this.requestRender();
     }
 
@@ -132,33 +137,81 @@ export class Board3D {
         }
     }
 
-    // Builds the ground again with the current theme's colours.
-    rebuild() {
+    // Builds the layers again: 'all' (a new map, a theme change, the baked figures arriving) or only those whose part of the
+    // scene changed since they were built. Records the time each layer took, for the bench.
+    rebuild(which = 'all') {
         if (!this.scene) {
             return;
         }
+        const began = performance.now();
+        const keys = layerKeys(this.scene);
+        const all = which === 'all' || !this.layers;
+        const changed = Object.keys(keys).filter(name => all || keys[name] !== this.keys?.[name]);
+        this.keys = keys;
+        const keyed = performance.now() - began;
         const palette = new Palette(this.host);
+        if (all) {
+            this.light(palette);
+            this.clear();
+            this.layers = new Group();
+            this.world.add(this.layers);
+        }
+        const timings = { keys: keyed };
+        // The banners first, so the motion re-applied with the new pieces moves the new banners.
+        if (changed.includes('pieces')) {
+            this.labels.setPieces(this.scene.pieces);
+        }
+        for (const name of changed) {
+            const start = performance.now();
+            this.replaceLayer(name, palette);
+            timings[name] = performance.now() - start;
+        }
+        if (all) {
+            this.drawOverlay(palette);
+        }
+        this.requestRender();
+        this.built = { layers: timings, total: performance.now() - began };
+    }
+
+    // The sky and the sun in the theme's colours, the sun placed over the map.
+    light(palette) {
         this.sky.color = palette.token('--gv-board3d-sky');
         this.sky.groundColor = palette.token('--gv-board3d-ground');
         this.sky.intensity = 1.6;
         this.sun.color = palette.token('--gv-board3d-sun');
         this.sun.intensity = 2.2;
         this.placeSun();
-        this.clear();
-        this.terrain = buildTerrain(this.scene, palette);
-        this.world.add(this.terrain.group);
-        this.layers = new Group();
-        for (const layer of [buildRivers(this.scene, palette), buildFeatures(this.scene, palette), buildBorders(this.scene, palette)]) {
-            if (layer) {
-                this.layers.add(layer);
+    }
+
+    // Builds one layer of the scene again in place of the one drawn.
+    replaceLayer(name, palette) {
+        if (name === 'terrain') {
+            if (this.terrain) {
+                this.world.remove(this.terrain.group);
+                disposeTerrain(this.terrain.group);
             }
+            this.terrain = buildTerrain(this.scene, palette);
+            this.world.add(this.terrain.group);
+            return;
         }
-        this.pieces = buildPieces(this.scene, palette, this.motion.moving);
-        this.layers.add(this.pieces.group);
-        this.motion.reapply();
-        this.world.add(this.layers);
-        this.drawOverlay(palette);
-        this.requestRender();
+        const old = name === 'pieces' ? this.pieces?.group : this.drawn[name];
+        if (old) {
+            this.layers.remove(old);
+            disposeLayer(old);
+        }
+        if (name === 'pieces') {
+            this.pieces = buildPieces(this.scene, palette, this.motion.moving);
+            this.pieces.group.userData.layer = name;
+            this.layers.add(this.pieces.group);
+            this.motion.reapply();
+            return;
+        }
+        const layer = builders[name](this.scene, palette);
+        this.drawn[name] = layer;
+        if (layer) {
+            layer.userData.layer = name;
+            this.layers.add(layer);
+        }
     }
 
     // Removes and frees the ground and the layers on it.
@@ -173,6 +226,7 @@ export class Board3D {
             disposeLayer(this.layers);
             this.layers = null;
             this.pieces = null;
+            this.drawn = {};
         }
     }
 
@@ -228,46 +282,6 @@ export class Board3D {
         }
     }
 
-    // Normalised device coordinates (-1 to 1) of a pointer event.
-    ndc(event) {
-        const rect = this.canvas.getBoundingClientRect();
-        return { x: ((event.clientX - rect.left) / rect.width) * 2 - 1, y: -((event.clientY - rect.top) / rect.height) * 2 + 1 };
-    }
-
-    // Only the primary pointer pans, so a second finger can't make the board jump.
-    onPointerDown(event) {
-        if (!event.isPrimary) {
-            return;
-        }
-        this.press = { id: event.pointerId, x: event.clientX, y: event.clientY, last: this.ndc(event), dragged: false };
-        this.canvas.setPointerCapture(event.pointerId);
-    }
-
-    onPointerMove(event) {
-        const press = this.press;
-        if (!press || event.pointerId !== press.id) {
-            return;
-        }
-        press.dragged ||= Math.abs(event.clientX - press.x) + Math.abs(event.clientY - press.y) > DRAG_THRESHOLD;
-        const at = this.ndc(event);
-        if (press.dragged) {
-            this.rig.pan(press.last, at);
-            this.requestRender();
-        }
-        press.last = at;
-    }
-
-    onPointerUp(event) {
-        const press = this.press;
-        if (!press || event.pointerId !== press.id) {
-            return;
-        }
-        this.press = null;
-        if (!press.dragged) {
-            this.click(this.ndc(event));
-        }
-    }
-
     // A click picks what is under the pointer (a piece, else the ground) and tells .NET which tile it is on.
     click(at) {
         if (!this.terrain || !this.scene) {
@@ -284,22 +298,10 @@ export class Board3D {
         this.dotnet.invokeMethodAsync('OnTileClicked', tile.q, tile.r);
     }
 
-    // One mouse notch zooms by ZOOM_STEP; a trackpad's small deltas zoom smoothly.
-    onWheel(event) {
-        event.preventDefault();
-        const pixels = event.deltaMode === 1 ? event.deltaY * 100 / 3 : event.deltaMode === 2 ? event.deltaY * 800 : event.deltaY;
-        if (pixels !== 0) {
-            this.rig.zoomAt(this.ndc(event), Math.pow(ZOOM_STEP, -Math.max(-3, Math.min(3, pixels / 100))));
-            this.requestRender();
-        }
-    }
-
     dispose() {
         this.disposed = true;
         cancelAnimationFrame(this.frame);
-        for (const [type, handler] of Object.entries(this.handlers)) {
-            this.canvas.removeEventListener(type, handler);
-        }
+        this.gestures.dispose();
         this.resizeObserver.disconnect();
         this.theme.removeEventListener('change', this.onTheme);
         this.motion.dispose();

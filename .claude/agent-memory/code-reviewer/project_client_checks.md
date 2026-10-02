@@ -58,3 +58,10 @@ Review 16 (2026-10-02, F15 step 4, 3D animations via SceneMotion/motion.js). Tra
 - `BoardAnimationService` keeps effects and fading ghosts in `Motion` until `Finish` (never removes them per event) and replaces `Motion` every step. A renderer that expires keyed items by its own clock and re-adds "keys it doesn't have" replays them (motion.js did: effect/fading ghost reappear after 900 ms on the next step). Expiry must be remembered per key (tombstone) until the key leaves the data; the 2D board avoids it because CSS `forwards` keeps the element invisible.
 - motion.js "settles" on an empty motion (glide back to the rest tile, which is the walk's END tile because the view is applied at once), not a snap; a mid-walk click slides the unit across the remaining tiles in one step time.
 - Angle tweens that add a shortest delta without normalising drift past ±2π; JS `%` of a negative keeps the sign, so the "short way round" formula breaks after ~1.5 turns.
+
+Review 17 (2026-10-02, F15 step 5, partial layer rebuilds + gestures.js + bench). Traps for later board work:
+- `scene.js layerKeys` must cover every scene field a builder reads (verified then: terrain reads tiles+features, features read features+their tiles, rivers/borders/pieces only their own). A new builder input not added to its key = a stale layer.
+- In `rebuild`, `labels.setPieces` runs AFTER `replaceLayer('pieces')` -> `motion.reapply` -> `labels.follow`, so follow hits the discarded labels; masked only because the next `motion.tick` re-follows.
+- Real own moves change tile visibility, so the terrain (whole map) and features still rebuild; the bench's "march" keeps tiles equal (best case).
+- gestures.js keeps a `pointers` map that only up/cancel clears; any missed up (failed capture, lostpointercapture) sticks it (size 2 ignores all downs). Look for a reset on an `isPrimary` down.
+- Labels skip work by comparing camera matrices + size as text; anything that moves a label's anchor must set `label.placed = false`.

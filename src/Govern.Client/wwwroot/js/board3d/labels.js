@@ -19,6 +19,11 @@ export class Labels {
         this.point = new Vector3();
     }
 
+    // How many labels there are (the bench reports it).
+    get count() {
+        return this.marks.length + this.pieces.length + this.damage.size;
+    }
+
     // One banner per piece, and a name under each city.
     setPieces(pieces) {
         this.clear(this.pieces);
@@ -57,6 +62,7 @@ export class Labels {
         for (const label of this.pieces) {
             if (label.unit === unit) {
                 label.anchor.set(label.base.x + dx, label.base.y + dy, label.base.z + dz);
+                label.placed = false;
             }
         }
     }
@@ -107,17 +113,34 @@ export class Labels {
         }
     }
 
-    // Moves every label over its anchor as the camera sees it; those behind the camera or off the canvas are hidden.
+    // Moves every label over its anchor as the camera sees it; those behind the camera or off the canvas are hidden. When the
+    // camera hasn't moved, only the labels that are new or follow a moving piece are placed, and the page is written to only
+    // where a label's place or visibility changed.
     place(camera, width, height) {
+        const view = `${camera.matrixWorld.elements.join()},${camera.projectionMatrix.elements.join()},${width},${height}`;
+        const moved = view !== this.view;
+        this.view = view;
         for (const label of [...this.marks, ...this.pieces, ...this.damage.values()]) {
-            this.point.copy(label.anchor).project(camera);
-            const visible = this.point.z < 1 && Math.abs(this.point.x) <= 1.1 && Math.abs(this.point.y) <= 1.1;
-            label.element.hidden = !visible;
-            if (visible) {
-                const x = (this.point.x + 1) / 2 * width;
-                const y = (1 - this.point.y) / 2 * height;
-                label.element.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
+            if (moved || label.placed !== true) {
+                this.put(label, camera, width, height);
             }
+        }
+    }
+
+    put(label, camera, width, height) {
+        label.placed = true;
+        this.point.copy(label.anchor).project(camera);
+        const visible = this.point.z < 1 && Math.abs(this.point.x) <= 1.1 && Math.abs(this.point.y) <= 1.1;
+        if (label.element.hidden === visible) {
+            label.element.hidden = !visible;
+        }
+        if (!visible) {
+            return;
+        }
+        const transform = `translate(${((this.point.x + 1) / 2 * width).toFixed(1)}px, ${((1 - this.point.y) / 2 * height).toFixed(1)}px) translate(-50%, -50%)`;
+        if (transform !== label.transform) {
+            label.transform = transform;
+            label.element.style.transform = transform;
         }
     }
 

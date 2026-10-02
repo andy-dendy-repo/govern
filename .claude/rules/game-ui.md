@@ -5,7 +5,7 @@ paths:
 
 # Game UI design system
 
-The approaches for every game screen, panel, number and icon. Full description, catalog and "adding UI for a new mechanic": `docs/features/game-ui.md`. Enforced by `tests/Govern.ArchitectureTests/GameUiTests` (colours, terrain palette, river styles, a 3D model builder per `FeatureModel` and per `PieceModel`, a baked model per unit character, the 3D water level) and `tests/Govern.ClientTests` (`GameSpriteTests`: icons per ruleset unit, terrain, improvement, building and resource; `PieceModelsTests`: a 3D model per ruleset unit; `GameBoardTests`: layer order). Change the rule and the tests together.
+The approaches for every game screen, panel, number and icon. Full description, catalog and "adding UI for a new mechanic": `docs/features/game-ui.md`. Enforced by `tests/Govern.ArchitectureTests/GameUiTests` (colours, terrain palette, river styles, the 3D board's tokens existing and the `--gv-board3d-*` ones having dark values, a 3D model builder per `FeatureModel` and per `PieceModel`, a baked model per unit character, the 3D water level) and `tests/Govern.ClientTests` (`GameSpriteTests`: icons per ruleset unit, terrain, improvement, building and resource; `PieceModelsTests`: a 3D model per ruleset unit; `GameBoardTests`: layer order). Change the rule and the tests together.
 
 ## Where game UI goes
 
@@ -30,4 +30,5 @@ The approaches for every game screen, panel, number and icon. Full description, 
 - **Keyboard and touch.** Every action is a button reachable with Tab; no behaviour depends on hover or long press alone.
 - **Reuse before adding.** Check the catalog in `docs/features/game-ui.md` and the gallery first; a new shared component is added to both.
 - **Animations come only from `BoardAnimationService`.** Both boards draw its `BoardMotion` (the 3D board as a `SceneMotion` from `Helpers/SceneMotionBuilder`, with the service's durations); a board never decides what animates or when, only how it looks.
+- **3D board performance.** A new view rebuilds only the layers whose part of the `BoardScene` changed (`scene.js`), frames are drawn only after a change or while something animates, and labels are placed only when the camera or their piece moves. Check a change that adds models, labels or per-frame work on the bench at `/design/board` (Development only; `Features/Design/Pages/BoardBenchPage`): a march applied in well under 100 ms, and no new per-frame work while nothing moves. Record the numbers in the PR.
 - **Layout.** The screen zones are the CSS grid in `wwwroot/css/game-ui.css`; they stack map first on narrow screens. No component sets its own page-level layout.

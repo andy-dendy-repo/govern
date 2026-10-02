@@ -96,4 +96,11 @@ export class CameraRig {
             this.update();
         }
     }
+
+    // Two fingers moved: the ground under their old midpoint (`from`) ends up under the new one (`to`), and the view zooms by
+    // `factor` around it (above 1 when the fingers spread).
+    pinch(from, to, factor) {
+        this.pan(from, to);
+        this.zoomAt(to, factor);
+    }
 }
