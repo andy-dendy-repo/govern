@@ -37,6 +37,7 @@ public class Board3DInteropServiceTests : ClientTestContext
 
         (await interop.MountAsync(Host, static _ => Task.CompletedTask, Ct)).ShouldBeFalse();
         await interop.ZoomAsync(1.2, Ct);
+        await interop.RenderOverlayAsync(BoardOverlay.None, Ct);
         await interop.DisposeAsync();
 
         js.Calls.ShouldBe(1);
@@ -67,7 +68,7 @@ public class Board3DInteropServiceTests : ClientTestContext
         var interop = Interop;
         await interop.MountAsync(Host, static _ => Task.CompletedTask, Ct);
 
-        await Should.NotThrowAsync(() => interop.RenderAsync(new BoardScene([], new BoardRect(0, 0, 1, 1), new BoardRect(0, 0, 1, 1), [], [], [], []), Ct));
+        await Should.NotThrowAsync(() => interop.RenderAsync(new BoardScene([], new BoardRect(0, 0, 1, 1), new BoardRect(0, 0, 1, 1), [], [], [], [], []), Ct));
     }
 
     private sealed class FailingImportRuntime : IJSRuntime

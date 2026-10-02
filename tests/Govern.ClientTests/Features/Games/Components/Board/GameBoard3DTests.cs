@@ -2,10 +2,12 @@ using System.Reflection;
 using Bunit.JSInterop;
 using Govern.Client.Features.Games.Components.Board;
 using Govern.Client.Features.Games.Helpers;
+using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.ClientTests.Support;
 using Govern.Core.Map;
+using Govern.Core.Units;
 using Govern.Core.Visibility;
 using static Govern.ClientTests.Support.TestViews;
 
@@ -20,7 +22,7 @@ public class GameBoard3DTests : ClientTestContext
     {
         _module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
         _module.Setup<bool>("mount", _ => true).SetResult(true);
-        foreach (var call in new[] { "render", "fit", "focus", "zoom", "unmount" })
+        foreach (var call in new[] { "render", "renderOverlay", "fit", "focus", "zoom", "unmount" })
         {
             _module.SetupVoid(call, _ => true).SetVoidResult();
         }
@@ -142,6 +144,82 @@ public class GameBoard3DTests : ClientTestContext
 
         Calls("zoom").Single().Arguments[1].ShouldBe(GameBoard.ZoomStep);
         Calls("fit")[^1].Arguments[1].ShouldBe(BoardSceneBuilder.Build(Start()).Map);
+    }
+
+    [Fact]
+    public void Render_Mounted_SendsAnEmptyOverlay()
+    {
+        RenderBoard(Start());
+
+        Calls("renderOverlay").Single().Arguments[1].ShouldBe(BoardOverlay.None);
+    }
+
+    [Fact]
+    public void Render_NewSelection_SendsAnOverlayButNoScene()
+    {
+        var cut = RenderBoard(Start());
+
+        cut.Render(parameters => parameters
+            .Add(static board => board.Selection, BoardSelection.Of(new UnitId(1)))
+            .Add(static board => board.Highlights, BoardHighlights.None with { Reachable = [At(1, 1)] }));
+
+        Calls("render").Count.ShouldBe(1);
+        var overlay = Calls("renderOverlay")[^1].Arguments[1].ShouldBeOfType<BoardOverlay>();
+        overlay.Selected.ShouldNotBeNull();
+        overlay.Tiles.ShouldHaveSingleItem().Tint.ShouldBe("--gv-overlay-reachable");
+    }
+
+    [Fact]
+    public void Render_SameSelectionAndHighlights_SendsNoOverlay()
+    {
+        var highlights = BoardHighlights.None with { Reachable = [At(1, 1)] };
+        var cut = RenderBoard(Start());
+        cut.Render(parameters => parameters.Add(static board => board.Selection, BoardSelection.Of(new UnitId(1))).Add(static board => board.Highlights, highlights));
+
+        cut.Render(parameters => parameters.Add(static board => board.Selection, BoardSelection.Of(new UnitId(1))).Add(static board => board.Disabled, true));
+
+        Calls("renderOverlay").Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Render_NewView_SendsItsOverlayAgain()
+    {
+        var cut = RenderBoard(Start());
+
+        cut.Render(parameters => parameters.Add(static board => board.View, Start() with { Version = TestViews.Version + 1 }));
+
+        Calls("renderOverlay").Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Render_NewLensOnly_SendsOneOverlayAndNoScene()
+    {
+        var cut = RenderBoard(Start());
+
+        cut.Render(parameters => parameters.Add(static board => board.Lens, new MovementCostLens(new RulesetService())));
+
+        Calls("render").Count.ShouldBe(1);
+        Calls("renderOverlay").Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Render_Lens_SendsItsMarksWithLabels()
+    {
+        var cut = RenderBoard(Start());
+
+        cut.Render(parameters => parameters.Add(static board => board.Lens, new MovementCostLens(new RulesetService())));
+
+        Calls("renderOverlay")[^1].Arguments[1].ShouldBeOfType<BoardOverlay>().Tiles.Count(static tile => tile.Label is not null).ShouldBe(Width * Height);
+    }
+
+    [Fact]
+    public void Render_MaxHealth_GivesHurtUnitsTheirHealthShare()
+    {
+        Render<GameBoard3D>(parameters => parameters
+            .Add(static board => board.View, Create([Soldier(2, You, At(3, 2), health: 50)]))
+            .Add(static board => board.MaxHealth, 100));
+
+        Calls("render").Single().Arguments[1].ShouldBeOfType<BoardScene>().Pieces.ShouldHaveSingleItem().Health.ShouldBe(0.5);
     }
 
     private IReadOnlyList<JSRuntimeInvocation> Calls(string identifier) => _module.Invocations[identifier];
