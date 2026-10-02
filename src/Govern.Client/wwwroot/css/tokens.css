@@ -59,7 +59,7 @@
     --gv-river-deep: #1f5a94;
     --gv-river-deep-explored: #2c4560;
 
-    /* The 3D board (js/board3d): sky and sun light, the frame's backdrop, snow, tree trunks, lake beds, clouds over unexplored
+    /* The 3D board (js/board3d): sky and sun light, the frame's backdrop, snow, tree trunks, lake beds, the mist over unexplored
        tiles, and the parchment that remembered (explored) tiles fade towards. Terrain colours are the --gv-terrain-<id> tokens. */
     --gv-board3d-backdrop-top: #b9dfee;
     --gv-board3d-backdrop-bottom: #efe8da;
@@ -69,7 +69,7 @@
     --gv-board3d-snow: #f7f7f4;
     --gv-board3d-trunk: #8a5a36;
     --gv-board3d-seabed: #7fb7a8;
-    --gv-board3d-cloud: #fbfbf8;
+    --gv-board3d-mist: #fbfbf8;
     --gv-board3d-unexplored: #d9d4c7;
     --gv-board3d-memory: #e6dcc6;
 
@@ -141,7 +141,7 @@
         --gv-board3d-snow: #dfe4ec;
         --gv-board3d-trunk: #5e3f28;
         --gv-board3d-seabed: #3f6f68;
-        --gv-board3d-cloud: #5b6170;
+        --gv-board3d-mist: #5b6170;
         --gv-board3d-unexplored: #2b3038;
         --gv-board3d-memory: #4a4a52;
         --gv-boot-track: #3a3f47;
