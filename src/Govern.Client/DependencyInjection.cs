@@ -46,6 +46,7 @@ public static class DependencyInjection
             services.AddTransient<GameWatchService>();
             services.AddScoped<BoardInteropService>();
             services.AddScoped<Board3DInteropService>();
+            services.AddScoped<GameScreenInteropService>();
             services.AddSingleton<RulesetService>();
             services.AddSingleton<IMapLens, MovementCostLens>();
             services.AddSingleton<IMapLens, YieldLens>();

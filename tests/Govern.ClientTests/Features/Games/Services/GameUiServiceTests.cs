@@ -263,4 +263,53 @@ public class GameUiServiceTests
         _ui.Board3D.ShouldBeFalse();
         _changes.ShouldBe(2);
     }
+
+    [Fact]
+    public void ToggleLog_Opened_MarksTheLogSeenAndCountsOnlyLaterEntries()
+    {
+        GameLogItem[] log = [new(1, 1, []), new(2, 1, [])];
+        _ui.UnreadLog(log).ShouldBe(2);
+
+        _ui.ToggleLog(log);
+
+        _ui.LogOpen.ShouldBeTrue();
+        _ui.UnreadLog(log).ShouldBe(0);
+        _ui.ToggleLog(log);
+        _ui.UnreadLog([.. log, new(3, 2, [])]).ShouldBe(1);
+    }
+
+    [Fact]
+    public void Escape_LogOpen_ClosesTheLogAndKeepsTheSelection()
+    {
+        _ui.Select(Ruleset, Start(), BoardSelection.Of(new UnitId(1)));
+        _ui.ToggleLog([]);
+
+        _ui.Escape(Ruleset, Start()).ShouldBeTrue();
+
+        _ui.LogOpen.ShouldBeFalse();
+        _ui.Selection.ShouldBe(BoardSelection.Of(new UnitId(1)));
+    }
+
+    [Fact]
+    public void Select_AnotherUnit_OpensTheCollapsedCardAgain()
+    {
+        _ui.Select(Ruleset, Start(), BoardSelection.Of(new UnitId(1)));
+        _ui.ToggleSelectionCollapsed();
+
+        _ui.Select(Ruleset, Start(), BoardSelection.Of(new UnitId(1)) with { Bridge = true });
+        _ui.SelectionCollapsed.ShouldBeTrue("the same unit in another mode keeps the card as it is");
+
+        _ui.Select(Ruleset, Start(), BoardSelection.Of(new UnitId(2)));
+        _ui.SelectionCollapsed.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void SetFullScreen_Changed_NotifiesOnlyOnAChange()
+    {
+        _ui.SetFullScreen(true);
+        _ui.SetFullScreen(true);
+
+        _ui.FullScreen.ShouldBeTrue();
+        _changes.ShouldBe(1);
+    }
 }

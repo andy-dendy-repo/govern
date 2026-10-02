@@ -110,7 +110,7 @@ Each player has their own log of what they saw happen (F11a, [plan](../plans/don
 - **No counters of hidden activity:** an entry has no game version and no timestamp, and a seat's sequence counts only that seat's entries, so the log never shows how many commands the opponent played out of sight.
 - **Reading:** `GetGameResponse.log` (from `GET /api/games/{id}`, a command response and every stream snapshot) holds the caller's entries from the previous round on, at most `GameLogService.MaxEntries` (200), oldest first: `{ "sequence": 7, "turn": 3, "events": [ { "type": "unit_moved", … } ] }`. Empty in the lobby. Older entries are kept but not served yet.
 - **Live:** the stream pushes a snapshot when the caller's view or newest log sequence changes (an enemy move seen only in passing adds an entry without changing the view), and each snapshot carries every entry in the window, so coalesced pushes lose nothing.
-- **The web client** shows the log in the side panel and plays the new entries on the board ([game UI](game-ui.md#game-log-in-the-side-panel)).
+- **The web client** shows the log in the log drawer and plays the new entries on the board ([game UI](game-ui.md#game-log-in-the-log-drawer)).
 
 ## Live game updates (SSE)
 

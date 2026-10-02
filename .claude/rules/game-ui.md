@@ -12,9 +12,9 @@ The approaches for every game screen, panel, number and icon. Full description, 
 | Adding… | Put it in |
 |---|---|
 | A shared game component (numbers, costs, progress, confirm, icons) | `Components/Game/XxxX.razor`, with bUnit tests in `tests/Govern.ClientTests/Components/Game` and an entry on the design gallery (`Features/Design/Pages/DesignPage`) |
-| Something in a screen zone | `Features/Games/Components/Screen/`: counters in `TopBar`, unit actions in `ActionBar`, a panel per selection kind in `SidePanel` |
-| A panel for one selection kind | `Features/Games/Components/XxxPanel.razor`, chosen by `SidePanel` |
-| UI state of the game screen (selection, bridge mode, lens, open view) | `Features/Games/Services/GameUiService`, cascaded by `GameTable`; never game state |
+| Something over the board | `Features/Games/Components/Screen/`: counters in `TopBar`, unit actions in `ActionBar` (inside the selection card), a panel per selection kind in `SelectionCard`, notices in `NoticeStack` |
+| A panel for one selection kind | `Features/Games/Components/XxxPanel.razor`, chosen by `SelectionCard` |
+| UI state of the game screen (selection, bridge mode, lens, collapsed card, log drawer, full screen, open view) | `Features/Games/Services/GameUiService`, cascaded by `GameTable`; never game state |
 | New map content | a `Features/Games/Enums/BoardLayer` slot, rendered as `<g data-layer="…">` in that order |
 | An icon | a `<symbol>` in `Components/Game/GameSprite.razor`; its id in `Helpers/Icons` (`unit-<id>`, `terrain-<id>`, `improvement-<id>`, `building-<id>`, `resource-<id>`, `ui-<name>`) |
 | A colour | a token in `wwwroot/css/tokens.css` (light, and dark under `prefers-color-scheme: dark`) |
@@ -31,4 +31,4 @@ The approaches for every game screen, panel, number and icon. Full description, 
 - **Reuse before adding.** Check the catalog in `docs/features/game-ui.md` and the gallery first; a new shared component is added to both.
 - **Animations come only from `BoardAnimationService`.** Both boards draw its `BoardMotion` (the 3D board as a `SceneMotion` from `Helpers/SceneMotionBuilder`, with the service's durations); a board never decides what animates or when, only how it looks.
 - **3D board performance.** A new view rebuilds only the layers whose part of the `BoardScene` changed (`scene.js`), frames are drawn only after a change or while something animates, and labels are placed only when the camera or their piece moves. Check a change that adds models, labels or per-frame work on the bench at `/design/board` (Development only; `Features/Design/Pages/BoardBenchPage`): a march applied in well under 100 ms, and no new per-frame work while nothing moves. Record the numbers in the PR.
-- **Layout.** The screen zones are the CSS grid in `wwwroot/css/game-ui.css`; they stack map first on narrow screens. No component sets its own page-level layout.
+- **Layout.** A started game is the full-screen view (`Layout/GameLayout`, `GameTable`): the board fills the screen and the controls are cards in the overlay slots of `wwwroot/css/game-ui.css` (top strip, notices, selection card bottom left, log drawer right, the attack forecast in the board's `Anchored` slot). The slots take no clicks themselves, so the board pans between cards; nothing but these cards covers the board, and on desktop the board's middle stays clear. Below 40rem the strip is compact (More) and the card and forecast are bottom sheets. Anything kept beside a tile goes through the board's `Anchored`/`AnchorAt` (never its own positioning code). No component sets its own page-level layout.

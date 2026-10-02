@@ -1,6 +1,11 @@
-@* The top zone of the game screen: the player's seat, the turn and whose turn it is, the resources in all their cities together
-   (one counter per ruleset resource; each city keeps and spends its own), on the player's turn how many of their units can
-   still move (a click selects the next one), End turn, and Resign (asks first). Later counters (season) are added here, before the actions. *@
+@* The top strip over the game board: the game's title and connection badge, the player's seat, the turn and whose turn it is,
+   the resources in all their cities together (one counter per ruleset resource; each city keeps and spends its own), on the
+   player's turn how many of their units can still move (a click selects the next one), End turn, Resign (asks first), the Log
+   button with the number of new entries, and Full screen where the browser has it. On phones only the title, the turn and End
+   turn stay in the strip; the rest opens under the More button. Later counters (season) are added with the resources. *@
+@using System.Globalization
+@using Govern.Client.Features.Games.Models
+@using Govern.Client.Features.Games.Components
 @using Govern.Client.Features.Games.Services
 @using Govern.Core.Actions
 @using Govern.Core.Engine
@@ -9,40 +14,68 @@
 @using Govern.Core.State
 @using Govern.Core.Visibility
 
-<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween"
-             Gap="1rem" Wrap="FlexWrap.Wrap" class="top-bar">
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+<div class="top-bar">
+    <div class="top-identity">
+        <RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.H1" class="game-title rz-m-0">@Title</RadzenText>
+        @if (Connection is not null)
+        {
+            <ConnectionBadge Update="@Connection"/>
+        }
         <span class="@($"seat-swatch {Seats.Class(View, View.Viewer)}")" role="img" aria-label="@($"Your colour: seat {Seats.Number(View, View.Viewer)}")"></span>
-        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="turn rz-m-0">@TurnText</RadzenText>
-    </RadzenStack>
-    @if (Ruleset.Resources.Length > 0)
-    {
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" Wrap="FlexWrap.Wrap"
-                     class="stockpile" role="group" aria-label="Resources in all your cities">
-            @foreach (var resource in Ruleset.Resources)
-            {
-                <span class="@($"stock stock-{resource.Id.Id}")">
-                    <CostLabel Amount="@Stock(resource.Id)" Icon="@Icons.Resource(resource.Id)" Label="@Ruleset.ResourceName(resource.Id)"/>
-                </span>
-            }
-        </RadzenStack>
-    }
-    @if (View.Status == GameStatus.InProgress)
-    {
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
-            @if (IsYourTurn && GameUiService.IdleUnits(View).Count is > 0 and var idle)
-            {
-                <RadzenButton Text="@(idle == 1 ? "1 unit can still move" : $"{idle} units can still move")" Icon="directions_walk"
-                              ButtonStyle="ButtonStyle.Light" Click="@(() => Ui.SelectNextIdleUnit(Ruleset, View))" class="next-unit"/>
-            }
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H2" class="turn rz-m-0">@TurnText</RadzenText>
+    </div>
+    <div class="top-actions">
+        <RadzenButton Icon="@(_more ? "close" : "more_horiz")" ButtonStyle="ButtonStyle.Light" class="top-more-toggle"
+                      aria-label="@(_more ? "Hide more" : "More")" aria-expanded="@(_more ? "true" : "false")" Click="@(() => _more = !_more)"/>
+        @if (View.Status == GameStatus.InProgress)
+        {
             <RadzenButton Text="End turn" Icon="skip_next" Disabled="@(Busy || !IsYourTurn)"
                           Click="@(() => Command.InvokeAsync(new EndTurnCommand()))" class="end-turn"/>
-            <ConfirmButton Text="Resign" Icon="flag" Question="Resign the game? Your opponent wins." ConfirmText="Yes, resign"
-                           CancelText="Keep playing" Disabled="@Busy" Class="resign"
-                           Confirmed="@(() => Command.InvokeAsync(new ResignCommand()))"/>
-        </RadzenStack>
-    }
-</RadzenStack>
+        }
+    </div>
+    <div class="@(_more ? "top-more open" : "top-more")">
+        @if (Ruleset.Resources.Length > 0)
+        {
+            <div class="stockpile" role="group" aria-label="Resources in all your cities">
+                @foreach (var resource in Ruleset.Resources)
+                {
+                    <span class="@($"stock stock-{resource.Id.Id}")">
+                        <CostLabel Amount="@Stock(resource.Id)" Icon="@Icons.Resource(resource.Id)" Label="@Ruleset.ResourceName(resource.Id)"/>
+                    </span>
+                }
+            </div>
+        }
+        @if (View.Status == GameStatus.InProgress && IsYourTurn && GameUiService.IdleUnits(View).Count is > 0 and var idle)
+        {
+            <RadzenButton Text="@(idle == 1 ? "1 unit can still move" : $"{idle} units can still move")" Icon="directions_walk"
+                          ButtonStyle="ButtonStyle.Light" Click="@(() => Ui.SelectNextIdleUnit(Ruleset, View))" class="next-unit"/>
+        }
+        <div class="top-tools">
+            <RadzenButton ButtonStyle="@(Ui.LogOpen ? ButtonStyle.Primary : ButtonStyle.Light)" Click="@(() => Ui.ToggleLog(Log))"
+                          aria-pressed="@(Ui.LogOpen ? "true" : "false")" class="log-toggle">
+                <RadzenIcon Icon="history"/>
+                <span>Log</span>
+                @if (Ui.UnreadLog(Log) is > 0 and var unread)
+                {
+                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@unread.ToString(CultureInfo.InvariantCulture)" class="log-unread"
+                                 aria-label="@($"{unread} new")"/>
+                }
+            </RadzenButton>
+            @if (FullScreenSupported)
+            {
+                <RadzenButton Icon="@(Ui.FullScreen ? "fullscreen_exit" : "fullscreen")" ButtonStyle="ButtonStyle.Light" Click="@FullScreenToggled"
+                              title="@(Ui.FullScreen ? "Exit full screen" : "Full screen")" aria-label="@(Ui.FullScreen ? "Exit full screen" : "Full screen")"
+                              class="full-screen"/>
+            }
+            @if (View.Status == GameStatus.InProgress)
+            {
+                <ConfirmButton Text="Resign" Icon="flag" Question="Resign the game? Your opponent wins." ConfirmText="Yes, resign"
+                               CancelText="Keep playing" Disabled="@Busy" Class="resign"
+                               Confirmed="@(() => Command.InvokeAsync(new ResignCommand()))"/>
+            }
+        </div>
+    </div>
+</div>
 
 @code {
     [CascadingParameter] public GameUiService Ui { get; set; } = null!;
@@ -54,6 +87,19 @@
     [Parameter] public bool Busy { get; set; }
 
     [Parameter] public EventCallback<GameCommand> Command { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Game";
+
+    [Parameter] public GameWatchUpdate? Connection { get; set; }
+
+    /// <summary>The player's log, for the number of new entries on the Log button.</summary>
+    [Parameter] public IReadOnlyList<GameLogItem>? Log { get; set; }
+
+    [Parameter] public bool FullScreenSupported { get; set; }
+
+    [Parameter] public EventCallback FullScreenToggled { get; set; }
+
+    private bool _more;
 
     private int Stock(ResourceType resource) =>
         View.Cities.Where(city => city.Owner == View.Viewer).Sum(city => YieldCalculator.AmountOf(city.StockList, resource));

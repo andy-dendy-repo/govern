@@ -10,7 +10,7 @@ using Govern.Core.Visibility;
 namespace Govern.Client.Features.Games.Helpers;
 
 /// <summary>
-/// Writes the game log's events as sentences for the side panel. The player is "you"; another player is named by seat
+/// Writes the game log's events as sentences for the log drawer. The player is "you"; another player is named by seat
 /// ("Seat 2"), the colour the board uses for them. Names come from the ruleset and the current view.
 /// </summary>
 public static class GameLogFormatter
