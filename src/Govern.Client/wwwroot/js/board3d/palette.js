@@ -24,7 +24,7 @@ export class Palette {
         return colour.clone();
     }
 
-    // A tile's terrain colour (faded towards parchment when only remembered), or the colour under the clouds.
+    // A tile's terrain colour (faded towards parchment when only remembered), or the colour under the mist.
     terrain(tile) {
         return tile.terrain ? this.faded(`--gv-terrain-${tile.terrain}`, tile) : this.token('--gv-board3d-unexplored');
     }

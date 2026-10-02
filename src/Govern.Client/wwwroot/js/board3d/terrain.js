@@ -1,13 +1,16 @@
 // The board's ground: one raised hex per tile (flat-shaded, with darker sides), water over lake tiles, low-poly trees, hills,
-// peaks and dunes per tile shape, and clouds over unexplored tiles. Built from a BoardScene (Features/Games/Models/BoardScene).
+// peaks and dunes per tile shape, and a mist over unexplored tiles that thins out towards the known land. Built from a BoardScene (Features/Games/Models/BoardScene).
 import {
     BufferGeometry, ConeGeometry, CylinderGeometry, Float32BufferAttribute, Group, IcosahedronGeometry, InstancedMesh, Matrix4,
-    Mesh, MeshLambertMaterial, MeshStandardMaterial, Quaternion, Vector3,
+    Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Quaternion, Vector3,
 } from '../../lib/three/three.module.js';
 
-const TILE_RADIUS = 0.95;
-const BASE = -0.4;
-const WATER_LEVEL = 0.2;
+// Tiles nearly touch: a thin seam shows the hex grid without wide gaps. They stand on a ground at y = 0.
+const TILE_RADIUS = 0.985;
+const BASE = 0;
+const WATER_LEVEL = 0.1;
+const MIST_LEVEL = 0.16;
+const MIST_DENSITY = 0.92;
 
 // Shared shapes, each with its base at y = 0; never disposed.
 const foliage = new ConeGeometry(0.2, 0.5, 6).translate(0, 0.25, 0);
@@ -15,9 +18,9 @@ const trunk = new CylinderGeometry(0.04, 0.05, 0.14, 5).translate(0, 0.07, 0);
 const hump = new IcosahedronGeometry(0.32, 0);
 const peak = new ConeGeometry(0.42, 1, 5).translate(0, 0.5, 0);
 const cap = new ConeGeometry(0.16, 0.38, 5).translate(0, 0.19, 0);
-const puff = new IcosahedronGeometry(0.42, 1);
 const solid = new MeshLambertMaterial({ vertexColors: true, flatShading: true });
 const decoration = new MeshLambertMaterial({ flatShading: true });
+const mist = new MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false });
 const water = new MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.72, roughness: 0.25, metalness: 0, depthWrite: false });
 
 // The corners of a hex around its centre: pointy top, corner k at 60k − 30 degrees, as in HexLayout.
@@ -149,11 +152,58 @@ const decorators = {
     },
 };
 
+// The mist over unexplored tiles: one seamless sheet (a hex per tile, no gaps) whose corners turn clear where they touch a
+// known tile, so the fog thins out softly at the edge of what the player has seen instead of ending in a hard line.
+function buildMist(scene, colour) {
+    const known = new Set();
+    for (const tile of scene.tiles) {
+        if (tile.terrain) {
+            known.add(spotKey(tile.x, tile.z));
+        }
+    }
+    // A corner touches a known tile when one of the three tiles around it is known: their centres are 1 unit away.
+    const clear = (x, z) => [0, 1, 2, 3, 4, 5].some(k => known.has(spotKey(x + Math.cos(Math.PI / 3 * k - Math.PI / 2) * 1, z + Math.sin(Math.PI / 3 * k - Math.PI / 2) * 1)))
+        || known.has(spotKey(x, z));
+    const positions = [];
+    const colours = [];
+    const vertex = (x, z, alpha) => {
+        positions.push(x, MIST_LEVEL, z);
+        colours.push(colour.r, colour.g, colour.b, alpha);
+    };
+    for (const tile of scene.tiles) {
+        if (tile.terrain) {
+            continue;
+        }
+        const edge = corners.map(([cx, cz]) => clear(tile.x + cx, tile.z + cz) ? 0 : MIST_DENSITY);
+        const middle = edge.every(alpha => alpha > 0) ? MIST_DENSITY : MIST_DENSITY * 0.55;
+        for (let k = 0; k < 6; k++) {
+            const [ax, az] = corners[k];
+            const [bx, bz] = corners[(k + 1) % 6];
+            vertex(tile.x, tile.z, middle);
+            vertex(tile.x + bx, tile.z + bz, edge[(k + 1) % 6]);
+            vertex(tile.x + ax, tile.z + az, edge[k]);
+        }
+    }
+    if (!positions.length) {
+        return null;
+    }
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new Float32BufferAttribute(colours, 4));
+    const sheet = new Mesh(geometry, mist);
+    sheet.renderOrder = 1;
+    return sheet;
+}
+
+// A position rounded to a grid fine enough to tell tile centres apart (centres are at least 1.7 units apart).
+function spotKey(x, z) {
+    return `${Math.round(x * 4)},${Math.round(z * 4)}`;
+}
+
 // Builds the ground of a scene. Returns the group to add and the mesh to pick tiles on (`userData.faceTile`: tile per face).
 export function buildTerrain(scene, palette) {
     const ground = new MeshBuilder();
-    const out = { water: new MeshBuilder(), trees: [], trunks: [], hills: [], peaks: [], caps: [], clouds: [], index: 0 };
-    const cloud = palette.token('--gv-board3d-cloud');
+    const out = { water: new MeshBuilder(), trees: [], trunks: [], hills: [], peaks: [], caps: [], index: 0 };
 
     scene.tiles.forEach((tile, index) => {
         out.index = index;
@@ -163,10 +213,6 @@ export function buildTerrain(scene, palette) {
         ground.hexTop(tile.x, tile.z, top, TILE_RADIUS, colour, index);
         ground.hexSides(tile.x, tile.z, BASE, top, TILE_RADIUS, colour.clone().multiplyScalar(0.7), index);
         if (!tile.terrain) {
-            // One soft puff per tile, drifting off its centre, so the unknown reads as a sea of cloud rather than tiles.
-            const [x, z] = spot(tile, 0, 0.3);
-            const size = 1.6 + hash(tile.q, tile.r, 80) * 0.5;
-            out.clouds.push({ x, y: 0.2 + hash(tile.q, tile.r, 81) * 0.2, z, sx: size, sy: 0.5, sz: size * 0.9, turn: hash(tile.q, tile.r, 82) * Math.PI, colour: cloud });
             return;
         }
         (decorators[tile.shape] ?? decorators.flat)(tile, top, palette, out);
@@ -182,7 +228,11 @@ export function buildTerrain(scene, palette) {
         surface.receiveShadow = true;
         group.add(surface);
     }
-    const shapes = [[foliage, out.trees], [trunk, out.trunks], [hump, out.hills], [peak, out.peaks], [cap, out.caps], [puff, out.clouds]];
+    const fog = buildMist(scene, palette.token('--gv-board3d-mist'));
+    if (fog) {
+        group.add(fog);
+    }
+    const shapes = [[foliage, out.trees], [trunk, out.trunks], [hump, out.hills], [peak, out.peaks], [cap, out.caps]];
     for (const [geometry, items] of shapes) {
         if (items.length) {
             group.add(instanced(geometry, items));
@@ -194,7 +244,7 @@ export function buildTerrain(scene, palette) {
 // Frees the shared shapes and materials when a board goes away. Three.js keeps a reference to the renderer in every shape
 // and material it drew, so keeping them would keep the old renderer alive; the next board simply uploads them again.
 export function disposeShared() {
-    for (const resource of [foliage, trunk, hump, peak, cap, puff, solid, decoration, water]) {
+    for (const resource of [foliage, trunk, hump, peak, cap, solid, decoration, water, mist]) {
         resource.dispose();
     }
 }
