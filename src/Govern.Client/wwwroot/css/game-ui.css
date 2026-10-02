@@ -32,9 +32,8 @@
     inset: 0;
 }
 
-/* Inside the game screen the boards fill it (the gallery and the bench keep their capped height). */
+/* Inside the game screen the board fills it (the bench keeps its capped height). */
 .game-screen .board-frame,
-.game-screen .board,
 .game-screen .board3d {
     height: 100%;
     border-radius: 0;
@@ -43,11 +42,6 @@
 .game-screen .lens-toolbar,
 .game-screen .board-zoom {
     top: calc(var(--gv-hud-top) + var(--gv-hud-gap));
-}
-
-/* The lens toolbar stops short of the zoom buttons (and the 2D/3D switch). */
-.game-screen .lens-toolbar {
-    right: 10rem;
 }
 
 .hud {
@@ -61,7 +55,7 @@
     pointer-events: auto;
 }
 
-/* The 3D board's anchor has no place until its first frame writes one; it shows from then on. */
+/* The board's anchor has no place until its first frame writes one; it shows from then on. */
 .board-anchor:not([style]) {
     visibility: hidden;
 }
@@ -221,7 +215,7 @@
     gap: var(--gv-space-2);
 }
 
-/* The attack forecast beside its target (Helpers/BoardAnchor, js/board3d/labels.js): to the point's right, or its left when
+/* The attack forecast beside its target (js/board3d/labels.js): to the point's right, or its left when
    --anchor-flip is 1, kept inside the board. */
 .board-anchor {
     --anchor-width: min(22rem, calc(100% - 2 * var(--gv-hud-gap, 0.5rem)));

@@ -63,18 +63,6 @@ public class BoardBenchPageTests : ClientTestContext
     }
 
     [Fact]
-    public void BoardMode_Toggled_ShowsThe2DBoardToCompare()
-    {
-        UseEnvironment("Development");
-        var cut = Render<BoardBenchPage>();
-
-        cut.Find(".board-mode").Click();
-
-        cut.FindAll(".board3d").ShouldBeEmpty();
-        cut.FindAll("svg.board").Count.ShouldBe(1);
-    }
-
-    [Fact]
     public void Measure_ShowsTheBoardsNumbers()
     {
         UseEnvironment("Development");

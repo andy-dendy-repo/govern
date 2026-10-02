@@ -9,8 +9,8 @@ using Govern.Core.Visibility;
 namespace Govern.Client.Features.Games.Helpers;
 
 /// <summary>
-/// Builds the pieces of a <see cref="BoardScene"/>: every city and unit in the view (the view holds only what the player sees),
-/// as <c>BoardPieces</c> draws them on the 2D board. A unit on a city's tile stands towards the front of the tile, so both show.
+/// Builds the pieces of a <see cref="BoardScene"/>: every city and unit in the view (the view holds only what the player sees).
+/// A unit on a city's tile stands towards the front of the tile, so both show.
 /// </summary>
 public static class ScenePieceBuilder
 {

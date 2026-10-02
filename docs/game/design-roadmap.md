@@ -2,7 +2,7 @@
 title: Game design roadmap (future mechanics)
 tags: [game, design, roadmap, game, design, ui, rules, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
 code: [src/Govern.Core, src/Govern.Client/Features/Games]
-updated: 2026-09-30
+updated: 2026-10-02
 ---
 
 # Game design roadmap
@@ -65,10 +65,10 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 | Screen layout | Fixed zones: a **top bar** (turn, season, treasury, science, culture, diplomacy), the **map** in the centre, a **right panel** for the selection (unit, city, tile), a **bottom action bar** for the selected unit, and **full-screen views** for large content (tech and culture trees, the city screen, governors) |
 | Interaction | Always "select, then act"; a hover or long-press tooltip shows exact numbers; destructive actions (disband, remove a building, resign) confirm inline; no action happens on a single accidental click |
 | Map lenses | Toggleable overlays instead of cluttering the base map: resources, territory, yields, loyalty, rivers and crossings, seasons |
-| Visual language | One icon set (SVG sprite, self-hosted, CSP-safe) for resources, yields, units and buildings; one colour per seat; a terrain palette readable in light and dark themes; the SVG layer order is fixed (terrain → rivers → improvements → borders → cities → units → overlays) |
+| Visual language | One icon set (SVG sprite, self-hosted, CSP-safe) for resources, yields, units and buildings; one colour per seat; a terrain palette readable in light and dark themes; on the WebGL board the selection, highlights and lenses lie on the tiles under the pieces, so units stay readable |
 | Components | `YieldList` (icon + number rows), `ResourceBadge`, `ProgressBar` with "n turns left", `QueueList` (reorderable), `TreeView` for tech, culture and governor skills, `StatTable`, `CostLabel` (production + resources) |
 | Client state | One per-game UI state service (selection, open lens, open screen) instead of passing everything through parameters, so panels stay small |
-| Performance | Keep rendering per layer with `ShouldRender`; measure with a 60×40 map and move terrain to a single cached layer (or a canvas) if SVG gets slow |
+| Performance | The WebGL board rebuilds only the layers that change and draws only after a change; measure new models or labels on the `/design/board` bench |
 | Accessibility and devices | Panel actions keyboard-reachable; tooltips reachable on touch; the layout wraps on narrow screens (map first, panels below) |
 
 ## G2. Game rules reference
@@ -103,7 +103,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 | Feature | forest, jungle, marsh, oasis, floodplains, reef, taiga, volcano |
 
 - **Rules per tile:** movement cost, defence bonus, sight modifier (hills see further, forests block sight), passable by land or by sea, and the yields for G5.
-- **UI (decided 2026-09-30):** G4 builds the first map lens, movement cost: a lens registry (`IMapLens`), a toggle toolbar in the map zone and the lens state in `GameUiService`, drawn in the existing `BoardLayer.Lens` slot ([game UI](../features/game-ui.md#component-catalog)). It was moved here from G1 because a lens needs terrain that differs.
+- **UI (decided 2026-09-30):** G4 builds the first map lens, movement cost: a lens registry (`IMapLens`), a toggle toolbar in the map zone and the lens state in `GameUiService`, drawn in the existing `BoardLayer.Lens` slot (the SVG board's; the board's overlay since F17) ([game UI](../features/game-ui.md#component-catalog)). It was moved here from G1 because a lens needs terrain that differs.
 - **Also:**
   - **Map generation:** seeded continents, climate bands (snow at the poles, desert near the equator) and coasts. Spawn spots should be fair.
   - **Naval movement:** land units cross water only aboard ships ([G15](#g15-ships-and-naval-movement)); water tiles are impassable for them otherwise.

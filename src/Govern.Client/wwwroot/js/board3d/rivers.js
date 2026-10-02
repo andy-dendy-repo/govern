@@ -20,10 +20,14 @@ const surface = new MeshStandardMaterial({ vertexColors: true, roughness: 0.3, m
 const ends = new MeshStandardMaterial({ roughness: 0.3, metalness: 0, side: DoubleSide });
 const wood = new MeshLambertMaterial({ flatShading: true });
 
-// The water's colour: deep rivers darker, remembered ones in their explored shade (as the 2D board's .river rules).
+// The water's colour: deep rivers darker, remembered ones in their explored shade. The token names are written out, so
+// GameUiTests.Board3DScripts_ReadOnlyTokensThatExist sees every one.
 function riverColour(river, palette) {
-    const name = river.deep ? '--gv-river-deep' : '--gv-river';
-    return palette.token(river.visibility === 'visible' ? name : `${name}-explored`);
+    const visible = river.visibility === 'visible';
+    if (river.deep) {
+        return palette.token(visible ? '--gv-river-deep' : '--gv-river-deep-explored');
+    }
+    return palette.token(visible ? '--gv-river' : '--gv-river-explored');
 }
 
 function buildWater(rivers, palette) {

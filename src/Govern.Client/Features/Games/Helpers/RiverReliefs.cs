@@ -4,8 +4,8 @@ using Govern.Core.Map;
 namespace Govern.Client.Features.Games.Helpers;
 
 /// <summary>
-/// The 3D board's look per ruleset river kind: wider and darker as the river gets deeper, like the 2D board's
-/// <c>.river-&lt;id&gt;</c> widths (divided by <see cref="HexLayout.Size"/>), so kinds differ by more than colour. Presentation
+/// The board's look per ruleset river kind: wider and darker as the river gets deeper, so kinds differ by more than colour
+/// (the design gallery's <c>.river-&lt;id&gt;</c> swatches follow the same order). Presentation
 /// only; every ruleset river needs an entry (<c>RiverReliefsTests</c>). An unknown kind is drawn as a river.
 /// </summary>
 public static class RiverReliefs

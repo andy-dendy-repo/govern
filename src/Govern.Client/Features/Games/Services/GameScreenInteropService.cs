@@ -5,8 +5,9 @@ namespace Govern.Client.Features.Games.Services;
 
 /// <summary>
 /// The full-screen game view's JavaScript (<c>wwwroot/js/game-screen.js</c>): keeps the top strip's height in the screen's
-/// <c>--gv-hud-top</c> property (the board's own controls sit below it), and enters and leaves the browser's full screen.
-/// Every call degrades to a no-op when the module can't run; the screen still fills the window without it.
+/// <c>--gv-hud-top</c> property (the board's own controls sit below it), enters and leaves the browser's full screen, and reads
+/// the reduced-motion preference. Every call degrades to a no-op when the module can't run; the screen still fills the window
+/// without it.
 /// </summary>
 public sealed class GameScreenInteropService(IJSRuntime js) : IAsyncDisposable
 {
@@ -31,6 +32,22 @@ public sealed class GameScreenInteropService(IJSRuntime js) : IAsyncDisposable
             _relay?.Dispose();
             _relay = DotNetObjectReference.Create(new FullScreenRelay(fullScreenChanged));
             return await _module.InvokeAsync<bool>("watch", cancellationToken, screen, strip, _relay);
+        }
+        catch (JSException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Whether the player asked the browser for reduced motion (<c>prefers-reduced-motion: reduce</c>).</summary>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns><see langword="true"/> when reduced motion is asked for; <see langword="false"/> otherwise or when unknown.</returns>
+    public async Task<bool> PrefersReducedMotionAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            _module ??= await js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath);
+            return await _module.InvokeAsync<bool>("prefersReducedMotion", cancellationToken);
         }
         catch (JSException)
         {

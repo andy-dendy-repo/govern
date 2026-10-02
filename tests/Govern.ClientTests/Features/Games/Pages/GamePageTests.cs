@@ -10,7 +10,13 @@ namespace Govern.ClientTests.Features.Games.Pages;
 
 public class GamePageTests : ClientTestContext
 {
-    public GamePageTests() => SignIn();
+    private readonly FakeBoardRenderer _board;
+
+    public GamePageTests()
+    {
+        SignIn();
+        _board = new FakeBoardRenderer(JSInterop);
+    }
 
     private NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
 
@@ -61,7 +67,7 @@ public class GamePageTests : ClientTestContext
 
         await stream.WriteGameAsync(TestGames.Started());
 
-        cut.WaitForAssertion(() => cut.FindAll("use.tile").Count.ShouldBe(TestViews.Width * TestViews.Height));
+        await Eventually.HoldsAsync(() => Tiles() == TestViews.Width * TestViews.Height, "the board draws every tile");
         cut.Find("h1").TextContent.ShouldBe("Game in progress");
         cut.FindAll(".player-list").ShouldBeEmpty("the top bar shows the seat and the turn");
         cut.Find(".turn").TextContent.ShouldContain("your turn");
@@ -73,11 +79,11 @@ public class GamePageTests : ClientTestContext
     {
         var stream = await ServeAsync(TestGames.Started());
         var cut = RenderGame();
-        cut.WaitForAssertion(() => cut.FindAll("use.unit").Count.ShouldBe(3));
+        await Eventually.HoldsAsync(() => Units() == 3, "the board draws the units");
 
-        await stream.WriteGameAsync(TestGames.Started(view: TestViews.Start() with { CurrentPlayer = TestViews.Opponent, Units = [] }));
+        await stream.WriteGameAsync(TestGames.Started(view: TestViews.Start() with { CurrentPlayer = TestViews.Opponent, Units = [], Version = TestViews.Version + 1 }));
 
-        cut.WaitForAssertion(() => cut.FindAll("use.unit").ShouldBeEmpty());
+        await Eventually.HoldsAsync(() => Units() == 0, "the board draws the new view");
         cut.Find(".turn").TextContent.ShouldContain("opponent's turn");
     }
 
@@ -174,10 +180,10 @@ public class GamePageTests : ClientTestContext
         await Eventually.HoldsAsync(() => Api.RequestsTo(TestGames.CommandsPath()).Count == 1, "the command is sent");
 
         cut.Render(parameters => parameters.Add(static page => page.GameId, otherId));
-        cut.WaitForAssertion(() => cut.FindAll("use.unit").ShouldBeEmpty());
+        cut.WaitForAssertion(() => Units().ShouldBe(0));
         response.SetResult(FakeApiHandler.Json(TestGames.Started()));
 
-        await Eventually.NeverAsync(() => cut.FindAll("use.unit").Count > 0, "the old game's answer must not replace the new game");
+        await Eventually.NeverAsync(() => Units() > 0, "the old game's answer must not replace the new game");
         cut.Find("button.end-turn").HasAttribute("disabled").ShouldBeFalse();
     }
 
@@ -221,4 +227,10 @@ public class GamePageTests : ClientTestContext
 
     private IRenderedComponent<GamePage> RenderGame() =>
         Render<GamePage>(parameters => parameters.Add(static page => page.GameId, TestGames.Id));
+
+    private int Tiles() => _board.Calls("render").Count == 0 ? 0 : _board.Scene.Tiles.Count;
+
+    // The units on the board's latest scene; none before the board has drawn one.
+    private int Units() =>
+        _board.Calls("render").Count == 0 ? 0 : _board.Scene.Pieces.Count(static piece => piece.Unit is not null);
 }
