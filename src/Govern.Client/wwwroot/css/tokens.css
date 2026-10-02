@@ -59,6 +59,20 @@
     --gv-river-deep: #1f5a94;
     --gv-river-deep-explored: #2c4560;
 
+    /* The 3D board (js/board3d): sky and sun light, the frame's backdrop, snow, tree trunks, lake beds, clouds over unexplored
+       tiles, and the parchment that remembered (explored) tiles fade towards. Terrain colours are the --gv-terrain-<id> tokens. */
+    --gv-board3d-backdrop-top: #b9dfee;
+    --gv-board3d-backdrop-bottom: #efe8da;
+    --gv-board3d-sky: #f4f8ff;
+    --gv-board3d-ground: #b8a98a;
+    --gv-board3d-sun: #fff3df;
+    --gv-board3d-snow: #f7f7f4;
+    --gv-board3d-trunk: #8a5a36;
+    --gv-board3d-seabed: #7fb7a8;
+    --gv-board3d-cloud: #fbfbf8;
+    --gv-board3d-unexplored: #d9d4c7;
+    --gv-board3d-memory: #e6dcc6;
+
     /* Map lenses: tints over the tiles and the label on each (Features/Games/Lenses). */
     --gv-lens-cheap: rgba(255, 255, 255, 0.12);
     --gv-lens-costly: rgba(255, 196, 0, 0.4);
@@ -119,6 +133,17 @@
         --gv-river-explored: #3a5875;
         --gv-river-deep: #2c6fae;
         --gv-river-deep-explored: #2a4560;
+        --gv-board3d-backdrop-top: #1b2533;
+        --gv-board3d-backdrop-bottom: #11151b;
+        --gv-board3d-sky: #b8c6e0;
+        --gv-board3d-ground: #3d3a33;
+        --gv-board3d-sun: #d9e2ff;
+        --gv-board3d-snow: #dfe4ec;
+        --gv-board3d-trunk: #5e3f28;
+        --gv-board3d-seabed: #3f6f68;
+        --gv-board3d-cloud: #5b6170;
+        --gv-board3d-unexplored: #2b3038;
+        --gv-board3d-memory: #4a4a52;
         --gv-boot-track: #3a3f47;
         --gv-shadow: rgba(0, 0, 0, 0.7);
     }

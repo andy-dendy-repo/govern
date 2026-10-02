@@ -2,7 +2,7 @@
 title: Game UI design system
 tags: [client, game-ui, tabs, city-tabs, upkeep, resource-cost, supply, building-health, design-system, layout, tokens, css, theme, dark-mode, icons, sprite, svg, board-layers, rivers, bridges, improvements, buildings, builders, territory, borders, city-stock, yields-lens, bridge-mode, components, accessibility, keyboard, lenses, health-bar, combat-forecast, game-log, animations, effects, reduced-motion]
 code: [src/Govern.Client/Components/Game, src/Govern.Client/Features/Games/Components/Screen, src/Govern.Client/Features/Games/Components/Board, src/Govern.Client/Features/Games/Services/GameUiService.cs, src/Govern.Client/Features/Games/Services/BoardAnimationService.cs, src/Govern.Client/Features/Games/Components/GameLog.razor, src/Govern.Client/Features/Design/Pages/DesignPage.razor, src/Govern.Client/Helpers, src/Govern.Client/wwwroot/css, tests/Govern.ArchitectureTests/GameUiTests.cs]
-updated: 2026-10-01
+updated: 2026-10-02
 ---
 
 # Game UI design system
@@ -95,6 +95,22 @@ The board's SVG groups render in the fixed `Features/Games/Enums/BoardLayer` ord
 - `prefers-reduced-motion: reduce` (read through `BoardInteropService.PrefersReducedMotionAsync` and in CSS): units don't walk or lunge, and effects only fade.
 - Effects are their own top layer (`BoardEffects`, `effects`); ghosts sit in the units layer without the `unit` class.
 
+## 3D board (preview, F15)
+
+The game screen's **3D** button (`Components/Board/BoardModeToggle`, `GameUiService.Board3D`, off by default) swaps the SVG board for `Components/Board/GameBoard3D`, a WebGL board in a low-poly diorama style ([plan](../plans/active/F15-3d-board.md)). It draws the terrain only so far; pieces, rivers, improvements, borders, lenses, highlights and animations follow in later F15 steps, and until then the 2D board stays the default.
+
+| Part | What it does |
+|---|---|
+| `Helpers/BoardSceneBuilder` | Turns the `PlayerView` into a `Models/BoardScene`: one `SceneTile` per tile (axial `q`/`r`, centre from `HexLayout` scaled so a corner is 1 unit away, terrain id, visibility, height and shape), the map's rectangle and the rectangle to open on (the player's own pieces, else the map). What shows is decided here, in C# |
+| `Helpers/TerrainReliefs` | The look per ruleset terrain: tile height and `Enums/TileShape` (plains flat, desert dunes, forest trees, hills humps, mountains snow-capped peaks, lake water). Presentation only, so not in the ruleset; `TerrainReliefsTests` fails when a ruleset terrain has no entry. Unexplored tiles sit low under clouds |
+| `Services/Board3DInteropService` | Mounts the canvas (`false` without WebGL: the board then says so and the 2D button stays), sends scenes, Fit, focus and zoom, and relays clicks back as `HexCoord` (`OnTileClicked`) |
+| `wwwroot/js/board3d/` | `board.js` (entry), `scene.js` (renderer, sky and sun light with shadows, pointer, draws only on demand), `camera.js` (north-up camera that tilts as it zooms; drag pans by grabbing the ground, the wheel zooms at the pointer), `terrain.js` (one flat-shaded hex prism per tile, decorations as instanced low-poly models), `palette.js` (colours) |
+
+- **Clicks:** a press that moves more than 4 pixels is a drag; a click picks the tile under the pointer by raycasting the tiles and goes through the same `TileClicked` path as the 2D board. Until the 3D board draws pieces and highlights (step 3), `GameTable` lets a 3D click only select: a click that would move, attack, bridge or place is ignored, so nothing acts on what the player can't see.
+- **Lifetime:** leaving the 3D board (the 2D button or another page) unmounts the renderer and frees its WebGL context, its shared shapes and materials included (Three.js keeps the renderer referenced from them otherwise).
+- **Colours:** every colour comes from `tokens.css`: the `--gv-terrain-<id>` palette for tile tops and models, explored tiles faded towards `--gv-board3d-memory`, and the `--gv-board3d-*` tokens for sky, sun, backdrop, snow, trunks, lake beds and clouds. Light and dark switch with the system setting (the board rebuilds on change). `GameUiTests.Board3DScripts_TakeColoursOnlyFromTokens` rejects colour literals in `js/board3d`.
+- **Updates:** the scene is sent only for a new view version (the live update echoing the player's own command doesn't rebuild it); selection, panning and zooming never rebuild it. A game log focus from before the board was opened doesn't move it; it opens on the player's pieces.
+
 ## Component catalog
 
 Shared game components live in `Components/Game` (each with bUnit tests in `tests/Govern.ClientTests/Components/Game`); feature panels in `Features/Games/Components`.
@@ -159,7 +175,7 @@ The terrain renders once per view (`BoardTerrain.ShouldRender`) and pieces only 
 
 ## Adding UI for a new mechanic
 
-1. A new ruleset unit or terrain: add its `<symbol>` to `GameSprite` (and, for a terrain, its two tokens in `tokens.css` and its `.terrain-<id>` rule in `board.css`). The tests name what is missing.
+1. A new ruleset unit or terrain: add its `<symbol>` to `GameSprite` (and, for a terrain, its two tokens in `tokens.css`, its `.terrain-<id>` rule in `board.css` and its 3D relief in `Helpers/TerrainReliefs`). The tests name what is missing.
 2. A new number or list on a panel: use `StatTable`, `ProgressBar`, `CostLabel`; add a planned component (`YieldList`, `QueueList`, `TreeView`) to `Components/Game` when its G item needs it, with tests and a gallery entry.
 3. A new action: a button in `ActionBar` (unit) or in the fitting `CityPanel` tab (city), disabled with the rule's reason; a destructive one uses `ConfirmButton`. A new group of city content gets its own tab rather than lengthening another one.
 4. A new selection kind: its panel in `SidePanel`, reading `GameUiService`.
