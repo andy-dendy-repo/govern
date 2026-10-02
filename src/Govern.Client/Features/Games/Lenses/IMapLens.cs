@@ -4,8 +4,8 @@ using Govern.Core.Visibility;
 namespace Govern.Client.Features.Games.Lenses;
 
 /// <summary>
-/// A map lens: a toggleable overlay that marks every tile with one kind of information (movement cost, yields). Lenses are registered in <c>DependencyInjection</c>; <c>LensToolbar</c> lists them and <c>BoardLens</c> draws
-/// the active one in the <c>BoardLayer.Lens</c> slot. Adding a lens is one class and one registration.
+/// A map lens: a toggleable overlay that marks every tile with one kind of information (movement cost, yields). Lenses are registered in <c>DependencyInjection</c>; <c>LensToolbar</c> lists them and
+/// <c>BoardOverlayBuilder</c> puts the active one's marks on the board. Adding a lens is one class and one registration.
 /// </summary>
 public interface IMapLens
 {
@@ -25,7 +25,7 @@ public interface IMapLens
 
     /// <summary>
     /// What the lens shows on a tile, for a lens that also needs the tile's neighbours (a river on an edge another tile owns).
-    /// <c>BoardLens</c> calls this one; by default it looks at the tile alone.
+    /// <c>BoardOverlayBuilder</c> calls this one; by default it looks at the tile alone.
     /// </summary>
     /// <param name="view">The player's view.</param>
     /// <param name="index">The tile's index in <see cref="PlayerView.Tiles"/>.</param>

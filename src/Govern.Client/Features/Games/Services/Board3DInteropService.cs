@@ -6,9 +6,9 @@ using Microsoft.JSInterop;
 namespace Govern.Client.Features.Games.Services;
 
 /// <summary>
-/// The 3D board's JavaScript (<c>wwwroot/js/board3d/board.js</c>, drawn with Three.js from <c>wwwroot/lib/three</c>): mounting a
+/// The game board's JavaScript (<c>wwwroot/js/board3d/board.js</c>, drawn with Three.js from <c>wwwroot/lib/three</c>): mounting a
 /// WebGL canvas in an element, drawing a <see cref="BoardScene"/>, the <see cref="BoardOverlay"/> over it and the <see cref="SceneMotion"/> that animates it, moving the camera and reporting clicked tiles. One instance
-/// per board: registered scoped and resolved from the board's own scope (<c>GameBoard3D</c> is an <c>OwningComponentBase</c>),
+/// per board: registered scoped and resolved from the board's own scope (<c>GameBoard</c> is an <c>OwningComponentBase</c>),
 /// so it is disposed with the board. Every call degrades to a no-op when the module or WebGL can't run; <see cref="MountAsync"/>
 /// says so.
 /// </summary>

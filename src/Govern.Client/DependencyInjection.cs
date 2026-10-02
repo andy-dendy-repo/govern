@@ -44,7 +44,6 @@ public static class DependencyInjection
             AddApiClient<UsersClient>(services, api);
             AddApiClient<GamesClient>(services, api);
             services.AddTransient<GameWatchService>();
-            services.AddScoped<BoardInteropService>();
             services.AddScoped<Board3DInteropService>();
             services.AddScoped<GameScreenInteropService>();
             services.AddSingleton<RulesetService>();

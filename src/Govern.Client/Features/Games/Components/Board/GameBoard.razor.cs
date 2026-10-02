@@ -10,15 +10,18 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Govern.Client.Features.Games.Components.Board;
 
 /// <summary>
-/// The 3D hex board (F15 preview). It turns the <see cref="PlayerView"/> into a <see cref="BoardScene"/>
+/// The game board, drawn in 3D with WebGL. It turns the <see cref="PlayerView"/> into a <see cref="BoardScene"/>
 /// (<see cref="BoardSceneBuilder"/>), sends it to the renderer only when the view changes, sends the <see cref="BoardOverlay"/>
 /// only when the selection, its highlights or the lens change, sends the <see cref="SceneMotion"/> of <see cref="Motion"/> only when
 /// it changes (after the scene of the same view), and reports clicked tiles through
 /// <see cref="TileClicked"/>; panning, zooming and telling a drag from a click happen in the renderer. Its
 /// <see cref="Board3DInteropService"/> comes from the component's own scope, so leaving the board unmounts the renderer.
 /// </summary>
-public sealed partial class GameBoard3D
+public sealed partial class GameBoard
 {
+    /// <summary>The zoom factor of one button press (the renderer zooms by the wheel and pinch itself).</summary>
+    public const double ZoomStep = 1.2;
+
     private ElementReference _host;
     private ElementReference _anchor;
     private HexCoord? _anchored;

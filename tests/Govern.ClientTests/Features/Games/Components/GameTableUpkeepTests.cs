@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using AngleSharp.Dom;
 using Govern.Client.Features.Games.Components;
 using Govern.ClientTests.Support;
 using Govern.Core.Cities;
@@ -16,14 +15,20 @@ public class GameTableUpkeepTests : ClientTestContext
 {
     private static readonly TerrainType Desert = new("desert");
 
-    public GameTableUpkeepTests() => SignIn();
+    private readonly FakeBoardRenderer _board;
+
+    public GameTableUpkeepTests()
+    {
+        SignIn();
+        _board = new FakeBoardRenderer(JSInterop);
+    }
 
     [Fact]
     public void SelectOwnCity_UnitOnItsTerritory_ShowsTheUpkeepAndTheNetGain()
     {
         var cut = RenderTable(Create([Soldier(1, You, At(3, 2))], [City(7, You, At(2, 2))]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         // 7 plains tiles give 14 food and 7 water; the soldier takes 1 of each, and the settler's 4 food and 2 water begin it.
         cut.Find(".city-resource-food .city-resource-gain").TextContent.ShouldBe("+9");
@@ -38,7 +43,7 @@ public class GameTableUpkeepTests : ClientTestContext
         var city = City(7, You, At(2, 2)) with { Buildings = [Campus], BuildingDamage = [new BuildingDamage(Campus, 30)] };
         var cut = RenderTable(Create(cities: [city]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find(".upkeep-shortage").TextContent.ShouldBe("Can't pay for Campus: each loses 10 health at the end of the turn.");
         cut.Find(".building-campus .building-health").TextContent.ShouldBe("(70 of 100 health)");
@@ -49,7 +54,7 @@ public class GameTableUpkeepTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find("button.upkeep-priority-buildings").HasAttribute("disabled").ShouldBeTrue("it is the current order");
         cut.Find("button.upkeep-priority-units").Click();
@@ -65,7 +70,7 @@ public class GameTableUpkeepTests : ClientTestContext
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2)) with { ProductionPaid = paid }]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find(".production-cost").TextContent.ShouldBe(expected);
         cut.FindAll("button.produce-settler .cost-label").Count.ShouldBe(3, "production, food and water");
@@ -76,7 +81,7 @@ public class GameTableUpkeepTests : ClientTestContext
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2), stock: [new ResourceAmount(Food, 1)])], terrain: static _ => Desert));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find(".production-cost").TextContent.ShouldBe("Waiting for 3 food, 2 water more to begin.");
     }
@@ -86,7 +91,7 @@ public class GameTableUpkeepTests : ClientTestContext
     {
         var cut = RenderTable(Create(cities: [City(7, You, At(2, 2), stock: [new ResourceAmount(Food, 1)])], terrain: static _ => Desert));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.FindAll(".progress-turns").Single().TextContent.ShouldBe("Never at this rate");
     }
@@ -97,7 +102,7 @@ public class GameTableUpkeepTests : ClientTestContext
         var builder = Unit(1, You, BuilderType, At(3, 2), movementLeft: 0) with { Job = new UnitJob(0, 1, Improvement: Farm) };
         var cut = RenderTable(Create([builder], [City(7, You, At(2, 2))]));
 
-        Tile(cut, At(2, 2)).Click();
+        _board.Click(At(2, 2));
 
         cut.Find(".production-cost").TextContent.ShouldBe("Pays 4 food, 2 water to begin once its production is free of the job.");
     }
@@ -110,7 +115,7 @@ public class GameTableUpkeepTests : ClientTestContext
     {
         var cut = RenderTable(Create([Soldier(1, You, At(column, row))], [City(7, You, At(2, 2))], terrain: coord => desert && coord.DistanceTo(At(6, 4)) <= 1 ? Desert : Plains));
 
-        Tile(cut, At(column, row)).Click();
+        _board.Click(At(column, row));
 
         cut.FindAll(".unit-upkeep .cost-label").Count.ShouldBe(2);
         cut.Find(".unit-supply").TextContent.ShouldBe(expected);
@@ -119,9 +124,6 @@ public class GameTableUpkeepTests : ClientTestContext
 
     private IRenderedComponent<GameTable> RenderTable(PlayerView view) =>
         Render<GameTable>(parameters => parameters.Add(static table => table.Game, TestGames.Started(view: view)));
-
-    private static IElement Tile(IRenderedComponent<GameTable> cut, HexCoord coord) =>
-        cut.Find($"use.tile[data-q='{coord.Q}'][data-r='{coord.R}']");
 
     private JsonNode Command(int index) => JsonNode.Parse(Api.RequestsTo(TestGames.CommandsPath())[index].Body!)!;
 }

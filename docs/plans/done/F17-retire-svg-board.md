@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F17, retire the SVG board
 
-**Status:** in progress 2026-10-02 (backlog F17), planned and built in one PR at the owner's request. Visuals and client code only: Govern.Core, the server, the rules, the view and the 3D renderer's drawing stay as they are.
+**Status:** done 2026-10-02 in PR #PR (backlog F17), planned and built in one PR at the owner's request; the decisions made while building it are at the end. Visuals and client code only: Govern.Core, the server, the rules, the view and the 3D renderer's drawing stay as they are.
 
 ## Context
 F15 built a WebGL (Three.js) board next to the SVG board, behind a 3D button, and F16 put both under the full-screen game view. The 3D board now draws everything the SVG board draws, plays the same animations and handles touch, so keeping two boards doubles every board change and keeps a toggle players don't need. F17 makes the 3D board the only board and deletes the SVG board, its toggle, its JavaScript and the tests and rules that exist only for it, leaving the client with one board path.
@@ -60,3 +60,9 @@ F15 built a WebGL (Three.js) board next to the SVG board, behind a 3D button, an
 ## Risks & open questions
 - **WebGL missing or off:** with no SVG fallback, such a browser can't show the map (the panels, End turn and Resign still work). WebGL is on in every current desktop and phone browser; a fallback would mean keeping the SVG board, which is what F17 removes. Decision: no fallback, the board says why. Reversible by reviving the SVG board from git if players hit it.
 - **Test coverage moves, not lost:** the SVG `GameTable` tests are the main coverage of select → move → attack; they are ported to the renderer relay rather than deleted.
+
+## Decisions made while building
+- **Tokens and CSS trimmed with the board:** the tokens only the SVG board read (`--gv-board-background`, `--gv-board-outline`, `--gv-tile-*`, `--gv-overlay-*-stroke`, `--gv-improvement`, `--gv-terrain-mark-explored`) are gone, and the `.terrain-<id>` rules keep only the icon colour. The gallery's river swatches no longer take a `visible` class.
+- **Lens sentences:** `LensMark.Description` and `EdgeMark.Description` stay, but nothing reads them now: the SVG board showed them as `<title>`s and the WebGL board has no accessible text per tile yet. Backlog idea F18 (a hover card for the tile) would read them again.
+- **Tests:** the game table tests that clicked SVG tiles now click through `Support/FakeBoardRenderer` and read the overlay, scene and motion it was sent; tests whose newer view is meant to be drawn again carry a new view version, as real views do. `GameScreenInteropServiceTests` cover the reduced-motion read, and `GameTableAnimationTests` check that a player who asked for reduced motion sees no walk.
+- **Lens toolbar:** without the 2D/3D button the game screen's toolbar uses the board's own `right: 8rem` stop instead of `10rem`.

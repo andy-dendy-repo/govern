@@ -9,8 +9,9 @@ namespace Govern.ArchitectureTests;
 
 /// <summary>
 /// The game UI design system (<c>docs/features/game-ui.md</c>, <c>.claude/rules/game-ui.md</c>): colours are written only as
-/// tokens in <c>wwwroot/css/tokens.css</c>, and every ruleset terrain has its palette and every river kind its style, so a new
-/// terrain or river can't ship unstyled.
+/// tokens in <c>wwwroot/css/tokens.css</c>, every ruleset terrain has its palette and icon rule and every river kind its
+/// swatch style, and the board's scripts (<c>wwwroot/js/board3d</c>) read only tokens that exist and have a builder per model,
+/// so a new terrain, river or model can't ship unstyled.
 /// Icons per ruleset id are checked by <c>Govern.ClientTests</c> (<c>GameSpriteTests</c>), which can render the sprite.
 /// </summary>
 public partial class GameUiTests
@@ -164,11 +165,11 @@ public partial class GameUiTests
         var tokens = File.ReadAllText(TokensFile);
 
         var missing = RulesetTerrainIds()
-            .SelectMany(static id => new[] { $"--gv-terrain-{id}:", $"--gv-terrain-{id}-explored:" })
+            .Select(static id => $"--gv-terrain-{id}:")
             .Where(token => !tokens.Contains(token, StringComparison.Ordinal))
             .ToList();
 
-        missing.ShouldBeEmpty("every ruleset terrain needs a visible and an explored colour in wwwroot/css/tokens.css");
+        missing.ShouldBeEmpty("every ruleset terrain needs its colour in wwwroot/css/tokens.css");
     }
 
     [Fact]
@@ -181,7 +182,7 @@ public partial class GameUiTests
                 || !board.Contains($"--gv-terrain: var(--gv-terrain-{id});", StringComparison.Ordinal))
             .ToList();
 
-        missing.ShouldBeEmpty("every ruleset terrain needs its .terrain-<id> rule in wwwroot/css/board.css");
+        missing.ShouldBeEmpty("every ruleset terrain needs its .terrain-<id> rule (its icon colour) in wwwroot/css/board.css");
     }
 
     [Fact]
@@ -191,7 +192,7 @@ public partial class GameUiTests
 
         var missing = RulesetIds("rivers").Where(id => !board.Contains($".river-{id} {{", StringComparison.Ordinal)).ToList();
 
-        missing.ShouldBeEmpty("every ruleset river needs its .river-<id> rule (its width) in wwwroot/css/board.css");
+        missing.ShouldBeEmpty("every ruleset river needs its .river-<id> rule (its swatch width in the design gallery) in wwwroot/css/board.css");
     }
 
     private static List<string> RulesetTerrainIds() => RulesetIds("terrains");

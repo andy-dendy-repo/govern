@@ -1,8 +1,8 @@
 /*
   Design tokens: the only place colour values are written (GameUiTests.Css_UsesColourValuesOnlyInTokens).
   Light values first, dark values under prefers-color-scheme. Components and the board use var(--gv-*) only.
-  Names: --gv-<group>-<name>. A new terrain adds --gv-terrain-<id> and --gv-terrain-<id>-explored
-  (GameUiTests.Tokens_DefineAPaletteForEveryTerrain). See docs/features/game-ui.md.
+  Names: --gv-<group>-<name>. A new terrain adds --gv-terrain-<id> (GameUiTests.Tokens_DefineAPaletteForEveryTerrain);
+  the board fades remembered tiles towards --gv-board3d-memory itself. See docs/features/game-ui.md.
 */
 :root {
     /* Seats, in turn order (PlayerView.Players). Up to four; F10 adds more. */
@@ -12,48 +12,32 @@
     --gv-seat-4: #c28a12;
 
     /* Board */
-    --gv-board-background: #1f2329;
-    --gv-board-outline: #14171c;
-    --gv-tile-stroke: #1f2329;
-    --gv-tile-unexplored: #2b3038;
     --gv-selected: #ffd54a;
     --gv-icon-mark: #ffffff;
     --gv-label: #ffffff;
     --gv-label-outline: #14171c;
     --gv-overlay-reachable: rgba(255, 255, 255, 0.3);
-    --gv-overlay-reachable-stroke: #ffffff;
     --gv-overlay-attackable: rgba(214, 69, 69, 0.35);
-    --gv-overlay-attackable-stroke: #d64545;
     --gv-overlay-target: rgba(214, 69, 69, 0.6);
     --gv-overlay-bridgeable: rgba(176, 132, 74, 0.4);
-    --gv-overlay-bridgeable-stroke: #c9965a;
     --gv-overlay-placeable: rgba(120, 170, 230, 0.4);
-    --gv-overlay-placeable-stroke: #8fc1f0;
-    /* Bridges across river edges and tile improvements (their symbol strokes). */
+    /* Bridge timber (the board's planks and the gallery's swatch). */
     --gv-bridge: #8a5a2b;
     --gv-bridge-outline: #3b2614;
-    --gv-improvement: #fff3c4;
     --gv-health-track: #14171c;
     --gv-health-good: #4caf50;
     --gv-health-low: #e53935;
 
-    /* Terrain palette: visible and explored (remembered) shades per ruleset terrain id. */
+    /* Terrain palette: one colour per ruleset terrain id (the board fades remembered tiles itself). */
     --gv-terrain-plains: #9cc47f;
-    --gv-terrain-plains-explored: #6f8a60;
     --gv-terrain-forest: #4f8a4a;
-    --gv-terrain-forest-explored: #3d5e3a;
     --gv-terrain-hills: #b9a36a;
-    --gv-terrain-hills-explored: #857756;
     --gv-terrain-mountains: #8a8580;
-    --gv-terrain-mountains-explored: #625f5c;
     --gv-terrain-lake: #4f8fc4;
-    --gv-terrain-lake-explored: #3f6384;
     --gv-terrain-desert: #e2cf8e;
-    --gv-terrain-desert-explored: #a3966a;
     --gv-terrain-mark: rgba(20, 23, 28, 0.6);
-    --gv-terrain-mark-explored: rgba(255, 255, 255, 0.5);
 
-    /* Rivers on tile edges: visible and explored shades; deep rivers are darker (and wider, in board.css). */
+    /* Rivers on tile edges: visible and explored shades; deep rivers are darker (and wider: Helpers/RiverReliefs). */
     --gv-river: #3a86c8;
     --gv-river-explored: #3c5f80;
     --gv-river-deep: #1f5a94;
@@ -122,24 +106,14 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --gv-board-background: #15181d;
         --gv-bridge: #a06c38;
-        --gv-tile-stroke: #15181d;
-        --gv-tile-unexplored: #22262d;
         --gv-terrain-plains: #86ad6a;
-        --gv-terrain-plains-explored: #56704a;
         --gv-terrain-forest: #3f7440;
-        --gv-terrain-forest-explored: #2e4a2e;
         --gv-terrain-hills: #a08c58;
-        --gv-terrain-hills-explored: #6a5f45;
         --gv-terrain-mountains: #77726d;
-        --gv-terrain-mountains-explored: #4f4c49;
         --gv-terrain-lake: #3e7aad;
-        --gv-terrain-lake-explored: #30506c;
         --gv-terrain-desert: #c4b072;
-        --gv-terrain-desert-explored: #857a55;
         --gv-terrain-mark: rgba(255, 255, 255, 0.6);
-        --gv-terrain-mark-explored: rgba(255, 255, 255, 0.45);
         --gv-river: #4a95d4;
         --gv-river-explored: #3a5875;
         --gv-river-deep: #2c6fae;
