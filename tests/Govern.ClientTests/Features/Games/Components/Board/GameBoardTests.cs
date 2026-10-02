@@ -1,5 +1,6 @@
 using System.Reflection;
 using Bunit.JSInterop;
+using Bunit.TestDoubles;
 using Govern.Client.Features.Games.Components.Board;
 using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Lenses;
@@ -9,6 +10,8 @@ using Govern.ClientTests.Support;
 using Govern.Core.Map;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Components.Board;
@@ -22,7 +25,7 @@ public class GameBoardTests : ClientTestContext
     {
         _module = JSInterop.SetupModule(Board3DInteropService.ModulePath);
         _module.Setup<bool>("mount", _ => true).SetResult(true);
-        foreach (var call in new[] { "render", "renderOverlay", "renderMotion", "fit", "focus", "zoom", "unmount" })
+        foreach (var call in new[] { "render", "renderOverlay", "renderMotion", "fit", "focus", "zoom", "setPointer", "unmount" })
         {
             _module.SetupVoid(call, _ => true).SetVoidResult();
         }
@@ -262,6 +265,119 @@ public class GameBoardTests : ClientTestContext
         Calls("renderMotion").Count.ShouldBe(2);
     }
 
+    [Fact]
+    public async Task Hover_Tile_ShowsItsCardAndHoverEndedHidesIt()
+    {
+        var cut = RenderBoard(Start());
+
+        await ReportAsync("OnTileHovered", At(3, 2).Q, At(3, 2).R);
+
+        var card = cut.Find(".board-tile-card");
+        card.GetAttribute("aria-hidden").ShouldBe("true");
+        card.QuerySelector(".board-tile-card-title")!.TextContent.ShouldBe("Plains");
+        card.TextContent.ShouldContain("Your unit: Soldier");
+
+        await ReportAsync("OnHoverEnded");
+
+        cut.FindAll(".board-tile-card").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Hover_LensTurnedOn_CardAddsTheLensSentence()
+    {
+        var cut = RenderBoard(Start());
+        await ReportAsync("OnTileHovered", 1, 1);
+
+        cut.Render(parameters => parameters.Add(static board => board.Lens, new MovementCostLens(new RulesetService())));
+
+        cut.Find(".board-tile-card").TextContent.ShouldContain("Plains: costs 1 movement to enter");
+    }
+
+    [Fact]
+    public async Task Hover_UnexploredTile_ShowsNoCard()
+    {
+        var cut = RenderBoard(Create(visibility: static _ => TileVisibility.Unexplored));
+
+        await ReportAsync("OnTileHovered", 1, 1);
+
+        cut.FindAll(".board-tile-card").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Hover_PieceOrTarget_ShowsThePointerAndAnEmptyTileDoesNot()
+    {
+        var cut = RenderBoard(Start());
+
+        await ReportAsync("OnTileHovered", At(3, 2).Q, At(3, 2).R);
+        await ReportAsync("OnTileHovered", At(1, 4).Q, At(1, 4).R);
+        cut.Render(parameters => parameters.Add(static board => board.Highlights, BoardHighlights.None with { Reachable = [At(1, 4)] }));
+
+        Calls("setPointer").Select(static call => call.Arguments[1]).ShouldBe([true, false, true]);
+    }
+
+    [Fact]
+    public async Task Hover_WhileDisabled_ShowsNoPointer()
+    {
+        RenderBoard(Start(), disabled: true);
+
+        await ReportAsync("OnTileHovered", At(3, 2).Q, At(3, 2).R);
+
+        Calls("setPointer").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Click_Tile_ShowsItsCardAndReadsItOut()
+    {
+        var cut = RenderBoard(Start());
+
+        await ClickInRendererAsync(At(5, 2));
+
+        cut.Find(".board-tile-card").TextContent.ShouldContain("Enemy unit: Soldier");
+        var live = cut.Find(".board-live");
+        live.GetAttribute("aria-live").ShouldBe("polite");
+        live.TextContent.ShouldStartWith("Plains. Enemy unit: Soldier, health 100 of 100.");
+    }
+
+    [Fact]
+    public async Task ContextLost_SaysSoUntilRestored()
+    {
+        var cut = RenderBoard(Start());
+
+        await ReportAsync("OnContextLost");
+
+        cut.Find(".board3d-lost").TextContent.ShouldContain("graphics were reset");
+        cut.FindAll(".board3d-reload").ShouldBeEmpty();
+
+        await ReportAsync("OnContextRestored");
+
+        cut.FindAll(".board3d-lost").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ContextLost_NotBackInTime_OffersToReload()
+    {
+        var cut = RenderBoard(Start());
+        await ReportAsync("OnContextLost");
+
+        Time.Advance(BoardGraphicsLost.RestoreWait);
+
+        cut.WaitForAssertion(() => cut.Find(".board3d-reload"));
+        cut.Find(".board3d-reload").Click();
+        ((BunitNavigationManager)Services.GetRequiredService<NavigationManager>()).History.First().Options.ForceLoad.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ContextRestored_BeforeTheWait_OffersNoReload()
+    {
+        var cut = RenderBoard(Start());
+        await ReportAsync("OnContextLost");
+        await ReportAsync("OnContextRestored");
+
+        Time.Advance(BoardGraphicsLost.RestoreWait);
+
+        cut.FindAll(".board3d-reload").ShouldBeEmpty();
+    }
+
     private IReadOnlyList<JSRuntimeInvocation> Calls(string identifier) => _module.Invocations[identifier];
 
     private IRenderedComponent<GameBoard> RenderBoard(PlayerView view, bool disabled = false) =>
@@ -271,11 +387,13 @@ public class GameBoardTests : ClientTestContext
             .Add(static board => board.TileClicked, coord => _clicked.Add(coord)));
 
     // What the renderer does on a click: it calls OnTileClicked on the .NET object it was mounted with.
-    private async Task ClickInRendererAsync(HexCoord coord)
+    private Task ClickInRendererAsync(HexCoord coord) => ReportAsync("OnTileClicked", coord.Q, coord.R);
+
+    // What the renderer does on a click, a hover or a lost context: it calls the .NET object it was mounted with.
+    private Task ReportAsync(string method, params object[] args)
     {
         var relay = Calls("mount").Single().Arguments[1]!;
         var target = relay.GetType().GetProperty("Value")!.GetValue(relay)!;
-        var method = target.GetType().GetMethod("OnTileClicked", BindingFlags.Public | BindingFlags.Instance)!;
-        await (Task)method.Invoke(target, [coord.Q, coord.R])!;
+        return (Task)target.GetType().GetMethod(method, BindingFlags.Public | BindingFlags.Instance)!.Invoke(target, args)!;
     }
 }

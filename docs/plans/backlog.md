@@ -69,16 +69,13 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 
 ## Ideas
 
-New ideas are added here as one line and promoted to Next or Now by the owner.
-
-| Id | Item | Area | Notes |
-|---|---|---|---|
-| F18 | Board hover card and WebGL context loss: a small card for the tile under the pointer (terrain, rivers and bridges, the improvement or building, "being built", the lens value's sentence from `LensMark.Description`), a pointer cursor over clickable tiles, visually hidden text of that tile for screen readers, and a lost WebGL context recovered or reported instead of a frozen board. Closes what the SVG board's `<title>`s gave and F17 removed | client | Proposed 2026-10-02 by the SVG to 3D regression review of F15 and F16 (its gaps D1–D4); the same review suggests moving `BoardMotion` and `HexLayout` to board units (A1, A2) as a later clean-up |
+None yet. New ideas are added here as one line and promoted to Next or Now by the owner.
 
 ## Recently done
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| F18 | Board tile card and WebGL context loss: a card in the board's corner for the tile under the mouse or last tapped (terrain, pieces, building or improvement with "being built", territory, rivers and bridges, the lens's sentences), the pointer cursor where a click acts, the clicked tile's card read out to screen readers, and a lost WebGL context reported and redrawn, with Reload after 5 seconds ([game UI](../features/game-ui.md#game-board)). The regression review's A1/A2 (animations and `HexLayout` in board units) stay a possible clean-up | 2026-10-02, PR #51 | [F18](done/F18-board-hover-card.md) |
 | F17 | Retire the SVG board: the WebGL board is the only board, with no 2D/3D toggle; the SVG board, `board.js` and their tests are gone, the game table tests click through the renderer, and a browser without WebGL gets a message instead of a fallback board ([game UI](../features/game-ui.md#game-board)) | 2026-10-02, PR #50 | [F17](done/F17-retire-svg-board.md) |
 | F16 | Full-screen game view: the board fills the window and the controls float over it (top strip with the title, counters, Log, Full screen, Resign and End turn; the selection card with the unit's actions bottom left; the attack forecast beside its target; the log drawer; notices), browser full screen, and a phone layout with bottom sheets ([game UI](../features/game-ui.md#game-screen-layout-full-screen-view)) | 2026-10-02, PR #49 | [F16](done/F16-full-screen-game-view.md) |
 | F15 | 3D game board behind the 3D button: WebGL (Three.js) low-poly terrain with mist fog, rivers, bridges, improvements, buildings and borders, baked CC0 KayKit unit models with banners, the selection, highlights and lenses, the F11b animations, pinch to zoom and two-finger pan, rebuilding only the layers that change, and a 40×40 bench at `/design/board` ([game UI](../features/game-ui.md#game-board)). Retiring the SVG board was F17 (done) | 2026-10-02, PRs #41–#44, #46, #48 | [F15](done/F15-3d-board.md), steps [2](done/F15-step2-rivers-improvements.md), [3](done/F15-step3-pieces-selection-lenses.md), [3b](done/F15-step3b-unit-models.md), [4](done/F15-step4-animations.md), [5](done/F15-step5-themes-touch-performance.md) |
