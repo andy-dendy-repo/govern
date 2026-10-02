@@ -23,6 +23,10 @@ export function renderOverlay(host, overlay) {
     boards.get(host)?.setOverlay(overlay);
 }
 
+export function renderMotion(host, motion) {
+    boards.get(host)?.setMotion(motion);
+}
+
 export function fit(host, rect) {
     boards.get(host)?.fit(rect);
 }

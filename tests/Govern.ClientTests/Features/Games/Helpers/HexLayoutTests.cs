@@ -1,6 +1,7 @@
 using System.Globalization;
 using Govern.Client.Features.Games.Helpers;
 using Govern.ClientTests.Support;
+using Govern.Core.Map;
 
 namespace Govern.ClientTests.Features.Games.Helpers;
 
@@ -109,5 +110,21 @@ public class HexLayoutTests
     public void Around_NoHexes_Throws()
     {
         Should.Throw<ArgumentException>(() => HexLayout.Around([], 1));
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(3, 2)]
+    [InlineData(-2, 5)]
+    [InlineData(7, -4)]
+    public void Nearest_PointsAroundACentre_GiveThatHex(int q, int r)
+    {
+        var coord = new HexCoord(q, r);
+        var (x, y) = HexLayout.Center(coord);
+
+        HexLayout.Nearest(x, y).ShouldBe(coord);
+        HexLayout.Nearest(x + (HexLayout.Width * 0.45), y).ShouldBe(coord);
+        HexLayout.Nearest(x, y - (HexLayout.Size * 0.8)).ShouldBe(coord);
+        HexLayout.Nearest(x + (HexLayout.Width * 0.55), y).ShouldBe(new HexCoord(q + 1, r));
     }
 }

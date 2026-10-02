@@ -12,7 +12,8 @@ namespace Govern.Client.Features.Games.Components.Board;
 /// <summary>
 /// The 3D hex board (F15 preview). It turns the <see cref="PlayerView"/> into a <see cref="BoardScene"/>
 /// (<see cref="BoardSceneBuilder"/>), sends it to the renderer only when the view changes, sends the <see cref="BoardOverlay"/>
-/// only when the selection, its highlights or the lens change, and reports clicked tiles through
+/// only when the selection, its highlights or the lens change, sends the <see cref="SceneMotion"/> of <see cref="Motion"/> only when
+/// it changes (after the scene of the same view), and reports clicked tiles through
 /// <see cref="TileClicked"/>; panning, zooming and telling a drag from a click happen in the renderer. Its
 /// <see cref="Board3DInteropService"/> comes from the component's own scope, so leaving the board unmounts the renderer.
 /// </summary>
@@ -25,6 +26,7 @@ public sealed partial class GameBoard3D
     private BoardScene? _scene;
     private BoardFocus? _focus;
     private (PlayerView View, BoardSelection Selection, BoardHighlights Highlights, IMapLens? Lens)? _overlaid;
+    private BoardMotion? _moved;
 
     /// <summary>The player's view to draw.</summary>
     [Parameter, EditorRequired]
@@ -45,6 +47,13 @@ public sealed partial class GameBoard3D
     /// <summary>The active map lens, or <see langword="null"/> when none is on.</summary>
     [Parameter]
     public IMapLens? Lens { get; set; }
+
+    /// <summary>
+    /// What the board draws differently while animations play (<see cref="BoardAnimationService"/>); replaced, never changed, so a
+    /// new one is sent to the renderer only when the reference changes.
+    /// </summary>
+    [Parameter]
+    public BoardMotion Motion { get; set; } = BoardMotion.None;
 
     /// <summary>The ruleset's full health; hurt units get a health bar. 0 draws none.</summary>
     [Parameter]
@@ -74,6 +83,7 @@ public sealed partial class GameBoard3D
 
         await DrawAsync();
         await OverlayAsync();
+        await MoveAsync();
         await FollowFocusAsync();
     }
 
@@ -100,6 +110,7 @@ public sealed partial class GameBoard3D
 
         await DrawAsync();
         await OverlayAsync();
+        await MoveAsync();
         await Interop.FitAsync(_scene!.Start, CancellationToken.None);
         await FollowFocusAsync();
     }
@@ -130,6 +141,18 @@ public sealed partial class GameBoard3D
 
         _overlaid = inputs;
         await Interop.RenderOverlayAsync(BoardOverlayBuilder.Build(_drawn!, Selection, Highlights, Lens), CancellationToken.None);
+    }
+
+    // The motion is sent when it changes (the service replaces it at every step), after the scene it moves pieces of.
+    private async Task MoveAsync()
+    {
+        if (ReferenceEquals(Motion, _moved))
+        {
+            return;
+        }
+
+        _moved = Motion;
+        await Interop.RenderMotionAsync(SceneMotionBuilder.Build(Motion, _drawn), CancellationToken.None);
     }
 
     private async Task FollowFocusAsync()
