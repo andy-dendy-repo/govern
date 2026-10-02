@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F18, board hover card and WebGL context loss
 
-**Status:** done 2026-10-02 (backlog F18), planned and built in one PR at the owner's request, as F17 was; the decisions made while building it are at the end. Client only: Govern.Core, the server, the rules and the view stay as they are.
+**Status:** done 2026-10-02 in PR #51 (backlog F18), planned and built in one PR at the owner's request, as F17 was; the decisions made while building it are at the end. Client only: Govern.Core, the server, the rules and the view stay as they are.
 
 ## Context
 The SVG board carried a `<title>` on every lens mark, edge badge, river, bridge, improvement and building, so a player could find out what was on a tile and why a lens showed a number. F17 retired that board, and the WebGL board shows only short labels: `LensMark.Description` and `EdgeMark.Description` are built and then dropped, the canvas shows `cursor: grab` everywhere, and screen readers get no board text (gaps D1–D3 of `/mnt/project-files/reviews/svg-to-3d-regression-review.md`). Separately, a lost WebGL context (common on phones when the tab is backgrounded or the GPU resets) leaves a frozen board with no message (D4). F18 brings the tile text back as one small card, adds a pointer cursor over tiles that do something, gives screen readers the same text, and recovers from or reports a lost context.
