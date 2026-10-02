@@ -49,6 +49,11 @@ export function zoom(host, factor) {
     boards.get(host)?.zoom(factor);
 }
 
+// The pointer cursor while the hovered tile does something when clicked (.NET decides, BoardClickResolver).
+export function setPointer(host, actionable) {
+    boards.get(host)?.setPointer(actionable);
+}
+
 // Measures the board on the page (the bench at /design/board, Features/Design/Services/BoardBenchService.cs); null without one.
 export function measure() {
     const host = document.querySelector('.board3d');

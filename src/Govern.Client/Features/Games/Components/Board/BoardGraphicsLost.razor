@@ -1,0 +1,13 @@
+@* What the board shows while the browser has taken its WebGL context away: a message until the context is back, and a Reload
+   button once it has stayed away for RestoreWait. *@
+
+@if (Lost)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="board3d-lost">
+        The board's graphics were reset. Restoring…
+        @if (_stalled)
+        {
+            <RadzenButton Text="Reload" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@Reload" class="board3d-reload"/>
+        }
+    </RadzenAlert>
+}

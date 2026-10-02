@@ -67,6 +67,10 @@ export class Board3D {
         this.pieceByUnit = new Map();
         this.motion = new Motion(this);
         this.frame = 0;
+        this.hovered = null;
+        this.hoverAt = null;
+        this.hoverFrame = 0;
+        this.lost = false;
 
         this.listen();
         this.resize();
@@ -76,6 +80,23 @@ export class Board3D {
 
     listen() {
         this.gestures = new Gestures(this);
+        // A lost context (a phone backgrounding the tab, a GPU reset) stops drawing until the browser gives it back; Three.js
+        // then uploads everything again, and the board draws the scene it kept.
+        this.onContextLost = event => {
+            event.preventDefault();
+            this.lost = true;
+            cancelAnimationFrame(this.frame);
+            this.frame = 0;
+            this.dotnet.invokeMethodAsync('OnContextLost');
+        };
+        this.onContextRestored = () => {
+            this.lost = false;
+            this.rebuild();
+            this.requestRender();
+            this.dotnet.invokeMethodAsync('OnContextRestored');
+        };
+        this.canvas.addEventListener('webglcontextlost', this.onContextLost);
+        this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(this.host);
         this.theme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -280,7 +301,7 @@ export class Board3D {
     }
 
     requestRender() {
-        if (!this.frame) {
+        if (!this.frame && !this.lost) {
             this.frame = requestAnimationFrame(() => {
                 this.frame = 0;
                 const animating = this.motion.tick(performance.now());
@@ -293,26 +314,72 @@ export class Board3D {
         }
     }
 
-    // A click picks what is under the pointer (a piece, else the ground) and tells .NET which tile it is on.
-    click(at) {
+    // The tile under a point of the view (normalised device coordinates): the piece hit there, else the ground; null off the map.
+    pick(at) {
         if (!this.terrain || !this.scene) {
-            return;
+            return null;
         }
         this.raycaster.setFromCamera(new Vector2(at.x, at.y), this.rig.camera);
         const hit = this.raycaster.intersectObjects([this.terrain.pick, ...(this.pieces?.pickable ?? [])], false)[0];
         if (!hit) {
-            return;
+            return null;
         }
-        const tile = hit.object.userData.tiles
+        return hit.object.userData.tiles
             ? hit.object.userData.tiles[hit.instanceId]
             : this.scene.tiles[this.terrain.pick.userData.faceTile[hit.faceIndex]];
-        this.dotnet.invokeMethodAsync('OnTileClicked', tile.q, tile.r);
+    }
+
+    // A click tells .NET which tile it is on.
+    click(at) {
+        const tile = this.pick(at);
+        if (tile) {
+            this.dotnet.invokeMethodAsync('OnTileClicked', tile.q, tile.r);
+        }
+    }
+
+    // The mouse or pen is over a point of the view; null when it left or a drag started. Picks at most once a frame, and tells
+    // .NET only when the tile under it changes.
+    hover(at) {
+        this.hoverAt = at;
+        if (at === null) {
+            cancelAnimationFrame(this.hoverFrame);
+            this.hoverFrame = 0;
+            this.setHovered(null);
+        } else if (!this.hoverFrame) {
+            this.hoverFrame = requestAnimationFrame(() => {
+                this.hoverFrame = 0;
+                if (this.hoverAt) {
+                    this.setHovered(this.pick(this.hoverAt));
+                }
+            });
+        }
+    }
+
+    setHovered(tile) {
+        const key = tile ? `${tile.q},${tile.r}` : null;
+        if (key === this.hovered) {
+            return;
+        }
+        this.hovered = key;
+        if (tile) {
+            this.dotnet.invokeMethodAsync('OnTileHovered', tile.q, tile.r);
+        } else {
+            this.setPointer(false);
+            this.dotnet.invokeMethodAsync('OnHoverEnded');
+        }
+    }
+
+    setPointer(actionable) {
+        this.canvas.classList.toggle('actionable', actionable && this.hovered !== null);
     }
 
     dispose() {
         this.disposed = true;
         cancelAnimationFrame(this.frame);
+        cancelAnimationFrame(this.hoverFrame);
         this.gestures.dispose();
+        this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+        this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
         this.resizeObserver.disconnect();
         this.theme.removeEventListener('change', this.onTheme);
         this.motion.dispose();
