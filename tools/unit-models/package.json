@@ -1,0 +1,14 @@
+{
+  "name": "govern-unit-models",
+  "private": true,
+  "description": "Bakes the CC0 KayKit characters into the 3D board's static unit models (see README.md).",
+  "type": "module",
+  "scripts": {
+    "bake": "node bake.mjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "4.5.1",
+    "ndarray-pixels": "5.2.0",
+    "three": "0.186.1"
+  }
+}
