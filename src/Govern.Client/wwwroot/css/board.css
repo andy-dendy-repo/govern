@@ -164,6 +164,11 @@
     cursor: progress;
 }
 
+/* A tile a click acts on (a piece to select, a move or attack target), told by .NET as the mouse comes over it. */
+.board3d:not(.busy) .board3d-canvas.actionable {
+    cursor: pointer;
+}
+
 .board3d-canvas {
     display: block;
     width: 100%;
@@ -273,4 +278,63 @@
     left: var(--gv-space-2);
     right: var(--gv-space-2);
     bottom: var(--gv-space-2);
+}
+
+/* A lost WebGL context: the board says so over its top until the browser gives the context back. */
+.board3d-lost {
+    position: absolute;
+    left: 50%;
+    top: var(--gv-space-2);
+    width: min(28rem, calc(100% - 2 * var(--gv-space-2)));
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+.game-screen .board3d-lost {
+    top: calc(var(--gv-hud-top) + var(--gv-hud-gap));
+}
+
+.board3d-reload {
+    margin-inline-start: var(--gv-space-2);
+}
+
+/* The tile card (GameBoard, Helpers/TileCardBuilder): what is on the hovered or tapped tile, in the bottom-right corner, where
+   neither the selection card nor the attack forecast sits. It never takes a click. */
+.board-tile-card {
+    position: absolute;
+    right: var(--gv-space-2);
+    bottom: var(--gv-space-2);
+    max-width: min(18rem, calc(100% - 2 * var(--gv-space-2)));
+    padding: var(--gv-space-1) var(--gv-space-2);
+    background: var(--gv-surface-raised);
+    border: 1px solid var(--gv-border);
+    border-radius: var(--gv-radius);
+    box-shadow: 0 1px 4px var(--gv-shadow);
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    pointer-events: none;
+}
+
+.board-tile-card-title {
+    font-weight: 600;
+}
+
+/* Phones: the selection card is a bottom sheet, so the tile card sits under the zoom buttons instead. */
+@media (max-width: 40rem) {
+    .game-screen .board-tile-card {
+        top: calc(var(--gv-hud-top) + var(--gv-hud-gap) + 2.75rem);
+        bottom: auto;
+        right: var(--gv-hud-gap);
+        max-width: min(14rem, calc(100% - 2 * var(--gv-hud-gap)));
+    }
+}
+
+/* Read by screen readers only: the clicked tile's card. */
+.board-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
