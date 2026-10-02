@@ -1,0 +1,27 @@
+@* The game log as a drawer on the right of the game board (full width on phones), opened by the top strip's Log button and
+   closed by its close button, the Log button again or Esc. *@
+@using Govern.Client.Features.Games.Components
+@using Govern.Client.Features.Games.Models
+@using Govern.Client.Features.Games.Services
+@using Govern.Core.Rulesets
+@using Govern.Core.Visibility
+
+<aside class="hud-card log-drawer" aria-label="Game log">
+    <div class="log-drawer-heading">
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H2" class="rz-m-0">Game log</RadzenText>
+        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Size="ButtonSize.Small" aria-label="Close the game log"
+                      Click="@(() => Ui.ToggleLog(Log))" class="log-close"/>
+    </div>
+    <GameLog View="@View" Ruleset="@Ruleset" Log="@Log"/>
+</aside>
+
+@code {
+    [CascadingParameter] public GameUiService Ui { get; set; } = null!;
+
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
+    /// <summary>The player's recent game log.</summary>
+    [Parameter] public IReadOnlyList<GameLogItem>? Log { get; set; }
+}

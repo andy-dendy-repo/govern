@@ -7,7 +7,7 @@ updated: 2026-10-02
 
 # Plan: F16, full-screen game view
 
-**Status:** planned 2026-10-02 (backlog F16). Visual and layout only: Govern.Core, the server, the rules, the view, `GameUiService`'s selection rules and the commands stay as they are.
+**Status:** done 2026-10-02 in PR #49 (backlog F16); the decisions made while building it are at the end. Visual and layout only: Govern.Core, the server, the rules, the view, `GameUiService`'s selection rules and the commands stay as they are.
 
 ## Context
 A started game is a page inside the app shell: the app header and sidebar, a page title, then a grid with the top bar, a board capped at `min(70vh, 40rem)`, a 20rem side panel and the action bar floating over the board's corner. The board, which is the game, gets about half the screen on a laptop and a short strip on a phone, and the 3D board (F15) shows more when it has more room. F16 lets the board fill the screen and puts the controls over it as floating cards: counters and End turn in a top strip, the selected unit or city with its actions in a corner, the attack forecast next to its target, and the log in a drawer. It works over both boards, since the SVG board stays until F17.
@@ -97,3 +97,13 @@ A started game is a page inside the app shell: the app header and sidebar, a pag
 - **The board's corners are covered.** The selection card covers the bottom-left corner and the strip the top edge. Fit and the opening view should leave room for them: `HexLayout.Around` and the 3D fit take a padding for the overlay sizes, so the player's units don't open under a card.
 - **Tall city panel.** `CityPanel` with its tabs can be taller than the card's cap; it scrolls inside the card, and the tabs stay at the top of the scroll. If that feels cramped, the city panel is the first user of the "Large view" later, not part of F16.
 - **Fullscreen on iPhone.** Safari on iPhone doesn't allow it for page elements, so the button is hidden there; the layout already fills the window, which is most of the gain. Adding the app to the home screen remains the way to drop the browser bars there.
+
+## Decisions made during implementation
+- **The forecast on phones** is a bottom sheet in the board's `Anchored` slot, not inside the selection card: the same element, placed by CSS, so it renders once and covers the card while an attack is pending.
+- **The phone strip** keeps the connection badge, the turn, More and End turn; the game's title is visually hidden there (still the page's heading for screen readers).
+- **The card's header** is a collapse button over the panel's own heading; collapsed, a one-line summary (icon and name) replaces the panel, so the name isn't shown twice.
+- **The log drawer** replaces the log's own collapse button; `GameUiService.LogOpen` now means the drawer is open, and it starts closed. What happened before the screen opened doesn't count as new.
+- **The opening view** keeps `HexLayout.Around` with 3 hexes of room and no extra padding for the cards; checked at 1400×900 and 390×844, the player's pieces open clear of the strip and the card.
+- **Back to the games** is a button in the app header of `GameLayout`, since the game page has no sidebar.
+- **Checked by hand** with headless Chromium against the running Api and client: 2D and 3D, light and dark, 1400×900 and 390×844, a unit, a city with its tabs, the log drawer, the phone's More menu, and the 3D renderer keeping an anchored card beside a tile.
+

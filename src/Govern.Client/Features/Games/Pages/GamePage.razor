@@ -1,46 +1,49 @@
 @page "/games/{GameId:guid}"
+@layout GameLayout
 @attribute [Authorize]
 @using Govern.Client.Features.Games.Components
 @using Govern.Client.Features.Games.Enums
 
 <PageTitle>@Title - Govern</PageTitle>
 
-@* A started game keeps its title small and drops the player list (the top bar shows your colour and whose turn it is), so
-   the board starts high on the page. *@
-<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap" class="game-heading">
-    <RadzenText TextStyle="@(OnBoard ? TextStyle.H6 : TextStyle.H4)" TagName="TagName.H1" class="@(OnBoard ? "rz-m-0" : null)">@Title</RadzenText>
-    @if (_watch is not null)
-    {
-        <ConnectionBadge Update="@_watch"/>
-    }
-</RadzenStack>
-
-<ApiErrorAlert Error="@_error"/>
-
-@if (_notFound || _watch?.Status == GameWatchStatus.Gone)
+@* A started game fills the window (GameLayout): the game screen alone, with the title and the connection badge in its top
+   strip. The lobby and the other states are a padded page with the title on top. *@
+@if (OnBoard)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="gone">
-        @(_notFound
-            ? "This game does not exist, or you are not playing in it."
-            : "This game was cancelled or expired, or you are no longer in it.")
-    </RadzenAlert>
-    <RadzenLink Path="games" Text="Back to my games" class="back"/>
+    <GameTable @key="_game!.Id" Game="@_game" Title="@Title" Connection="@_watch" GameChanged="@OnGameChanged"/>
 }
-else if (_game is not null)
+else
 {
-    <RadzenStack Gap="1rem" class="@(OnBoard ? "rz-mt-2" : "rz-mt-4")">
-        @if (_game.Phase == GamePhase.Lobby)
-        {
-            <PlayerList Players="@_game.Players"/>
-            @if (_game.InviteCode is { } inviteCode)
+    <div class="rz-p-4">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap" class="game-heading">
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1">@Title</RadzenText>
+            @if (_watch is not null)
             {
-                <InviteShare Code="@inviteCode"/>
+                <ConnectionBadge Update="@_watch"/>
             }
-            <LobbyPanel Game="@_game" Started="@OnStarted" Closed="@OnClosed"/>
-        }
-        else if (_game.View is not null)
+        </RadzenStack>
+
+        <ApiErrorAlert Error="@_error"/>
+
+        @if (_notFound || _watch?.Status == GameWatchStatus.Gone)
         {
-            <GameTable @key="_game.Id" Game="@_game" GameChanged="@OnGameChanged"/>
+            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" class="gone">
+                @(_notFound
+                    ? "This game does not exist, or you are not playing in it."
+                    : "This game was cancelled or expired, or you are no longer in it.")
+            </RadzenAlert>
+            <RadzenLink Path="games" Text="Back to my games" class="back"/>
         }
-    </RadzenStack>
+        else if (_game is { Phase: GamePhase.Lobby } lobby)
+        {
+            <RadzenStack Gap="1rem" class="rz-mt-4">
+                <PlayerList Players="@lobby.Players"/>
+                @if (lobby.InviteCode is { } inviteCode)
+                {
+                    <InviteShare Code="@inviteCode"/>
+                }
+                <LobbyPanel Game="@lobby" Started="@OnStarted" Closed="@OnClosed"/>
+            </RadzenStack>
+        }
+    </div>
 }

@@ -36,6 +36,12 @@ public sealed record BoardViewport(double Scale, double X, double Y)
             ((height - (bounds.Height * scale)) / 2) - (bounds.Top * scale));
     }
 
+    /// <summary>Where a board point is drawn, in the board element's pixels.</summary>
+    /// <param name="x">The point's x in board space.</param>
+    /// <param name="y">The point's y in board space.</param>
+    /// <returns>The point on screen.</returns>
+    public (double X, double Y) ToScreen(double x, double y) => ((x * Scale) + X, (y * Scale) + Y);
+
     /// <summary>Moves the board by a number of screen pixels.</summary>
     /// <param name="dx">Pixels to the right.</param>
     /// <param name="dy">Pixels down.</param>

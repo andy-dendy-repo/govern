@@ -76,6 +76,14 @@ public partial class GameBoard
     [Parameter]
     public BoardFocus? Focus { get; set; }
 
+    /// <summary>A card kept beside <see cref="AnchorAt"/> as the board pans and zooms (the attack forecast).</summary>
+    [Parameter]
+    public RenderFragment? Anchored { get; set; }
+
+    /// <summary>The tile <see cref="Anchored"/> stays beside, or <see langword="null"/> for no card.</summary>
+    [Parameter]
+    public HexCoord? AnchorAt { get; set; }
+
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
@@ -206,6 +214,13 @@ public partial class GameBoard
         }
 
         await TileClicked.InvokeAsync(coord);
+    }
+
+    private string AnchorStyle(HexCoord tile)
+    {
+        var (x, y) = HexLayout.Center(tile);
+        var (screenX, screenY) = _viewport.ToScreen(x, y);
+        return BoardAnchor.Style(screenX, screenY, _size.Width);
     }
 
     private void SetViewport(BoardViewport viewport)

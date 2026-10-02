@@ -275,13 +275,15 @@ public class GameTableTests : ClientTestContext
     }
 
     [Fact]
-    public void Render_Started_ShowsTheZonesAndTheIconSet()
+    public void Render_Started_ShowsTheBoardWithTheOverlaySlotsAndTheIconSet()
     {
         var cut = RenderTable(TestGames.Started());
 
-        cut.FindAll(".game-screen .zone-top .top-bar").Count.ShouldBe(1);
-        cut.FindAll(".game-screen .zone-map svg.board").Count.ShouldBe(1);
-        cut.FindAll(".game-screen .zone-side .side-panel").Count.ShouldBe(1);
+        cut.FindAll(".game-screen .hud-board svg.board").Count.ShouldBe(1);
+        cut.FindAll(".game-screen .hud-top .top-bar").Count.ShouldBe(1);
+        cut.FindAll(".game-screen .hud-notices").Count.ShouldBe(1);
+        cut.FindAll(".game-screen .hud-selection").Count.ShouldBe(1);
+        cut.FindAll(".game-screen .hud-log").ShouldBeEmpty("the log drawer is closed until the Log button opens it");
         cut.FindAll("svg.game-sprite symbol#unit-settler").Count.ShouldBe(1);
         cut.Find(".top-bar .seat-swatch").ClassList.ShouldContain("seat-1");
         cut.Find(".selection-hint").TextContent.ShouldContain("Select a unit or a city");

@@ -1,0 +1,77 @@
+@* The bottom-left card over the game board (a bottom sheet on phones): the panel for the selection with what it can do. Each
+   selection kind has one panel (unit with its action bar, city; later tile, building); a new kind adds its branch here. The
+   card collapses to its heading (GameUiService.SelectionCollapsed) and opens again for the next selection. With nothing
+   selected, a hint takes its place. *@
+@using Govern.Client.Features.Games.Components
+@using Govern.Client.Features.Games.Services
+@using Govern.Core.Actions
+@using Govern.Core.Engine
+@using Govern.Core.Rulesets
+@using Govern.Core.State
+@using Govern.Core.Visibility
+
+@if (Ui.Selection.Unit is { } unitId && View.Units.FirstOrDefault(unit => unit.Id == unitId) is { } unit)
+{
+    <section class="@CardClass" aria-label="Selected unit">
+        @Toggle
+        @if (Ui.SelectionCollapsed)
+        {
+            <div class="selection-summary">
+                <GameIcon Id="@Icons.Unit(unit.Type)" Class="@Seats.Class(View, unit.Owner)"/>
+                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.Span" class="rz-m-0">
+                    @(unit.Owner == View.Viewer ? "Your" : "Enemy") @Ruleset.UnitName(unit.Type)
+                </RadzenText>
+            </div>
+        }
+        else
+        {
+            <div class="selection-body">
+                <UnitPanel View="@View" Unit="@unit" Ruleset="@Ruleset"/>
+                <ActionBar View="@View" Ruleset="@Ruleset" Busy="@Busy" Command="@Command"/>
+            </div>
+        }
+    </section>
+}
+else if (Ui.Selection.City is { } cityId && View.Cities.FirstOrDefault(city => city.Id == cityId) is { } city)
+{
+    <section class="@CardClass" aria-label="Selected city">
+        @Toggle
+        @if (Ui.SelectionCollapsed)
+        {
+            <div class="selection-summary">
+                <GameIcon Id="@Icons.City" Class="@Seats.Class(View, city.Owner)"/>
+                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.Span" class="rz-m-0">@city.Name</RadzenText>
+            </div>
+        }
+        else
+        {
+            <div class="selection-body">
+                <CityPanel View="@View" City="@city" Ruleset="@Ruleset" Busy="@Busy" Command="@Command"/>
+            </div>
+        }
+    </section>
+}
+else if (View.Status == GameStatus.InProgress)
+{
+    <RadzenText TextStyle="TextStyle.Body2" class="hud-card selection-hint rz-m-0">Select a unit or a city on the map. Esc clears the selection.</RadzenText>
+}
+
+@code {
+    [CascadingParameter] public GameUiService Ui { get; set; } = null!;
+
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback<GameCommand> Command { get; set; }
+
+    private string CardClass => Ui.SelectionCollapsed ? "hud-card selection-card collapsed" : "hud-card selection-card";
+
+    private RenderFragment Toggle => @<RadzenButton Icon="@(Ui.SelectionCollapsed ? "expand_less" : "expand_more")" ButtonStyle="ButtonStyle.Base"
+                                                   Variant="Variant.Text" Size="ButtonSize.Small" class="selection-collapse"
+                                                   aria-label="@(Ui.SelectionCollapsed ? "Show the details" : "Hide the details")"
+                                                   aria-expanded="@(Ui.SelectionCollapsed ? "false" : "true")"
+                                                   Click="@Ui.ToggleSelectionCollapsed"/>;
+}

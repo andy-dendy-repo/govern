@@ -1,0 +1,26 @@
+@* The layout of a game (Features/Games/Pages/GamePage): the app header with the way back to the games instead of the sidebar,
+   and a body that fills the rest of the window with no padding, so a started game's board takes all of it. The page pads
+   its other states itself. *@
+@inherits LayoutComponentBase
+
+<RadzenComponents/>
+
+<RadzenLayout class="game-layout">
+    <RadzenHeader>
+        <AppHeader>
+            <Start>
+                <RadzenButton Icon="arrow_back" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" title="Back to my games"
+                              aria-label="Back to my games" Click="@(() => Navigation.NavigateTo("games"))" class="back-to-games"/>
+            </Start>
+        </AppHeader>
+    </RadzenHeader>
+    <RadzenBody class="game-body">
+        <main class="game-main">
+            @Body
+        </main>
+    </RadzenBody>
+</RadzenLayout>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+}
