@@ -98,6 +98,14 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - Only one unit can stand on a tile.
 - A tile blocked by an enemy unit you can't see is simply unreachable; the game doesn't tell you why, so it reveals nothing about the hidden unit.
 
+## Sending a unit to a destination
+
+- **Go to** sends a unit to any tile you have explored. It walks there on its own: at once with the movement it has left, then at the start of each of your turns with full movement, before you act.
+- It takes the cheapest way over what you know of the map. Terrain you haven't explored isn't used, units and cities you can't see don't count, and the way is worked out again every turn.
+- The order ends when the unit arrives, when no known way leads there any more, or when a step brings an enemy unit or city into the unit's sight, so you decide what to do. A unit you couldn't see on the way comes into sight before the unit reaches it, which stops it the same way.
+- Giving the unit any other order (moving, attacking, building), giving it a new destination or pressing Stop cancels the order. Starting the walk drops what the unit was building.
+- Your opponent doesn't see a unit's destination, but can see your units walking on their own at the start of your turn.
+
 ## Attacking
 
 - A unit with Attack or Ranged attack that still has movement left can attack. Attacking uses up all its movement for the turn, and it stays where it is.

@@ -200,6 +200,45 @@ public class BoardClickResolverTests
     }
 
     [Fact]
+    public void Resolve_DestinationModeAndAFarTile_OrdersTheWalkAndLeavesTheMode()
+    {
+        var selection = BoardSelection.Of(YourSoldier) with { Destination = true };
+
+        var click = BoardClickResolver.Resolve(Ruleset, Create([Soldier(2, You, At(3, 2))]), selection, At(7, 2));
+
+        click.ShouldBe(new BoardClick(BoardSelection.Of(YourSoldier), new SetDestinationCommand(YourSoldier, At(7, 2))));
+    }
+
+    [Fact]
+    public void Resolve_DestinationModeAndAnUnexploredTile_OnlyLeavesTheMode()
+    {
+        var view = Create([Soldier(2, You, At(3, 2))], visibility: static coord => coord == At(7, 2) ? TileVisibility.Unexplored : TileVisibility.Visible);
+
+        var click = BoardClickResolver.Resolve(Ruleset, view, BoardSelection.Of(YourSoldier) with { Destination = true }, At(7, 2));
+
+        click.ShouldBe(new BoardClick(BoardSelection.Of(YourSoldier), null));
+    }
+
+    [Fact]
+    public void Highlights_UnitWithADestination_IncludeItsRoute()
+    {
+        var view = Create([Soldier(2, You, At(3, 2), movementLeft: 0) with { Destination = At(6, 2) }]);
+
+        var route = BoardClickResolver.Highlights(Ruleset, view, BoardSelection.Of(YourSoldier)).Route.ShouldNotBeNull();
+
+        route.Path.ShouldBe([At(4, 2), At(5, 2), At(6, 2)]);
+        route.Turns.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Prune_DestinationModeOnTheOpponentsTurn_LeavesTheMode()
+    {
+        var view = Create([Soldier(2, You, At(3, 2))]) with { CurrentPlayer = Opponent };
+
+        BoardClickResolver.Prune(Ruleset, view, BoardSelection.Of(YourSoldier) with { Destination = true }).ShouldBe(BoardSelection.Of(YourSoldier));
+    }
+
+    [Fact]
     public void Resolve_BridgeModeAndATileAcrossTheRiver_BuildsTheBridgeAndLeavesBridgeMode()
     {
         var selection = BoardSelection.Of(YourSoldier) with { Bridge = true };

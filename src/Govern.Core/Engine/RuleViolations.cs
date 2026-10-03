@@ -32,6 +32,11 @@ public static class RuleViolations
     /// <summary>The target tile is off the map, the unit's own tile, blocked or too far for the unit's remaining movement.</summary>
     public static readonly RuleViolation Unreachable = new("move.unreachable", "The unit cannot reach that tile this turn.");
 
+    /// <summary>
+    /// A destination is off the map, the unit's own tile, unexplored, impassable, or has no path over the tiles the player knows.
+    /// </summary>
+    public static readonly RuleViolation NoPath = new("move.no_path", "The unit has no known way to that tile.");
+
     /// <summary>The tile already holds a city.</summary>
     public static readonly RuleViolation CityTileTaken = new("city.tile_taken", "A city already stands on this tile.");
 

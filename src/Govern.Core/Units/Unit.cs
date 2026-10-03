@@ -18,6 +18,10 @@ namespace Govern.Core.Units;
 /// so games saved before health existed read as unhurt, and the JSON leaves it out while it is 0.
 /// </param>
 /// <param name="Job">What the unit is building, if anything; left out of the JSON while idle.</param>
+/// <param name="Destination">
+/// The tile the unit walks to on its own, turn after turn (see <see cref="Actions.SetDestinationCommand"/>); left out of the JSON
+/// while it has no such order.
+/// </param>
 public sealed record Unit(
     UnitId Id,
     PlayerId Owner,
@@ -25,7 +29,8 @@ public sealed record Unit(
     HexCoord Position,
     int MovementLeft,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int Damage = 0,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] UnitJob? Job = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] UnitJob? Job = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? Destination = null)
 {
     /// <summary>The unit's health under a ruleset: its maximum minus <see cref="Damage"/>.</summary>
     /// <param name="ruleset">The game's ruleset.</param>

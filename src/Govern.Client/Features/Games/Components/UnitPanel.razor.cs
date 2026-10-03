@@ -14,7 +14,7 @@ namespace Govern.Client.Features.Games.Components;
 
 /// <summary>
 /// The selected unit's panel: its combat stats for any unit the player sees, and its movement, sight, cost, build production,
-/// job, upkeep and supply for their own.
+/// job, destination, upkeep and supply for their own.
 /// </summary>
 public partial class UnitPanel
 {
@@ -86,6 +86,16 @@ public partial class UnitPanel
                 : perTurn;
         }
     }
+
+    // The standing order: how many turns the walk still needs (a standing order walks on at the start of each turn), or that no
+    // known way leads there now (the order then ends at the start of the next turn).
+    private string DestinationText =>
+        View.CurrentPlayer != View.Viewer ? "Walking to its destination: it walks on at the start of your turn."
+        : GameEngine.DestinationPath(Ruleset, View, Unit.Id, Unit.Destination!.Value) is { } route
+            ? $"Walking to its destination: {Turns(Math.Max(1, route.Turns))} away. Stop or any other order cancels it."
+            : "Walking to its destination, but no known way leads there now.";
+
+    private static string Turns(int turns) => turns == 1 ? "1 turn" : $"{turns} turns";
 
     private string JobText(UnitJob job) => job.Improvement is { } improvement
         ? $"Building a {Ruleset.ImprovementName(improvement)}: {job.Progress} of {JobCost(job)}"
