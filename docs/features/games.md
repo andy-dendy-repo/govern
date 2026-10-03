@@ -1,8 +1,8 @@
 ---
 title: Games feature (lobby, invite codes, leave, cancel, lobby expiry, start, commands, live updates, player views, game log, game list, limits, quota)
-tags: [games, game, lobby, invite, invite-code, leave, cancel, expiry, quota, activity-at, start, commands, expected-version, live-updates, sse, server-sent-events, stream, heartbeat, rate-limit, player-view, fog-of-war, game-log, events, jsonb, concurrency, privacy]
-code: [src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Api/Models/GameCommandBody.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Infrastructure/Background/ExpiredLobbyCleanupService.cs, src/Govern.Domain/Entities/Game.cs, src/Govern.Domain/Entities/GamePlayer.cs, src/Govern.Domain/Entities/GameLogEntry.cs, src/Govern.Infrastructure/Persistence/Configurations/GameLogEntryConfiguration.cs, src/Govern.Domain/ValueObjects/InviteCode.cs, src/Govern.Infrastructure/Persistence/Configurations/GameConfiguration.cs]
-updated: 2026-10-01
+tags: [games, game, lobby, map, map-choice, map-pool, invite, invite-code, leave, cancel, expiry, quota, activity-at, start, commands, expected-version, live-updates, sse, server-sent-events, stream, heartbeat, rate-limit, player-view, fog-of-war, game-log, events, jsonb, concurrency, privacy]
+code: [src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Api/Models/GameCommandBody.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Infrastructure/Background/ExpiredLobbyCleanupService.cs, src/Govern.Domain/Entities/Game.cs, src/Govern.Domain/Entities/GamePlayer.cs, src/Govern.Domain/Entities/GameLogEntry.cs, src/Govern.Infrastructure/Persistence/Configurations/GameLogEntryConfiguration.cs, src/Govern.Domain/ValueObjects/InviteCode.cs, src/Govern.Domain/ValueObjects/MapChoice.cs, src/Govern.Application/Games/Services/MapPoolService.cs, src/Govern.Infrastructure/Persistence/Configurations/GameConfiguration.cs]
+updated: 2026-10-03
 ---
 
 # Games feature
@@ -29,11 +29,11 @@ All endpoints require a bearer token (`.RequireAuthorization()`). Create, join, 
 
 | Method and route | Use case | Success | Errors |
 |---|---|---|---|
-| `POST /api/games` | `CreateGameContract` | 201 `{ id, inviteCode }`, `Location: /api/games/{id}` | 401; 409 `game.too_many_open_lobbies`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
+| `POST /api/games` optional body `{ map }` | `CreateGameContract` | 201 `{ id, inviteCode }`, `Location: /api/games/{id}` | 400 a map that is not `random`, `generated` or a pool key; 401; 409 `game.too_many_open_lobbies`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
 | `POST /api/games/join` body `{ inviteCode }` | `JoinGameContract` | 200 `{ gameId }` | 400 malformed code; 401; 404 `game.invite_not_found`; 409 `game.already_started`, `game.full`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
 | `POST /api/games/{id}/leave` | `LeaveGameContract` | 204 | 400 empty id; 401; 404 `game.not_found`; 409 `game.creator_cannot_leave`, `game.already_started`, `game.stale_version`; 429 |
 | `DELETE /api/games/{id}` | `CancelGameContract` | 204 (the lobby is deleted) | 400 empty id; 401; 403 `game.not_creator`; 404 `game.not_found`; 409 `game.already_started`, `game.stale_version`; 429 |
-| `POST /api/games/{id}/start` | `StartGameContract` | 200 `GetGameResponse` (the caller's view of the new board) | 400 empty id; 401; 403 `game.not_creator`; 404 `game.not_found`; 409 `game.already_started`, `game.not_enough_players`, `game.stale_version`; 429 |
+| `POST /api/games/{id}/start` | `StartGameContract` | 200 `GetGameResponse` (the caller's view of the new board) | 400 empty id; 401; 403 `game.not_creator`; 404 `game.not_found`; 409 `game.already_started`, `game.not_enough_players`, `game.map_not_in_pool`, `game.stale_version`; 429 |
 | `POST /api/games/{id}/commands` body `{ expectedVersion, command }` | `SendGameCommandContract` | 200 `GetGameResponse` (the caller's view after the command) | 400 malformed body or unknown command type, empty id, negative version; 401; 404 `game.not_found`; 409 `game.not_started`, `game.stale_version` or a rule-violation code; 413 body over 4 KiB; 415 not JSON; 429 |
 | `GET /api/games/{id}` | `GetGameContract` | 200 `GetGameResponse` | 400 empty id; 401; 404 `game.not_found` |
 | `GET /api/games/{id}/stream` | `WatchGameContract` | 200 `text/event-stream` of `game` (a `GetGameResponse`) and `heartbeat` events (see [Live game updates](#live-game-updates-sse)) | 400 empty id; 401; 404 `game.not_found`; 429 |
@@ -41,9 +41,22 @@ All endpoints require a bearer token (`.RequireAuthorization()`). Create, join, 
 
 The list is ordered by `activityAt`, newest first: the last change both players see (created, a seat taken or left, the start, a turn change, the finish). A move or production change leaves it alone, so the list reveals nothing about the opponent's hidden activity. It is stored in `games.activity_at` and set by `Game`; `updated_at` is only the audit column and is never returned.
 
-`GetGameResponse` is `{ id, phase, isCreator, inviteCode, players: [{ playerId, seat, isYou, isCreator }], view, createdAt }`:
+`GetGameResponse` is `{ id, phase, isCreator, inviteCode, players: [{ playerId, seat, isYou, isCreator }], view, createdAt, map, log }`:
 - `inviteCode` is set only for the creator, and only while in the lobby.
+- `map` is the lobby's map choice (`random`, `generated` or a pool map's key); once started, the map played on (`random` becomes the key drawn). The client names it from its own copy of the pool.
 - `view` is the caller's `PlayerView` once started, and null in the lobby.
+
+## Choosing the map (MapChoice)
+
+A lobby stores its map choice in `games.map` (`MapChoice`, G18, [maps](../game/maps.md)):
+
+| Choice | Created by | At the start |
+|---|---|---|
+| `random` | `POST /api/games` with no body, no `map`, or `{ "map": "random" }` (the lobby picker's default) | `MapPoolService.Resolve` draws a pool map (`RandomNumberGenerator`); `games.map` becomes its key |
+| A pool key, such as `basin` | `{ "map": "basin" }` | The game is played on that map; if the key left the pool since, start answers 409 `game.map_not_in_pool` |
+| `generated` | `{ "map": "generated" }` | A generated map, as before G18; rows created before G18 hold `generated` |
+
+`CreateGameValidator` accepts only `random`, `generated` or a key the pool holds (400 otherwise). `Game.Start` throws when the map it is given doesn't fit the choice (`MapChoice.Fits`), which the handler rules out.
 
 ## Games error codes (GameErrors)
 
@@ -60,6 +73,7 @@ The list is ordered by `activityAt`, newest first: the last change both players 
 | `game.too_many_unfinished_games` | 409 | Create or join (as a new player) while the caller already plays in `GameErrors.MaxUnfinishedGamesPerUser` (20) games that are not finished, joined lobbies included. A soft cap, like the lobby cap. Leaving or cancelling a lobby frees a slot |
 | `game.daily_quota_reached` | 429 | Create or join (as a new player) after the caller took `GameErrors.MaxGamesJoinedPerWindow` (30) seats in the last 24 hours (`GameErrors.QuotaWindow`), finished games included. A soft cap |
 | `game.not_started` | 409 | A command for a game still in the lobby |
+| `game.map_not_in_pool` | 409 | Start of a lobby whose chosen map was removed from the pool after the lobby was created. Cancel it and create a new game |
 | `game.stale_version` | 409 | `expectedVersion` is not the caller's current `view.version` (their view changed since), or another command was saved first. Also returned when a start, leave or cancel lost a race and the game still allows it (e.g. the joiner left and someone else joined). Reload the game (or take the latest stream snapshot) and decide again |
 
 The Core rule-violation codes (`move.unreachable`, `game.not_your_turn`, `game.finished`, …) come from `RuleViolations` ([game-core](game-core.md)). `GameErrors.FromViolation` returns them as 409 with the same code and message. Both sets use the `game.` prefix, so `GameErrorCodesTests` checks that no code appears in both.
@@ -150,14 +164,14 @@ Each player has their own log of what they saw happen (F11a, [plan](../plans/don
 
 | Table | Columns | Constraints |
 |---|---|---|
-| `games` | `id`, `creator_id`, `invite_code` (varchar 22), `phase` (varchar 16), `revision` (concurrency token), `state` (`jsonb`, null in the lobby), `current_player_id` (the `game_players.id` to move; null in the lobby and once finished; no FK), `activity_at` (last change both players see), `created_at`, `updated_at` | Unique `invite_code`; index `(phase, activity_at)` for the lobby sweep; index and restrict FK on `creator_id` → `users` |
+| `games` | `id`, `creator_id`, `invite_code` (varchar 22), `phase` (varchar 16), `map` (varchar 32: `MapChoice`, default `generated`), `revision` (concurrency token), `state` (`jsonb`, null in the lobby), `current_player_id` (the `game_players.id` to move; null in the lobby and once finished; no FK), `activity_at` (last change both players see), `created_at`, `updated_at` | Unique `invite_code`; index `(phase, activity_at)` for the lobby sweep; index and restrict FK on `creator_id` → `users` |
 | `game_players` | `id` (= `PlayerId`), `game_id`, `user_id`, `seat` (0 or 1), `joined_at`, `log_length` (the seat's last log sequence) | Unique `(game_id, seat)` and `(game_id, user_id)`; index `(user_id, joined_at)` (the FK, member filters and the quota) and restrict FK on `user_id` → `users`; cascade delete from `games` |
 | `game_log_entries` | `id`, `game_id`, `player_id` (the seat), `sequence`, `turn`, `events` (`jsonb`, `GameSerializer` format); no timestamps | Index `(player_id, sequence)` for the window read (not unique: the game's `revision` already lets one command commit per revision, and a unique index made concurrent commands deadlock); index on `game_id`; cascade delete from `games` and `game_players` |
 
 - **The `jsonb` state snapshot:** `games.state` holds the whole `GameState`, written and read through `GameSerializer`. That is the same format the Api and client use, and it carries `schemaVersion`.
   - EF compares the state by reference. The state is immutable and replaced on every change, so there is no deep comparison.
   - Queries never look inside the JSON: anything a list needs has its own column. `ListMyGames` never reads `state`; `isYourTurn` compares `current_player_id` with the caller's seat.
-- **Migrations:** `AddGames`, `AddGameCurrentPlayer`, `AddGameLog` (games already running start with an empty log), `AddGameLobbyLifecycle` (existing rows got `activity_at` = 0001-01-01, so lobbies created before it are swept at once and older games sort last; `gamecore` was never deployed, so only local data is affected).
+- **Migrations:** `AddGames`, `AddGameCurrentPlayer`, `AddGameLog` (games already running start with an empty log), `AddGameLobbyLifecycle` (existing rows got `activity_at` = 0001-01-01, so lobbies created before it are swept at once and older games sort last; `gamecore` was never deployed, so only local data is affected), `AddGameMap` (G18; existing rows got `generated`, the map they were created with).
 
 ## Games JSON format
 

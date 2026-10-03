@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using Govern.Core.Engine;
+using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.State;
 using Govern.Core.Visibility;
@@ -47,6 +48,11 @@ public sealed class Game : BaseAuditableEntity
     /// The secret that lets another user join while the game is in the <see cref="GamePhase.Lobby"/>; unique across games.
     /// </summary>
     public InviteCode InviteCode { get; private set; } = null!;
+
+    /// <summary>
+    /// The map the game is played on; <see cref="MapChoice.Random"/> only until the game starts.
+    /// </summary>
+    public MapChoice Map { get; private set; } = MapChoice.Generated;
 
     /// <summary>
     /// Where the game is in its lifecycle.
@@ -97,11 +103,19 @@ public sealed class Game : BaseAuditableEntity
     /// </summary>
     /// <param name="creatorId">The creating user.</param>
     /// <param name="now">The current time.</param>
+    /// <param name="map">The map choice (the handler checks that a key is in the pool); <see langword="null"/> for a generated map.</param>
     /// <returns>The new game.</returns>
     /// <exception cref="ArgumentException"><paramref name="creatorId"/> is empty.</exception>
-    public static Game Create(Guid creatorId, DateTimeOffset now)
+    public static Game Create(Guid creatorId, DateTimeOffset now, MapChoice? map = null)
     {
-        var game = new Game { CreatorId = creatorId, InviteCode = InviteCode.New(), Phase = GamePhase.Lobby, ActivityAt = now };
+        var game = new Game
+        {
+            CreatorId = creatorId,
+            InviteCode = InviteCode.New(),
+            Phase = GamePhase.Lobby,
+            ActivityAt = now,
+            Map = map ?? MapChoice.Generated,
+        };
         game._players.Add(GamePlayer.Create(game.Id, creatorId, seat: 0, now));
         return game;
     }
@@ -188,20 +202,25 @@ public sealed class Game : BaseAuditableEntity
     /// <param name="userId">The user starting the game.</param>
     /// <param name="ruleset">The ruleset the game is played with.</param>
     /// <param name="now">The current time.</param>
+    /// <param name="map">
+    /// The pool map to play on, which must fit <see cref="Map"/> (<see cref="MapChoice.Fits"/>); <see langword="null"/> for a
+    /// generated map.
+    /// </param>
     /// <exception cref="InvalidOperationException">
-    /// The user is not the creator, the game is not in the lobby, or it is not full.
+    /// The user is not the creator, the game is not in the lobby, it is not full, or the map doesn't fit the lobby's choice.
     /// </exception>
-    public void Start(Guid userId, Ruleset ruleset, DateTimeOffset now)
+    public void Start(Guid userId, Ruleset ruleset, DateTimeOffset now, PredefinedMap? map = null)
     {
         ArgumentNullException.ThrowIfNull(ruleset);
 
-        if (userId != CreatorId || Phase != GamePhase.Lobby || !IsFull)
+        if (userId != CreatorId || Phase != GamePhase.Lobby || !IsFull || !Map.Fits(map))
         {
-            throw new InvalidOperationException("Only the creator can start a full lobby.");
+            throw new InvalidOperationException("Only the creator can start a full lobby, on the map it chose.");
         }
 
         var players = _players.OrderBy(static player => player.Seat).Select(static player => player.PlayerId);
-        State = GameFactory.Create(ruleset, new GameSetup([.. players], NewSeed()));
+        State = GameFactory.Create(ruleset, new GameSetup([.. players], NewSeed(), Map: map));
+        Map = MapChoice.Of(map);
         Phase = GamePhase.InProgress;
         CurrentPlayerId = State.CurrentPlayer.Value;
         MarkChanged(now);

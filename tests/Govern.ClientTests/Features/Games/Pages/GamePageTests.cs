@@ -34,6 +34,21 @@ public class GamePageTests : ClientTestContext
         stream.Complete();
     }
 
+    [Theory]
+    [InlineData("basin", "Map: The Basin")]
+    [InlineData("random", "Map: Random map from the pool")]
+    [InlineData("generated", "Map: Generated map")]
+    [InlineData(null, "Map: Generated map")]
+    public async Task Render_Lobby_ShowsTheMapChoice(string? map, string text)
+    {
+        var stream = await ServeAsync(TestGames.CreatorLobby() with { Map = map });
+
+        var cut = RenderGame();
+
+        cut.WaitForAssertion(() => cut.Find(".lobby-map").TextContent.Trim().ShouldBe(text));
+        stream.Complete();
+    }
+
     [Fact]
     public async Task Render_JoinerLobby_OffersLeaveWithoutTheCode()
     {
