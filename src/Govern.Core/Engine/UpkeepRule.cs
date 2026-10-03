@@ -21,13 +21,21 @@ internal static class UpkeepRule
         .Select(static unit => unit.Id)
         .ToHashSet();
 
-    public static GameState Apply(Ruleset ruleset, GameState state, PlayerId player, IReadOnlySet<UnitId> resting, ImmutableArray<GameEvent>.Builder events)
+    // Also returns, per city, the upkeep it couldn't pay (of its unpaid buildings and units), which raises its demand (TradeRule).
+    public static (GameState State, IReadOnlyDictionary<CityId, ImmutableArray<ResourceAmount>> Shortages) Apply(
+        Ruleset ruleset,
+        GameState state,
+        PlayerId player,
+        IReadOnlySet<UnitId> resting,
+        ImmutableArray<GameEvent>.Builder events)
     {
         var unsupplied = new HashSet<UnitId>();
+        var shortages = new Dictionary<CityId, ImmutableArray<ResourceAmount>>();
         foreach (var city in state.Cities.Where(city => city.Owner == player).OrderBy(static city => city.Id.Value).ToList())
         {
             var result = UpkeepCalculator.Pay(ruleset, city.StockList, city.BuildingList, UnitsOn(state, city), city.UpkeepPriority);
             unsupplied.UnionWith(result.UnpaidUnits);
+            shortages[city.Id] = Unpaid(ruleset, state, result);
             var damage = BuildingDamage(ruleset, city, result.UnpaidBuildings, events);
             state = state.WithCity(city with
             {
@@ -44,14 +52,21 @@ internal static class UpkeepRule
             }
         }
 
-        return state with
+        var kept = state with
         {
             Units = [.. state.Units.Select(unit => unit.Owner != player ? unit
                 : unsupplied.Contains(unit.Id) ? Starve(ruleset, unit, events)
                 : resting.Contains(unit.Id) ? Heal(ruleset, state, unit)
                 : unit)],
         };
+        return (kept, shortages);
     }
+
+    // The upkeep of what a city couldn't keep up.
+    private static ImmutableArray<ResourceAmount> Unpaid(Ruleset ruleset, GameState state, UpkeepResult result) => YieldCalculator.Sum(
+        ruleset,
+        result.UnpaidBuildings.SelectMany(building => ruleset.Building(building).Upkeep)
+            .Concat(result.UnpaidUnits.SelectMany(id => ruleset.Unit(state.FindUnit(id)!.Type).Upkeep)));
 
     // The player's units on a city's territory, which the city keeps up.
     public static IEnumerable<UpkeepUnit> UnitsOn(GameState state, City city) => state.Units

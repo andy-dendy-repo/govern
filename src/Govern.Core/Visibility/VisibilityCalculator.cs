@@ -110,8 +110,9 @@ public static class VisibilityCalculator
             [.. state.Cities
                 .Where(city => city.Owner == viewer || visible.Contains(city.Position))
                 .OrderBy(static city => city.Id.Value)
-                .Select(city => CityView.From(city, viewer))],
-            [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status))]);
+                .Select(city => CityView.From(city, viewer, SeenTradePost(ruleset, state, city, viewer, visible)))],
+            [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status))],
+            TradeRoutes(ruleset, state, viewer));
 
         return view with { Version = Fingerprint(view) };
     }
@@ -134,6 +135,21 @@ public static class VisibilityCalculator
         ArgumentNullException.ThrowIfNull(update);
 
         return EventVisibilityCalculator.EventsFor(ruleset, before, update, viewer);
+    }
+
+    // A city's trade post tile when the viewer may see it: always their own, an enemy's while its tile is in sight.
+    private static HexCoord? SeenTradePost(Ruleset ruleset, GameState state, City city, PlayerId viewer, IReadOnlySet<HexCoord> visible) =>
+        TradeRule.PostTile(ruleset, state.Map, city.Id) is { } post && (city.Owner == viewer || visible.Contains(post)) ? post : null;
+
+    // The routes the viewer is a side of, ordered by (random) id; null when there are none.
+    private static ImmutableArray<TradeRouteView>? TradeRoutes(Ruleset ruleset, GameState state, PlayerId viewer)
+    {
+        var routes = state.TradeRouteList
+            .Select(route => TradeRouteView.From(ruleset, state, route, viewer))
+            .OfType<TradeRouteView>()
+            .OrderBy(static route => route.Id.Value)
+            .ToImmutableArray();
+        return routes.IsEmpty ? null : routes;
     }
 
     // The first 8 bytes of the view's SHA-256 (non-negative). It depends only on what the viewer sees, so changes hidden from

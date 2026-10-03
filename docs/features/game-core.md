@@ -1,6 +1,6 @@
 ---
 title: Game Core engine
-tags: [game, core, engine, upkeep, resource-cost, supply, building-health, upkeep-priority, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, game-log, events-for, serialization, schema-version, determinism]
+tags: [game, core, engine, trading, trade-route, trader, market, deal, demand, upkeep, resource-cost, supply, building-health, upkeep-priority, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, game-log, events-for, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
 updated: 2026-10-03
 ---
@@ -19,7 +19,7 @@ updated: 2026-10-03
 | `GameFactory.Create(ruleset, GameSetup)` | New game: the setup's predefined map (`GameSetup.Map`, a `PredefinedMap` from the pool, [maps](../game/maps.md)) with a spawn candidate per player, or a generated map of the ruleset's size (or the setup's size, within the ruleset's limits) whose two halves mirror each other ([map generation](#map-generation)); each player gets the ruleset's starting units (by default a settler plus an adjacent soldier) on the default terrain. Turn 1, first player, version 0 |
 | `GameEngine.Execute(ruleset, state, actor, command)` | Validates and applies one `GameCommand`. Returns `CommandResult`: a `GameUpdate` (new `GameState` + ordered `GameEvent`s) or a `RuleViolation`. A rejected command never changes the state |
 | `GameEngine.ReachableTiles(ruleset, state, viewer, unitId)` | Tiles one of the viewer's units can move to this turn, for UI highlights. Another player's unit always returns an empty list |
-| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CombatForecast(ruleset, view, unitId, target)`, `CheckFoundCity(ruleset, view, unitId, name?)`, `CheckBuildImprovement(ruleset, view, unitId, improvement)`, `BridgeTargets(ruleset, view, unitId)`, `CheckProduceBuilding(ruleset, view, cityId, building)`, `BuildingSites(ruleset, view, cityId, building)`, `CityIncome(ruleset, view, cityId)`, `CityForecast(ruleset, view, cityId)`, `UnitSupply(ruleset, view, unitId)` | What `Execute` would decide for a move, an attack (and the damage range of a fight), founding a city, starting an improvement or a bridge, producing a building, or a city's income, upkeep and a unit's supply at the end of the turn, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
+| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CombatForecast(ruleset, view, unitId, target)`, `CheckFoundCity(ruleset, view, unitId, name?)`, `CheckBuildImprovement(ruleset, view, unitId, improvement)`, `BridgeTargets(ruleset, view, unitId)`, `CheckProduceBuilding(ruleset, view, cityId, building)`, `BuildingSites(ruleset, view, cityId, building)`, `CityIncome(ruleset, view, cityId)`, `CityForecast(ruleset, view, cityId)`, `UnitSupply(ruleset, view, unitId)`; `TradePreviewCalculator.CheckOpenTradeRoute`/`CheckProposeDeal`/`CheckAcceptDeal` | What `Execute` would decide for a move, an attack (and the damage range of a fight), founding a city, starting an improvement or a bridge, producing a building, or a city's income, upkeep and a unit's supply at the end of the turn, or a trade command, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
 | `GameEngine.ViewFor(ruleset, state, player)` | The fog-of-war `PlayerView`: the only shape a client may receive |
 | `GameSerializer` | The one JSON format for storage (jsonb), the Api and the client |
 
@@ -129,6 +129,15 @@ Andrii's model: everything a city makes costs resources once and upkeep every tu
 - **View:** `CityView.ProductionPaid`, `UpkeepPriority` and `BuildingDamage` for own cities only. Previews (`Visibility/UpkeepPreviewCalculator`): `GameEngine.CityForecast` (`CityForecast`: income, the `UpkeepResult`, what is missing to begin and the production per turn after upkeep, both assuming the city doesn't feed a job) and `GameEngine.UnitSupply` (`UnitSupply`: the paying city or the land's shortfall). `Engine/UpkeepPreviewTests` checks both against `Execute`.
 - Algorithms: [game logic](../game/game-logic.md#costs-and-upkeep).
 
+## Trading (G17)
+
+Andrii's model: no money (gold is a resource), cities with a trade post swap resources through traders that keep a deal alive by walking between the two posts (ruleset v10, [game data](../game/game-data-economy.md#trade-trade), algorithms in [game logic: trading](../game/game-logic-trade.md)).
+- **Ruleset:** `Rulesets/TradeRules` (`building`, `routesPerCity`, `maxCap`, `demandStepPercent`, `demandSmoothing`, `minDemandPercent`, `maxDemandPercent`), `ResourceDefinition.TradeValue` (tradable when ≥ 1, never the growth resource), the `trade` unit ability (`UnitDefinition.CanTrade`); checked by `TradeRulesValidator`.
+- **State, all optional in the JSON (no schema bump):** `City.Market` (`Economy/MarketOrder`: resource, `MarketSide`, cap) and `City.Demand` (`ResourceDemand`, levels other than 100 %), `GameState.TradeRoutes` (`Economy/TradeRoute`: owner, home, host, trader, `TradeDeal`, opened, paused; `TradeRouteId` from the hashed generator) and `Unit.RouteId`.
+- **Commands:** `SetMarketOrderCommand` (`set_market_order`), `OpenTradeRouteCommand` (`open_trade_route`), `ProposeDealCommand` (`propose_deal`), `AnswerDealCommand` (`answer_deal`, accept with routes to cancel, or decline), `CancelDealCommand` (`cancel_deal`), `CloseTradeRouteCommand` (`close_trade_route`); dispatched by `Engine/TradeRule.Dispatch`. Events: `TradeRouteChangedEvent` (`trade_route_changed`, with a `TradeChange`) and `TradeExchangedEvent` (`trade_exchanged`).
+- **Engine:** `Engine/TradeRule` walks traders (through `AutoMoveRule.TakeSteps`, stopping next to the post), swaps goods after upkeep at the end of the host owner's turn and moves demand (`Economy/TradeCalculator`: free market, deal check, demand step), and after every command closes routes whose cities changed hands and breaks deals whose trader is gone. A trader on a route refuses move and set destination (`trade.on_route`); a trader is produced only next to a trade post.
+- **View:** own cities' `CityView.Market`/`Demand`, `CityView.TradePost` for cities the viewer may trade with, `UnitView.RouteId` (owner only) and `PlayerView.TradeRoutes` (`TradeRouteView`: the owner's routes with the host's free market while open with the trader at the post; the routes at the viewer's cities without the trader or the home market). `CityForecast` ignores trade (the other side's stock is hidden).
+
 ## Combat (G9)
 
 - **State:** `Unit.Damage` (0 = unhurt; health = `combat.maxHealth` − damage). Stored as damage so games saved before G9 read as unhurt with no schema bump; the JSON leaves it out while it is 0. The view carries `UnitView.Health` for every unit the viewer sees.
@@ -185,6 +194,7 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `bridge.not_adjacent` / `bridge.no_river` / `bridge.exists` / `bridge.impassable` / `bridge.enemy_territory` | Bridge job problems |
 | `city.unknown_building` / `city.building_exists` / `city.building_needs_terrain` / `city.building_not_in_territory` / `city.building_wrong_terrain` / `city.building_site_taken` / `city.building_site_being_improved` | Building production problems |
 | `city.unknown_upkeep_priority` | An upkeep priority Core doesn't know |
+| `trade.*`, `market.cap_out_of_range` / `market.below_deals` | Trade command problems, in check order in [game logic: trading](../game/game-logic-trade.md#the-trade-commands) |
 
 Exceptions are reserved for programming errors: an invalid `GameSetup`, an unknown command type, or `ViewFor` for a non-participant.
 
@@ -217,6 +227,7 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 | `city_captured` | when the city's tile is seen or the city was theirs |
 | `unit_destroyed`, `city_founded`, `unit_created`, `improvement_built`, `territory_grew` | when the tile is seen; `unit_created` and `territory_grew` without their `cityId` (the view never says which enemy city a tile belongs to) |
 | `bridge_built` | when the builder's tile (`from`) is seen, since the builder stays there |
+| `trade_route_changed`, `trade_exchanged` | only by the two sides of the route |
 | `production_changed`, `build_started`, `building_completed`, `building_damaged`, `upkeep_priority_set`, `unit_starved`, `unit_order_ended` | never: the view already shows what the opponent may know (an enemy unit's `Destination` is hidden in the view too) |
 
 Hidden events are dropped, never counted, so the log adds nothing the two views don't already give (`EventVisibilityTests` checks every event type for both players).
@@ -287,11 +298,12 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - the view previews' parity with `Execute` (`Engine/GameEnginePreviewTests`), including rivers of each kind and bridges around the unit, and the build previews (`Engine/BuildPreviewTests`);
 - builders, jobs, yields and buildings (`Actions/BuildImprovementActionTests`, `BuildBridgeActionTests`, `ProduceBuildingActionTests`, `Engine/ConstructionRuleTests`);
 - costs and upkeep (`Economy/UpkeepCalculatorTests`, `Engine/UpkeepRuleTests`, `Engine/ProductionCostTests`, `Engine/UpkeepPreviewTests`);
+- trading (`Actions/*Deal*`, `*TradeRoute*` and `SetMarketOrderActionTests`, `Engine/TradeRuleTests`, `Economy/TradeCalculatorTests`, `Visibility/TradeRouteViewTests`, `Visibility/TradePreviewCalculatorTests` for parity, scenarios from `Builders/TradeScenario`);
 - river generation: mirrored, from a source to a mouth, never splitting the passable map (`Map/MapGeneratorTests`);
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v9.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v10.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`

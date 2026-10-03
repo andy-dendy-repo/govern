@@ -21,6 +21,7 @@ public static class PieceModels
         ["horseman"] = PieceModel.Horseman,
         ["archer"] = PieceModel.Archer,
         ["scout"] = PieceModel.Scout,
+        ["trader"] = PieceModel.Trader,
     };
 
     /// <summary>The unit ids that have an entry.</summary>

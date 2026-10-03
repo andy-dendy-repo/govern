@@ -71,4 +71,16 @@ public class SetProductionActionTests
 
         update.State.FindCity(city)!.Producing.ShouldBe(slinger);
     }
+
+    [Fact]
+    public void Execute_TraderWithoutATradePost_IsRejected()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var plain = builder.AddCity(P1, 5, 5);
+        var trading = builder.AddCity(P1, 5, 1, buildings: TestRulesets.TradePost);
+        var state = builder.WithBuilding(TestRulesets.TradePost, (6, 1)).Build();
+
+        GameEngine.Execute(TestRulesets.Default, state, P1, new SetProductionCommand(plain, TestRulesets.Trader)).ShouldFailWith(RuleViolations.NoTradePost);
+        GameEngine.Execute(TestRulesets.Default, state, P1, new SetProductionCommand(trading, TestRulesets.Trader)).ShouldSucceed();
+    }
 }

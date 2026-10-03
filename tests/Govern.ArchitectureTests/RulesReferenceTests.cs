@@ -8,8 +8,8 @@ namespace Govern.ArchitectureTests;
 
 /// <summary>
 /// The player-facing rules reference (<c>docs/game/rules.md</c>) documents the ruleset the game is played with: every terrain,
-/// river kind, unit, improvement and building has one row with the ruleset's numbers, every class counter has one row, and the "Game numbers" table matches the
-/// setup, map, city and combat sections.
+/// river kind, unit, improvement, building and tradable resource has one row with the ruleset's numbers, every class counter has one row, and the "Game numbers" table matches the
+/// setup, map, city, combat, upkeep and trade sections.
 /// </summary>
 public class RulesReferenceTests
 {
@@ -27,6 +27,7 @@ public class RulesReferenceTests
         [UnitAbility.RangedAttack] = "Ranged attack",
         [UnitAbility.BuildImprovement] = "Build improvements",
         [UnitAbility.BuildBridge] = "Build bridges",
+        [UnitAbility.Trade] = "Trade",
     };
 
     [Fact]
@@ -122,6 +123,16 @@ public class RulesReferenceTests
     }
 
     [Fact]
+    public void TradeValueTable_MatchesTheRuleset()
+    {
+        var expected = Ruleset.TradableResources
+            .Select(static resource => Row(Ruleset.ResourceName(resource.Id), resource.TradeValue))
+            .ToList();
+
+        Table("Trade values").ShouldBe(expected, ignoreOrder: true, Because);
+    }
+
+    [Fact]
     public void CountersTable_MatchesTheRuleset()
     {
         var expected = Ruleset.Combat.Counters
@@ -162,6 +173,12 @@ public class RulesReferenceTests
             Row("Health lost in a turn without upkeep", Ruleset.Upkeep.ShortageDamage),
             Row("Full health of a building", Ruleset.Upkeep.BuildingHealth),
             Row("Health a building regains per paid turn", Ruleset.Upkeep.BuildingRecovery),
+            Row("Building that holds a market", Ruleset.BuildingName(Ruleset.Trade.Building)),
+            Row("Trade routes per city", Ruleset.Trade.RoutesPerCity),
+            Row("Largest market cap", Ruleset.Trade.MaxCap),
+            Row("Demand change per turn", $"{Ruleset.Trade.DemandStepPercent}%"),
+            Row("Lowest demand", $"{Ruleset.Trade.MinDemandPercent}%"),
+            Row("Highest demand", $"{Ruleset.Trade.MaxDemandPercent}%"),
         ];
 
         Table("Game numbers").ShouldBe(expected, ignoreOrder: true, Because);

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.Core.Units;
@@ -32,6 +33,9 @@ namespace Govern.Core.Visibility;
 /// The viewer's cities and the enemy cities on visible tiles, ordered by id; enemy production is hidden (<see cref="CityView"/>).
 /// </param>
 /// <param name="Players">Participants in turn order.</param>
+/// <param name="TradeRoutes">
+/// The trade routes the viewer is a side of (<see cref="TradeRouteView"/>), ordered by id; <see langword="null"/> when none.
+/// </param>
 public sealed record PlayerView(
     PlayerId Viewer,
     long Version,
@@ -44,8 +48,13 @@ public sealed record PlayerView(
     ImmutableArray<TileView> Tiles,
     ImmutableArray<UnitView> Units,
     ImmutableArray<CityView> Cities,
-    ImmutableArray<PlayerSummary> Players)
+    ImmutableArray<PlayerSummary> Players,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradeRouteView>? TradeRoutes = null)
 {
+    /// <summary>The trade routes the viewer is a side of (empty when none).</summary>
+    [JsonIgnore]
+    public ImmutableArray<TradeRouteView> TradeRouteList => TradeRoutes ?? [];
+
     /// <summary>The position of the tile at an index of <see cref="Tiles"/>.</summary>
     /// <param name="index">A tile index, 0 to <c>Width * Height - 1</c>.</param>
     /// <returns>The tile's coordinate.</returns>

@@ -27,6 +27,7 @@ internal static class EconomyRulesValidator
         CheckTileYields(document, resources, problems);
         CheckCityEconomy(document, resources, problems);
         UpkeepRulesValidator.Validate(document, resources, problems);
+        TradeRulesValidator.Validate(document, problems);
         CheckTexts(document, problems);
     }
 

@@ -1,8 +1,9 @@
 @* The selected city: its name in its owner's colour and, for the player's own city, its resources with what they gain or lose
-   each turn, what it produces, whether its resource cost is paid and how long it takes, then three tabs: Units (the buttons
+   each turn, what it produces, whether its resource cost is paid and how long it takes, then four tabs: Units (the buttons
    to produce a unit), Buildings (the buildings it has with their health, and a button per building it doesn't have, with
-   its effect, cost and, when it can't have it, why) and Economy (its upkeep and upkeep order, marked with a warning when it
-   can't pay, and what its next territory tile costs). The open tab is kept in GameUiService, so it stays open from city to
+   its effect, cost and, when it can't have it, why), Economy (its upkeep and upkeep order, marked with a warning when it
+   can't pay, and what its next territory tile costs) and Market (what it sells and buys, and its trade routes: CityMarket,
+   marked when a proposal waits for an answer). The open tab is kept in GameUiService, so it stays open from city to
    city. Every tab renders on the client, so switching sends nothing and the panel's buttons stay in the page. *@
 @using Govern.Core.Cities
 @using Govern.Core.Actions
@@ -59,7 +60,8 @@
                         {
                             <RadzenButton Size="ButtonSize.Small"
                                           ButtonStyle="@(ProducingUnit(unit.Id) ? ButtonStyle.Primary : ButtonStyle.Light)"
-                                          Disabled="@(Busy || !CanAct || ProducingUnit(unit.Id))"
+                                          Disabled="@(Busy || !CanAct || ProducingUnit(unit.Id) || NeedsTradePost(unit))"
+                                          title="@(NeedsTradePost(unit) ? $"Needs a {Ruleset.BuildingName(Ruleset.Trade.Building)}" : null)"
                                           Click="@(() => Command.InvokeAsync(new SetProductionCommand(City.Id, unit.Id)))"
                                           class="@($"produce produce-{unit.Id.Id}")">
                                 <span class="produce-name">Build @Ruleset.UnitName(unit.Id)</span>
@@ -125,6 +127,9 @@
                         <CityUpkeep View="@View" City="@City" Ruleset="@Ruleset" Forecast="@forecast" Busy="@Busy" CanAct="@CanAct" Command="@Command"/>
                         <RadzenText TextStyle="TextStyle.Caption" class="territory-growth rz-m-0">@TerritoryText</RadzenText>
                     </RadzenStack>
+                </RadzenTabsItem>
+                <RadzenTabsItem Text="Market" Icon="@(HasProposal ? "notifications" : null)">
+                    <CityMarket View="@View" City="@City" Ruleset="@Ruleset" Busy="@Busy" CanAct="@CanAct" Command="@Command"/>
                 </RadzenTabsItem>
             </Tabs>
         </RadzenTabs>

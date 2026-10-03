@@ -156,6 +156,26 @@ public class RulesetTests
         ["shortage damage kills"] = json => json["upkeep"]!["shortageDamage"] = 100,
         ["buildings without health"] = json => json["upkeep"]!["buildingHealth"] = 0,
         ["building recovery above its health"] = json => json["upkeep"]!["buildingRecovery"] = 101,
+        ["negative trade value"] = json => json["resources"]![0]!["tradeValue"] = -1,
+        ["trade value too high"] = json => json["resources"]![0]!["tradeValue"] = 101,
+        ["tradable culture"] = json => json["resources"]![6]!["tradeValue"] = 1,
+        ["unknown trade building"] = json => json["trade"]!["building"] = "bazaar",
+        ["no trade routes"] = json => json["trade"]!["routesPerCity"] = 0,
+        ["no market cap"] = json => json["trade"]!["maxCap"] = 0,
+        ["market cap too high"] = json => json["trade"]!["maxCap"] = 101,
+        ["no demand step"] = json => json["trade"]!["demandStepPercent"] = 0,
+        ["no demand smoothing"] = json => json["trade"]!["demandSmoothing"] = 0,
+        ["lowest demand above base"] = json => json["trade"]!["minDemandPercent"] = 101,
+        ["highest demand below base"] = json => json["trade"]!["maxDemandPercent"] = 99,
+        ["missing trade section"] = json => json.AsObject().Remove("trade"),
+        ["trader that attacks"] = json => json["units"]![7]!["abilities"]!.AsArray().Add("attack"),
+        ["nothing tradable"] = json =>
+        {
+            foreach (var resource in json["resources"]!.AsArray())
+            {
+                resource!.AsObject().Remove("tradeValue");
+            }
+        },
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -303,6 +323,20 @@ public class RulesetTests
         { "shortage damage kills", "$.upkeep.shortageDamage" },
         { "buildings without health", "$.upkeep.buildingHealth" },
         { "building recovery above its health", "$.upkeep.buildingRecovery" },
+        { "negative trade value", "$.resources[0].tradeValue" },
+        { "trade value too high", "$.resources[0].tradeValue" },
+        { "tradable culture", "$.resources[6].tradeValue" },
+        { "unknown trade building", "$.trade.building" },
+        { "no trade routes", "$.trade.routesPerCity" },
+        { "no market cap", "$.trade.maxCap" },
+        { "market cap too high", "$.trade.maxCap" },
+        { "no demand step", "$.trade.demandStepPercent" },
+        { "no demand smoothing", "$.trade.demandSmoothing" },
+        { "lowest demand above base", "$.trade.minDemandPercent" },
+        { "highest demand below base", "$.trade.maxDemandPercent" },
+        { "missing trade section", "$" },
+        { "trader that attacks", "$.units[7].abilities" },
+        { "nothing tradable", "$.resources" },
     };
 
     [Fact]
@@ -315,7 +349,14 @@ public class RulesetTests
         var ruleset = result.Ruleset;
         ruleset.Setup.Players.ShouldBe(2);
         ruleset.Setup.StartingUnits.ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
-        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder, TestRulesets.Scout]);
+        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder, TestRulesets.Scout, TestRulesets.Trader]);
+        ruleset.Unit(TestRulesets.Trader).ShouldSatisfyAllConditions(
+            static trader => trader.CanTrade.ShouldBeTrue(),
+            static trader => trader.Strength.ShouldBeNull(),
+            static trader => trader.Movement.ShouldBe(3));
+        ruleset.TradableResources.Select(static resource => (resource.Id.Id, resource.TradeValue))
+            .ShouldBe([("food", 1), ("wood", 2), ("stone", 2), ("gold", 3)]);
+        ruleset.Trade.ShouldBe(new TradeRules(TestRulesets.TradePost, 2, 20, 20, 5, 25, 400));
         ruleset.Unit(TestRulesets.Builder).CanBuildImprovements.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Builder).CanBuildBridges.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Builder).BuildProduction.ShouldBe(2);

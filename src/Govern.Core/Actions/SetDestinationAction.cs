@@ -29,6 +29,11 @@ internal static class SetDestinationRule
             return error;
         }
 
+        if (unit.RouteId is not null)
+        {
+            return RuleViolations.OnTradeRoute;
+        }
+
         if (command.Target is not { } target)
         {
             return new GameUpdate(state.WithUnit(unit with { Destination = null }), []);

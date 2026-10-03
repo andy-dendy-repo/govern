@@ -28,6 +28,12 @@ namespace Govern.Core.Visibility;
 /// <param name="ProducingBuildingSite">
 /// The tile reserved for <paramref name="ProducingBuilding"/>; always <see langword="null"/> for an enemy city.
 /// </param>
+/// <param name="Market">What the city sells and buys; <see langword="null"/> when nothing, or for an enemy city.</param>
+/// <param name="Demand">Its demand levels that differ from the base level; <see langword="null"/> when none does, or for an enemy city.</param>
+/// <param name="TradePost">
+/// Its trade post tile, where traders go (G17): for the viewer's own city when it has one, and for an enemy city when the viewer
+/// sees the trade post's tile; otherwise <see langword="null"/>.
+/// </param>
 public sealed record CityView(
     CityId Id,
     PlayerId Owner,
@@ -42,8 +48,19 @@ public sealed record CityView(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool ProductionPaid = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] UpkeepPriority UpkeepPriority = UpkeepPriority.BuildingsFirst,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<BuildingDamage>? BuildingDamage = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? ProducingBuildingSite = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? ProducingBuildingSite = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<MarketOrder>? Market = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<ResourceDemand>? Demand = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? TradePost = null)
 {
+    /// <summary>The city's market orders (empty when it trades nothing, or for an enemy city).</summary>
+    [JsonIgnore]
+    public ImmutableArray<MarketOrder> MarketList => Market ?? [];
+
+    /// <summary>The city's demand levels that differ from the base level (empty when none does, or for an enemy city).</summary>
+    [JsonIgnore]
+    public ImmutableArray<ResourceDemand> DemandList => Demand ?? [];
+
     /// <summary>The city's resources (empty when it has none or for an enemy city).</summary>
     [JsonIgnore]
     public ImmutableArray<ResourceAmount> StockList => Stock ?? [];
@@ -62,15 +79,16 @@ public sealed record CityView(
     /// <returns>The buildings, in the order they were finished.</returns>
     public IEnumerable<BuildingType> WorkingBuildings(int buildingHealth) => BuildingList.Where(building => DamageOf(building) < buildingHealth);
 
-    /// <summary>Projects a city for a viewer, hiding the production and buildings of cities the viewer doesn't own.</summary>
+    /// <summary>Projects a city for a viewer, hiding the production, buildings and market of cities the viewer doesn't own.</summary>
     /// <param name="city">The city.</param>
     /// <param name="viewer">The player the view is for.</param>
+    /// <param name="tradePost">The city's trade post tile when the viewer may see it (always for their own city); otherwise <see langword="null"/>.</param>
     /// <returns>The city as the viewer sees it.</returns>
-    public static CityView From(City city, PlayerId viewer)
+    public static CityView From(City city, PlayerId viewer, HexCoord? tradePost = null)
     {
         ArgumentNullException.ThrowIfNull(city);
         return city.Owner == viewer
-            ? new CityView(city.Id, city.Owner, city.Name, city.Position, city.Producing, city.ProductionProgress, city.ProducingBuilding, city.Buildings, city.Stock, city.TilesGained, city.ProductionPaid, city.UpkeepPriority, city.BuildingDamage, city.ProducingBuildingSite)
-            : new CityView(city.Id, city.Owner, city.Name, city.Position, Producing: null, ProductionProgress: null);
+            ? new CityView(city.Id, city.Owner, city.Name, city.Position, city.Producing, city.ProductionProgress, city.ProducingBuilding, city.Buildings, city.Stock, city.TilesGained, city.ProductionPaid, city.UpkeepPriority, city.BuildingDamage, city.ProducingBuildingSite, city.Market, city.Demand, tradePost)
+            : new CityView(city.Id, city.Owner, city.Name, city.Position, Producing: null, ProductionProgress: null, TradePost: tradePost);
     }
 }

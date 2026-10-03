@@ -97,6 +97,13 @@ Checks worth repeating:
 - **Moves made inside the opponent's command** (turn-start auto walks in PassTurn) let the opponent tell automated moves from manual ones and predict the next walk; the docs' accepted-leak list and player rules must say so.
 - Enum names in docs: GameSerializer/ApiJson use camelCase (`enemySighted`), not snake_case.
 
+G17 trading review (2026-10-03, claude/project-thread-u8gkn1: markets, traders, routes, deals, v10). Found:
+- **Null elements in command arrays:** GameSerializer accepts `[null]` inside `ImmutableArray<ResourceAmount>` (RespectRequiredConstructorParameters doesn't cover elements; verified with a scratch probe), so `ProposeDeal.Gives=[null]` NREs in `TradeCalculator.CheckDeal` -> 500. Any new command with an array of reference-type records needs a null-element check (or struct elements).
+- **Events for routes the host never saw:** `TradeRouteChangedEvent` is filtered by Owner/HostOwner only, so Closed on a not-yet-opened route reaches the host (reveals the route and its hidden home city id). Filter host-side events on "opened" like `TradeRouteView.From`.
+- `TradeRouteView.HostMarket/HostDemand` are live state, not "learned at the post": they keep updating while the trader is dead/away (demand includes unpaid upkeep, so it shows host starvation).
+- Units with `trade` + another ability aren't refused with `trade.on_route` by Attack/FoundCity/BuildImprovement/BuildBridge; only Move/SetDestination check. Ask for a guard or a validator rule.
+Verified OK, don't re-derive: Open/Propose/Accept previews match the engine (hosted unopened routes carry no deal; proposals commit only the home city); route ids come from AllocateId (hashed); Exchange order (AcceptedTurn, id) deterministic; buildings are never removed, so PostTile is stable until capture (which closes the route).
+
 G18 review (2026-10-03, claude/project-thread-69iq1k: PredefinedMap, MapChoice, MapPoolService, maps/basin.json). No critical. Found:
 - **Public spawn candidates shrink the opponent's start to n known tiles** (basin n=3; the validator allows n=1, which reveals it exactly). Docs claimed only "your own start doesn't tell you which". Ask for a minimum candidate count and an accepted-leak line whenever spawn options come from public data.
 - STJ `RespectNullableAnnotations` does not cover collection elements: `rows: [null]` gives a NullReferenceException from `PredefinedMap.Parse` (verified), not a problem. Check element nulls in every strict document parser.

@@ -39,6 +39,11 @@ namespace Govern.Core.Cities;
 /// The tile of the city's territory reserved for <paramref name="ProducingBuilding"/>, where it will stand; set exactly when
 /// <paramref name="ProducingBuilding"/> is.
 /// </param>
+/// <param name="Market">What the city sells and buys in its trade deals, in the ruleset's order; <see langword="null"/> when nothing.</param>
+/// <param name="Demand">
+/// The city's demand levels that differ from <see cref="Rulesets.TradeRules.BaseDemandPercent"/>, in the ruleset's order;
+/// <see langword="null"/> when none does.
+/// </param>
 public sealed record City(
     CityId Id,
     PlayerId Owner,
@@ -53,8 +58,18 @@ public sealed record City(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool ProductionPaid = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] UpkeepPriority UpkeepPriority = UpkeepPriority.BuildingsFirst,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<BuildingDamage>? BuildingDamage = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? ProducingBuildingSite = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? ProducingBuildingSite = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<MarketOrder>? Market = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<ResourceDemand>? Demand = null)
 {
+    /// <summary>The city's market orders (empty when it trades nothing).</summary>
+    [JsonIgnore]
+    public ImmutableArray<MarketOrder> MarketList => Market ?? [];
+
+    /// <summary>The city's demand levels that differ from the base level (empty when none does).</summary>
+    [JsonIgnore]
+    public ImmutableArray<ResourceDemand> DemandList => Demand ?? [];
+
     /// <summary>The city's resources (empty when it has none).</summary>
     [JsonIgnore]
     public ImmutableArray<ResourceAmount> StockList => Stock ?? [];
