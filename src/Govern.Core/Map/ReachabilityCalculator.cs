@@ -11,13 +11,17 @@ namespace Govern.Core.Map;
 /// </summary>
 internal static class ReachabilityCalculator
 {
-    public static Reachability Compute(Ruleset ruleset, GameState state, Unit unit) => Compute(
-        unit,
-        (from, to) => state.Map.IsPassable(ruleset, to)
-            && state.UnitAt(to) is null
-            && (state.CityAt(to) is not { } city || city.Owner == unit.Owner)
-                ? StepCost(ruleset, state.Map.TileAt(to).Terrain, state.Map.CrossedRiverBetween(from, to))
-                : null);
+    public static Reachability Compute(Ruleset ruleset, GameState state, Unit unit) =>
+        Compute(unit, (from, to) => StepCost(ruleset, state, unit, from, to));
+
+    // The cost of the unit's step between neighbours on the full state; null when it can't take it (impassable, a unit there, an
+    // enemy city, or a river it can't cross).
+    public static int? StepCost(Ruleset ruleset, GameState state, Unit unit, HexCoord from, HexCoord to) =>
+        state.Map.IsPassable(ruleset, to)
+        && state.UnitAt(to) is null
+        && (state.CityAt(to) is not { } city || city.Owner == unit.Owner)
+            ? StepCost(ruleset, state.Map.TileAt(to).Terrain, state.Map.CrossedRiverBetween(from, to))
+            : null;
 
     // The cost of stepping onto a passable tile with the given terrain over an edge with the given river; null when the
     // river can't be crossed. Shared with the view previews, so both price a step the same way.

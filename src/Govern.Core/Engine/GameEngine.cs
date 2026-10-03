@@ -81,6 +81,25 @@ public static class GameEngine
     }
 
     /// <summary>
+    /// The way one of the viewer's units would walk to a destination, worked out from their view alone (for the client). A
+    /// preview is returned exactly when a <see cref="SetDestinationCommand"/> to the tile would be accepted.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="unitId">The unit.</param>
+    /// <param name="target">The destination.</param>
+    /// <returns>
+    /// The path and the number of turns; <see langword="null"/> when it is not the viewer's turn, the game is over, the viewer has
+    /// no such unit, or the tile has a unit on it or no known path.
+    /// </returns>
+    public static DestinationPreview? DestinationPath(Ruleset ruleset, PlayerView view, UnitId unitId, HexCoord target)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return ViewPreviewCalculator.DestinationPath(ruleset, view, unitId, target);
+    }
+
+    /// <summary>
     /// Tiles one of the viewer's units can attack now, worked out from their view alone (for the client). A tile is in the
     /// result exactly when an <see cref="AttackCommand"/> on it would be accepted.
     /// </summary>
@@ -264,6 +283,7 @@ public static class GameEngine
     private static CommandResult Dispatch(Ruleset ruleset, GameState state, PlayerId actor, GameCommand command) => command switch
     {
         MoveUnitCommand move => MoveUnitRule.Apply(ruleset, state, actor, move),
+        SetDestinationCommand destination => SetDestinationRule.Apply(ruleset, state, actor, destination),
         AttackCommand attack => AttackRule.Apply(ruleset, state, actor, attack),
         FoundCityCommand found => FoundCityRule.Apply(ruleset, state, actor, found),
         SetProductionCommand production => SetProductionRule.Apply(ruleset, state, actor, production),

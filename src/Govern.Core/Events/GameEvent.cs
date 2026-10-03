@@ -8,6 +8,7 @@ namespace Govern.Core.Events;
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(UnitMovedEvent), "unit_moved")]
+[JsonDerivedType(typeof(UnitOrderEndedEvent), "unit_order_ended")]
 [JsonDerivedType(typeof(UnitCreatedEvent), "unit_created")]
 [JsonDerivedType(typeof(UnitDestroyedEvent), "unit_destroyed")]
 [JsonDerivedType(typeof(UnitAttackedEvent), "unit_attacked")]

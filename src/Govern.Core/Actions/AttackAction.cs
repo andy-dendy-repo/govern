@@ -93,7 +93,7 @@ internal static class AttackRule
         events.Add(new UnitAttackedEvent(
             attacker.Id, attacker.Owner, attacker.Type, attacker.Position, defender.Id, defender.Owner, defender.Type, defender.Position, dealt, taken));
         var next = Hurt(ruleset, state with { RngState = random.State }, defender, dealt, events);
-        next = Hurt(ruleset, next, attacker with { MovementLeft = 0, Job = null }, taken, events);
+        next = Hurt(ruleset, next, attacker with { MovementLeft = 0, Job = null, Destination = null }, taken, events);
         return new GameUpdate(next, events.ToImmutable());
     }
 
@@ -128,7 +128,7 @@ internal static class AttackRule
         var progress = ruleset.Cities.CaptureResetsProduction ? 0 : city.ProductionProgress;
         var next = state
             .WithCity(city with { Owner = attacker.Owner, ProductionProgress = progress, ProducingBuilding = null, ProducingBuildingSite = null, ProductionPaid = false })
-            .WithUnit(attacker with { Position = city.Position, MovementLeft = 0, Job = null });
+            .WithUnit(attacker with { Position = city.Position, MovementLeft = 0, Job = null, Destination = null });
 
         return new GameUpdate(next, [
             new UnitMovedEvent(attacker.Id, attacker.Owner, attacker.Type, [city.Position]),

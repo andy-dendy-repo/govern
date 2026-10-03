@@ -37,6 +37,7 @@ internal static class EventVisibilityCalculator
     {
         TurnEndedEvent or PlayerResignedEvent or PlayerEliminatedEvent or GameWonEvent => gameEvent,
         UnitMovedEvent moved => Moved(moved, viewer, seen),
+        UnitOrderEndedEvent ended => ended.Owner == viewer ? ended : null,
         UnitAttackedEvent attacked => Attacked(attacked, viewer, seen),
         CityCapturedEvent captured => captured.PreviousOwner == viewer || captured.NewOwner == viewer || seen.Contains(captured.Position)
             ? captured

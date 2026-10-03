@@ -231,6 +231,7 @@ public class EventVisibilityTests
         ImmutableArray<GameEvent> samples =
         [
             new UnitMovedEvent(unit, P1, TestRulesets.Builder, [At(2, 1)]),
+            new UnitOrderEndedEvent(unit, P1, TestRulesets.Builder, At(2, 1), At(2, 1), OrderEndReason.Arrived),
             new UnitCreatedEvent(unit, P1, TestRulesets.Builder, At(1, 1), city),
             new UnitDestroyedEvent(new UnitId(999), P1, TestRulesets.Soldier, At(1, 0)),
             new UnitAttackedEvent(unit, P1, TestRulesets.Builder, At(2, 1), new UnitId(997), P1, TestRulesets.Soldier, At(1, 2), 0, 0),

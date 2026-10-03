@@ -36,7 +36,7 @@ internal static class BuildImprovementRule
         }
 
         var job = UnitJob.ForImprovement(command.Improvement, state.Turn);
-        return new GameUpdate(state.WithUnit(unit with { MovementLeft = 0, Job = job }), [new BuildStartedEvent(unit.Id, job)]);
+        return new GameUpdate(state.WithUnit(unit with { MovementLeft = 0, Job = job, Destination = null }), [new BuildStartedEvent(unit.Id, job)]);
     }
 
     // Shared with the view-based preview (ViewPreviewCalculator): the unit's own tile is always visible, and so are all of the

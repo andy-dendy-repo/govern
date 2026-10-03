@@ -1,5 +1,6 @@
 using Govern.Core.Actions;
 using Govern.Core.Engine;
+using Govern.Core.Events;
 using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.Core.Units;
@@ -57,6 +58,26 @@ public class GameEnginePreviewTests
         {
             var accepted = GameEngine.Execute(TestRulesets.Default, state, P1, new MoveUnitCommand(unitId, target)).IsSuccess;
             reachable.Contains(target).ShouldBe(accepted, $"move to {target}");
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Scenarios))]
+    public void DestinationPath_View_MatchesSetDestinationCommands(string scenario)
+    {
+        var (state, unitId, _) = Build(scenario);
+        var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
+
+        foreach (var target in Enumerable.Range(0, Width * Height).Select(static index => At(index % Width, index / Width)))
+        {
+            var preview = GameEngine.DestinationPath(TestRulesets.Default, view, unitId, target);
+            var result = GameEngine.Execute(TestRulesets.Default, state, P1, new SetDestinationCommand(unitId, target));
+
+            result.IsSuccess.ShouldBe(preview is not null, $"destination {target}");
+            if (result.IsSuccess && result.Update.Events.OfType<UnitMovedEvent>().SingleOrDefault() is { } moved)
+            {
+                preview!.Path.Take(moved.Path.Length).ShouldBe(moved.Path, $"walk to {target}");
+            }
         }
     }
 

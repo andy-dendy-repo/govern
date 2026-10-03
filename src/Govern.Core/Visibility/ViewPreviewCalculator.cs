@@ -28,6 +28,19 @@ internal static class ViewPreviewCalculator
             .ThenBy(static coord => coord.Column)];
     }
 
+    public static DestinationPreview? DestinationPath(Ruleset ruleset, PlayerView view, UnitId unitId, HexCoord target)
+    {
+        if (ActingUnit(ruleset, view, unitId) is not { } unit || !view.Contains(target) || target == unit.Position || view.UnitAt(target) is not null)
+        {
+            return null;
+        }
+
+        var movement = ruleset.Unit(unit.Type).Movement;
+        return PathFinder.Find(unit.Position, target, movement, (from, to) => KnownStepCost(ruleset, view, unit, from, to)) is { } path
+            ? new DestinationPreview([.. path.Select(static step => step.Tile)], PathFinder.Turns(path, unit.MovementLeft, movement))
+            : null;
+    }
+
     public static ImmutableArray<HexCoord> AttackTargets(Ruleset ruleset, PlayerView view, UnitId unitId)
     {
         if (ActingUnit(ruleset, view, unitId) is not { } unit)
@@ -222,6 +235,16 @@ internal static class ViewPreviewCalculator
             ? ReachabilityCalculator.StepCost(ruleset, terrain, view.CrossedRiverBetween(from, to))
             : null;
 
+    // A step as the viewer knows it, for a walk to a destination: onto any explored passable tile, not onto a unit or enemy city
+    // they see. The view shows rivers on explored tiles and bridges only on visible ones, as AutoMoveRule plans on the state.
+    private static int? KnownStepCost(Ruleset ruleset, PlayerView view, Unit unit, HexCoord from, HexCoord to) =>
+        view.Contains(to)
+        && view.TileAt(to) is { Terrain: { } terrain } tile
+        && ruleset.Terrain(terrain).IsPassable
+        && (tile.Visibility != TileVisibility.Visible || (view.UnitAt(to) is null && (view.CityAt(to) is not { } city || city.Owner == unit.Owner)))
+            ? ReachabilityCalculator.StepCost(ruleset, terrain, view.CrossedRiverBetween(from, to))
+            : null;
+
     // The viewer's unit when they may act with it now; otherwise null.
     private static Unit? ActingUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
         CheckTurn(view) is null ? OwnUnit(ruleset, view, unitId) : null;
@@ -229,7 +252,7 @@ internal static class ViewPreviewCalculator
     // The viewer's own unit as the rules' checks take it. Its movement is always in the view: only enemy movement is hidden.
     private static Unit? OwnUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
         view.FindOwnUnit(unitId) is { MovementLeft: { } movementLeft } own
-            ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft, ruleset.Combat.MaxHealth - own.Health, own.Job)
+            ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft, ruleset.Combat.MaxHealth - own.Health, own.Job, own.Destination)
             : null;
 
     private static RuleViolation? CheckTurn(PlayerView view) => CommandGuardRule.CheckTurn(
