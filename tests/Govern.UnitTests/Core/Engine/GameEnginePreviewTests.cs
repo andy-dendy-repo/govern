@@ -1,5 +1,6 @@
 using Govern.Core.Actions;
 using Govern.Core.Engine;
+using Govern.Core.Events;
 using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.Core.Units;
@@ -57,6 +58,40 @@ public class GameEnginePreviewTests
         {
             var accepted = GameEngine.Execute(TestRulesets.Default, state, P1, new MoveUnitCommand(unitId, target)).IsSuccess;
             reachable.Contains(target).ShouldBe(accepted, $"move to {target}");
+        }
+    }
+
+    // Every scenario on a map the player knows only from sight, and on one they have explored whole: then hidden units, cities,
+    // rivers and bridges lie on explored tiles the walk may be planned over. The far wall's bridges are out of sight.
+    public static TheoryData<string, bool> DestinationScenarios()
+    {
+        var data = new TheoryData<string, bool>();
+        foreach (var scenario in Scenarios.Select(static row => row.Data).Append("far bridged deep river wall"))
+        {
+            data.Add(scenario, false);
+            data.Add(scenario, true);
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(DestinationScenarios))]
+    public void DestinationPath_View_MatchesSetDestinationCommands(string scenario, bool mapExplored)
+    {
+        var (state, unitId, _) = Build(scenario, mapExplored);
+        var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
+
+        foreach (var target in Enumerable.Range(0, Width * Height).Select(static index => At(index % Width, index / Width)))
+        {
+            var preview = GameEngine.DestinationPath(TestRulesets.Default, view, unitId, target);
+            var result = GameEngine.Execute(TestRulesets.Default, state, P1, new SetDestinationCommand(unitId, target));
+
+            result.IsSuccess.ShouldBe(preview is not null, $"destination {target}");
+            if (result.IsSuccess && result.Update.Events.OfType<UnitMovedEvent>().SingleOrDefault() is { } moved)
+            {
+                preview!.Path.Take(moved.Path.Length).ShouldBe(moved.Path, $"walk to {target}");
+            }
         }
     }
 
@@ -257,9 +292,10 @@ public class GameEnginePreviewTests
         GameEngine.AttackTargets(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), archer).ShouldBe([At(7, 5)]);
     }
 
-    private static (GameState State, UnitId Unit, HexCoord Origin) Build(string scenario)
+    private static (GameState State, UnitId Unit, HexCoord Origin) Build(string scenario, bool mapExplored = false)
     {
         var builder = new GameStateBuilder().WithCapitals();
+        builder = mapExplored ? builder.WithMapExplored(P1) : builder;
         var (unit, origin) = scenario switch
         {
             "own unit blocks" => (Soldier(builder, 5, 5), Blocker(builder, P1, 6, 5)),
@@ -341,6 +377,13 @@ public class GameEnginePreviewTests
                     TestRulesets.DeepRiver,
                     ((5, 3), (6, 3)), ((6, 3), (6, 4)), ((6, 4), (6, 5)), ((5, 5), (6, 5)), ((6, 5), (6, 6)), ((6, 6), (6, 7)), ((5, 7), (6, 7)))
                 .WithBridge(((5, 5), (6, 5)), ((5, 3), (6, 3))),
+            // The bridged wall three columns further east, out of the unit's sight: the view knows its river, not its bridges.
+            "far bridged deep river wall" => builder
+                .WithRiver(
+                    TestRulesets.DeepRiver,
+                    ((8, 3), (9, 3)), ((9, 3), (9, 4)), ((9, 4), (9, 5)), ((8, 5), (9, 5)), ((9, 5), (9, 6)), ((9, 6), (9, 7)), ((8, 7), (9, 7)))
+                .WithBridge(((8, 5), (9, 5)))
+                .WithTerrain(TestRulesets.Forest, (9, 2), (9, 8)),
             "enemies across bridges" => builder
                 .WithRiver(TestRulesets.DeepRiver, ((5, 5), (6, 5)), ((5, 5), (5, 4)))
                 .WithRiver(TestRulesets.River, ((5, 5), (4, 5)))

@@ -7,6 +7,7 @@ using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.State;
+using Govern.Core.Visibility;
 using Govern.Domain.Enums;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
@@ -103,6 +104,36 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var moved = (await GamesApi.ReadGameAsync(response, Ct)).View!.Units.Single(u => u.Id == unit.Id);
         moved.Position.ShouldBe(target);
+    }
+
+    [Fact]
+    public async Task Post_SetDestination_Returns200AndTheUnitWalksAndKeepsTheOrder()
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var view = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!;
+        var unit = view.Units.First(u => u.Owner == view.Viewer);
+        var target = Enumerable.Range(0, view.Tiles.Length).Select(view.CoordAt)
+            .First(coord => GameEngine.DestinationPath(TestRulesets.Default, view, unit.Id, coord) is { Turns: > 0 });
+
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, view.Version, new SetDestinationCommand(unit.Id, target), Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var walking = (await GamesApi.ReadGameAsync(response, Ct)).View!.Units.Single(u => u.Id == unit.Id);
+        walking.Destination.ShouldBe(target);
+        walking.Position.ShouldNotBe(unit.Position);
+    }
+
+    [Fact]
+    public async Task Post_SetDestinationOnAnUnexploredTile_Returns409WithTheRuleViolationCode()
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var view = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!;
+        var unit = view.Units.First(u => u.Owner == view.Viewer);
+        var unexplored = view.CoordAt(Enumerable.Range(0, view.Tiles.Length).First(index => view.Tiles[index].Visibility == TileVisibility.Unexplored));
+
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, view.Version, new SetDestinationCommand(unit.Id, unexplored), Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, RuleViolations.NoPath.Code, Ct);
     }
 
     [Fact]

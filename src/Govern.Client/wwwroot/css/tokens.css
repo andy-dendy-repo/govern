@@ -21,6 +21,8 @@
     --gv-overlay-target: rgba(214, 69, 69, 0.6);
     --gv-overlay-bridgeable: rgba(176, 132, 74, 0.4);
     --gv-overlay-placeable: rgba(120, 170, 230, 0.4);
+    --gv-overlay-route: rgba(255, 213, 74, 0.25);
+    --gv-overlay-destination: rgba(255, 213, 74, 0.55);
     /* Bridge timber (the board's planks and the gallery's swatch). */
     --gv-bridge: #8a5a2b;
     --gv-bridge-outline: #3b2614;

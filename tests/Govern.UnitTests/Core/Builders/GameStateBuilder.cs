@@ -31,13 +31,23 @@ internal sealed class GameStateBuilder
     private int _nextId = 1;
     private PlayerId _currentPlayer = P1;
     private int _turn = 1;
+    private readonly HashSet<PlayerId> _exploredAll = [];
 
     public static HexCoord At(int column, int row) => HexCoord.FromOffset(column, row);
 
-    public UnitId AddUnit(PlayerId owner, UnitType type, int column, int row, int? movementLeft = null, int damage = 0, UnitJob? job = null)
+    public UnitId AddUnit(
+        PlayerId owner,
+        UnitType type,
+        int column,
+        int row,
+        int? movementLeft = null,
+        int damage = 0,
+        UnitJob? job = null,
+        (int Column, int Row)? destination = null)
     {
         var id = new UnitId(_nextId++);
-        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? TestRulesets.Default.Unit(type).Movement, damage, job));
+        var target = destination is var (targetColumn, targetRow) ? At(targetColumn, targetRow) : (HexCoord?)null;
+        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? TestRulesets.Default.Unit(type).Movement, damage, job, target));
         return id;
     }
 
@@ -150,6 +160,13 @@ internal sealed class GameStateBuilder
         return this;
     }
 
+    // Lets a player know the whole map's terrain and rivers, as if they had explored it all.
+    public GameStateBuilder WithMapExplored(PlayerId player)
+    {
+        _exploredAll.Add(player);
+        return this;
+    }
+
     public GameStateBuilder WithCurrentPlayer(PlayerId player, int turn = 1)
     {
         _currentPlayer = player;
@@ -164,11 +181,14 @@ internal sealed class GameStateBuilder
         CurrentPlayer = _currentPlayer,
         Status = GameStatus.InProgress,
         Map = BuildMap(),
-        Players = [new Player(P1, PlayerStatus.Active, []), new Player(P2, PlayerStatus.Active, [])],
+        Players = [new Player(P1, PlayerStatus.Active, ExploredBy(P1)), new Player(P2, PlayerStatus.Active, ExploredBy(P2))],
         Units = [.. _units],
         Cities = [.. _cities],
         RngState = 42,
     });
+
+    private ImmutableArray<HexCoord> ExploredBy(PlayerId player) =>
+        _exploredAll.Contains(player) ? [.. Enumerable.Range(0, Width * Height).Select(static index => At(index % Width, index / Width))] : [];
 
     private GameMap BuildMap()
     {

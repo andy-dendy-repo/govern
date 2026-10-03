@@ -1,6 +1,7 @@
 @* The selected own unit's actions, under its panel in the selection card (SelectionCard): what it can do. Each action is a button (keyboard-reachable), disabled
-   with the reason when the rules forbid it. A new ability adds its button here. Moves and attacks are board clicks; Build
-   bridge turns on bridge mode, where a click on a marked neighbour starts the bridge. *@
+   with the reason when the rules forbid it. A new ability adds its button here. Moves and attacks are board clicks; Go to
+   turns on destination mode, where a click on any explored tile sends the unit walking there on its own (Stop cancels the
+   order); Build bridge turns on bridge mode, where a click on a marked neighbour starts the bridge. *@
 @using Govern.Core.Economy
 @using Govern.Client.Features.Games.Services
 @using Govern.Core.Actions
@@ -16,6 +17,14 @@
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap" class="action-bar">
         <GameIcon Id="@Icons.Unit(unit.Type)" Class="@Seats.Class(View, unit.Owner)"/>
         <RadzenText TextStyle="TextStyle.Body2" TagName="TagName.Span" class="action-hint rz-m-0">@Hint(unit, definition)</RadzenText>
+        <RadzenButton Disabled="@(Busy || !MyTurn)" ButtonStyle="@(Ui.Selection.Destination ? ButtonStyle.Primary : ButtonStyle.Secondary)"
+                      Click="@(() => Ui.ToggleDestination(Ruleset, View))" aria-pressed="@(Ui.Selection.Destination ? "true" : "false")"
+                      Icon="near_me" Text="@(Ui.Selection.Destination ? "Cancel go to" : "Go to")" class="go-to"/>
+        @if (unit.Destination is not null)
+        {
+            <RadzenButton Disabled="@(Busy || !MyTurn)" ButtonStyle="ButtonStyle.Secondary" Icon="block" Text="Stop"
+                          Click="@(() => Command.InvokeAsync(new SetDestinationCommand(unit.Id, null)))" class="stop-order"/>
+        }
         @if (definition.CanFoundCity)
         {
             var problem = GameEngine.CheckFoundCity(Ruleset, View, unit.Id);
@@ -77,10 +86,13 @@
 
     [Parameter] public EventCallback<GameCommand> Command { get; set; }
 
+    private bool MyTurn => View.CurrentPlayer == View.Viewer;
+
     private UnitView? Unit => View.Status == GameStatus.InProgress && Ui.Selection.Unit is { } id ? View.FindOwnUnit(id) : null;
 
     private string Hint(UnitView unit, UnitDefinition definition) => (Ui.Selection.Bridge, unit.Job) switch
     {
+        _ when Ui.Selection.Destination => "Click any tile you have explored to send the unit there; it walks on at the start of each turn. Esc cancels.",
         (true, _) => "Click a marked tile across the river to build a bridge to it. Esc cancels.",
         (_, { Improvement: { } improvement }) => $"Building a {Ruleset.ImprovementName(improvement)}. Moving or starting another job stops it.",
         (_, { BridgeTo: not null }) => "Building a bridge. Moving or starting another job stops it.",

@@ -90,3 +90,9 @@ Checks worth repeating:
 - **Hand-copied check order** (`SiteCheckOrder` mirrors `CheckSite`) used to pick a "closest" reason: the parity test only checks membership, so a reorder drifts silently.
 - **Re-pick UIs that highlight the current choice** send no-op commands that still emit events (log noise).
 - game-logic.md fog section lists what the view shows per tile; every new TileView/CityView field must be added there, not only in .claude/rules/game-core.md.
+
+F19 review (2026-10-03, claude/project-thread-14v1na: Unit.Destination, AutoMoveRule, PathFinder, DestinationPath preview). No critical. Verified, don't re-derive: plan over Explored ∪ Visible equals the view's knowledge (explored TileView = terrain + rivers, bridges/units/cities only on visible tiles, edge owner of a path step is always a known tile); real step cost can only be <= planned (hidden bridges), never higher; the walk's "hidden blocker stops for this turn, keeps the order" branch is unreachable with 2 players (sight >= 1, so the blocker enters the unit's sight one step earlier and EnemySighted ends the order first).
+Checks worth repeating:
+- **Parity theories built without explored tiles:** `GameStateBuilder` players had `Explored = []`, so `GameEnginePreviewTests` scenarios never contain explored-but-not-visible tiles; any preview whose rule reads Explored needs scenarios with `WithMapExplored` (hidden unit/city/bridge on a known tile).
+- **Moves made inside the opponent's command** (turn-start auto walks in PassTurn) let the opponent tell automated moves from manual ones and predict the next walk; the docs' accepted-leak list and player rules must say so.
+- Enum names in docs: GameSerializer/ApiJson use camelCase (`enemySighted`), not snake_case.

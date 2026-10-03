@@ -23,6 +23,19 @@ public class GameLogFormatterTests
         line.IsYours.ShouldBeTrue();
     }
 
+    [Theory]
+    [InlineData(OrderEndReason.Arrived, "Your Soldier arrived at its destination")]
+    [InlineData(OrderEndReason.EnemySighted, "Your Soldier stopped: an enemy came into sight")]
+    [InlineData(OrderEndReason.Blocked, "Your Soldier stopped: there is no known way to its destination")]
+    public void Describe_OrderEnded_SaysWhy(OrderEndReason reason, string text)
+    {
+        var line = GameLogFormatter.Describe(Ruleset, View, new UnitOrderEndedEvent(new UnitId(1), You, SoldierType, At(2, 2), At(6, 2), reason))!;
+
+        line.Text.ShouldBe(text);
+        line.Tile.ShouldBe(At(2, 2));
+        line.IsYours.ShouldBeTrue();
+    }
+
     [Fact]
     public void Describe_EnemyAttackOnYourUnit_NamesTheSeatAndTheDamage()
     {
