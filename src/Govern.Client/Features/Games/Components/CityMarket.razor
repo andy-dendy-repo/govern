@@ -1,0 +1,44 @@
+@* The Market tab of the player's own city (G17): per tradable resource what the city sells or buys and its cap (picked here and
+   sent with Set), how much of the cap its deals use, its demand level and what one unit is worth here against the first
+   tradable resource (the fair rate). Under them, the city's trade routes (CityTradeRoutes). A city without a trade post says it
+   needs one. *@
+@using Govern.Core.Economy
+
+<RadzenStack Gap="0.5rem" class="city-market">
+    @if (City.TradePost is null)
+    {
+        <RadzenText TextStyle="TextStyle.Caption" class="market-needs-post rz-m-0">
+            Build a @Ruleset.BuildingName(Ruleset.Trade.Building) to trade: it holds the city's market, trains traders and hosts trade routes.
+        </RadzenText>
+    }
+    else
+    {
+        @foreach (var resource in Ruleset.TradableResources)
+        {
+            var draft = Draft(resource.Id);
+            var name = Ruleset.ResourceName(resource.Id);
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap"
+                         class="@($"market-order market-order-{resource.Id.Id}")" role="group" aria-label="@($"{name} market")">
+                <GameIcon Id="@Icons.Resource(resource.Id)" Label="@name"/>
+                <RadzenText TextStyle="TextStyle.Body2" TagName="TagName.Span" class="market-resource rz-m-0">@name</RadzenText>
+                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="market-rate rz-m-0">@RateText(resource.Id)</RadzenText>
+                @foreach (var (side, label) in Sides)
+                {
+                    var active = draft.Side == side;
+                    <RadzenButton Size="ButtonSize.ExtraSmall" ButtonStyle="@(active ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Disabled="@(Busy || !CanAct)" aria-pressed="@(active ? "true" : "false")" Text="@label"
+                                  Click="@(() => Pick(resource.Id, side))" class="@($"market-side market-side-{label.ToLowerInvariant()}")"/>
+                }
+                @if (draft.Side is not null)
+                {
+                    <RadzenNumeric TValue="int" Value="@draft.Cap" Min="1" Max="@Ruleset.Trade.MaxCap" Disabled="@(Busy || !CanAct)"
+                                   Change="@(cap => SetCap(resource.Id, cap))" aria-label="@($"{name} cap a turn")" class="market-cap"/>
+                }
+                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="market-used rz-m-0">@UsedText(resource.Id)</RadzenText>
+                <RadzenButton Size="ButtonSize.ExtraSmall" Text="Set" Disabled="@(Busy || !CanAct || !Changed(resource.Id))"
+                              Click="@(() => SendAsync(resource.Id))" class="market-set"/>
+            </RadzenStack>
+        }
+    }
+    <CityTradeRoutes View="@View" City="@City" Ruleset="@Ruleset" Busy="@Busy" CanAct="@CanAct" Command="@Command"/>
+</RadzenStack>

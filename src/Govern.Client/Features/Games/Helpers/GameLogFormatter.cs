@@ -26,7 +26,7 @@ public static class GameLogFormatter
         ArgumentNullException.ThrowIfNull(view);
 
         var names = new Names(ruleset, view);
-        return Units(names, gameEvent) ?? Cities(names, gameEvent) ?? Game(names, gameEvent);
+        return Units(names, gameEvent) ?? Cities(names, gameEvent) ?? Game(names, gameEvent) ?? TradeLogFormatter.Describe(ruleset, view, gameEvent);
     }
 
     private static GameLogLine? Units(Names names, GameEvent gameEvent) => gameEvent switch

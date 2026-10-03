@@ -27,6 +27,9 @@ public enum PieceModel
     /// <summary>A hooded figure with a knife.</summary>
     Scout,
 
+    /// <summary>A figure carrying a pack of goods.</summary>
+    Trader,
+
     /// <summary>A cluster of houses round a tower.</summary>
     City,
 }

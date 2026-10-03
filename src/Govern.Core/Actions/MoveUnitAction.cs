@@ -27,6 +27,11 @@ internal static class MoveUnitRule
             return error;
         }
 
+        if (unit.RouteId is not null)
+        {
+            return RuleViolations.OnTradeRoute;
+        }
+
         if (unit.MovementLeft <= 0)
         {
             return RuleViolations.NoMovementLeft;

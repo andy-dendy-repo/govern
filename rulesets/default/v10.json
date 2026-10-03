@@ -1,0 +1,206 @@
+{
+  "setup": {
+    "players": 2,
+    "startingUnits": ["settler", "soldier"]
+  },
+  "map": {
+    "defaultWidth": 20,
+    "defaultHeight": 14,
+    "minSize": 8,
+    "maxSize": 40,
+    "defaultTerrain": "plains",
+    "spawn": {
+      "zoneColumnsPerMille": 250,
+      "edgeMargin": 1
+    },
+    "generation": {
+      "patches": [
+        { "terrain": "forest", "sharePerMille": 150, "patchSize": 4 },
+        { "terrain": "hills", "sharePerMille": 100, "patchSize": 3 },
+        { "terrain": "mountains", "sharePerMille": 40, "patchSize": 2 },
+        { "terrain": "lake", "sharePerMille": 40, "patchSize": 3 },
+        { "terrain": "desert", "sharePerMille": 80, "patchSize": 7 }
+      ],
+      "rivers": {
+        "count": 2,
+        "minLength": 4,
+        "maxLength": 12,
+        "sources": ["hills", "mountains"],
+        "mouths": ["lake"],
+        "stages": [
+          { "river": "stream", "fromSegment": 0 },
+          { "river": "river", "fromSegment": 3 },
+          { "river": "deep_river", "fromSegment": 7 }
+        ]
+      }
+    }
+  },
+  "terrains": [
+    { "id": "plains", "movementCost": 1, "isPassable": true, "sightBonus": 0, "defenceBonus": 0, "yields": [{ "resource": "food", "amount": 2 }, { "resource": "water", "amount": 1 }] },
+    { "id": "forest", "movementCost": 2, "isPassable": true, "sightBonus": 0, "defenceBonus": 3, "yields": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }, { "resource": "wood", "amount": 2 }] },
+    { "id": "hills", "movementCost": 2, "isPassable": true, "sightBonus": 1, "defenceBonus": 3, "yields": [{ "resource": "food", "amount": 1 }, { "resource": "stone", "amount": 2 }] },
+    { "id": "mountains", "movementCost": 1, "isPassable": false, "sightBonus": 0, "defenceBonus": 0, "yields": [{ "resource": "stone", "amount": 2 }] },
+    { "id": "lake", "movementCost": 1, "isPassable": false, "sightBonus": 0, "defenceBonus": 0, "yields": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 3 }] },
+    { "id": "desert", "movementCost": 1, "isPassable": true, "sightBonus": 0, "defenceBonus": 0, "yields": [] }
+  ],
+  "rivers": [
+    { "id": "stream", "crossingCost": 0, "isCrossable": true, "defenceBonus": 0, "yields": [{ "resource": "water", "amount": 1 }] },
+    { "id": "river", "crossingCost": 1, "isCrossable": true, "defenceBonus": 3, "yields": [{ "resource": "water", "amount": 1 }] },
+    { "id": "deep_river", "crossingCost": 0, "isCrossable": false, "defenceBonus": 5, "yields": [{ "resource": "water", "amount": 1 }] }
+  ],
+  "bridges": {
+    "cost": 6
+  },
+  "units": [
+    { "id": "settler", "class": "civilian", "movement": 2, "sight": 2, "productionCost": 6, "resourceCost": [{ "resource": "food", "amount": 4 }, { "resource": "water", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["found_city"] },
+    { "id": "soldier", "class": "melee", "movement": 2, "sight": 2, "productionCost": 4, "strength": 20, "buildProduction": 1, "resourceCost": [{ "resource": "food", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["attack", "build_bridge"] },
+    { "id": "spearman", "class": "anti_cavalry", "movement": 2, "sight": 2, "productionCost": 4, "strength": 18, "resourceCost": [{ "resource": "wood", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["attack"] },
+    { "id": "horseman", "class": "cavalry", "movement": 3, "sight": 3, "productionCost": 6, "strength": 20, "resourceCost": [{ "resource": "food", "amount": 3 }, { "resource": "water", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 2 }, { "resource": "water", "amount": 2 }], "abilities": ["attack"] },
+    { "id": "archer", "class": "ranged", "movement": 2, "sight": 2, "productionCost": 5, "strength": 10, "ranged": { "strength": 22, "range": 2 }, "resourceCost": [{ "resource": "wood", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["ranged_attack"] },
+    { "id": "builder", "class": "civilian", "movement": 2, "sight": 2, "productionCost": 5, "buildProduction": 2, "resourceCost": [{ "resource": "food", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["build_improvement", "build_bridge"] },
+    { "id": "scout", "class": "recon", "movement": 4, "sight": 4, "productionCost": 3, "strength": 8, "resourceCost": [{ "resource": "food", "amount": 1 }], "upkeep": [{ "resource": "food", "amount": 1 }], "abilities": [] },
+    { "id": "trader", "class": "civilian", "movement": 3, "sight": 3, "productionCost": 6, "resourceCost": [{ "resource": "food", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }], "abilities": ["trade"] }
+  ],
+  "cities": {
+    "sight": 2,
+    "minimumSpacing": 3,
+    "productionPerTurn": 1,
+    "initialProduction": "soldier",
+    "suggestedNames": ["city.name.ambermoor", "city.name.brightwater", "city.name.cindervale", "city.name.duskhollow", "city.name.elmstead", "city.name.fernreach", "city.name.greywatch", "city.name.hollowmere", "city.name.ironbrook", "city.name.juniper_hill", "city.name.kestrel_point", "city.name.larkspur", "city.name.mistfall", "city.name.northgate", "city.name.oakhaven", "city.name.pinecrest", "city.name.quillmarsh", "city.name.redcliff", "city.name.stonebridge", "city.name.thornfield", "city.name.umberlow", "city.name.valewood", "city.name.willowmere", "city.name.yarrowby", "city.name.zephyr_rise", "city.name.cobble_ford", "city.name.saltmarsh", "city.name.highfold", "city.name.mill_end", "city.name.copperhill"],
+    "captureResetsProduction": true,
+    "yields": [{ "resource": "culture", "amount": 1 }],
+    "startingStock": [{ "resource": "food", "amount": 5 }, { "resource": "water", "amount": 5 }, { "resource": "wood", "amount": 5 }, { "resource": "stone", "amount": 5 }]
+  },
+  "territory": {
+    "initialRadius": 1,
+    "maxRadius": 3,
+    "growthResource": "culture",
+    "tileCost": 4,
+    "tileCostIncrease": 2
+  },
+  "upkeep": {
+    "supplyRadius": 1,
+    "shortageDamage": 10,
+    "buildingHealth": 100,
+    "buildingRecovery": 10
+  },
+  "resources": [
+    { "id": "food", "tradeValue": 1 },
+    { "id": "water" },
+    { "id": "wood", "tradeValue": 2 },
+    { "id": "stone", "tradeValue": 2 },
+    { "id": "gold", "tradeValue": 3 },
+    { "id": "science" },
+    { "id": "culture" }
+  ],
+  "improvements": [
+    { "id": "farm", "terrains": ["plains"], "cost": 4, "yields": [{ "resource": "food", "amount": 2 }] },
+    { "id": "lumber_camp", "terrains": ["forest"], "cost": 4, "yields": [{ "resource": "wood", "amount": 2 }] },
+    { "id": "mine", "terrains": ["hills"], "cost": 6, "yields": [{ "resource": "stone", "amount": 2 }] }
+  ],
+  "buildings": [
+    { "id": "army_camp", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 4 }, { "resource": "wood", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }], "yields": [], "production": 1, "requiresAdjacentTerrain": [] },
+    { "id": "campus", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 4 }], "upkeep": [{ "resource": "gold", "amount": 1 }], "yields": [{ "resource": "science", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
+    { "id": "trade_post", "cost": 8, "resourceCost": [{ "resource": "wood", "amount": 4 }], "upkeep": [], "yields": [{ "resource": "gold", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
+    { "id": "culture_centre", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 3 }], "upkeep": [{ "resource": "gold", "amount": 1 }], "yields": [{ "resource": "culture", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
+    { "id": "harbour", "cost": 8, "resourceCost": [{ "resource": "wood", "amount": 6 }], "upkeep": [], "yields": [{ "resource": "food", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": ["lake"] }
+  ],
+  "combat": {
+    "maxHealth": 100,
+    "damage": {
+      "base": 30,
+      "perStrengthPoint": 2,
+      "min": 5,
+      "max": 100,
+      "spreadPercent": 20
+    },
+    "healing": {
+      "perTurn": 10,
+      "inOwnCity": 20
+    },
+    "counters": [
+      { "class": "melee", "against": "anti_cavalry", "bonus": 5 },
+      { "class": "anti_cavalry", "against": "cavalry", "bonus": 10 },
+      { "class": "cavalry", "against": "ranged", "bonus": 5 }
+    ]
+  },
+  "trade": {
+    "building": "trade_post",
+    "routesPerCity": 2,
+    "maxCap": 20,
+    "demandStepPercent": 20,
+    "demandSmoothing": 5,
+    "minDemandPercent": 25,
+    "maxDemandPercent": 400
+  },
+  "texts": {
+    "unit.settler.name": "Settler",
+    "unit.soldier.name": "Soldier",
+    "unit.spearman.name": "Spearman",
+    "unit.horseman.name": "Horseman",
+    "unit.archer.name": "Archer",
+    "unit.builder.name": "Builder",
+    "unit.scout.name": "Scout",
+    "unit.trader.name": "Trader",
+    "class.civilian.name": "Civilian",
+    "class.melee.name": "Melee",
+    "class.anti_cavalry.name": "Anti-cavalry",
+    "class.cavalry.name": "Cavalry",
+    "class.ranged.name": "Ranged",
+    "class.recon.name": "Recon",
+    "terrain.plains.name": "Plains",
+    "terrain.forest.name": "Forest",
+    "terrain.hills.name": "Hills",
+    "terrain.mountains.name": "Mountains",
+    "terrain.lake.name": "Lake",
+    "terrain.desert.name": "Desert",
+    "river.stream.name": "Stream",
+    "river.river.name": "River",
+    "river.deep_river.name": "Deep river",
+    "resource.food.name": "Food",
+    "resource.water.name": "Water",
+    "resource.wood.name": "Wood",
+    "resource.stone.name": "Stone",
+    "resource.gold.name": "Gold",
+    "resource.science.name": "Science",
+    "resource.culture.name": "Culture",
+    "improvement.farm.name": "Farm",
+    "improvement.lumber_camp.name": "Lumber camp",
+    "improvement.mine.name": "Mine",
+    "building.army_camp.name": "Army camp",
+    "building.campus.name": "Campus",
+    "building.trade_post.name": "Trade post",
+    "building.culture_centre.name": "Culture centre",
+    "building.harbour.name": "Harbour",
+    "city.name.ambermoor": "Ambermoor",
+    "city.name.brightwater": "Brightwater",
+    "city.name.cindervale": "Cindervale",
+    "city.name.duskhollow": "Duskhollow",
+    "city.name.elmstead": "Elmstead",
+    "city.name.fernreach": "Fernreach",
+    "city.name.greywatch": "Greywatch",
+    "city.name.hollowmere": "Hollowmere",
+    "city.name.ironbrook": "Ironbrook",
+    "city.name.juniper_hill": "Juniper Hill",
+    "city.name.kestrel_point": "Kestrel Point",
+    "city.name.larkspur": "Larkspur",
+    "city.name.mistfall": "Mistfall",
+    "city.name.northgate": "Northgate",
+    "city.name.oakhaven": "Oakhaven",
+    "city.name.pinecrest": "Pinecrest",
+    "city.name.quillmarsh": "Quillmarsh",
+    "city.name.redcliff": "Redcliff",
+    "city.name.stonebridge": "Stonebridge",
+    "city.name.thornfield": "Thornfield",
+    "city.name.umberlow": "Umberlow",
+    "city.name.valewood": "Valewood",
+    "city.name.willowmere": "Willowmere",
+    "city.name.yarrowby": "Yarrowby",
+    "city.name.zephyr_rise": "Zephyr Rise",
+    "city.name.cobble_ford": "Cobble Ford",
+    "city.name.saltmarsh": "Saltmarsh",
+    "city.name.highfold": "Highfold",
+    "city.name.mill_end": "Mill End",
+    "city.name.copperhill": "Copperhill"
+  }
+}

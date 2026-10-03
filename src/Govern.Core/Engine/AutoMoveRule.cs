@@ -19,7 +19,9 @@ internal static class AutoMoveRule
 {
     // The path over the owner's knowledge, with the cost of each step; null when the target can't be planned to. Shared in meaning
     // with the view-based preview (ViewPreviewCalculator.DestinationPath): the owner's view holds exactly this knowledge.
-    public static ImmutableArray<(HexCoord Tile, int Cost)>? Plan(Ruleset ruleset, GameState state, Unit unit, HexCoord target)
+    // A trader walking to a trade post (allowOccupiedTarget) plans through a unit it sees on the post itself: it only needs to get
+    // next to it, and the real walk stops in front of the unit.
+    public static ImmutableArray<(HexCoord Tile, int Cost)>? Plan(Ruleset ruleset, GameState state, Unit unit, HexCoord target, bool allowOccupiedTarget = false)
     {
         if (!state.Map.Contains(target) || target == unit.Position || state.FindPlayer(unit.Owner) is not { } owner)
         {
@@ -29,7 +31,7 @@ internal static class AutoMoveRule
         var visible = VisibilityCalculator.VisibleTiles(ruleset, state, unit.Owner);
         var known = owner.Explored.ToHashSet();
         known.UnionWith(visible);
-        var knowledge = new Knowledge(ruleset, state, unit.Owner, known, visible);
+        var knowledge = new Knowledge(ruleset, state, unit.Owner, known, visible, allowOccupiedTarget ? target : null);
         return PathFinder.Find(unit.Position, target, ruleset.Unit(unit.Type).Movement, knowledge.StepCost);
     }
 
@@ -49,12 +51,18 @@ internal static class AutoMoveRule
             return state;
         }
 
+        // A trader on a route walks by the route's rules: to a trade post, without stopping for enemies (see TradeRule).
+        if (unit.RouteId is not null)
+        {
+            return TradeRule.Walk(ruleset, state, unit, events);
+        }
+
         if (Plan(ruleset, state, unit, destination) is not { } path)
         {
             return End(state, unit, unit.Position == destination ? OrderEndReason.Arrived : OrderEndReason.Blocked, events);
         }
 
-        var (walkedState, walker, walked, sighted) = TakeSteps(ruleset, state, unit, path);
+        var (walkedState, walker, walked, sighted) = TakeSteps(ruleset, state, unit, path, stopOnSighting: true);
         if (walked.Length > 0)
         {
             events.Add(new UnitMovedEvent(walker.Id, walker.Owner, walker.Type, walked));
@@ -65,13 +73,14 @@ internal static class AutoMoveRule
             : walkedState;
     }
 
-    // Takes the path's real steps while the next one fits in the movement left, stopping after a step that brings a new enemy
-    // into the unit's sight.
-    private static (GameState State, Unit Unit, ImmutableArray<HexCoord> Walked, bool Sighted) TakeSteps(
+    // Takes the path's real steps while the next one fits in the movement left, stopping (when asked) after a step that brings a
+    // new enemy into the unit's sight.
+    public static (GameState State, Unit Unit, ImmutableArray<HexCoord> Walked, bool Sighted) TakeSteps(
         Ruleset ruleset,
         GameState state,
         Unit unit,
-        ImmutableArray<(HexCoord Tile, int Cost)> path)
+        ImmutableArray<(HexCoord Tile, int Cost)> path,
+        bool stopOnSighting)
     {
         var enemiesBefore = EnemiesInSight(ruleset, state, unit);
         var walked = ImmutableArray.CreateBuilder<HexCoord>();
@@ -87,7 +96,7 @@ internal static class AutoMoveRule
             unit = unit with { Position = tile, MovementLeft = unit.MovementLeft - cost, Job = null };
             state = state.WithUnit(unit);
             walked.Add(tile);
-            if (!EnemiesInSight(ruleset, state, unit).IsSubsetOf(enemiesBefore))
+            if (stopOnSighting && !EnemiesInSight(ruleset, state, unit).IsSubsetOf(enemiesBefore))
             {
                 return (state, unit, walked.ToImmutable(), true);
             }
@@ -113,7 +122,7 @@ internal static class AutoMoveRule
     }
 
     // What the owner knows of the map: the tiles they explored or see, and those they see now.
-    private sealed record Knowledge(Ruleset Ruleset, GameState State, PlayerId Owner, HashSet<HexCoord> Known, IReadOnlySet<HexCoord> Visible)
+    private sealed record Knowledge(Ruleset Ruleset, GameState State, PlayerId Owner, HashSet<HexCoord> Known, IReadOnlySet<HexCoord> Visible, HexCoord? OccupiedTargetAllowed)
     {
         // A step as the owner knows it: onto a known passable tile, not onto a unit or enemy city they see; a river counts where
         // they know of it, and a bridge only where they see it.
@@ -124,7 +133,7 @@ internal static class AutoMoveRule
                 return null;
             }
 
-            if (Visible.Contains(to) && (State.UnitAt(to) is not null || State.CityAt(to) is { } city && city.Owner != Owner))
+            if (Visible.Contains(to) && (State.UnitAt(to) is not null && to != OccupiedTargetAllowed || State.CityAt(to) is { } city && city.Owner != Owner))
             {
                 return null;
             }

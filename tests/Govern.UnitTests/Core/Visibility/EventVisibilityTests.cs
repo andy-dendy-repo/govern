@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.Json.Serialization;
 using Govern.Core.Actions;
 using Govern.Core.Cities;
+using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Serialization;
@@ -215,6 +216,25 @@ public class EventVisibilityTests
         seenByP2.Select(static gameEvent => gameEvent.GetType()).ShouldBe(everyone, ignoreOrder: true);
     }
 
+    [Fact]
+    public void EventsFor_TradeEvents_ReachOnlyTheTwoSidesOfTheRoute()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var home = builder.AddCity(P1, 1, 1);
+        var state = builder.Build();
+        var host = state.Cities.First(city => city.Owner == P2).Id;
+        GameEvent[] events =
+        [
+            new TradeRouteChangedEvent(new TradeRouteId(996), P1, P2, home, host, TradeChange.Proposed),
+            new TradeExchangedEvent(new TradeRouteId(996), P1, P2, home, host, [new ResourceAmount(TestRulesets.Food, 3)], [new ResourceAmount(TestRulesets.Stone, 1)], false, false),
+        ];
+        var own = new TradeRouteChangedEvent(new TradeRouteId(997), P1, P1, home, home, TradeChange.Opened);
+
+        VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [.. events]), P1).ShouldBe(events);
+        VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [.. events]), P2).ShouldBe(events);
+        VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [own]), P2).ShouldBeEmpty();
+    }
+
     public static TheoryData<string> EventTypes() =>
         [.. typeof(GameEvent).GetCustomAttributes<JsonDerivedTypeAttribute>().Select(static attribute => (string)attribute.TypeDiscriminator!)];
 
@@ -247,6 +267,8 @@ public class EventVisibilityTests
             new UnitStarvedEvent(unit, 90),
             new BuildingDamagedEvent(city, TestRulesets.ArmyCamp, 90),
             new UpkeepPrioritySetEvent(city, UpkeepPriority.UnitsFirst),
+            new TradeRouteChangedEvent(new TradeRouteId(996), P1, P1, city, new CityId(995), TradeChange.Accepted),
+            new TradeExchangedEvent(new TradeRouteId(996), P1, P1, city, new CityId(995), [new ResourceAmount(TestRulesets.Food, 3)], [new ResourceAmount(TestRulesets.Stone, 1)], false, true),
             new PlayerResignedEvent(P2),
             new PlayerEliminatedEvent(P2),
             new GameWonEvent(P1),
