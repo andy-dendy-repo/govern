@@ -43,8 +43,11 @@ public class RulesetTests
         ["no city spacing"] = json => json["cities"]!["minimumSpacing"] = 0,
         ["no production"] = json => json["cities"]!["productionPerTurn"] = 0,
         ["unknown initial production"] = json => json["cities"]!["initialProduction"] = "knight",
-        ["missing name template"] = json => json["cities"]!["nameTemplate"] = "city.missing",
-        ["template without a number"] = json => json["texts"]!["city.default_name"] = "Town",
+        ["no suggested city names"] = json => json["cities"]!["suggestedNames"] = new JsonArray(),
+        ["missing suggested city name"] = json => json["cities"]!["suggestedNames"]![0] = "city.missing",
+        ["invalid suggested city name"] = json => json["texts"]!["city.name.ambermoor"] = "<Amber>",
+        ["untrimmed suggested city name"] = json => json["texts"]!["city.name.ambermoor"] = " Ambermoor",
+        ["suggested city name used twice"] = json => json["texts"]!["city.name.brightwater"] = "AMBERMOOR",
         ["unit sees less than it moves"] = json => json["units"]![1]!["sight"] = 1,
         ["settler misses blocking cities"] = json => json["cities"]!["minimumSpacing"] = 4,
         ["missing unit name"] = json => json["texts"]!.AsObject().Remove("unit.soldier.name"),
@@ -188,8 +191,11 @@ public class RulesetTests
         { "no city spacing", "$.cities.minimumSpacing" },
         { "no production", "$.cities.productionPerTurn" },
         { "unknown initial production", "$.cities.initialProduction" },
-        { "missing name template", "$.cities.nameTemplate" },
-        { "template without a number", "$.texts['city.default_name']" },
+        { "no suggested city names", "$.cities.suggestedNames" },
+        { "missing suggested city name", "$.cities.suggestedNames[0]" },
+        { "invalid suggested city name", "$.texts['city.name.ambermoor']" },
+        { "untrimmed suggested city name", "$.texts['city.name.ambermoor']" },
+        { "suggested city name used twice", "$.texts['city.name.brightwater']" },
         { "unit sees less than it moves", "$.units[1].sight" },
         { "settler misses blocking cities", "$.units[0].sight" },
         { "missing unit name", "$.texts" },
@@ -415,7 +421,7 @@ public class RulesetTests
     public void Parse_DuplicateTextKey_ReportsAProblemInsteadOfThrowing()
     {
         var json = TestRulesets.DefaultJson.Replace(
-            "\"city.default_name\": \"City {n}\"", "\"city.default_name\": \"City {n}\", \"city.default_name\": \"Town {n}\"", StringComparison.Ordinal);
+            "\"city.name.copperhill\": \"Copperhill\"", "\"city.name.copperhill\": \"Copperhill\", \"city.name.copperhill\": \"Copper Hill\"", StringComparison.Ordinal);
 
         var result = Ruleset.Parse(json);
 
@@ -480,7 +486,7 @@ public class RulesetTests
     [Fact]
     public void Names_ComeFromTheTexts()
     {
-        var ruleset = TestRulesets.With(json => json["texts"]!["city.default_name"] = "Town {n} of {n}");
+        var ruleset = TestRulesets.With(json => json["texts"]!["city.name.ambermoor"] = "Amber Moor");
 
         ruleset.UnitName(TestRulesets.Settler).ShouldBe("Settler");
         ruleset.TerrainName(TestRulesets.Plains).ShouldBe("Plains");
@@ -488,6 +494,7 @@ public class RulesetTests
         ruleset.ResourceName(TestRulesets.Food).ShouldBe("Food");
         ruleset.ImprovementName(TestRulesets.LumberCamp).ShouldBe("Lumber camp");
         ruleset.BuildingName(TestRulesets.CultureCentre).ShouldBe("Culture centre");
-        ruleset.CityName(12).ShouldBe("Town 12 of 12");
+        ruleset.SuggestedCityNames[0].ShouldBe("Amber Moor");
+        ruleset.SuggestedCityNames.Length.ShouldBe(30);
     }
 }

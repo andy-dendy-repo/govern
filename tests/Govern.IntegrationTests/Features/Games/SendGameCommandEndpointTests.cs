@@ -137,6 +137,36 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     }
 
     [Fact]
+    public async Task Post_FoundCityWithAName_Returns200AndTheCityHasThatName()
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var view = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!;
+        var settler = view.Units.First(u => u.Owner == view.Viewer && TestRulesets.Default.Unit(u.Type).CanFoundCity);
+
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, view.Version, new FoundCityCommand(settler.Id, "  Old   Harbour "), Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var after = (await GamesApi.ReadGameAsync(response, Ct)).View!;
+        after.Cities.Single(c => c.Owner == after.Viewer).Name.ShouldBe("Old Harbour");
+        (await StoredStateAsync(game.Id)).Cities.Single().Name.ShouldBe("Old Harbour");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("<script>alert(1)</script>")]
+    public async Task Post_FoundCityWithAnInvalidName_Returns409WithTheRuleViolationCode(string name)
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var view = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!;
+        var settler = view.Units.First(u => u.Owner == view.Viewer && TestRulesets.Default.Unit(u.Type).CanFoundCity);
+
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, view.Version, new FoundCityCommand(settler.Id, name), Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, RuleViolations.CityNameInvalid.Code, Ct);
+        (await StoredStateAsync(game.Id)).Cities.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Post_ProduceBuilding_Returns200AndTheCityProducesItOnTheSite()
     {
         var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
@@ -241,6 +271,7 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     [InlineData("""{ "expectedVersion": 0, "command": { "type": "teleport" } }""")]
     [InlineData("""{ "command": { "type": "end_turn" } }""")]
     [InlineData("""{ "expectedVersion": 0, "command": { "type": "move_unit" } }""")]
+    [InlineData("""{ "expectedVersion": 0, "command": { "type": "found_city", "unitId": { "value": 1 } } }""")]
     [InlineData("""{ "expectedVersion": 0, "command": { "type": "produce_building", "cityId": { "value": 1 }, "building": "campus" } }""")]
     public async Task Post_MalformedBody_Returns400(string json)
     {
@@ -437,7 +468,7 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     {
         var view = (await GamesApi.GetGameAsync(Client, creator, gameId, Ct)).View!;
         var settler = view.Units.First(u => u.Owner == view.Viewer && TestRulesets.Default.Unit(u.Type).CanFoundCity);
-        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, gameId, view.Version, new FoundCityCommand(settler.Id), Ct);
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, gameId, view.Version, new FoundCityCommand(settler.Id, "Ambermoor"), Ct);
         response.EnsureSuccessStatusCode();
         var after = (await GamesApi.ReadGameAsync(response, Ct)).View!;
         return (after.Cities.Single(c => c.Owner == after.Viewer).Id, after.Version);

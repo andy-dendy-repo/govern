@@ -32,7 +32,7 @@ public class GameSerializerTests
     {
         { new MoveUnitCommand(new UnitId(1), At(2, 3)), "move_unit" },
         { new AttackCommand(new UnitId(1), At(2, 3)), "attack" },
-        { new FoundCityCommand(new UnitId(1)), "found_city" },
+        { new FoundCityCommand(new UnitId(1), "Ambermoor"), "found_city" },
         { new SetProductionCommand(new CityId(4), TestRulesets.Settler), "set_production" },
         { new BuildImprovementCommand(new UnitId(1), TestRulesets.Farm), "build_improvement" },
         { new BuildBridgeCommand(new UnitId(1), At(2, 3)), "build_bridge" },
@@ -54,9 +54,9 @@ public class GameSerializerTests
     [Fact]
     public void Deserialize_DiscriminatorAfterOtherProperties_IsAccepted()
     {
-        var command = GameSerializer.Deserialize<GameCommand>("""{"unitId":{"value":7},"type":"found_city"}""");
+        var command = GameSerializer.Deserialize<GameCommand>("""{"unitId":{"value":7},"name":"Ambermoor","type":"found_city"}""");
 
-        command.ShouldBe(new FoundCityCommand(new UnitId(7)));
+        command.ShouldBe(new FoundCityCommand(new UnitId(7), "Ambermoor"));
     }
 
     [Fact]

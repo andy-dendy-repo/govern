@@ -118,7 +118,24 @@ public class GameEnginePreviewTests
 
         var preview = GameEngine.CheckFoundCity(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unitId);
 
-        preview.ShouldBe(GameEngine.Execute(TestRulesets.Default, state, P1, new FoundCityCommand(unitId)).Violation);
+        preview.ShouldBe(GameEngine.Execute(TestRulesets.Default, state, P1, new FoundCityCommand(unitId, "Ambermoor")).Violation);
+    }
+
+    [Theory]
+    [InlineData("Ambermoor")]
+    [InlineData("")]
+    [InlineData("A name that is far too long")]
+    [InlineData("city 1")]
+    [InlineData("City 2")]
+    public void CheckFoundCity_ViewWithName_MatchesFoundCityCommand(string name)
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var settler = builder.AddUnit(P1, TestRulesets.Settler, 5, 5);
+        var state = builder.Build();
+
+        var preview = GameEngine.CheckFoundCity(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), settler, name);
+
+        preview.ShouldBe(GameEngine.Execute(TestRulesets.Default, state, P1, new FoundCityCommand(settler, name)).Violation);
     }
 
     // The state overload doesn't check the turn, so compare only where the viewer may act.

@@ -40,9 +40,8 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 
 | # | Id | Item | Area | Size | Notes |
 |---|---|---|---|---|---|
-| 1 | F12 | Player-chosen city names | core, client | S–M | Also closes a small leak: `City N` counts the founder's cities at founding, hidden ones included ([game-core](../features/game-core.md)). Planned: [plan](active/F12-city-names.md) |
-| 2 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
-| 3 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
+| 1 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
+| 2 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
 
 ## Deferred
 
@@ -76,6 +75,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| F12 | Player-chosen city names: Found city asks for the name, prefilled with a random unused suggestion from the ruleset (v9, 30 names); 1 to 24 letters, digits, spaces, `'`, `-` or `.`, unique among the player's own cities. Removes the `City N` count leak ([rules](../game/rules.md#founding-a-city)) | 2026-10-03, PR #PR | [F12](done/F12-city-names.md) |
 | F19 | Unit auto moves: Go to sends a unit to any explored tile; it walks there on its own, at once and at the start of each of the owner's turns, over the cheapest path the owner knows, until it arrives, has no known way, or sights an enemy; the board shows its route and turns, the unit card a Stop button ([game logic](../game/game-logic.md#set-a-destination-auto-moves)) | 2026-10-03, PR #53 | [F19](done/F19-unit-auto-moves.md) |
 | G9b | The scout (G9's recon unit): class Recon, movement 4, sight 4, strength 8 with no attack (it defends but can't attack or capture), costs 1 Food and needs 1 Food a turn; ruleset v8, the KayKit hooded rogue on the board ([rules](../game/rules.md#unit-types)) | 2026-10-03, PR #52 | [G9b](done/G9b-scout.md) |
 | F18 | Board tile card and WebGL context loss: a card in the board's corner for the tile under the mouse or last tapped (terrain, pieces, building or improvement with "being built", territory, rivers and bridges, the lens's sentences), the pointer cursor where a click acts, the clicked tile's card read out to screen readers, and a lost WebGL context reported and redrawn, with Reload after 5 seconds ([game UI](../features/game-ui.md#game-board)). The regression review's A1/A2 (animations and `HexLayout` in board units) stay a possible clean-up | 2026-10-02, PR #51 | [F18](done/F18-board-hover-card.md) |

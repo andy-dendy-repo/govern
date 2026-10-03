@@ -19,7 +19,7 @@ updated: 2026-10-03
 | `GameFactory.Create(ruleset, GameSetup)` | New game: a generated map of the ruleset's size (or the setup's size, within the ruleset's limits) whose two halves mirror each other ([map generation](#map-generation)); each player gets the ruleset's starting units (by default a settler plus an adjacent soldier) on the default terrain. Turn 1, first player, version 0 |
 | `GameEngine.Execute(ruleset, state, actor, command)` | Validates and applies one `GameCommand`. Returns `CommandResult`: a `GameUpdate` (new `GameState` + ordered `GameEvent`s) or a `RuleViolation`. A rejected command never changes the state |
 | `GameEngine.ReachableTiles(ruleset, state, viewer, unitId)` | Tiles one of the viewer's units can move to this turn, for UI highlights. Another player's unit always returns an empty list |
-| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CombatForecast(ruleset, view, unitId, target)`, `CheckFoundCity(ruleset, view, unitId)`, `CheckBuildImprovement(ruleset, view, unitId, improvement)`, `BridgeTargets(ruleset, view, unitId)`, `CheckProduceBuilding(ruleset, view, cityId, building)`, `BuildingSites(ruleset, view, cityId, building)`, `CityIncome(ruleset, view, cityId)`, `CityForecast(ruleset, view, cityId)`, `UnitSupply(ruleset, view, unitId)` | What `Execute` would decide for a move, an attack (and the damage range of a fight), founding a city, starting an improvement or a bridge, producing a building, or a city's income, upkeep and a unit's supply at the end of the turn, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
+| `GameEngine.ReachableTiles(ruleset, view, unitId)`, `AttackTargets(ruleset, view, unitId)`, `CombatForecast(ruleset, view, unitId, target)`, `CheckFoundCity(ruleset, view, unitId, name?)`, `CheckBuildImprovement(ruleset, view, unitId, improvement)`, `BridgeTargets(ruleset, view, unitId)`, `CheckProduceBuilding(ruleset, view, cityId, building)`, `BuildingSites(ruleset, view, cityId, building)`, `CityIncome(ruleset, view, cityId)`, `CityForecast(ruleset, view, cityId)`, `UnitSupply(ruleset, view, unitId)` | What `Execute` would decide for a move, an attack (and the damage range of a fight), founding a city, starting an improvement or a bridge, producing a building, or a city's income, upkeep and a unit's supply at the end of the turn, worked out from a `PlayerView` alone, for the client; nothing on the opponent's turn or in a finished game ([view previews](#view-previews-for-the-client)) |
 | `GameEngine.ViewFor(ruleset, state, player)` | The fog-of-war `PlayerView`: the only shape a client may receive |
 | `GameSerializer` | The one JSON format for storage (jsonb), the Api and the client |
 
@@ -88,7 +88,7 @@ The soldier also has `build_bridge` with build production 1.
   - production per turn at the end of the owner's turn (1);
   - minimum spacing from any other city (3);
   - initial production (Soldier);
-  - named from a text template (`City {n}`);
+  - named by the player when founded (the ruleset's `suggestedNames` are only offered by the client);
   - a captured city's progress resets (yes).
 - **Stacking:** at most one unit per tile. A unit may stand in its own city.
 
@@ -143,7 +143,7 @@ Andrii's model: everything a city makes costs resources once and upkeep every tu
 |---|---|
 | `MoveUnitCommand` (`move_unit`) | Cheapest path (Dijkstra) to an empty tile within `MovementLeft`. Never through units or enemy cities. Emits `UnitMovedEvent` with the path |
 | `SetDestinationCommand` (`set_destination`) | Own unit; `target` an explored tile with a path over the actor's knowledge (no visible unit on it), or null to cancel. Sets `Unit.Destination`, drops the job and walks at once (`UnitMovedEvent`); the unit walks on at the start of each of its owner's turns until it arrives, has no path, or sights an enemy (`UnitOrderEndedEvent`) (F19, [game logic](../game/game-logic.md#set-a-destination-auto-moves)) |
-| `FoundCityCommand` (`found_city`) | Settler with movement left, not on a city, spacing respected. The settler is removed and a city created (`CityFoundedEvent`) |
+| `FoundCityCommand` (`found_city`) | Settler with movement left, not on a city, spacing respected, and a `name`: trimmed with inner spaces collapsed, 1 to `FoundCityCommand.MaxNameLength` (24) letters, digits, spaces, `'`, `-` or `.`, not one of the actor's own city names (ignoring case). The settler is removed and a city created with that name (`CityFoundedEvent`) |
 | `SetProductionCommand` (`set_production`) | Own city; changes what it builds and keeps its progress, refunding a paid resource cost (`ProductionChangedEvent`) |
 | `AttackCommand` (`attack`) | A unit with `attack` or `ranged_attack` and movement left; a target in range (adjacent for melee). Against a unit, both fight ([combat](#combat-g9)): `UnitAttackedEvent`, then `UnitDestroyedEvent` for each unit at 0 health; an undefended enemy city is captured by a melee attacker, which moves in (`CityCapturedEvent`). Movement drops to 0 |
 | `BuildImprovementCommand` (`build_improvement`) | A builder with movement left in its cities' territory starts an improvement job ([G10a](#builders-improvements-buildings-and-bridges-g10a)) |
@@ -175,6 +175,7 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `move.occupied` / `move.unreachable` | A **visible** unit stands on the target / off map, own tile, blocked, too far, or a hidden unit is there |
 | `move.no_path` | A destination is off the map, the unit's own tile, unexplored, impassable, or has no path over the tiles the actor knows |
 | `city.tile_taken` / `city.too_close` / `city.in_territory` | Founding on a city / closer than the minimum spacing / on a tile in any city's territory |
+| `city.name_invalid` / `city.name_taken` | A new city's name is empty, too long or uses another character / one of the actor's own cities has it (enemy cities never count) |
 | `city.not_found` / `city.unknown_unit_type` | The actor has no such city / a unit type the game's ruleset doesn't have |
 | `attack.not_adjacent` / `attack.out_of_range` / `attack.no_target` / `attack.own_target` | Attack target problems (`out_of_range` for ranged units; `no_target` also for a ranged unit aimed at an empty city) |
 | `attack.river_in_the_way` | A melee unit would capture an undefended city across a river it can't cross |
@@ -197,7 +198,8 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 - `PlayerView.Players` lists ids and statuses without the opponents' exploration.
 - **Rejections leak nothing:** a hidden unit on a move target gives `move.unreachable`, not `move.occupied`. Another player's unit or city id gives `*.not_found`.
 - **Invariants that keep rejections leak-free:** unit sight ≥ movement / cheapest step, and the sight of every unit with `found_city` ≥ city spacing − 1. `RulesetValidator` enforces both, so a ruleset that breaks them is rejected at load time until the rules filter by visibility.
-- **Known residual leaks** (deferred, [game delivery plan](../plans/done/game-delivery.md#deferred-ideas)): a city's name (`City N`, counting the founder's cities at founding) shows how many cities its founder had then, hidden ones included. A unit that loses health without a fight, or doesn't heal while resting, shows its owner's land or city is short of its upkeep (accepted, [game logic](../game/game-logic.md#fog-of-war)).
+- **City names leak nothing:** the player names each city (F12); `city.name_taken` compares only with the actor's own cities, and the client's suggestion is a random unused one, so no name counts the founder's cities.
+- **Known residual leak** (accepted): a unit that loses health without a fight, or doesn't heal while resting, shows its owner's land or city is short of its upkeep (accepted, [game logic](../game/game-logic.md#fog-of-war)).
 - `PlayerId` values are chosen by the host. Govern uses the per-game seat id (`GamePlayer.Id`), never a user id, so the view reveals no account ids ([games](games.md)).
 - Hosts must send clients `PlayerView`, never `GameState`.
 - Nothing in a view counts the opponent's activity: `PlayerView.Version` is a fingerprint of the view itself, unit and city ids are hashed random draws (see below), and `Units`/`Cities` are ordered by id rather than creation. Raw `GameEvent`s may only reach a player through `VisibilityCalculator.EventsFor` ([below](#events-a-player-may-see-eventsfor)).
@@ -288,7 +290,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v8.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v9.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`

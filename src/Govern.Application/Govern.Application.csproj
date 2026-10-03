@@ -9,6 +9,6 @@
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\..\rulesets\default\v8.json" LogicalName="Govern.Rulesets.default.v8.json" />
+    <EmbeddedResource Include="..\..\rulesets\default\v9.json" LogicalName="Govern.Rulesets.default.v9.json" />
   </ItemGroup>
 </Project>

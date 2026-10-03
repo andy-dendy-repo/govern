@@ -139,7 +139,7 @@ public class GamesClientTests : ClientTestContext
     {
         new MoveUnitCommand(new UnitId(1), new HexCoord(4, 1)),
         new AttackCommand(new UnitId(2), new HexCoord(-1, 3)),
-        new FoundCityCommand(new UnitId(1)),
+        new FoundCityCommand(new UnitId(1), "Ambermoor"),
         new SetProductionCommand(new CityId(5), TestViews.SoldierType),
         new EndTurnCommand(),
         new ResignCommand(),

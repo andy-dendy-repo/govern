@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Govern.Core.Actions;
 using Govern.Core.Map;
 using Govern.Core.Units;
 
@@ -202,13 +203,28 @@ internal static class RulesetValidator
         AtLeast(cities.ProductionPerTurn, 1, "$.cities.productionPerTurn", problems);
         Reference(cities.InitialProduction.Id, units, "unit", "$.cities.initialProduction", problems);
 
-        if (!document.Texts.TryGetValue(cities.NameTemplate, out var template))
+        if (cities.SuggestedNames.IsDefaultOrEmpty)
         {
-            problems.Add(new("$.cities.nameTemplate", $"The text '{cities.NameTemplate}' does not exist."));
+            problems.Add(new("$.cities.suggestedNames", "At least one suggested city name is required."));
+            return;
         }
-        else if (!template.Contains("{n}", StringComparison.Ordinal))
+
+        var seen = new List<string>();
+        for (var index = 0; index < cities.SuggestedNames.Length; index++)
         {
-            problems.Add(new($"$.texts['{cities.NameTemplate}']", "A city name template must contain {n}."));
+            var key = cities.SuggestedNames[index];
+            if (!document.Texts.TryGetValue(key, out var name))
+            {
+                problems.Add(new($"$.cities.suggestedNames[{index}]", $"The text '{key}' does not exist."));
+            }
+            else if (FoundCityRule.CheckName(name, seen) is not null || name != FoundCityRule.NormaliseName(name))
+            {
+                problems.Add(new($"$.texts['{key}']", "A suggested city name must be a valid city name, used once."));
+            }
+            else
+            {
+                seen.Add(name);
+            }
         }
     }
 
