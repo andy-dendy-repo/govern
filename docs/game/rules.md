@@ -19,11 +19,20 @@ Govern is a turn-based strategy game for the number of players under "Game numbe
 ## The map
 
 - The map is a rectangle of hexagonal tiles. Each tile has 6 neighbours, and distances are counted in hex steps.
-- A new game's map size is in the table under "Game numbers". Each new map is different: mostly plains, with patches of forest, hills, mountains, lakes and desert (see "Terrain types").
+- The game's creator picks the map in the lobby: a random map from the map pool (the default), a named map from the pool, or a generated map (see "Maps").
+- A generated map's size is in the table under "Game numbers". Each generated map is different: mostly plains, with patches of forest, hills, mountains, lakes and desert (see "Terrain types").
 - **Both halves of the map are the same.** The map turned half a turn around its centre looks exactly like itself, so neither player gets the better side. Once you have explored your own half you know the terrain of your opponent's half too. Starts are not mirrored, though: the map only hints that your opponent started on plains in their zone.
 - Rivers run along the edges between tiles (see "Rivers").
 - Mountains, lakes and deep rivers never cut the map in two: every tile you can walk on can be reached from every other.
-- Each player starts near their own edge of the map (the first player on the left, the second on the right) with the starting units listed under "Game numbers", placed side by side on plains.
+- Each player starts near their own edge of the map (the first player on the left, the second on the right) with the starting units listed under "Game numbers", placed side by side (on plains on a generated map).
+
+## Maps
+
+The map pool holds hand-made maps. Like a generated map, each pool map looks the same after a half turn, so neither side is better. Each pool map has a few possible starts on each side (at least 2), and they are no secret: your opponent started on one of the possible starts on their side. A game picks one for each player on its own, so your own start doesn't tell you which one they got.
+
+| Map | Size | Shape |
+|---|---|---|
+| The Basin | 32 × 20 | Each player has a home valley at their edge, with a river, forests and hills. A mountain ridge with two hill passes separates each valley from a large lake in the centre, so armies meet on a north and a south flank around the lake, each with forests, hills, a stream and a desert corner. 3 possible starts on each side |
 
 ## Terrain types
 

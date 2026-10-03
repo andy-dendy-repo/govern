@@ -50,6 +50,14 @@ namespace Govern.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(22)")
                         .HasColumnName("invite_code");
 
+                    b.Property<string>("Map")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("generated")
+                        .HasColumnName("map");
+
                     b.Property<string>("Phase")
                         .IsRequired()
                         .HasMaxLength(16)

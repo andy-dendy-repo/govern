@@ -35,6 +35,7 @@ public static class DependencyInjection
             services.AddScoped<UserTokenIssuingService>();
             services.AddScoped<RefreshTokenReuseService>();
             services.AddSingleton<DefaultRulesetService>();
+            services.AddSingleton<MapPoolService>();
 
             return services;
         }

@@ -18,6 +18,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="..\..\rulesets\default\v10.json" LogicalName="Govern.Rulesets.default.v10.json" />
+    <EmbeddedResource Include="..\..\maps\*.json" LogicalName="Govern.Maps.%(Filename).json" />
     </ItemGroup>
 
 </Project>

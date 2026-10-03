@@ -37,6 +37,7 @@ else
         else if (_game is { Phase: GamePhase.Lobby } lobby)
         {
             <RadzenStack Gap="1rem" class="rz-mt-4">
+                <RadzenText TextStyle="TextStyle.Body1" class="lobby-map">Map: @Maps.NameOf(lobby.Map)</RadzenText>
                 <PlayerList Players="@lobby.Players"/>
                 @if (lobby.InviteCode is { } inviteCode)
                 {

@@ -185,6 +185,10 @@ A lens marks every known tile with one kind of information, instead of clutterin
 
 `Features/Design/Pages/BoardBenchPage` at `/design/board` (Development only too) is the board's bench: a map as large as the ruleset allows, built as a view by `Features/Design/Helpers/BoardBenchBuilder` (no Api, no sign-in), with every tile in sight, an army of every unit type (a third hurt), cities with territory, improvements, buildings and rivers, or as an opening with three units in sight of a corner. **March** moves the bench player's units one tile east (a new view), a tap or click selects one of them (to try touch), and **Measure** (`Features/Design/Services/BoardBenchService`, `js/board3d/bench.js`) shows the numbers in [Performance](#performance).
 
+`Features/Design/Pages/MapPreviewPage` at `/design/maps` (Development only, G18) shows each pool map ([maps](../game/maps.md)) on the board, built by `Features/Design/Helpers/MapPreviewBuilder`: every tile in sight with its terrain and rivers, and the first starting unit on each spawn candidate (the viewer's) and its mirror (the opponent's). A dropdown switches the map.
+
+The **lobby's map picker** is a dropdown next to **New game** on `/games` (`GamesPage`): "Random map from the pool" (the default), each pool map by name, then "Generated map", from the client's `MapPoolService`. The lobby (`GamePage`) shows the choice as "Map: …".
+
 ## Performance
 
 Maps are 20×14 by default and at most 40×40 (`map.maxSize` in the ruleset). The board (F15 step 5, [plan](../plans/done/F15-step5-themes-touch-performance.md)) is checked on the bench at `/design/board` ([design gallery](#design-gallery-design)):

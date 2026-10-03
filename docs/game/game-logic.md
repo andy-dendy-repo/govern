@@ -29,18 +29,29 @@ updated: 2026-10-03
 
 ## Creating a game
 
-Input: the players (in turn order) and a secret random seed.
+Input: the players (in turn order), a secret random seed and, optionally, a predefined map from the map pool (see [Predefined maps](#predefined-maps)).
 
 1. Check the players: exactly [`setup.players`], all distinct.
-2. Size the map: [`map.defaultWidth`] × [`map.defaultHeight`] (each within [`map.minSize`]–[`map.maxSize`]), every tile [`map.defaultTerrain`] for now.
+2. Size the map: a predefined map keeps its own size and tiles (within [`map.minSize`]–[`map.maxSize`]); otherwise [`map.defaultWidth`] × [`map.defaultHeight`], every tile [`map.defaultTerrain`] for now.
 3. Start the random generator from the seed.
 4. For each player, in order:
-   1. Pick the spawn zone: the first player's zone is the left [`map.spawn.zoneColumnsPerMille`] of the columns, the second's the right one.
-   2. Pick a random column in the zone and a random row, keeping [`map.spawn.edgeMargin`] tiles from the edges.
+   1. On a predefined map, pick one of its spawn candidates at random; the second player picks again, on their own, and takes the candidate's mirror. Skip step 2.
+   2. On a generated map, pick the spawn zone (the first player's is the left [`map.spawn.zoneColumnsPerMille`] of the columns, the second's the right one), then a random column in the zone and a random row, keeping [`map.spawn.edgeMargin`] tiles from the edges.
    3. Place the [`setup.startingUnits`] in order: the first on the spawn tile, the k-th k columns from it towards the map centre on the same row (by default a settler, with a soldier next to it). Each unit starts with full movement [`units.*.movement`] and a new random id (see [Randomness and ids](#randomness-and-ids)).
-5. Generate the terrain (see [Map generation](#map-generation)); the tiles of every starting unit stay [`map.defaultTerrain`].
+5. On a generated map, generate the terrain (see [Map generation](#map-generation)); the tiles of every starting unit stay [`map.defaultTerrain`]. A predefined map is used as it is.
 6. Set round 1, the current player to the first player, status "in progress".
 7. Update what every player has explored (see [Fog of war](#fog-of-war)).
+
+### Predefined maps
+
+A predefined map is a file `maps/<key>.json` (format and authoring: [maps](maps.md)). It is checked against the ruleset before any game uses it, and the checks keep the same promises a generated map makes:
+
+1. Its size is within [`map.minSize`]–[`map.maxSize`] and its height is even, so the mirror keeps neighbours neighbours.
+2. Every tile and every river edge equals its mirror (a half turn), so both halves play the same.
+3. Every passable tile ([`terrains.*.isPassable`]) can reach every other without crossing a river that can't be crossed ([`rivers.*.isCrossable`]).
+4. Every spawn candidate lies in the left half and leaves the row of [`setup.startingUnits`] (the k-th unit k columns towards the centre) on passable tiles.
+
+The game keeps its own copy of the map in its state, so a later change to the file never touches a running game.
 
 ### Map generation
 
@@ -266,6 +277,8 @@ If no tile qualifies, nothing is paid and the stock keeps growing. Cities never 
    - the round, the current player, the status, the winner and each player's status.
 4. **The view version** is a fingerprint (SHA-256) of everything in the view. It changes only when something the player can see changes, so it can't be used to count the opponent's hidden actions. A command must quote the version it was based on (the server rejects it with `game.stale_version` if the view changed since).
 5. **The game log** of a player: after every accepted command, the events of that command they may see, in order. The **seen tiles** are the tiles they could see before the command plus those they see after it. Everything about their own units and cities is kept. Of the other player's events they keep: the end of a turn, a resignation, an elimination and the win; a move cut to the seen tiles of its path (dropped when none is seen); an attack when either tile is seen or the attacked unit is theirs (an attacker on an unseen tile keeps only its owner and type, not its id or tile); a capture when the city's tile is seen or the city was theirs; a destroyed unit, a founded city, a new unit, a finished improvement or a grown territory tile when its tile is seen (a new unit and a grown tile without the city they came from), and a bridge when the builder's end is seen. Production, jobs started, buildings finished or damaged, the upkeep order and starving units are never kept for the other player. Trade events are kept by the two sides of their route only. Hidden events are dropped, never counted, and an entry has no version or time, so the log tells nothing the two views don't.
+
+6. **Accepted leak on a pool map:** the spawn candidates are public, so a player knows the opponent started on the mirror of one of the map's candidates (at least 2, The Basin 3), against about half of all start spots on a generated map. The two draws are independent, so a player's own start tells them nothing about which one.
 
 ## View previews (what the client can check)
 
