@@ -1,0 +1,77 @@
+@* The settler's Found city action (in ActionBar). A click asks for the city's name inline: a text box prefilled with a random
+   ruleset suggestion the player hasn't used, Suggest another, Found and Cancel (or Esc). Found is disabled with the reason
+   while the name breaks the rules (the same check the server runs). Placement problems show under the button as before. *@
+@using Govern.Client.Features.Games.Helpers
+@using Govern.Core.Actions
+@using Govern.Core.Engine
+@using Govern.Core.Rulesets
+@using Govern.Core.Units
+@using Govern.Core.Visibility
+
+@{ var placement = GameEngine.CheckFoundCity(Ruleset, View, UnitId); }
+@if (_naming && placement is null)
+{
+    var problem = GameEngine.CheckFoundCity(Ruleset, View, UnitId, _name);
+    <div class="found-city-prompt" @onkeydown="@OnKeyDown" @onkeydown:stopPropagation="true">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+            <RadzenTextBox @bind-Value="_name" Immediate="true" MaxLength="@FoundCityCommand.MaxNameLength" Placeholder="City name"
+                           aria-label="City name" autocomplete="off" class="city-name-input"/>
+            <RadzenButton Icon="casino" ButtonStyle="ButtonStyle.Light" Click="@SuggestAnother" title="Suggest another name"
+                          aria-label="Suggest another name" class="suggest-name"/>
+            <RadzenButton Text="Found" Icon="location_city" Disabled="@(Busy || problem is not null)" Click="@FoundAsync" class="confirm-found-city"/>
+            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => _naming = false)" class="dismiss"/>
+        </RadzenStack>
+        @if (problem is not null)
+        {
+            <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="city-name-reason">@problem.Message</RadzenText>
+        }
+    </div>
+}
+else
+{
+    <RadzenButton Text="Found city" Icon="location_city" Disabled="@(Busy || placement is not null)" Click="@StartNaming" class="found-city"/>
+    @if (placement is not null)
+    {
+        <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="found-city-reason">@placement.Message</RadzenText>
+    }
+}
+
+@code {
+    private bool _naming;
+    private string _name = string.Empty;
+
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Ruleset Ruleset { get; set; } = null!;
+
+    [Parameter, EditorRequired] public UnitId UnitId { get; set; }
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback<GameCommand> Command { get; set; }
+
+    private IEnumerable<string> OwnCityNames => View.Cities.Where(city => city.Owner == View.Viewer).Select(static city => city.Name);
+
+    private void StartNaming()
+    {
+        _name = CityNameSuggester.Suggest(Ruleset.SuggestedCityNames, OwnCityNames, current: null, Random.Shared.NextDouble());
+        _naming = true;
+    }
+
+    private void SuggestAnother() =>
+        _name = CityNameSuggester.Suggest(Ruleset.SuggestedCityNames, OwnCityNames, _name, Random.Shared.NextDouble());
+
+    private void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            _naming = false;
+        }
+    }
+
+    private async Task FoundAsync()
+    {
+        _naming = false;
+        await Command.InvokeAsync(new FoundCityCommand(UnitId, _name));
+    }
+}

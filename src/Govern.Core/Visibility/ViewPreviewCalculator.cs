@@ -76,16 +76,27 @@ internal static class ViewPreviewCalculator
         return new AttackTarget(view.Contains(target), owner, defender is not null, view.CrossedRiverBetween(attacker, target));
     }
 
-    public static RuleViolation? CheckFoundCity(Ruleset ruleset, PlayerView view, UnitId unitId)
+    // The viewer always sees their own cities, so the name check gives the rule's answer.
+    public static RuleViolation? CheckFoundCity(Ruleset ruleset, PlayerView view, UnitId unitId, string? name)
     {
         if (CheckTurn(view) is { } violation)
         {
             return violation;
         }
 
-        return OwnUnit(ruleset, view, unitId) is { } settler
-            ? FoundCityRule.Check(ruleset, settler, view.Cities.Select(static city => city.Position), view.TileAt(settler.Position).TerritoryOwner is not null)
-            : RuleViolations.UnitNotFound;
+        if (OwnUnit(ruleset, view, unitId) is not { } settler)
+        {
+            return RuleViolations.UnitNotFound;
+        }
+
+        if (FoundCityRule.Check(ruleset, settler, view.Cities.Select(static city => city.Position), view.TileAt(settler.Position).TerritoryOwner is not null) is { } placement)
+        {
+            return placement;
+        }
+
+        return name is null
+            ? null
+            : FoundCityRule.CheckName(name, view.Cities.Where(city => city.Owner == view.Viewer).Select(static city => city.Name));
     }
 
     public static RuleViolation? CheckBuildImprovement(Ruleset ruleset, PlayerView view, UnitId unitId, ImprovementType improvement)

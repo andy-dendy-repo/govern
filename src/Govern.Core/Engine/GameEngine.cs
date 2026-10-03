@@ -131,21 +131,20 @@ public static class GameEngine
         return ViewPreviewCalculator.CombatForecast(ruleset, view, unitId, target);
     }
 
-    /// <summary>
-    /// Whether one of the viewer's units can found a city now, worked out from their view alone (for the client).
-    /// </summary>
+    /// <summary>Whether one of the viewer's units can found a city now, worked out from their view alone (for the client).</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The viewer's current view.</param>
     /// <param name="unitId">The settler.</param>
+    /// <param name="name">The city's name; <see langword="null"/> checks only the settler and its tile.</param>
     /// <returns>
     /// <see langword="null"/> when a <see cref="FoundCityCommand"/> would be accepted; otherwise the violation it would be
     /// rejected with.
     /// </returns>
-    public static RuleViolation? CheckFoundCity(Ruleset ruleset, PlayerView view, UnitId unitId)
+    public static RuleViolation? CheckFoundCity(Ruleset ruleset, PlayerView view, UnitId unitId, string? name = null)
     {
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(view);
-        return ViewPreviewCalculator.CheckFoundCity(ruleset, view, unitId);
+        return ViewPreviewCalculator.CheckFoundCity(ruleset, view, unitId, name);
     }
 
     /// <summary>

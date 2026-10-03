@@ -7,7 +7,7 @@ updated: 2026-10-03
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v8.json`](../../rulesets/default/v8.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8; [`v1.json`](../../rulesets/default/v1.json) to [`v7.json`](../../rulesets/default/v7.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v9.json`](../../rulesets/default/v9.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8, F12 suggested city names instead of the name template in v9; [`v1.json`](../../rulesets/default/v1.json) to [`v8.json`](../../rulesets/default/v8.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -53,7 +53,7 @@ updated: 2026-10-03
 
 ## Versions in the repository
 
-*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9), `v3.json` when `rivers` and `map.generation.rivers` arrived (G6), `v4.json` when `bridges`, `resources`, `improvements`, `buildings` and `cities.workRadius` arrived (G10a), and `v5.json` when terrain and river `yields`, `cities.yields`, `cities.startingStock` and `territory` arrived and `cities.workRadius` left (G5, G7), and `v6.json` when unit and building `resourceCost` and `upkeep` and the `upkeep` section arrived (G8a); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
+*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9), `v3.json` when `rivers` and `map.generation.rivers` arrived (G6), `v4.json` when `bridges`, `resources`, `improvements`, `buildings` and `cities.workRadius` arrived (G10a), and `v5.json` when terrain and river `yields`, `cities.yields`, `cities.startingStock` and `territory` arrived and `cities.workRadius` left (G5, G7), `v6.json` when unit and building `resourceCost` and `upkeep` and the `upkeep` section arrived (G8a), and `v8.json` when `cities.suggestedNames` replaced `cities.nameTemplate` (F12); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
 
 ## Format conventions
 
@@ -295,7 +295,7 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 | `minimumSpacing` | 3 | The smallest hex distance between two cities |
 | `productionPerTurn` | 1 | Production added at the end of the owner's turn |
 | `initialProduction` | `soldier` | What a new city builds first |
-| `nameTemplate` | `city.default_name` | The text key of a new city's name; the text must contain `{n}`, the founder's city count |
+| `suggestedNames` | 30 text keys (`city.name.ambermoor`, …) | The names the client offers for a new city, in order; the player picks one or types their own. At least one; each text must be a valid city name (see [Founding a city](game-logic.md#found-a-city)), already trimmed, and used once (ignoring case) |
 | `captureResetsProduction` | true | A captured city's progress goes back to 0 |
 | `yields` | 1 culture | What every city makes a turn on top of its tiles ([building sections](game-data-economy.md)) |
 | `startingStock` | 5 food, water, wood and stone | The stock a new city starts with |
@@ -306,7 +306,7 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
   "minimumSpacing": 3,
   "productionPerTurn": 1,
   "initialProduction": "soldier",
-  "nameTemplate": "city.default_name",
+  "suggestedNames": ["city.name.ambermoor", "city.name.brightwater", "city.name.cindervale"],
   "captureResetsProduction": true,
   "yields": [{ "resource": "culture", "amount": 1 }],
   "startingStock": [{ "resource": "food", "amount": 5 }, { "resource": "water", "amount": 5 }, { "resource": "wood", "amount": 5 }, { "resource": "stone", "amount": 5 }]
@@ -345,7 +345,7 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 
 ## Texts and languages
 
-Everything a player reads about the game's content comes from here: unit, class and terrain names and the city name template. Rule-violation messages stay in Core (`Engine/RuleViolations.cs`) for now; moving them here needs the Api to render them per ruleset ([open question 4](design-roadmap.md#open-questions)).
+Everything a player reads about the game's content comes from here: unit, class and terrain names and the suggested city names. Rule-violation messages stay in Core (`Engine/RuleViolations.cs`) for now; moving them here needs the Api to render them per ruleset ([open question 4](design-roadmap.md#open-questions)).
 
 ```json
 "texts": {
@@ -370,12 +370,12 @@ Everything a player reads about the game's content comes from here: unit, class 
   "resource.food.name": "Food",
   "improvement.farm.name": "Farm",
   "building.campus.name": "Campus",
-  "city.default_name": "City {n}"
+  "city.name.ambermoor": "Ambermoor"
 }
 ```
 
 - **Decided 2026-09-30:** texts are their own top-level section (not inside `setup`), English only for now, so there is no per-language level. Other languages are deferred.
-- The validator requires `unit.{id}.name` for every unit, `class.{id}.name` for every unit class, `terrain.{id}.name` for every terrain, `river.{id}.name` for every river, `resource.{id}.name`, `improvement.{id}.name` and `building.{id}.name` for every resource, improvement and building (the example above shows one of each) and the `nameTemplate` key, and rejects empty texts.
+- The validator requires `unit.{id}.name` for every unit, `class.{id}.name` for every unit class, `terrain.{id}.name` for every terrain, `river.{id}.name` for every river, `resource.{id}.name`, `improvement.{id}.name` and `building.{id}.name` for every resource, improvement and building (the example above shows one of each) and every key in `cities.suggestedNames`, and rejects empty texts.
 - Core returns rule violation **codes**; the Api or the client looks up the message. *To discuss:* which language the Api uses for the ProblemDetails `title` (the `Accept-Language` header, or always `en` with the client translating).
 
 ## Validation (at load time)
@@ -383,7 +383,7 @@ Everything a player reads about the game's content comes from here: unit, class 
 `RulesetValidator` rejects a ruleset that breaks any of these and reports every problem with its JSON path (`$.units[1].sight: Must be at least 2, …`); `RulesetTests` has one case per rule:
 - The JSON reads strictly (see [Reading a ruleset in code](#reading-a-ruleset-in-code)).
 - Ids are lower snake_case (a letter, then letters, digits or `_`, at most 32 characters) and unique per list; `units`, `terrains` and `rivers` are not empty.
-- Every reference resolves: `startingUnits`, `initialProduction`, `defaultTerrain`, `map.generation.patches[].terrain`, `map.generation.rivers` `sources`, `mouths` and `stages[].river`, `nameTemplate`.
+- Every reference resolves: `startingUnits`, `initialProduction`, `defaultTerrain`, `map.generation.patches[].terrain`, `map.generation.rivers` `sources`, `mouths` and `stages[].river`, `cities.suggestedNames`.
 - Map generation: a patch terrain is not `defaultTerrain` and not listed twice; `sharePerMille` and `patchSize` ≥ 1; shares add up to at most 500, impassable ones to at most 150.
 - `sightBonus` ≥ 0; `defenceBonus` 0..100.
 - Rivers: `crossingCost` and `defenceBonus` 0..100; at least one kind crossable; generation `count` 0..20, `1 ≤ minLength ≤ maxLength ≤ 100`, `sources` and `mouths` not empty and without repeats, `stages` not empty, starting at 0, strictly increasing, the first one crossable.
