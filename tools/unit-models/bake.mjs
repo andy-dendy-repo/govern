@@ -17,11 +17,13 @@ const SHA256 = {
     Knight: '60428e3abc09ba83e595d256e3af8c5c976b46cdae599f0802fc82b4a3445168',
     Mage: 'cf898585da33fab50c724d31605fb931eb2912e6d2280092141e98ca81ad507d',
     Rogue: 'e825437cd4d2ee9c1960b517a74a69101e33eb409ae7fa8cedc7134a998fbb7d',
+    Rogue_Hooded: '93e6e25213009952276d9cf34f5d96a243767334c66f280db0433ddfabb91545',
 };
 const OUTPUT = new URL('../../src/Govern.Client/wwwroot/models/units/', import.meta.url);
 
 // Per PieceModel: the character, the animation it stands in, the accessories it keeps (its own body parts always stay), the
-// accessories it drops, the parts drawn in the owner's seat colour, and an optional spear made from its sword.
+// accessories it drops, the parts drawn in the owner's seat colour, an optional spear made from its sword, and the prefix of
+// its own body parts when it differs from the character (the hooded rogue's parts are named Rogue_…).
 export const units = {
     soldier: { character: 'Knight', clip: 'Idle', keep: ['1H_Sword', 'Round_Shield'], seat: ['Round_Shield', 'Knight_Cape'] },
     spearman: { character: 'Knight', clip: 'Idle', keep: ['Rectangle_Shield'], seat: ['Rectangle_Shield', 'Knight_Cape'], spear: true },
@@ -29,6 +31,7 @@ export const units = {
     builder: { character: 'Barbarian', clip: 'Idle', keep: ['1H_Axe'], drop: ['Barbarian_Round_Shield'], seat: ['Barbarian_Cape'] },
     settler: { character: 'Mage', clip: 'Idle', keep: ['2H_Staff'], seat: ['Mage_Hat', 'Mage_Cape'] },
     rider: { character: 'Knight', clip: 'Sit_Chair_Idle', keep: ['1H_Sword'], seat: ['Knight_Cape'] },
+    scout: { character: 'Rogue_Hooded', parts: 'Rogue', clip: 'Idle', keep: ['Knife'], seat: ['Rogue_Cape'] },
 };
 
 // The moment of the animation the pose is taken at, in seconds.
@@ -186,9 +189,9 @@ function compact({ positions, tints }) {
 }
 
 // The box around a character's own body (head, body, arms and legs, not what it wears or carries).
-function bodyBox(meshes, character) {
+function bodyBox(meshes, prefix) {
     const box = new Box3();
-    for (const mesh of meshes.filter(m => /_(Head|Body|ArmLeft|ArmRight|LegLeft|LegRight)$/.test(m.name) && m.name.startsWith(`${character}_`))) {
+    for (const mesh of meshes.filter(m => /_(Head|Head_Hooded|Body|ArmLeft|ArmRight|LegLeft|LegRight)$/.test(m.name) && m.name.startsWith(`${prefix}_`))) {
         const { positions } = triangles(mesh, false);
         for (let i = 0; i < positions.length; i += 3) {
             box.expandByPoint(new Vector3().fromArray(positions, i));
@@ -228,9 +231,10 @@ const scale = 1 / (reference.max.y - reference.min.y);
 
 async function bake(name, unit) {
     const meshes = await pose(unit.character, unit.clip);
-    const own = mesh => (mesh.name.startsWith(`${unit.character}_`) || unit.keep.includes(mesh.name)) && !unit.drop?.includes(mesh.name);
+    const prefix = unit.parts ?? unit.character;
+    const own = mesh => (mesh.name.startsWith(`${prefix}_`) || unit.keep.includes(mesh.name)) && !unit.drop?.includes(mesh.name);
     const kept = meshes.filter(own);
-    const body = bodyBox(meshes, unit.character);
+    const body = bodyBox(meshes, prefix);
     const plainParts = kept.filter(mesh => !unit.seat.includes(mesh.name)).map(mesh => triangles(mesh, false));
     const seatParts = kept.filter(mesh => unit.seat.includes(mesh.name)).map(mesh => triangles(mesh, true));
     if (unit.spear) {

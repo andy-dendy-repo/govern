@@ -29,7 +29,8 @@ public class CombatForecastTests
         "defender nearly dead",
         "defender across a river",
         "defender across a deep river in forest",
-        "archer shoots across a river");
+        "archer shoots across a river",
+        "scout defends");
 
     // Over many seeds, every rolled damage lies in the forecast's range, and both ends of the range occur.
     [Theory]
@@ -59,6 +60,17 @@ public class CombatForecastTests
         forecast.IsRanged.ShouldBeFalse();
         forecast.Attacker.ShouldBe(new CombatSide(20, 20, [], 100, 24, 36), CombatSideComparer.Instance);
         forecast.Defender.ShouldBe(new CombatSide(20, 20, [], 100, 24, 36), CombatSideComparer.Instance);
+    }
+
+    [Fact]
+    public void Forecast_SoldierAttackingScout_LeavesTheScoutAliveAndTakesALittleDamageBack()
+    {
+        var forecast = Forecast("scout defends");
+
+        forecast.Defender.Strength.ShouldBe(8);
+        forecast.Defender.MaxDamage.ShouldBeLessThan(100);
+        forecast.Attacker.MinDamage.ShouldBeGreaterThan(0);
+        forecast.Attacker.MaxDamage.ShouldBeLessThan(forecast.Defender.MinDamage);
     }
 
     [Fact]
@@ -218,6 +230,7 @@ public class CombatForecastTests
             "hurt defender" => (TestRulesets.Soldier, TestRulesets.Soldier, 0, 60),
             "archer shoots" or "archer shoots across a river" => (TestRulesets.Archer, TestRulesets.Soldier, 0, 0),
             "settler" => (TestRulesets.Soldier, TestRulesets.Settler, 0, 0),
+            "scout defends" => (TestRulesets.Soldier, TestRulesets.Scout, 0, 0),
             "defender nearly dead" => (TestRulesets.Soldier, TestRulesets.Soldier, 0, 70),
             _ => (TestRulesets.Soldier, TestRulesets.Soldier, 0, 0),
         };

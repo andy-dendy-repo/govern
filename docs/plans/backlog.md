@@ -2,7 +2,7 @@
 title: Backlog (all open work, prioritised)
 tags: [plan, backlog, priorities, roadmap, deferred, game, ui, ruleset, content]
 code: [docs/plans, docs/game/design-roadmap.md]
-updated: 2026-10-02
+updated: 2026-10-03
 ---
 
 # Backlog
@@ -75,6 +75,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| G9b | The scout (G9's recon unit): class Recon, movement 4, sight 4, strength 8 with no attack (it defends but can't attack or capture), costs 1 Food and needs 1 Food a turn; ruleset v8, the KayKit hooded rogue on the board ([rules](../game/rules.md#unit-types)) | 2026-10-03, PR #PRNUM | [G9b](done/G9b-scout.md) |
 | F18 | Board tile card and WebGL context loss: a card in the board's corner for the tile under the mouse or last tapped (terrain, pieces, building or improvement with "being built", territory, rivers and bridges, the lens's sentences), the pointer cursor where a click acts, the clicked tile's card read out to screen readers, and a lost WebGL context reported and redrawn, with Reload after 5 seconds ([game UI](../features/game-ui.md#game-board)). The regression review's A1/A2 (animations and `HexLayout` in board units) stay a possible clean-up | 2026-10-02, PR #51 | [F18](done/F18-board-hover-card.md) |
 | F17 | Retire the SVG board: the WebGL board is the only board, with no 2D/3D toggle; the SVG board, `board.js` and their tests are gone, the game table tests click through the renderer, and a browser without WebGL gets a message instead of a fallback board ([game UI](../features/game-ui.md#game-board)) | 2026-10-02, PR #50 | [F17](done/F17-retire-svg-board.md) |
 | F16 | Full-screen game view: the board fills the window and the controls float over it (top strip with the title, counters, Log, Full screen, Resign and End turn; the selection card with the unit's actions bottom left; the attack forecast beside its target; the log drawer; notices), browser full screen, and a phone layout with bottom sheets ([game UI](../features/game-ui.md#game-screen-layout-full-screen-view)) | 2026-10-02, PR #49 | [F16](done/F16-full-screen-game-view.md) |
