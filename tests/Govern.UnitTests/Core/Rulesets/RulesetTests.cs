@@ -309,7 +309,7 @@ public class RulesetTests
         var ruleset = result.Ruleset;
         ruleset.Setup.Players.ShouldBe(2);
         ruleset.Setup.StartingUnits.ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
-        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder]);
+        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder, TestRulesets.Scout]);
         ruleset.Unit(TestRulesets.Builder).CanBuildImprovements.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Builder).CanBuildBridges.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Builder).BuildProduction.ShouldBe(2);
@@ -317,6 +317,10 @@ public class RulesetTests
         ruleset.Unit(TestRulesets.Soldier).CanBuildBridges.ShouldBeTrue();
         ruleset.Unit(TestRulesets.Soldier).BuildProduction.ShouldBe(1);
         ruleset.Unit(TestRulesets.Archer).BuildProduction.ShouldBe(0);
+        ruleset.Unit(TestRulesets.Scout).ShouldSatisfyAllConditions(
+            static scout => scout.Abilities.ShouldBeEmpty(),
+            static scout => scout.Strength.ShouldBe(8),
+            static scout => scout.Movement.ShouldBe(4));
         ruleset.Territory.InitialRadius.ShouldBe(1);
         ruleset.Territory.MaxRadius.ShouldBe(3);
         ruleset.Territory.GrowthResource.ShouldBe(TestRulesets.Culture);

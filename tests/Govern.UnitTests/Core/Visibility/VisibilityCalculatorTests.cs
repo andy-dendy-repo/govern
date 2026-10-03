@@ -105,6 +105,20 @@ public class VisibilityCalculatorTests
         view.Units.ShouldContain(unit => unit.Id == enemy);
     }
 
+    [Theory]
+    [InlineData("scout", true)]
+    [InlineData("horseman", false)]
+    public void ViewFor_EnemyFourTilesAway_IsSeenByAScoutButNotAHorseman(string watcher, bool seen)
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        builder.AddUnit(P1, new UnitType(watcher), 4, 4);
+        var enemy = builder.AddUnit(P2, TestRulesets.Soldier, 8, 4);
+
+        var view = GameEngine.ViewFor(TestRulesets.Default, builder.Build(), P1);
+
+        view.Units.Any(unit => unit.Id == enemy).ShouldBe(seen);
+    }
+
     [Fact]
     public void ViewFor_Tiles_RevealTerrainOnlyForSeenTiles()
     {
