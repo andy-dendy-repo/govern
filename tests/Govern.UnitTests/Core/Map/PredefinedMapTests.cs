@@ -74,9 +74,13 @@ public class PredefinedMapTests
         { """{"rivers":[{"tile":[2,4],"side":"east","river":"stream"},{"tile":[2,4],"side":"east","river":"stream"},{"tile":[4,3],"side":"east","river":"stream"}]}""", "$.rivers[1]" },
         { """{"rivers":[{"tile":[9,4],"side":"east","river":"stream"}]}""", "$.rivers[0].tile" },
         { """{"spawns":[]}""", "$.spawns" },
-        { """{"spawns":[[1]]}""", "$.spawns[0]" },
-        { """{"spawns":[[3,2]]}""", "$.spawns[0]" },
-        { """{"spawns":[[3,4]]}""", "$.spawns[0]" },
+        { """{"spawns":[[1,2]]}""", "$.spawns" },
+        { """{"spawns":[[1],[1,5]]}""", "$.spawns[0]" },
+        { """{"spawns":[null,[1,5]]}""", "$.spawns[0]" },
+        { """{"rows":["........","........","...~....","f.......",".......f","....~...","........",null]}""", "$.rows[7]" },
+        { """{"rivers":[null]}""", "$.rivers[0]" },
+        { """{"spawns":[[3,2],[1,5]]}""", "$.spawns[0]" },
+        { """{"spawns":[[3,4],[1,5]]}""", "$.spawns[0]" },
         { """{"spawns":[[1,2],[1,2]]}""", "$.spawns[1]" },
         { """{"extra":1}""", "$.extra" },
     };
@@ -103,7 +107,7 @@ public class PredefinedMapTests
         var document = ValidDocument();
         document["rows"] = new JsonArray("...~....", "...~....", "...~....", "...~....", "....~...", "....~...", "....~...", "....~...");
         document["rivers"] = new JsonArray();
-        document["spawns"] = new JsonArray(new JsonArray(0, 2));
+        document["spawns"] = new JsonArray(new JsonArray(0, 2), new JsonArray(0, 1));
 
         var result = Parse(document);
 

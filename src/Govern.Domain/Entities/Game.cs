@@ -103,7 +103,10 @@ public sealed class Game : BaseAuditableEntity
     /// </summary>
     /// <param name="creatorId">The creating user.</param>
     /// <param name="now">The current time.</param>
-    /// <param name="map">The map choice (the handler checks that a key is in the pool); <see langword="null"/> for a generated map.</param>
+    /// <param name="map">
+    /// The map choice (the handler checks that a key is in the pool, and passes <see cref="MapChoice.Random"/> when the request
+    /// names none); <see langword="null"/> for a generated map.
+    /// </param>
     /// <returns>The new game.</returns>
     /// <exception cref="ArgumentException"><paramref name="creatorId"/> is empty.</exception>
     public static Game Create(Guid creatorId, DateTimeOffset now, MapChoice? map = null)

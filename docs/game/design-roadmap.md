@@ -281,7 +281,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G18. Predefined maps
 
-- **Status:** the pool and its first map are done 2026-10-03 ([plan](../plans/done/G18-predefined-maps.md), [maps](maps.md)). Hand-made maps in `maps/<key>.json`, validated against the ruleset (mirrored tiles and rivers, connected, spawn candidates in the left half); the lobby picks Random from the pool (default), a named map, or Generated. First map: The Basin, 32 × 20 (home valleys, ridges with hill passes, a central lake splitting the front into two flanks).
+- **Status:** the pool and its first map are done 2026-10-03, PR #55 ([plan](../plans/done/G18-predefined-maps.md), [maps](maps.md)). Hand-made maps in `maps/<key>.json`, validated against the ruleset (mirrored tiles and rivers, connected, spawn candidates in the left half); the lobby picks Random from the pool (default), a named map, or Generated. First map: The Basin, 32 × 20 (home valleys, ridges with hill passes, a central lake splitting the front into two flanks).
 - **Ideas for later maps** (from Civ 6 map types, taken as ideas only): Lakes (many small lakes as water sources to expand to), Tilted Axis (bands with a character: a wood-rich, a stone-rich and a barren desert band), Highlands on its own (ranges and passes everywhere). Water-heavy types (Continents, Island Plates, Archipelago) wait for ships (G15).
 - **Open:** a player-facing map preview in the lobby, map thumbnails, and choosing maps for more than 2 players (F10).
 

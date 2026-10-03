@@ -10,6 +10,9 @@ internal static class PredefinedMapValidator
 {
     private const int MaxNameLength = 40;
 
+    // The candidates are public, so they narrow down where the opponent started; with one, the opponent's start would be known.
+    private const int MinSpawns = 2;
+
     public static PredefinedMap? Validate(Ruleset ruleset, PredefinedMapDocument document, List<RulesetProblem> problems)
     {
         CheckHeader(ruleset, document, problems);
@@ -100,7 +103,8 @@ internal static class PredefinedMapValidator
         var tiles = map.Tiles.ToBuilder();
         for (var row = 0; row < Math.Min(document.Height, document.Rows.Length); row++)
         {
-            var text = document.Rows[row];
+            // The parser's nullable checks don't reach collection elements.
+            var text = document.Rows[row] ?? string.Empty;
             if (text.Length != document.Width)
             {
                 problems.Add(new($"$.rows[{row}]", $"Must have {document.Width} characters (the width), not {text.Length}."));
@@ -129,23 +133,12 @@ internal static class PredefinedMapValidator
         {
             var river = document.Rivers[index];
             var path = $"$.rivers[{index}]";
-            if (ReadCoord(river.Tile, map, $"{path}.tile", problems) is not { } owner)
+            if (ReadEdge(river, map, path, problems) is not { } edge)
             {
                 continue;
             }
 
-            if (!Enum.IsDefined(river.Side))
-            {
-                problems.Add(new($"{path}.side", "Must be east, northEast or northWest."));
-                continue;
-            }
-
-            var edge = new HexEdge(owner, river.Side);
-            if (!map.Contains(edge.Neighbor()))
-            {
-                problems.Add(new(path, "The edge lies on the map's border: the tile across it is off the map."));
-            }
-            else if (!ruleset.Rivers.Any(definition => definition.Id == river.River))
+            if (!ruleset.Rivers.Any(definition => definition.Id == river.River))
             {
                 problems.Add(new($"{path}.river", $"'{river.River.Id}' is not a river of the ruleset."));
             }
@@ -162,11 +155,42 @@ internal static class PredefinedMapValidator
         return map;
     }
 
+    // The edge of one river entry, when its tile, side and the tile across it are all on the map.
+    private static HexEdge? ReadEdge(PredefinedRiverDocument? river, GameMap map, string path, List<RulesetProblem> problems)
+    {
+        // The parser's nullable checks don't reach collection elements.
+        if (river is null)
+        {
+            problems.Add(new(path, "Must be an object with tile, side and river."));
+            return null;
+        }
+
+        if (ReadCoord(river.Tile, map, $"{path}.tile", problems) is not { } owner)
+        {
+            return null;
+        }
+
+        if (!Enum.IsDefined(river.Side))
+        {
+            problems.Add(new($"{path}.side", "Must be east, northEast or northWest."));
+            return null;
+        }
+
+        var edge = new HexEdge(owner, river.Side);
+        if (!map.Contains(edge.Neighbor()))
+        {
+            problems.Add(new(path, "The edge lies on the map's border: the tile across it is off the map."));
+            return null;
+        }
+
+        return edge;
+    }
+
     private static ImmutableArray<HexCoord> ReadSpawns(PredefinedMapDocument document, GameMap map, List<RulesetProblem> problems)
     {
-        if (document.Spawns.IsEmpty)
+        if (document.Spawns.Length < MinSpawns)
         {
-            problems.Add(new("$.spawns", "At least one spawn tile is required."));
+            problems.Add(new("$.spawns", $"At least {MinSpawns} spawn tiles are required, so the opponent's start stays uncertain."));
         }
 
         var spawns = new List<HexCoord>();
@@ -193,7 +217,7 @@ internal static class PredefinedMapValidator
     // A [column, row] pair on the map.
     private static HexCoord? ReadCoord(ImmutableArray<int> pair, GameMap map, string path, List<RulesetProblem> problems)
     {
-        if (pair.Length != 2)
+        if (pair.IsDefault || pair.Length != 2)
         {
             problems.Add(new(path, "Must be [column, row]."));
             return null;

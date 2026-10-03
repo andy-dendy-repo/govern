@@ -7,7 +7,7 @@ updated: 2026-10-03
 
 # Plan: G18 predefined maps (the map pool, first map "The Basin")
 
-**Status: done 2026-10-03.** Owner's ask (2026-10-03): plan a pool of predefined maps, because generated maps are small and shapeless; look at the most interesting Civ 6 map types and create one map for now. Owner's decisions: a lobby picker (Random from the pool by default, a named map, or Generated); size 32 × 20.
+**Status: done 2026-10-03 (PR #55).** Owner's ask (2026-10-03): plan a pool of predefined maps, because generated maps are small and shapeless; look at the most interesting Civ 6 map types and create one map for now. Owner's decisions: a lobby picker (Random from the pool by default, a named map, or Generated); size 32 × 20.
 
 ## Context
 Every game was played on a generated 20 × 14 map (280 tiles): the generator scatters patches of terrain at random shares and adds two short rivers, so there are no fronts, passes or regions worth fighting over. This adds a pool of hand-made maps and its first map, sized for 1v1; more maps are later content, one data file each.
