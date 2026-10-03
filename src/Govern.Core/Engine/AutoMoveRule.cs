@@ -12,7 +12,7 @@ namespace Govern.Core.Engine;
 /// Units walking to their <see cref="Unit.Destination"/> on their own. The path is planned over what the owner knows (explored
 /// terrain and rivers, bridges, units and cities only on tiles they see now), so it never reveals anything hidden, and is planned
 /// again at every walk. The walk itself takes real steps while the next one fits in the movement left; a unit or city the owner
-/// could not see stops it for this turn. The order ends, with a <see cref="UnitOrderEndedEvent"/>, when the unit arrives, when no
+/// could not see on the way comes into the unit's sight before it is reached. The order ends, with a <see cref="UnitOrderEndedEvent"/>, when the unit arrives, when no
 /// known path is left, or when a step brings an enemy unit or city into the unit's sight.
 /// </summary>
 internal static class AutoMoveRule
@@ -54,11 +54,31 @@ internal static class AutoMoveRule
             return End(state, unit, unit.Position == destination ? OrderEndReason.Arrived : OrderEndReason.Blocked, events);
         }
 
+        var (walkedState, walker, walked, sighted) = TakeSteps(ruleset, state, unit, path);
+        if (walked.Length > 0)
+        {
+            events.Add(new UnitMovedEvent(walker.Id, walker.Owner, walker.Type, walked));
+        }
+
+        return walker.Position == destination ? End(walkedState, walker, OrderEndReason.Arrived, events)
+            : sighted ? End(walkedState, walker, OrderEndReason.EnemySighted, events)
+            : walkedState;
+    }
+
+    // Takes the path's real steps while the next one fits in the movement left, stopping after a step that brings a new enemy
+    // into the unit's sight.
+    private static (GameState State, Unit Unit, ImmutableArray<HexCoord> Walked, bool Sighted) TakeSteps(
+        Ruleset ruleset,
+        GameState state,
+        Unit unit,
+        ImmutableArray<(HexCoord Tile, int Cost)> path)
+    {
         var enemiesBefore = EnemiesInSight(ruleset, state, unit);
-        var walked = new List<HexCoord>();
-        var sighted = false;
+        var walked = ImmutableArray.CreateBuilder<HexCoord>();
         foreach (var (tile, _) in path)
         {
+            // The real step can't cost more than planned: a hidden blocker comes into the unit's sight a step earlier (sight is at
+            // least 1), which ends the order below. This guard keeps the walk on the rules if that ever changes.
             if (ReachabilityCalculator.StepCost(ruleset, state, unit, unit.Position, tile) is not { } cost || cost > unit.MovementLeft)
             {
                 break;
@@ -69,19 +89,11 @@ internal static class AutoMoveRule
             walked.Add(tile);
             if (!EnemiesInSight(ruleset, state, unit).IsSubsetOf(enemiesBefore))
             {
-                sighted = true;
-                break;
+                return (state, unit, walked.ToImmutable(), true);
             }
         }
 
-        if (walked.Count > 0)
-        {
-            events.Add(new UnitMovedEvent(unit.Id, unit.Owner, unit.Type, [.. walked]));
-        }
-
-        return unit.Position == destination ? End(state, unit, OrderEndReason.Arrived, events)
-            : sighted ? End(state, unit, OrderEndReason.EnemySighted, events)
-            : state;
+        return (state, unit, walked.ToImmutable(), false);
     }
 
     private static GameState End(GameState state, Unit unit, OrderEndReason reason, ImmutableArray<GameEvent>.Builder events)

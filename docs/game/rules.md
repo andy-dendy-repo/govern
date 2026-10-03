@@ -101,9 +101,9 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 
 - **Go to** sends a unit to any tile you have explored. It walks there on its own: at once with the movement it has left, then at the start of each of your turns with full movement, before you act.
 - It takes the cheapest way over what you know of the map. Terrain you haven't explored isn't used, units and cities you can't see don't count, and the way is worked out again every turn.
-- The order ends when the unit arrives, when no known way leads there any more, or when a step brings an enemy unit or city into the unit's sight, so you decide what to do. A unit you couldn't see in the way only stops it for that turn.
+- The order ends when the unit arrives, when no known way leads there any more, or when a step brings an enemy unit or city into the unit's sight, so you decide what to do. A unit you couldn't see on the way comes into sight before the unit reaches it, which stops it the same way.
 - Giving the unit any other order (moving, attacking, building), giving it a new destination or pressing Stop cancels the order. Starting the walk drops what the unit was building.
-- Your opponent never sees where your units are heading.
+- Your opponent doesn't see a unit's destination, but can see your units walking on their own at the start of your turn.
 
 ## Attacking
 

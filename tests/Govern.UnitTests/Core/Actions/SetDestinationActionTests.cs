@@ -82,6 +82,20 @@ public class SetDestinationActionTests
     }
 
     [Fact]
+    public void Execute_HiddenEnemyOnAnExploredTarget_IsAcceptedAndTheWalkEndsWhenItComesIntoSight()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithMapExplored(P1);
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+        builder.AddUnit(P2, TestRulesets.Soldier, 5, 2);
+
+        var update = Execute(builder.Build(), P1, new SetDestinationCommand(soldier, At(5, 2)));
+
+        update.State.FindUnit(soldier)!.Position.ShouldBe(At(3, 2));
+        update.State.FindUnit(soldier)!.Destination.ShouldBeNull();
+        update.Events.OfType<UnitOrderEndedEvent>().ShouldHaveSingleItem().Reason.ShouldBe(OrderEndReason.EnemySighted);
+    }
+
+    [Fact]
     public void Execute_EnemyAlreadyInSight_DoesNotStopTheWalk()
     {
         var builder = new GameStateBuilder().WithCapitals().WithMapExplored(P1);
