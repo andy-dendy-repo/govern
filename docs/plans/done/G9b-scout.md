@@ -7,7 +7,7 @@ updated: 2026-10-03
 
 # Plan: G9b, the scout
 
-**Status:** done 2026-10-03 in PR #PRNUM (backlog G9b). Asked for by the owner ("Lets add a new unit: scout"); planned and built in one PR. Decided while building: sight is 4, not 3, because the ruleset requires a unit's sight to reach as far as it can move (the fog previews stay exact).
+**Status:** done 2026-10-03 in PR #52 (backlog G9b). Asked for by the owner ("Lets add a new unit: scout"); planned and built in one PR. Decided while building: sight is 4, not 3, because the ruleset requires a unit's sight to reach as far as it can move (the fog previews stay exact).
 
 ## Context
 G9 left "recon" open in its roster. The owner wants a scout: a cheap, fast unit that explores and watches the map. Every unit's numbers come from the ruleset, so the scout is new data in a new ruleset version plus its look on the board; Core gets no new rule. It stays independent of unit auto moves (a separate item built at the same time).
