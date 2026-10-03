@@ -1,6 +1,6 @@
 ---
 title: Game rules reference (for players)
-tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
+tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, trade-routes, deals, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
 code: [rulesets/default/v9.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
 updated: 2026-10-03
 ---
@@ -76,6 +76,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 | Archer | Ranged | 10 | 22 (range 2) | 2 | 2 | 5 | — | Ranged attack |
 | Builder | Civilian | — | — | 2 | 2 | 5 | 2 | Build improvements, Build bridges |
 | Scout | Recon | 8 | — | 4 | 4 | 3 | — | — |
+| Trader | Civilian | — | — | 3 | 3 | 6 | — | Trade |
 
 - **Class:** what the unit is strong or weak against (see "Class counters").
 - **Strength:** how hard the unit fights in melee and when it is attacked. A unit with no strength (a civilian) can't fight: any attack destroys it.
@@ -89,6 +90,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - **Ranged attack:** the unit can shoot an enemy unit within its range (see "Attacking").
 - **Build improvements:** the unit can build an improvement on its tile in your cities' territory, but not on a city (see "Improvements").
 - **Build bridges:** the unit can bridge the river between its tile and a neighbouring one (see "Bridges").
+- **Trade:** the unit opens trade routes and carries their deals (see "Trading"). Only a city with a trade post can produce it.
 
 ## Moving a unit
 
@@ -197,6 +199,7 @@ Units and buildings cost resources as well as production, and need resources eve
 | Archer | 2 Wood | 1 Food, 1 Water |
 | Builder | 2 Food | 1 Food, 1 Water |
 | Scout | 1 Food | 1 Food |
+| Trader | 2 Food | 1 Food |
 | Army camp | 4 Stone, 2 Wood | 1 Food |
 | Campus | 4 Stone | 1 Gold |
 | Trade post | 4 Wood | — |
@@ -251,7 +254,49 @@ Every building stands on its own tile of the city's territory, which you pick wh
 
 - **Yield per turn:** added to the city's resources at the end of every one of your turns, from the turn after the building is finished.
 - **Extra production:** added to the city's production per turn, for its own production and for jobs in its territory.
-- Buildings also cost resources and upkeep (see "Costs and upkeep"). For now they only give their yield. Later, trade posts will train traders, army camps will speed up army production and harbours will build ships.
+- Buildings also cost resources and upkeep (see "Costs and upkeep"). A trade post also lets its city train traders and trade (see "Trading"). Later, army camps will speed up army production and harbours will build ships.
+
+## Trading
+
+Cities swap resources with each other, yours or your opponent's. There is no money: gold is a resource like any other.
+
+**Markets.** A city with a trade post has a market. In the city panel's Market tab you choose, for each tradable resource, whether the city sells it, buys it or doesn't trade it, and a cap: the most it gives (or takes) each turn over all its deals together.
+- Tradable resources are in "Trade values". Water, science and culture can't be traded.
+- A cap is between 1 and the "Largest market cap" under "Game numbers". It can't be set below what the city's deals already use.
+
+**Demand and fair rates.** Each city has a demand level per tradable resource, starting at 100%.
+- **Need** is what the city wants to buy and has no deal for yet (its buy cap minus its deals), plus the upkeep in that resource it couldn't pay this turn. **Offer** is what it wants to sell and nobody takes yet.
+- At the end of your turn each of your cities with a trade post moves each level towards the bigger side, by at most the "Demand change per turn" under "Game numbers", and keeps it between the "Lowest demand" and the "Highest demand". A market whose caps are all taken keeps its levels.
+- A resource's **value** in a city is its trade value times its demand level. The **fair rate** between two resources is the ratio of their values: a city short of stone may give 4 Food for 1 Stone, a quarry town only 1. The Market tab shows the rates.
+
+**Opening a route.** Select a trader and pick **Open route**: the city it trades for (yours, with a trade post) and a city at the other end (yours, or an enemy city whose trade post you can see right now).
+- The trader walks to the other city's trade post on its own, the way "Go to" does, but it doesn't stop when it sees an enemy. When it stands next to the post, the route is open. A trader never steps onto a trade post: it stops next to it.
+- A city can have at most the "Trade routes per city" under "Game numbers" it opened (open or on the way). It can be the other end of any number of routes.
+- A trader on a route can't be moved or given other orders. **Close route** frees it where it stands and ends the route.
+
+**Deals.** At the other city's post, the trader's owner proposes a deal: "we give these resources, you give those, every turn" (for example 3 Food for 1 Stone).
+- What your city gives must be on its sell list and on the other city's buy list, and what it gets the other way round, all within the caps the two cities have left. Each side gives at least one resource.
+- A deal between two of your own cities is accepted at once: it is how you move goods between your cities.
+- A deal to your opponent waits for them. On their turn they see the proposal in the city's Market tab next to their current deals, and **accept** or **decline** it. If accepting would go over a cap, they can tick older deals at that city to cancel first, so a better offer can push out a worse one.
+- A declined trader stays at the post and can propose again.
+
+**An active deal.** Once accepted, the trader walks back and forth between the two posts on its own.
+- At the end of the other city's owner's turn, the city that opened the route gives its part and the other city its part. Older deals go first. If either city doesn't have its whole part that turn, nothing is swapped that turn, and both owners see why in the game log.
+- If the trader's way is blocked, the deal pauses (nothing is swapped) until it can walk again.
+- **If the trader is killed, the deal breaks.** The route stays: a new trader sent along it can propose again, and the other side has to accept again.
+- Either side can cancel a deal on its own turn. The trader walks back to the other city's post and waits for a new proposal.
+- When either city changes hands, its routes and deals end, and their traders are freed where they stand.
+
+## Trade values
+
+What each tradable resource is worth before a city's demand level (see "Trading").
+
+| Resource | Trade value |
+|---|---|
+| Food | 1 |
+| Wood | 2 |
+| Stone | 2 |
+| Gold | 3 |
 
 ## Resources in the top bar
 
@@ -266,6 +311,9 @@ The top bar counts your resources (food, water, wood, stone, gold, science, cult
 - You see the health of every enemy unit you can see.
 - You never see an enemy unit's movement left or job, what an enemy city is producing, which buildings it has, or its stock. An enemy unit you watch losing health, or not healing, between turns may still tell you that it moved, or that the land or the city keeping it up is short.
 - The order in which units and cities are listed, and their ids, reveal nothing about when they were created.
+- Trade routes and deals are seen only by their two sides. The other side of a route sees it once its trader has reached the post: the proposer, the cities and the terms.
+- Your trader standing at the host's post, on an open route, shows you that city's free market (what it still sells or buys, and how much) and its demand levels. Once it leaves, you no longer see them. You never see the deals your opponent has with other cities, nor a market without a route.
+- You see the trade post of an enemy city while you can see its tile and the city, so you can open a route to it.
 - Your game log lists only what you could see happen: an enemy move appears for the part of its path you saw, an attack from the fog shows the attacker's type but not where it stood, and what happens out of your sight leaves no trace in it.
 
 ## Game numbers
@@ -298,7 +346,13 @@ The top bar counts your resources (food, water, wood, stone, gold, science, cult
 | Health lost in a turn without upkeep | 10 |
 | Full health of a building | 100 |
 | Health a building regains per paid turn | 10 |
+| Building that holds a market | Trade post |
+| Trade routes per city | 2 |
+| Largest market cap | 20 |
+| Demand change per turn | 20% |
+| Lowest demand | 25% |
+| Highest demand | 400% |
 
 ## Maintaining this page
 
-For maintainers: every change to the game's rules updates this page in the same PR. The tables under "Terrain types", "Rivers", "Unit types", "Improvements", "City buildings", "Class counters" and "Game numbers" are checked against the default ruleset by `RulesReferenceTests` (`tests/Govern.ArchitectureTests`). The first column is the name from the ruleset's `texts`, or the row label listed in the test; a ruleset terrain, river, unit, improvement, building or counter without its row, or a new ability without its label in the test, fails it.
+For maintainers: every change to the game's rules updates this page in the same PR. The tables under "Terrain types", "Rivers", "Unit types", "Improvements", "City buildings", "Costs and upkeep", "Trade values", "Class counters" and "Game numbers" are checked against the default ruleset by `RulesReferenceTests` (`tests/Govern.ArchitectureTests`). The first column is the name from the ruleset's `texts`, or the row label listed in the test; a ruleset terrain, river, unit, improvement, building or counter without its row, or a new ability without its label in the test, fails it.

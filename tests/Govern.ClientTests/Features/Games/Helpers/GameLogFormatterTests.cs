@@ -1,5 +1,6 @@
 using Govern.Client.Features.Games.Helpers;
 using Govern.Core.Cities;
+using Govern.Core.Economy;
 using Govern.Core.Events;
 using Govern.Core.Units;
 using Govern.ClientTests.Support;
@@ -83,6 +84,35 @@ public class GameLogFormatterTests
     public void Describe_CapturedCity_NamesBothSides() =>
         GameLogFormatter.Describe(Ruleset, View, new CityCapturedEvent(new CityId(8), "Aria", At(5, 4), Opponent, You, new UnitId(1)))!.Text
             .ShouldBe("You captured Aria from Seat 2");
+
+    [Theory]
+    [InlineData(TradeChange.Opened, "Seat 2's trader reached Rome: the trade route from a city is open")]
+    [InlineData(TradeChange.Proposed, "Seat 2's trader proposed a deal from a city at Rome")]
+    [InlineData(TradeChange.Broken, "The deal between a city and Rome broke: its trader was lost")]
+    public void Describe_TradeRouteChange_NamesTheCitiesItKnows(TradeChange change, string text)
+    {
+        var line = GameLogFormatter.Describe(Ruleset, View, new TradeRouteChangedEvent(new TradeRouteId(4), Opponent, You, new CityId(9), new CityId(7), change))!;
+
+        line.Text.ShouldBe(text);
+        line.Tile.ShouldBe(At(3, 3));
+        line.IsYours.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(false, false, "Rome gave 3 food to Tyre for 1 stone")]
+    [InlineData(false, true, "No trade between Rome and Tyre this turn: Tyre lacked 1 stone")]
+    [InlineData(true, true, "No trade between Rome and Tyre this turn: neither city had its part")]
+    public void Describe_TradeExchanged_SaysWhatMovedOrWhoLackedIt(bool homeShort, bool hostShort, string text)
+    {
+        var route = new Govern.Core.Visibility.TradeRouteView(new TradeRouteId(4), You, new CityId(7), "Rome", new CityId(9), "Tyre", Opponent, Opened: true);
+        var view = View with { TradeRoutes = [route] };
+        var exchanged = new TradeExchangedEvent(route.Id, You, Opponent, route.Home, route.Host, [new(Food, 3)], [new(Stone, 1)], homeShort, hostShort);
+
+        var line = GameLogFormatter.Describe(Ruleset, view, exchanged)!;
+
+        line.Text.ShouldBe(text);
+        line.IsYours.ShouldBeTrue();
+    }
 
     [Theory]
     [InlineData("Archer", "an Archer")]

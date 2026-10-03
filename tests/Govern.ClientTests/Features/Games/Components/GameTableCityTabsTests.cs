@@ -7,7 +7,7 @@ using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Components;
 
-/// <summary>The tabs of the player's own city panel: Units, Buildings and Economy.</summary>
+/// <summary>The tabs of the player's own city panel: Units, Buildings, Economy and Market.</summary>
 public class GameTableCityTabsTests : ClientTestContext
 {
     private readonly FakeBoardRenderer _board;
@@ -25,7 +25,7 @@ public class GameTableCityTabsTests : ClientTestContext
 
         _board.Click(At(2, 2));
 
-        TabNames(cut).ShouldBe(["Units", "Buildings", "Economy"]);
+        TabNames(cut).ShouldBe(["Units", "Buildings", "Economy", "Market"]);
         SelectedTab(cut).ShouldBe("Units");
         cut.Find(".city-panel > .production").TextContent.ShouldStartWith("Producing a Settler");
         cut.Find(".city-tab-units button.produce-soldier").ShouldNotBeNull();

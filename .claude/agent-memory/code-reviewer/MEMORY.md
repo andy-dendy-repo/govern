@@ -5,5 +5,5 @@
 - [In-process state checks](project_in_process_state.md) — limiter TOCTOU across PBKDF2, MemoryCache SizeLimit evicts LRU (not fail-open), Reset race
 - [Client checks](project_client_checks.md) — WASM facts, configure-client.sh, Plan 4/5b traps, G1 UI, F11b echo, F15 leaks/mount race/models/replay/layer keys, F17 version dedupe + FakeBoardRenderer
 - [App Service hosting checks](project_app_service_hosting.md) — Health check pings default domain, release deploys before API_ORIGIN is validated
-- [Game core checks](project_game_core_checks.md) — fog oracles, RNG leaks, Plans 2-5a, G5-G10c, F11a, F19 (parity scenarios lack explored tiles, auto-walk timing leak)
+- [Game core checks](project_game_core_checks.md) — fog oracles, RNG leaks, Plans 2-5a, G5-G10c, F11a, F19 (explored-tile parity, auto-walk leak), G17 (null array elements, unopened-route events)
 - [OpenAPI checks](project_openapi_checks.md) — transformer order vs RegisterComponents, unresolved security refs silently dropped, Swagger UI placement

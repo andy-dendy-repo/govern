@@ -15,7 +15,7 @@ namespace Govern.Client.Features.Games.Components;
 
 /// <summary>
 /// The selected city's panel: its name, and for the player's own city its resources, what it produces, and tabs for the
-/// units it can produce, its buildings and its economy (upkeep, territory).
+/// units it can produce, its buildings, its economy (upkeep, territory) and its market (trade).
 /// </summary>
 public partial class CityPanel
 {
@@ -64,6 +64,9 @@ public partial class CityPanel
     // Whether the city can't pay the upkeep of some of its buildings or units this turn (the Economy tab shows a warning).
     private static bool HasShortage(CityForecast? forecast) =>
         forecast is { Upkeep: var upkeep } && (!upkeep.UnpaidBuildings.IsEmpty || !upkeep.UnpaidUnits.IsEmpty);
+
+    // Whether a proposal waits at this city for the player's answer (the Market tab is marked).
+    private bool HasProposal => View.TradeRouteList.Any(route => route.Host == City.Id && route.HostOwner == View.Viewer && route.Deal is { Accepted: false });
 
     // What a resource gains (or loses) at the end of the turn: the city's income less the upkeep it pays and any resource
     // cost it pays to begin its item.
@@ -116,6 +119,9 @@ public partial class CityPanel
         (_, { } type) => $"Producing a {Ruleset.UnitName(type)}: {City.ProductionProgress ?? 0} of {ProducingCost}",
         _ => "Producing nothing",
     };
+
+    // A trader is trained only in a city with a trade post (the engine's check: the post among its buildings).
+    private bool NeedsTradePost(UnitDefinition unit) => unit.CanTrade && !City.BuildingList.Contains(Ruleset.Trade.Building);
 
     // A unit button is pressed only while no building replaces the unit in production.
     private bool ProducingUnit(UnitType type) => City.ProducingBuilding is null && City.Producing == type;
