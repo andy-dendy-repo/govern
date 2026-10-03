@@ -125,10 +125,10 @@ public static class GameFactory
     }
 
     // One of the map's candidates, or the mirror of one for the second player; the map's validator keeps the row of starting units
-    // passable and in the player's half.
+    // passable and in the player's half. The pick is visible to its player, so it is a hashed draw.
     private static HexCoord PredefinedSpawn(PredefinedMap map, DeterministicRandom random, bool isLeftSide)
     {
-        var spawn = map.Spawns[random.Next(0, map.Spawns.Length)];
+        var spawn = map.Spawns[random.NextHashed(0, map.Spawns.Length)];
         return isLeftSide ? spawn : map.Map.MirrorOf(spawn);
     }
 

@@ -7,8 +7,8 @@ namespace Govern.Application.Games.Services;
 
 /// <summary>
 /// The pool of predefined maps a lobby can choose: every <c>maps/&lt;key&gt;.json</c>, embedded in this assembly and parsed
-/// once against the default ruleset, in key order. A singleton; an invalid or misnamed file stops the first request that needs
-/// it, so a broken map never reaches a game.
+/// once against the default ruleset, in key order. A singleton; an invalid or misnamed file fails every request that needs the
+/// pool until the Api restarts (the load error is cached), so a broken map never reaches a game. The pool test catches it first.
 /// </summary>
 public sealed class MapPoolService(DefaultRulesetService rulesets)
 {

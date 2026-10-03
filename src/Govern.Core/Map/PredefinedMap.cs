@@ -13,8 +13,9 @@ namespace Govern.Core.Map;
 /// <param name="Name">The name players see, such as <c>The Basin</c>.</param>
 /// <param name="Map">The terrain and rivers.</param>
 /// <param name="Spawns">
-/// The first player's candidate spawn tiles, in the left half; the second player's are their mirrors. The game's seed picks one
-/// for each player on its own, so a player can't tell from their own start where the opponent started.
+/// The first player's candidate spawn tiles (at least 2), in the left half; the second player's are their mirrors. The game's
+/// seed picks one for each player on its own, so a player's own start doesn't tell them which of the opponent's candidates
+/// they got. The candidates are public, so they do narrow the opponent's start down to these few tiles: an accepted leak.
 /// </param>
 public sealed record PredefinedMap(string Key, string Name, GameMap Map, ImmutableArray<HexCoord> Spawns)
 {

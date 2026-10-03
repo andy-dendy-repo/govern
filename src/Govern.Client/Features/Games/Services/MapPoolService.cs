@@ -22,12 +22,16 @@ public sealed class MapPoolService(RulesetService rulesets)
 
     private readonly Lazy<ImmutableArray<PredefinedMap>> _maps = new(() => Load(rulesets));
 
+    private IReadOnlyList<MapOption>? _options;
+
     /// <summary>Every pool map, in key order.</summary>
     /// <exception cref="FormatException">An embedded document is not a valid map.</exception>
+    /// <exception cref="InvalidOperationException">A file's name is not its key, or a key is a reserved choice.</exception>
     public ImmutableArray<PredefinedMap> Maps => _maps.Value;
 
     /// <summary>The picker's choices: a random pool map first (the default), then each pool map, then a generated map.</summary>
-    public IReadOnlyList<MapOption> Options =>
+    /// <remarks>Built once, so the picker's data keeps its reference between renders.</remarks>
+    public IReadOnlyList<MapOption> Options => _options ??=
     [
         new(Random, NameOf(Random)),
         .. Maps.Select(static map => new MapOption(map.Key, map.Name)),
@@ -56,7 +60,10 @@ public sealed class MapPoolService(RulesetService rulesets)
                 {
                     using var stream = assembly.GetManifestResourceStream(name)!;
                     using var reader = new StreamReader(stream);
-                    return PredefinedMap.ParseValid(rulesets.Ruleset, reader.ReadToEnd());
+                    var map = PredefinedMap.ParseValid(rulesets.Ruleset, reader.ReadToEnd());
+                    return name == $"{ResourcePrefix}{map.Key}.json" && map.Key is not (Random or Generated)
+                        ? map
+                        : throw new InvalidOperationException($"The embedded map '{name}' must be named after its key '{map.Key}', which can't be '{Random}' or '{Generated}'.");
                 }),
         ];
     }

@@ -38,7 +38,7 @@ G18 ([plan](../plans/done/G18-predefined-maps.md)). Besides a generated map ([ga
 | `legend` | One character per terrain of the ruleset (`terrains.*.id`) |
 | `rows` | `height` strings of `width` legend characters, top row first; odd rows are shifted half a tile right (odd-r layout, the same as the board) |
 | `rivers` | Each river edge once: the tile that owns it as `[column, row]`, its `side` (`east`, `northEast` or `northWest`, the same three sides `TileRivers` stores) and the ruleset river (`rivers.*.id`) |
-| `spawns` | The first player's spawn candidates as `[column, row]`; the second player's are their mirrors |
+| `spawns` | The first player's spawn candidates as `[column, row]`, at least 2; the second player's are their mirrors |
 
 The parser is as strict as the ruleset's: camelCase names only, every field required, no unknown fields, no duplicate keys.
 
@@ -61,7 +61,8 @@ The parser is as strict as the ruleset's: camelCase names only, every field requ
 
 - `GameSetup.Map` carries the map into `GameFactory.Create`: the game's state gets the map's tiles and rivers as they are (no generation), and the seed picks a spawn candidate for the first player and, on its own, one whose mirror the second player gets.
 - The state keeps its own copy of the map, so editing a map file never changes a running game; pool maps need no versioning (unlike rulesets).
-- The Api (`Application/Games/Services/MapPoolService`) and the client (`Client/Features/Games/Services/MapPoolService`) both embed `maps/*.json` and parse them once against the default ruleset, so the lobby's picker offers exactly the maps the Api accepts. An invalid file stops the first request that needs the pool.
+- The Api (`Application/Games/Services/MapPoolService`) and the client (`Client/Features/Games/Services/MapPoolService`) both embed `maps/*.json` and parse them once against the default ruleset, so the lobby's picker offers exactly the maps the Api accepts. An invalid file fails every request that needs the pool until a restart (the load error is cached); `PredefinedMapTests` catches it before that.
+- **Accepted leak:** the spawn candidates are public (in the file and the preview), so a player knows the opponent started on one of the mirrors of the candidates. The validator requires at least 2 candidates; The Basin has 3. Their own start tells them nothing about which one, because the two draws are independent.
 - A fixed map can be learned after a few games: fog of war still hides units and cities, and the random spawn candidates vary the openings. More maps in the pool are the real answer.
 
 ## Adding a map

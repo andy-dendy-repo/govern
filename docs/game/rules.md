@@ -28,7 +28,7 @@ Govern is a turn-based strategy game for the number of players under "Game numbe
 
 ## Maps
 
-The map pool holds hand-made maps. Like a generated map, each pool map looks the same after a half turn, so neither side is better. Each pool map has a few possible starts on each side; a game picks one for each player on its own, so your own start doesn't tell you which of the opponent's possible starts they got.
+The map pool holds hand-made maps. Like a generated map, each pool map looks the same after a half turn, so neither side is better. Each pool map has a few possible starts on each side (at least 2), and they are no secret: your opponent started on one of the possible starts on their side. A game picks one for each player on its own, so your own start doesn't tell you which one they got.
 
 | Map | Size | Shape |
 |---|---|---|
