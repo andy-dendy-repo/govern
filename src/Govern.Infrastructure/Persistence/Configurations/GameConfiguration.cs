@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Govern.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// Maps <see cref="Game"/>: unique invite code, phase as text, <see cref="Game.Revision"/> as the concurrency token and the
-/// whole <see cref="GameState"/> as one <c>jsonb</c> snapshot written through <see cref="GameSerializer"/>.
+/// Maps <see cref="Game"/>: unique invite code, phase and map choice as text, <see cref="Game.Revision"/> as the concurrency
+/// token and the whole <see cref="GameState"/> as one <c>jsonb</c> snapshot written through <see cref="GameSerializer"/>.
 /// </summary>
 internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
 {
@@ -29,13 +29,7 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
     {
         builder.HasKey(game => game.Id);
 
-        builder.Property(game => game.InviteCode)
-            .HasConversion(code => code.Value, value => InviteCode.Create(value))
-            .HasMaxLength(InviteCode.MaxLength)
-            .IsRequired();
-        builder.HasIndex(game => game.InviteCode).IsUnique();
-
-        builder.Property(game => game.Phase).HasConversion<string>().HasMaxLength(PhaseMaxLength);
+        ConfigureTextColumns(builder);
 
         // Join, Start and commands update only the revision they read (WHERE revision = @old), so concurrent changes to the
         // same game cannot both win; the loser gets DbUpdateConcurrencyException.
@@ -60,5 +54,24 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(game => game.Players).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+
+    // The invite code, the phase and the map choice, each stored as text.
+    private static void ConfigureTextColumns(EntityTypeBuilder<Game> builder)
+    {
+        builder.Property(game => game.InviteCode)
+            .HasConversion(code => code.Value, value => InviteCode.Create(value))
+            .HasMaxLength(InviteCode.MaxLength)
+            .IsRequired();
+        builder.HasIndex(game => game.InviteCode).IsUnique();
+
+        builder.Property(game => game.Phase).HasConversion<string>().HasMaxLength(PhaseMaxLength);
+
+        // Games created before the map pool were all played on generated maps.
+        builder.Property(game => game.Map)
+            .HasConversion(map => map.Value, value => MapChoice.Create(value))
+            .HasMaxLength(MapChoice.MaxLength)
+            .HasDefaultValue(MapChoice.Generated)
+            .IsRequired();
     }
 }

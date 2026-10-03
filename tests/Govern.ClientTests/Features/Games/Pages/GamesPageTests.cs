@@ -74,6 +74,33 @@ public class GamesPageTests : ClientTestContext
     }
 
     [Fact]
+    public void NewGame_ByDefault_AsksForARandomPoolMap()
+    {
+        Api.On(HttpMethod.Get, FirstPage, () => FakeApiHandler.Json(new ListMyGamesResponse([], 0)));
+        Api.On(HttpMethod.Post, "/api/games", () => FakeApiHandler.Json(new CreateGameResponse(TestGames.Id, TestGames.InviteCode), HttpStatusCode.Created));
+        var cut = Render<GamesPage>();
+
+        cut.Find("button.new-game").Click();
+
+        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"random"}"""));
+    }
+
+    [Fact]
+    public void NewGame_APickedMap_AsksForIt()
+    {
+        Api.On(HttpMethod.Get, FirstPage, () => FakeApiHandler.Json(new ListMyGamesResponse([], 0)));
+        Api.On(HttpMethod.Post, "/api/games", () => FakeApiHandler.Json(new CreateGameResponse(TestGames.Id, TestGames.InviteCode), HttpStatusCode.Created));
+        var cut = Render<GamesPage>();
+        cut.FindAll(".map-choice .rz-dropdown-item").Select(static item => item.TextContent.Trim())
+            .ShouldBe(["Random map from the pool", "The Basin", "Generated map"]);
+
+        cut.FindAll(".map-choice .rz-dropdown-item")[1].Click();
+        cut.Find("button.new-game").Click();
+
+        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"basin"}"""));
+    }
+
+    [Fact]
     public void NewGame_CapReached_ShowsTheApiMessage()
     {
         Api.On(HttpMethod.Get, FirstPage, () => FakeApiHandler.Json(new ListMyGamesResponse([], 0)));

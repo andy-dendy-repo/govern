@@ -25,6 +25,9 @@ public static class GamesApi
     public static Task<HttpResponseMessage> CreateAsync(HttpClient client, string? accessToken, CancellationToken ct) =>
         SendAsync(client, HttpMethod.Post, "/api/games", accessToken, content: null, ct);
 
+    public static Task<HttpResponseMessage> CreateWithMapAsync(HttpClient client, string? accessToken, string? map, CancellationToken ct) =>
+        SendAsync(client, HttpMethod.Post, "/api/games", accessToken, JsonContent.Create(new { map }), ct);
+
     public static Task<HttpResponseMessage> JoinAsync(HttpClient client, string? accessToken, string? inviteCode, CancellationToken ct) =>
         SendAsync(client, HttpMethod.Post, "/api/games/join", accessToken, JsonContent.Create(new { inviteCode }), ct);
 

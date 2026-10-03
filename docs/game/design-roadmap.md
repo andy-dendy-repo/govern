@@ -1,6 +1,6 @@
 ---
 title: Game design roadmap (future mechanics)
-tags: [game, design, roadmap, game, design, ui, rules, trading, traders, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
+tags: [game, design, roadmap, maps, map-pool, game, design, ui, rules, trading, traders, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
 code: [src/Govern.Core, src/Govern.Client/Features/Games]
 updated: 2026-10-03
 ---
@@ -9,7 +9,7 @@ updated: 2026-10-03
 
 Where the game goes after the 1-vs-1 prototype (game Plans 1–5, [game delivery](../plans/done/game-delivery.md)): a much richer, Civilization-like game. This document describes **what** each mechanic is. **When** it is built (priority, status, what is deferred) is decided only in the [backlog](../plans/backlog.md). Each item becomes its own plan in `.claude/rules/planning.md` format when it is picked up, runs through `/develop-feature`, and branches from and PRs to `gamecore`.
 
-Items are numbered **G1–G17** so they don't clash with the follow-up numbers. Suggestions added to the original wish list are marked *(suggested)*.
+Items are numbered **G1–G18** so they don't clash with the follow-up numbers. Suggestions added to the original wish list are marked *(suggested)*.
 
 | # | Item | Depends on | Size |
 |---|---|---|---|
@@ -29,6 +29,7 @@ Items are numbered **G1–G17** so they don't clash with the follow-up numbers. 
 | G14 | [Seasons](#g14-seasons) | G5, G6 | M |
 | G15 | [Ships and naval movement](#g15-ships-and-naval-movement) | G4, G6, G9, G10 | L |
 | G17 | [Trading: markets, traders, routes and deals](#g17-trading-markets-traders-routes-and-deals) *(done)* | G7, G8a, G10a, F19 | L |
+| G18 | [Predefined maps](#g18-predefined-maps) *(done: the pool and The Basin)* | G4, G6 | M |
 
 **Suggested order** (design dependencies; the [backlog](../plans/backlog.md) decides the actual order): G1 and G2 first, because every later item adds UI and rules. Then G3 as the foundation for the data. Then the map (G4 → G5 → G6), cities (G7 → G8), units (G9), builders (G10), ships (G15, which need harbours from G10), the trees (G11), civilizations and governors (G12 → G13), and seasons last (G14), since they modify almost everything before them.
 
@@ -286,6 +287,11 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 - **Owner's model (his corrections the same day), not Civ 6:** there is no money (gold is a resource); water can't be traded; a host accepts a better proposal and cancels an older deal to make room; a trader walks to the other city's trade post to open a route, then keeps the deal active by walking back and forth, getting goods swapped every turn; killing it breaks the deal.
 - **What was built:** a market per city with a trade post (sell or buy up to a cap per tradable resource), demand levels per resource moved by need and offer, the trader (from a trade post), routes (2 per city), proposals, accept with cancel-to-make-room, decline, cancel and close, the exchange at the end of the host owner's turn, paused routes, broken deals on the trader's death and ended routes on capture.
 - **Later ideas (not agreed):** neutral merchants, more routes from upgraded trade posts (the G10 chain trading post → bazaar → market), trading science or culture, cargo carried per trip, a trade route lens, demand history.
+## G18. Predefined maps
+
+- **Status:** the pool and its first map are done 2026-10-03, PR #55 ([plan](../plans/done/G18-predefined-maps.md), [maps](maps.md)). Hand-made maps in `maps/<key>.json`, validated against the ruleset (mirrored tiles and rivers, connected, spawn candidates in the left half); the lobby picks Random from the pool (default), a named map, or Generated. First map: The Basin, 32 × 20 (home valleys, ridges with hill passes, a central lake splitting the front into two flanks).
+- **Ideas for later maps** (from Civ 6 map types, taken as ideas only): Lakes (many small lakes as water sources to expand to), Tilted Axis (bands with a character: a wood-rich, a stone-rich and a barren desert band), Highlands on its own (ranges and passes everywhere). Water-heavy types (Continents, Island Plates, Archipelago) wait for ships (G15).
+- **Open:** a player-facing map preview in the lobby, map thumbnails, and choosing maps for more than 2 players (F10).
 
 ## Open questions
 

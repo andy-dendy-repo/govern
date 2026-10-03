@@ -1,6 +1,7 @@
 using Govern.Client.Features.Games.Clients;
 using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
+using Govern.Client.Features.Games.Services;
 using Govern.Client.Models;
 using Microsoft.AspNetCore.Components;
 using Radzen;
@@ -19,6 +20,7 @@ public partial class GamesPage
     private int _total;
     private bool _loading;
     private bool _creating;
+    private string _map = MapPoolService.Random;
     private ApiError? _error;
 
     [Inject]
@@ -26,6 +28,9 @@ public partial class GamesPage
 
     [Inject]
     private NavigationManager Navigation { get; set; } = null!;
+
+    [Inject]
+    private MapPoolService Maps { get; set; } = null!;
 
     private async Task LoadAsync(LoadDataArgs args)
     {
@@ -47,7 +52,7 @@ public partial class GamesPage
     {
         _creating = true;
         _error = null;
-        var result = await Games.CreateAsync(CancellationToken.None);
+        var result = await Games.CreateAsync(_map, CancellationToken.None);
         _creating = false;
         if (!result.IsSuccess)
         {
