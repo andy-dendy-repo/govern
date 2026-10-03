@@ -60,6 +60,10 @@ public sealed record UnitDefinition(
     [JsonIgnore]
     public bool CanBuildBridges => Abilities.Contains(UnitAbility.BuildBridge);
 
+    /// <summary>Whether the unit can open trade routes and carry their deals.</summary>
+    [JsonIgnore]
+    public bool CanTrade => Abilities.Contains(UnitAbility.Trade);
+
     /// <summary>The farthest tile the unit can attack: its ranged range, 1 for melee, 0 when it can't attack.</summary>
     [JsonIgnore]
     public int AttackRange => CanRangedAttack ? Ranged?.Range ?? 0 : CanAttack ? 1 : 0;

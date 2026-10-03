@@ -1,0 +1,46 @@
+@* The proposal form of a route the player's city opened (G17), in that city's Market tab: one resource the city gives and one it
+   asks for, each picked from its own sell and buy lists, with amounts. It shows how the host city values both sides (from its
+   demand levels, learned by the trader at its post) and can make the offer fair. Propose is disabled with the reason while the
+   rules forbid the deal (the same check the server runs). *@
+@using Govern.Core.Actions
+@using Govern.Core.Economy
+@using Govern.Core.Visibility
+
+<RadzenStack Gap="0.25rem" class="trade-proposal">
+    @foreach (var (side, label, picked, amount) in Rows)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap"
+                     class="@($"proposal-{label.ToLowerInvariant()}")" role="group" aria-label="@label">
+            <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="rz-m-0">@label</RadzenText>
+            <RadzenNumeric TValue="int" Value="@amount" Min="1" Max="@Ruleset.Trade.MaxCap" Disabled="@(Busy || !CanAct)"
+                           Change="@(value => SetAmount(side, value))" aria-label="@($"{label} amount")" class="proposal-amount"/>
+            @foreach (var resource in Choices(side))
+            {
+                var active = picked == resource;
+                <RadzenButton Size="ButtonSize.ExtraSmall" ButtonStyle="@(active ? ButtonStyle.Primary : ButtonStyle.Light)"
+                              Disabled="@(Busy || !CanAct)" aria-pressed="@(active ? "true" : "false")"
+                              Click="@(() => Pick(side, resource))" class="@($"proposal-resource proposal-resource-{resource.Id}")">
+                    <GameIcon Id="@Icons.Resource(resource)"/>
+                    <span>@Ruleset.ResourceName(resource)</span>
+                </RadzenButton>
+            }
+        </RadzenStack>
+    }
+    @if (ValueText is { } value)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+            <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="proposal-value rz-m-0">@value</RadzenText>
+            <RadzenButton Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Text="Make it fair" Disabled="@(Busy || !CanAct)"
+                          Click="@MakeFair" class="proposal-fair"/>
+        </RadzenStack>
+    }
+    @{ var problem = Problem; }
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+        <RadzenButton Size="ButtonSize.Small" Text="Propose" Icon="send" Disabled="@(Busy || !CanAct || problem is not null)"
+                      Click="@(() => Command.InvokeAsync(new ProposeDealCommand(Route.Id, Gives, Receives)))" class="propose-deal"/>
+        @if (problem is not null)
+        {
+            <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="proposal-reason rz-m-0">@problem.Message</RadzenText>
+        }
+    </RadzenStack>
+</RadzenStack>

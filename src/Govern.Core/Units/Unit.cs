@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
 using Govern.Core.State;
@@ -22,6 +23,10 @@ namespace Govern.Core.Units;
 /// The tile the unit walks to on its own, turn after turn (see <see cref="Actions.SetDestinationCommand"/>); left out of the JSON
 /// while it has no such order.
 /// </param>
+/// <param name="RouteId">
+/// The trade route the unit, a trader, serves (G17): it walks to the host's trade post and, once a deal is accepted, back and
+/// forth between the two posts; its owner can't move it while it is on a route. Left out of the JSON otherwise.
+/// </param>
 public sealed record Unit(
     UnitId Id,
     PlayerId Owner,
@@ -30,7 +35,8 @@ public sealed record Unit(
     int MovementLeft,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int Damage = 0,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] UnitJob? Job = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? Destination = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? Destination = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TradeRouteId? RouteId = null)
 {
     /// <summary>The unit's health under a ruleset: its maximum minus <see cref="Damage"/>.</summary>
     /// <param name="ruleset">The game's ruleset.</param>

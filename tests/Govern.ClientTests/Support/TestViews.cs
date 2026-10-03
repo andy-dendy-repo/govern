@@ -41,11 +41,17 @@ public static class TestViews
 
     public static readonly UnitType BuilderType = new("builder");
 
+    public static readonly UnitType TraderType = new("trader");
+
     public static readonly ImprovementType Farm = new("farm");
 
     public static readonly BuildingType Campus = new("campus");
 
     public static readonly BuildingType Harbour = new("harbour");
+
+    public static readonly BuildingType TradePost = new("trade_post");
+
+    public static readonly ResourceType Stone = new("stone");
 
     public static readonly ResourceType Science = new("science");
 

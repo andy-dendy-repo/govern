@@ -35,4 +35,11 @@ public enum UnitAbility
     /// </summary>
     [JsonStringEnumMemberName("build_bridge")]
     BuildBridge,
+
+    /// <summary>
+    /// Opens trade routes from a city with the trade building to another one, and carries the deal on the route back and forth
+    /// (see <see cref="Rulesets.TradeRules"/>); it can't be used for anything else while on a route.
+    /// </summary>
+    [JsonStringEnumMemberName("trade")]
+    Trade,
 }

@@ -17,6 +17,12 @@ namespace Govern.Core.Engine;
 [JsonDerivedType(typeof(BuildBridgeCommand), "build_bridge")]
 [JsonDerivedType(typeof(ProduceBuildingCommand), "produce_building")]
 [JsonDerivedType(typeof(SetUpkeepPriorityCommand), "set_upkeep_priority")]
+[JsonDerivedType(typeof(SetMarketOrderCommand), "set_market_order")]
+[JsonDerivedType(typeof(OpenTradeRouteCommand), "open_trade_route")]
+[JsonDerivedType(typeof(ProposeDealCommand), "propose_deal")]
+[JsonDerivedType(typeof(AnswerDealCommand), "answer_deal")]
+[JsonDerivedType(typeof(CancelDealCommand), "cancel_deal")]
+[JsonDerivedType(typeof(CloseTradeRouteCommand), "close_trade_route")]
 [JsonDerivedType(typeof(EndTurnCommand), "end_turn")]
 [JsonDerivedType(typeof(ResignCommand), "resign")]
 public abstract record GameCommand;

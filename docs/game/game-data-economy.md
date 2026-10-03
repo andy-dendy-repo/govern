@@ -1,13 +1,13 @@
 ---
-title: Game data, building and economy sections (yields, territory, costs, upkeep, bridges, resources, improvements, buildings)
-tags: [game, core, ruleset, json, resource-cost, upkeep, supply, building-health, builders, build-production, territory, tile-yields, city-stock, water, desert, culture, bridges, resources, improvements, farm, mine, lumber-camp, buildings, campus, harbour, army-camp, validation]
-code: [rulesets/default/v9.json, src/Govern.Core/Rulesets, src/Govern.Core/Economy, src/Govern.Core/Rulesets/EconomyRulesValidator.cs, src/Govern.Core/Rulesets/UpkeepRulesValidator.cs]
+title: Game data, building and economy sections (yields, territory, costs, upkeep, bridges, resources, improvements, buildings, trade)
+tags: [game, core, ruleset, json, resource-cost, upkeep, supply, building-health, builders, build-production, territory, tile-yields, city-stock, water, desert, culture, bridges, resources, improvements, farm, mine, lumber-camp, buildings, campus, harbour, army-camp, trade, trader, trade-value, market, demand, validation]
+code: [rulesets/default/v10.json, src/Govern.Core/Rulesets, src/Govern.Core/Economy, src/Govern.Core/Rulesets/EconomyRulesValidator.cs, src/Govern.Core/Rulesets/UpkeepRulesValidator.cs, src/Govern.Core/Rulesets/TradeRulesValidator.cs]
 updated: 2026-10-03
 ---
 
 # Game data: building sections of the ruleset
 
-*Decided 2026-10-01 (G10a), first published in [`rulesets/default/v5.json`](../../rulesets/default/v5.json); tile yields and territory (G5, G7) arrived in [`v6.json`](../../rulesets/default/v6.json), resource costs, upkeep and building health (G8a) in [`v7.json`](../../rulesets/default/v7.json).* The sections and fields of the ruleset that tile yields, city territory, resource costs and upkeep, builders, tile improvements, city buildings and bridges use. The rest of the format (conventions, strict reading, versions, texts) is in [game data](game-data.md); the algorithms are in [game logic](game-logic.md#building-with-units) and the player's view in the [rules reference](rules.md#building-with-units).
+*Decided 2026-10-01 (G10a), first published in [`rulesets/default/v5.json`](../../rulesets/default/v5.json); tile yields and territory (G5, G7) arrived in [`v6.json`](../../rulesets/default/v6.json), resource costs, upkeep and building health (G8a) in [`v7.json`](../../rulesets/default/v7.json), trade (G17) in [`v10.json`](../../rulesets/default/v10.json).* The sections and fields of the ruleset that tile yields, city territory, resource costs and upkeep, builders, tile improvements, city buildings, bridges and trade use. The rest of the format (conventions, strict reading, versions, texts) is in [game data](game-data.md); the algorithms are in [game logic](game-logic.md#building-with-units) and the player's view in the [rules reference](rules.md#building-with-units).
 
 ## Building fields on units and cities
 
@@ -59,8 +59,8 @@ The k-th tile a city gains costs `tileCost + tileCostIncrease × (k − 1)`. Whi
 
 | Field | Type | Meaning | Default ruleset |
 |---|---|---|---|
-| `units[].resourceCost`, `buildings[].resourceCost` | list of `{ "resource", "amount" }`, may be empty; amount 1..1000 | Paid in full from the city's stock at the end of the turn production of the item begins; the item waits while the stock can't cover it | settler 4 food 2 water, soldier and builder 2 food, spearman and archer 2 wood, horseman 3 food 2 water; army camp 4 stone 2 wood, campus 4 stone, trade post 4 wood, culture centre 3 stone, harbour 6 wood |
-| `units[].upkeep`, `buildings[].upkeep` | list, may be empty; amount 1..100 | Paid every turn by the city that keeps the item up | every unit 1 food 1 water, horseman 2 food 2 water; army camp 1 food, campus and culture centre 1 gold, trade post and harbour nothing |
+| `units[].resourceCost`, `buildings[].resourceCost` | list of `{ "resource", "amount" }`, may be empty; amount 1..1000 | Paid in full from the city's stock at the end of the turn production of the item begins; the item waits while the stock can't cover it | settler 4 food 2 water, soldier, builder and trader 2 food, spearman and archer 2 wood, horseman 3 food 2 water; army camp 4 stone 2 wood, campus 4 stone, trade post 4 wood, culture centre 3 stone, harbour 6 wood |
+| `units[].upkeep`, `buildings[].upkeep` | list, may be empty; amount 1..100 | Paid every turn by the city that keeps the item up | every unit 1 food 1 water, horseman 2 food 2 water, scout and trader 1 food; army camp 1 food, campus and culture centre 1 gold, trade post and harbour nothing |
 | `upkeep.supplyRadius` | int 0..3 | A unit outside its owner's territory is supplied by the land within this distance | 1 (the 7 tiles around it) |
 | `upkeep.shortageDamage` | int 1..`combat.maxHealth` − 1 | Health a unit, or a building, loses in a turn its upkeep isn't paid | 10 |
 | `upkeep.buildingHealth` | int 1..1000 | A building's full health; at no health it gives no yield and no production | 100 |
@@ -85,10 +85,15 @@ The k-th tile a city gains costs `tileCost + tileCostIncrease × (k − 1)`. Whi
 
 ## Resources (`resources`)
 
-The resources a city keeps in its stock. Only an id for now; territory growth spends culture, resource costs and upkeep spend the rest, and trade will later.
+The resources a city keeps in its stock. Territory growth spends culture, resource costs and upkeep spend the rest, and trade swaps the tradable ones.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | id | Needs a `resource.{id}.name` text |
+| `tradeValue` | int 0..100, optional (0 when left out) | What one unit is worth in trade before a city's demand level; 0 means it can't be traded ([trade](#trade-trade)) |
 
 ```json
-"resources": [ { "id": "food" }, { "id": "water" }, { "id": "wood" }, { "id": "stone" }, { "id": "gold" }, { "id": "science" }, { "id": "culture" } ]
+"resources": [ { "id": "food", "tradeValue": 1 }, { "id": "water" }, { "id": "wood", "tradeValue": 2 }, { "id": "stone", "tradeValue": 2 }, { "id": "gold", "tradeValue": 3 }, { "id": "science" }, { "id": "culture" } ]
 ```
 
 Each resource needs a `resource.{id}.name` text. The order is the order of a city's stock in the view, the city panel and the top bar.
@@ -134,7 +139,29 @@ Unique per city: a city has each building at most once. Each one stands on its o
 ]
 ```
 
-Later items give the buildings their own mechanics (traders from trade posts, faster army production in army camps, ships from harbours), upgrades, pillage and repair ([design roadmap](design-roadmap.md), G10b).
+The trade post (`trade.building`) holds its city's market and lets it produce traders ([trade](#trade-trade)). Later items give the other buildings their own mechanics (faster army production in army camps, ships from harbours), upgrades, pillage and repair ([design roadmap](design-roadmap.md), G10b).
+
+## Trade (`trade`)
+
+*Decided 2026-10-03 (G17, the owner's model; not a Civ copy).* How cities swap resources: markets, traders, routes and deals. The algorithms are in [game logic: trading](game-logic-trade.md) and the player's view in the [rules reference](rules.md#trading).
+
+| Field | Type | Meaning | Default |
+|---|---|---|---|
+| `building` | building id | The building that holds a city's market and lets it produce units with the `trade` ability; a city trades only with it on a tile | `trade_post` |
+| `routesPerCity` | int 1..10 | Routes a city may have opened (open or on the way); it can host any number | 2 |
+| `maxCap` | int 1..100 | The largest cap of a market order, and the largest amount of a resource in a deal | 20 |
+| `demandStepPercent` | int 1..100 | The most a demand level moves in a turn, in percent of itself | 20 |
+| `demandSmoothing` | int 1..1000 | Added to need + offer in the demand step, so small markets move slowly | 5 |
+| `minDemandPercent` | int 1..100 | The lowest demand level | 25 |
+| `maxDemandPercent` | int 100..1000 | The highest demand level | 400 |
+
+```json
+"trade": { "building": "trade_post", "routesPerCity": 2, "maxCap": 20, "demandStepPercent": 20, "demandSmoothing": 5, "minDemandPercent": 25, "maxDemandPercent": 400 }
+```
+
+- A resource is tradable when its `tradeValue` is at least 1: food, wood, stone and gold. Water, science and culture are not.
+- A demand level starts at 100 % (`TradeRules.BaseDemandPercent`, a Core constant) and a city stores only the levels that differ from it.
+- The trader is an ordinary unit with the `trade` ability: `civilian`, movement 3, sight 3 (the fog invariant keeps sight ≥ movement), no strength, 6 production, 2 food, upkeep 1 food.
 
 ## Validation of the building sections
 
@@ -149,4 +176,5 @@ Later items give the buildings their own mechanics (traders from trade posts, fa
 - Resource costs: amounts 1..1000, each resource once, and never `territory.growthResource` (territory growth spends it just before production pays, so the city panel could not tell for sure whether production can begin). Upkeep: amounts 1..100, each resource once.
 - `upkeep`: `supplyRadius` 0..3, `shortageDamage` 1..`combat.maxHealth` − 1, `buildingHealth` 1..1000, `buildingRecovery` 1..`buildingHealth`.
 - **Fog invariant:** a unit with upkeep has `sight` ≥ `upkeep.supplyRadius` + 1, so it sees every tile that supplies it and the rivers on their edges, and the supply preview is exact.
+- Trade (`TradeRulesValidator`): `tradeValue` 0..100 and 0 for `territory.growthResource` (trade happens just before territory growth, so the city panel's price of the next tile stays exact); at least one tradable resource; a unit with the `trade` ability has no other ability (a trader on a route takes no other order); `trade.building` exists; the ranges in [the table](#trade-trade).
 - The name texts of every resource, improvement and building exist.

@@ -59,6 +59,12 @@ const models = {
     builder: c => [...standing(c, 'builder')],
     settler: c => [...standing(c, 'settler')],
     scout: c => [...standing(c, 'scout')],
+    // The settler's figure with a pack of goods on its back.
+    trader: c => [
+        ...standing(c, 'settler'),
+        ['box', 0, 0.2, -0.13, 0.17, 0.17, 0.1, c.wall],
+        ['box', 0, 0.37, -0.13, 0.13, 0.05, 0.08, c.seat],
+    ],
     horseman: c => [
         ['disc', 0, 0, 0, 0.5, 0.03, 0.5, c.base],
         ...turned(Math.PI / 2, [

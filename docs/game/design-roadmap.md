@@ -1,6 +1,6 @@
 ---
 title: Game design roadmap (future mechanics)
-tags: [game, design, roadmap, game, design, ui, rules, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
+tags: [game, design, roadmap, game, design, ui, rules, trading, traders, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
 code: [src/Govern.Core, src/Govern.Client/Features/Games]
 updated: 2026-10-03
 ---
@@ -9,7 +9,7 @@ updated: 2026-10-03
 
 Where the game goes after the 1-vs-1 prototype (game Plans 1–5, [game delivery](../plans/done/game-delivery.md)): a much richer, Civilization-like game. This document describes **what** each mechanic is. **When** it is built (priority, status, what is deferred) is decided only in the [backlog](../plans/backlog.md). Each item becomes its own plan in `.claude/rules/planning.md` format when it is picked up, runs through `/develop-feature`, and branches from and PRs to `gamecore`.
 
-Items are numbered **G1–G15** so they don't clash with the follow-up numbers. Suggestions added to the original wish list are marked *(suggested)*.
+Items are numbered **G1–G17** so they don't clash with the follow-up numbers. Suggestions added to the original wish list are marked *(suggested)*.
 
 | # | Item | Depends on | Size |
 |---|---|---|---|
@@ -28,6 +28,7 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 | G13 | [Colonies founded by governors (settlers removed)](#g13-colonies-founded-by-governors-settlers-removed) | G12 | M |
 | G14 | [Seasons](#g14-seasons) | G5, G6 | M |
 | G15 | [Ships and naval movement](#g15-ships-and-naval-movement) | G4, G6, G9, G10 | L |
+| G17 | [Trading: markets, traders, routes and deals](#g17-trading-markets-traders-routes-and-deals) *(done)* | G7, G8a, G10a, F19 | L |
 
 **Suggested order** (design dependencies; the [backlog](../plans/backlog.md) decides the actual order): G1 and G2 first, because every later item adds UI and rules. Then G3 as the foundation for the data. Then the map (G4 → G5 → G6), cities (G7 → G8), units (G9), builders (G10), ships (G15, which need harbours from G10), the trees (G11), civilizations and governors (G12 → G13), and seasons last (G14), since they modify almost everything before them.
 
@@ -128,7 +129,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 - **Decide:**
   - Does a resource deplete? Proposal: renewable resources (wood, food, fish) regrow, and mined ones (coal, oil, metals, uranium) have reserves that run out slowly.
   - Is it visible before a tech reveals it? Proposal: strategic resources are hidden until their tech (G11); the view filters them per player.
-  - Is there trade? Trading resources between players needs diplomacy, which is not in this list (see the open questions).
+  - Is there trade? *Answered by [G17](#g17-trading-markets-traders-routes-and-deals) (2026-10-03):* cities swap resources through traders and trade routes, with no diplomacy needed.
 
 ## G6. Rivers and bridges
 
@@ -194,7 +195,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G10. Builders and buildings (with upgrades)
 
-- **Status:** split on 2026-10-01. **G10a done** 2026-10-01 ([plan](../plans/done/G10a-builders-and-buildings.md), PR #33): the builder, tile improvements (farm, lumber camp, mine) in a city's work area, unique city buildings (army camp, campus, trade post, culture centre, harbour) that give a resource or production, bridges built by builders and soldiers, and a per-player stockpile (replaced by each city's stock in G7) (ruleset v5, [rules](rules.md#building-with-units)). **G10c done** 2026-10-01 (owner's request, [plan](../plans/done/G10c-building-sites.md), PR #38): every building stands on its own tile of the city's territory, picked by the player when ordering it and reserved while it is produced; the tile keeps its yield and takes no improvement. **G10b** is open: upgrades, building health, pillage and repair, removing an improvement, and the buildings' own mechanics (traders from trade posts, faster army production in army camps, ships from harbours with G15).
+- **Status:** split on 2026-10-01. **G10a done** 2026-10-01 ([plan](../plans/done/G10a-builders-and-buildings.md), PR #33): the builder, tile improvements (farm, lumber camp, mine) in a city's work area, unique city buildings (army camp, campus, trade post, culture centre, harbour) that give a resource or production, bridges built by builders and soldiers, and a per-player stockpile (replaced by each city's stock in G7) (ruleset v5, [rules](rules.md#building-with-units)). **G10c done** 2026-10-01 (owner's request, [plan](../plans/done/G10c-building-sites.md), PR #38): every building stands on its own tile of the city's territory, picked by the player when ordering it and reserved while it is produced; the tile keeps its yield and takes no improvement. **G10b** is open: upgrades, building health, pillage and repair, removing an improvement, and the buildings' own mechanics (faster army production in army camps, ships from harbours with G15; the trade post's traders came with [G17](#g17-trading-markets-traders-routes-and-deals)).
 - **Owner's model (2026-10-01), not Civ 6:** builders have **no charges**. Builders and soldiers have their own build production; on their city's ground the city's production is added, outside it the unit builds alone (for now only bridges). Both builders and soldiers build bridges.
 - **Builder (requested):** a unit that lets a city apply its production to create, upgrade or remove buildings on tiles in its territory. It also builds bridges on river edges (moved here from G6, 2026-10-01; done in G10a: a crossed bridge counts as no river). Pillaging and repairing bridges are G10b.
 - **Building parameters (requested):** health, room for living (housing), resources produced, production needed to build it.
@@ -277,6 +278,14 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 - **Carrying units:** units board a ship in a city or on an adjacent shore tile and unload on an adjacent land tile. Decide what happens to units aboard when the ship is destroyed (proposal: they are lost).
 - **Fog of war:** units aboard an enemy ship are hidden; only the ship is visible.
 - **Combat:** a counter matrix with land units too (for example ranged ships bombard coastal units and cities; melee land units can't attack ships at sea).
+
+## G17. Trading: markets, traders, routes and deals
+
+- **Status: done** 2026-10-03 ([plan](../plans/done/G17-trading.md)), ruleset v10. Rules for players: [Trading](rules.md#trading); algorithms: [game logic: trading](game-logic-trade.md); data: [`trade`](game-data-economy.md#trade-trade).
+- **Owner's request (2026-10-03):** each city chooses what it sells and buys, each with a cap; other players produce traders and choose the city to trade with; rates follow need and proposition, like real life; players can offer better deals to compete.
+- **Owner's model (his corrections the same day), not Civ 6:** there is no money (gold is a resource); water can't be traded; a host accepts a better proposal and cancels an older deal to make room; a trader walks to the other city's trade post to open a route, then keeps the deal active by walking back and forth, getting goods swapped every turn; killing it breaks the deal.
+- **What was built:** a market per city with a trade post (sell or buy up to a cap per tradable resource), demand levels per resource moved by need and offer, the trader (from a trade post), routes (2 per city), proposals, accept with cancel-to-make-room, decline, cancel and close, the exchange at the end of the host owner's turn, paused routes, broken deals on the trader's death and ended routes on capture.
+- **Later ideas (not agreed):** neutral merchants, more routes from upgraded trade posts (the G10 chain trading post → bazaar → market), trading science or culture, cargo carried per trip, a trade route lens, demand history.
 
 ## Open questions
 

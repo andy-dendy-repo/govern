@@ -28,9 +28,15 @@ internal static class SetProductionRule
             return RuleViolations.CityNotFound;
         }
 
-        if (ruleset.FindUnit(command.UnitType) is null)
+        if (ruleset.FindUnit(command.UnitType) is not { } unit)
         {
             return RuleViolations.UnknownUnitType;
+        }
+
+        // A trader is trained only where it can trade from: a city with a trade post.
+        if (unit.CanTrade && !city.Has(ruleset.Trade.Building))
+        {
+            return RuleViolations.NoTradePost;
         }
 
         var changed = city.ProducingBuilding is null && city.Producing == command.UnitType

@@ -19,7 +19,7 @@ public sealed record EndTurnCommand : GameCommand;
 /// <summary>
 /// Ends the actor's turn: their units' jobs advance (see <see cref="ConstructionRule"/>), their cities add their income to their
 /// stock, pay upkeep (see <see cref="UpkeepRule"/>: unsupplied units and buildings lose health, supplied units that rested heal),
-/// grow their territory (see <see cref="TerritoryRule"/>) and produce (except a city whose production a job used; an item begins
+/// swap the goods of the accepted deals they host and move their demand levels (see <see cref="TradeRule"/>), grow their territory (see <see cref="TerritoryRule"/>) and produce (except a city whose production a job used; an item begins
 /// once its resource cost is paid), then the next active player moves with full movement, and their units with a destination walk
 /// on (see <see cref="AutoMoveRule"/>).
 /// </summary>
@@ -30,8 +30,9 @@ internal static class EndTurnRule
         var events = ImmutableArray.CreateBuilder<GameEvent>();
         var resting = UpkeepRule.RestingUnits(ruleset, state, actor);
         var (built, usedCities) = ConstructionRule.AdvanceJobs(ruleset, state, actor, events);
-        var kept = UpkeepRule.Apply(ruleset, ConstructionRule.CollectYields(ruleset, built, actor), actor, resting, events);
-        var grown = TerritoryRule.Grow(ruleset, kept, actor, events);
+        var (kept, shortages) = UpkeepRule.Apply(ruleset, ConstructionRule.CollectYields(ruleset, built, actor), actor, resting, events);
+        var traded = TradeRule.UpdateDemand(ruleset, TradeRule.Exchange(ruleset, kept, actor, events), actor, shortages);
+        var grown = TerritoryRule.Grow(ruleset, traded, actor, events);
         var produced = grown.Cities
             .Where(city => city.Owner == actor && !usedCities.Contains(city.Id))
             .Select(static city => city.Id)

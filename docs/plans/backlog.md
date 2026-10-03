@@ -24,7 +24,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 ## Now
 
-Empty: G10c is done (see Recently done). The owner picks the next item from Next or Deferred.
+Empty: G17 is done (see Recently done). The owner picks the next item from Next or Deferred.
 
 ### Content slice C1: G2, G4, G9
 
@@ -58,14 +58,14 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 | F9 | Simultaneous turns (Civ 6 style) | 2026-09-30 | Content and UI first | Alternating turns become the main complaint in play | [F9](deferred/follow-ups.md#f9-simultaneous-turns-civ-6-style) |
 | F10 | More than two players | 2026-09-30 | Content and UI first | 1-vs-1 play is solid; after F8 and F9 | [F10](deferred/follow-ups.md#f10-more-than-two-players) |
 | G8b | City stats, part b: population, housing, loyalty and the production queue. Split from G8 on 2026-10-01; G8a (costs and upkeep) is done | 2026-10-01 | The owner wants costs, upkeep and supply first (G8a) | G8a is done and cities need to grow or be managed | [G8](../game/design-roadmap.md#g8-city-stats-and-the-production-queue) |
-| G10b | Builders and buildings, part b: upgrades, pillage and repair (building health came with G8a), removing an improvement, the buildings' own mechanics (traders, faster army production, ships from harbours). Split from G10 on 2026-10-01; G10a is done | 2026-09-30 | Not in content slice C1; G10a gives the base; the rest needs G7, G8 (and G15 for ships) | The owner picks the next G item | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
+| G10b | Builders and buildings, part b: upgrades, pillage and repair (building health came with G8a), removing an improvement, the buildings' own mechanics (faster army production, ships from harbours; traders came with G17). Split from G10 on 2026-10-01; G10a is done | 2026-09-30 | Not in content slice C1; G10a gives the base; the rest needs G7, G8 (and G15 for ships) | The owner picks the next G item | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
 | G11 | Science and culture trees | 2026-09-30 | Not in content slice C1; needs G8 | C1 is done; then pick the next slice | [G11](../game/design-roadmap.md#g11-science-and-culture-trees) |
 | G12 | Civilizations and governors | 2026-09-30 | Not in content slice C1; needs G8, G11 | C1 is done; then pick the next slice | [G12](../game/design-roadmap.md#g12-civilizations-and-governors) |
 | G13 | Colonies founded by governors | 2026-09-30 | Not in content slice C1; needs G12 | C1 is done; then pick the next slice | [G13](../game/design-roadmap.md#g13-colonies-founded-by-governors-settlers-removed) |
 | G14 | Seasons | 2026-09-30 | Not in content slice C1; modifies almost everything; last | C1 is done; then pick the next slice | [G14](../game/design-roadmap.md#g14-seasons) |
 | F20 | Auto-explore: a unit walks on its own to the nearest unexplored tiles, turn after turn, reusing the F19 destination order | 2026-10-03 | The owner wants auto moves (F19) first and auto-explore later | F19 is in play, or scouts (G9b) need it | [F19 plan](done/F19-unit-auto-moves.md) |
 | G15 | Ships and naval movement | 2026-09-30 | Not in content slice C1; needs harbours (G10a, done) and G10b (G6 rivers are done) | C1 is done; then pick the next slice | [G15](../game/design-roadmap.md#g15-ships-and-naval-movement) |
-| G16 | Diplomacy (war and peace, trade, alliances, diplomacy points) | 2026-09-30 | Not needed for 1-vs-1 | F10, or resource trading (G5) is wanted | [open question 1](../game/design-roadmap.md#open-questions) |
+| G16 | Diplomacy (war and peace, trade, alliances, diplomacy points) | 2026-09-30 | Not needed for 1-vs-1 | F10. Resource trading between players came without diplomacy in G17 | [open question 1](../game/design-roadmap.md#open-questions) |
 
 ## Ideas
 
@@ -75,6 +75,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| G17 | Trading: each city with a trade post sets a market (sell or buy food, wood, stone or gold, up to a cap per turn; water can't be traded), demand levels move with need and offer, traders from trade posts walk to another city's post to open a route (2 per city), propose a per-turn swap the host accepts (cancelling older deals to make room) or declines, and shuttle between the posts while the deal swaps goods at the end of the host owner's turn; killing the trader breaks the deal, capture ends the route. No money: gold is a resource (ruleset v10, [rules](../game/rules.md#trading)) | 2026-10-03, PR #TBD | [G17](done/G17-trading.md) |
 | F12 | Player-chosen city names: Found city asks for the name, prefilled with a random unused suggestion from the ruleset (v9, 30 names); 1 to 24 letters, digits, spaces, `'`, `-` or `.`, unique among the player's own cities. Removes the `City N` count leak ([rules](../game/rules.md#founding-a-city)) | 2026-10-03, PR #54 | [F12](done/F12-city-names.md) |
 | F19 | Unit auto moves: Go to sends a unit to any explored tile; it walks there on its own, at once and at the start of each of the owner's turns, over the cheapest path the owner knows, until it arrives, has no known way, or sights an enemy; the board shows its route and turns, the unit card a Stop button ([game logic](../game/game-logic.md#set-a-destination-auto-moves)) | 2026-10-03, PR #53 | [F19](done/F19-unit-auto-moves.md) |
 | G9b | The scout (G9's recon unit): class Recon, movement 4, sight 4, strength 8 with no attack (it defends but can't attack or capture), costs 1 Food and needs 1 Food a turn; ruleset v8, the KayKit hooded rogue on the board ([rules](../game/rules.md#unit-types)) | 2026-10-03, PR #52 | [G9b](done/G9b-scout.md) |

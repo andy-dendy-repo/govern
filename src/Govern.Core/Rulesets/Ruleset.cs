@@ -38,6 +38,7 @@ public sealed class Ruleset
         Improvements = document.Improvements;
         Buildings = document.Buildings;
         Combat = document.Combat;
+        Trade = document.Trade;
         Texts = document.Texts;
         Hash = hash;
         _units = document.Units.ToFrozenDictionary(static unit => unit.Id);
@@ -86,6 +87,12 @@ public sealed class Ruleset
 
     /// <summary>Health, damage, healing and counters.</summary>
     public CombatRules Combat { get; }
+
+    /// <summary>Trading: markets, routes and demand levels.</summary>
+    public TradeRules Trade { get; }
+
+    /// <summary>The resources cities can trade, in the ruleset's order.</summary>
+    public IEnumerable<ResourceDefinition> TradableResources => Resources.Where(static resource => resource.IsTradable);
 
     /// <summary>Every text a player reads, by key (English only for now).</summary>
     public ImmutableDictionary<string, string> Texts { get; }
