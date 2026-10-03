@@ -15,7 +15,7 @@ Andrii asked for "auto moves" (2026-10-03). Today a unit only moves to a tile it
 Alternatives considered and not planned: automatic exploring (the unit walks to the nearest unexplored tile by itself; the owner wants it later, backlog F20); patrol between two tiles; "sentry" (skip the unit until an enemy comes into sight). They can reuse the same order field later.
 
 ## Scope
-- In: a destination order on a unit; walking it when the order is given and at the start of each of the owner's turns; stopping rules; a log line when a walk ends; a "Go to" mode in the unit card, the path and destination marked on the board, a "Heading to" line with Cancel.
+- In: a destination order on a unit; walking it when the order is given and at the start of each of the owner's turns; stopping rules; a log line when a walk ends; a Go to in the action bar, the route and destination (with its turns) marked on the board, a "Walking to its destination: N turns away" line in the unit card and a Stop button.
 - Out: exploring, patrol, sentry; a turn-count label on every tile of the path (the destination shows the number of turns only); orders for groups of units.
 
 ## Rules (Govern's own, not Civ's)
@@ -27,13 +27,13 @@ Alternatives considered and not planned: automatic exploring (the unit walks to 
    - arrives (`Arrived`);
    - has no path any more (`Blocked`), e.g. the target became an enemy city;
    - ends a step with an enemy unit or city in its sight that it could not see before the walk started (`EnemySighted`), so the player decides what to do.
-   A step into a tile taken by a unit the player could not see stops that walk for this turn but keeps the order.
+   A unit the player could not see on the way comes into the unit's sight a step before it, so it ends the order as `EnemySighted`.
 6. **Cancelling.** Any other command on the unit (move, attack, build, found city, a new destination) replaces the order. `SetDestinationCommand(UnitId, null)` clears it.
 7. **Visibility.** The order is shown only to its owner (`UnitView.Destination`, as with `Job`).
 
 ## Affected areas
 - Core: `Units/Unit.cs` (`Destination`, left out of the JSON while null, so old saves load), `Actions/SetDestinationAction.cs` (command + rule), `Map/PathFinder.cs` (multi-turn cheapest path, reusing `ReachabilityCalculator.StepCost`), `Engine/AutoMoveRule.cs` (walk one unit, walk all of a player's), `Events/UnitOrderEndedEvent.cs` + `Units/OrderEndReason.cs`, `Actions/EndTurnAction.cs` (call it after `ResetMovement`), the other unit actions (clear `Destination`), `Engine/GameEngine.cs` (dispatch + preview `DestinationPath(ruleset, view, unitId, target)`), `Visibility/UnitView.cs`, `Visibility/EventVisibilityCalculator.cs` (owner only).
-- Client: `Helpers/BoardClickResolver.cs` (a `Destination` mode like bridge mode; a click on an explored tile sends the command), `Models/BoardSelection.cs`, `Models/BoardHighlights.cs` (path tiles + destination), the WebGL board overlay for the path, `Components/UnitPanel.razor` ("Go to", "Heading to … (N turns)", Cancel), `Helpers/GameLogFormatter.cs`; `Services/GameUiService.cs` (`ToggleDestination`, Esc, units with a destination aren't idle).
+- Client: `Helpers/BoardClickResolver.cs` (a `Destination` mode like bridge mode; a click on an explored tile sends the command), `Models/BoardSelection.cs`, `Models/BoardHighlights.cs` (path tiles + destination), the WebGL board overlay for the path, `Components/Screen/ActionBar.razor` (Go to, Stop), `Components/UnitPanel.razor` ("Walking to its destination: N turns away"), `Helpers/GameLogFormatter.cs`; `Services/GameUiService.cs` (`ToggleDestination`, Esc, units with a destination aren't idle).
 - No ruleset change, no server code change (commands pass through as today), no migration.
 
 ## Steps
@@ -42,8 +42,8 @@ Alternatives considered and not planned: automatic exploring (the unit walks to 
 3. Docs: game logic, rules reference, game UI, game-core feature doc, backlog close-out.
 
 ## Tests
-- Unit (Core): path over explored tiles only; path avoids visible units and enemy cities, ignores hidden ones; set destination walks at once and drops the job; walk continues at the next turn start; arrival, blocked and enemy-sighted end the order with the event; hidden blocker stops the walk but keeps the order; other commands clear it; invalid targets (unexplored, impassable, own tile, enemy's unit) rejected; serializer round trip and old JSON without the field; event hidden from the opponent; `UnitView` hides the opponent's destination.
-- Client (bUnit): "Go to" mode, click sends `SetDestinationCommand`, highlights show the path, panel shows "Heading to" and Cancel sends the null command, log line text.
+- Unit (Core): path over explored tiles only; path avoids visible units and enemy cities, ignores hidden ones; set destination walks at once and drops the job; walk continues at the next turn start; arrival, blocked and enemy-sighted end the order with the event; a hidden enemy on an explored target is accepted and the walk ends as enemy sighted; other commands clear it; invalid targets (unexplored, impassable, own tile, enemy's unit) rejected; serializer round trip and old JSON without the field; event hidden from the opponent; `UnitView` hides the opponent's destination.
+- Client (bUnit): "Go to" mode, click sends `SetDestinationCommand`, highlights show the path, panel shows "Walking to its destination" and Stop sends the null command, log line text.
 - Integration: one command round trip through `SendGameCommandEndpoint` (happy path, 409 `move.no_path` for an unexplored target; rule violations are 409 in this Api).
 - Parity: `GameEnginePreviewTests.DestinationPath_View_MatchesSetDestinationCommands` compares the preview with `Execute` for every tile of the map in every preview scenario.
 - Architecture: none, existing rules cover it.

@@ -90,6 +90,18 @@ public class GameTableBuildTests : ClientTestContext
     }
 
     [Fact]
+    public void GoTo_OpponentsTurn_GoToAndStopAreDisabled()
+    {
+        var view = Create([Soldier(2, You, At(3, 2)) with { Destination = At(6, 2) }]) with { CurrentPlayer = Opponent };
+        var cut = RenderTable(view);
+        _board.Click(At(3, 2));
+
+        cut.Find("button.go-to").HasAttribute("disabled").ShouldBeTrue();
+        cut.Find("button.stop-order").HasAttribute("disabled").ShouldBeTrue();
+        cut.Find(".unit-destination").TextContent.ShouldBe("Walking to its destination: it walks on at the start of your turn.");
+    }
+
+    [Fact]
     public void BuildBridge_PickATileAcrossTheRiver_SendsIt()
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));

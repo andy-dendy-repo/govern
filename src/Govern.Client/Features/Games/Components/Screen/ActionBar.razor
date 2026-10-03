@@ -17,12 +17,12 @@
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap" class="action-bar">
         <GameIcon Id="@Icons.Unit(unit.Type)" Class="@Seats.Class(View, unit.Owner)"/>
         <RadzenText TextStyle="TextStyle.Body2" TagName="TagName.Span" class="action-hint rz-m-0">@Hint(unit, definition)</RadzenText>
-        <RadzenButton Disabled="@Busy" ButtonStyle="@(Ui.Selection.Destination ? ButtonStyle.Primary : ButtonStyle.Secondary)"
+        <RadzenButton Disabled="@(Busy || !MyTurn)" ButtonStyle="@(Ui.Selection.Destination ? ButtonStyle.Primary : ButtonStyle.Secondary)"
                       Click="@(() => Ui.ToggleDestination(Ruleset, View))" aria-pressed="@(Ui.Selection.Destination ? "true" : "false")"
                       Icon="near_me" Text="@(Ui.Selection.Destination ? "Cancel go to" : "Go to")" class="go-to"/>
         @if (unit.Destination is not null)
         {
-            <RadzenButton Disabled="@Busy" ButtonStyle="ButtonStyle.Secondary" Icon="block" Text="Stop"
+            <RadzenButton Disabled="@(Busy || !MyTurn)" ButtonStyle="ButtonStyle.Secondary" Icon="block" Text="Stop"
                           Click="@(() => Command.InvokeAsync(new SetDestinationCommand(unit.Id, null)))" class="stop-order"/>
         }
         @if (definition.CanFoundCity)
@@ -85,6 +85,8 @@
     [Parameter] public bool Busy { get; set; }
 
     [Parameter] public EventCallback<GameCommand> Command { get; set; }
+
+    private bool MyTurn => View.CurrentPlayer == View.Viewer;
 
     private UnitView? Unit => View.Status == GameStatus.InProgress && Ui.Selection.Unit is { } id ? View.FindOwnUnit(id) : null;
 
