@@ -27,13 +27,7 @@
         }
         @if (definition.CanFoundCity)
         {
-            var problem = GameEngine.CheckFoundCity(Ruleset, View, unit.Id);
-            <RadzenButton Text="Found city" Icon="location_city" Disabled="@(Busy || problem is not null)"
-                          Click="@(() => Command.InvokeAsync(new FoundCityCommand(unit.Id)))" class="found-city"/>
-            @if (problem is not null)
-            {
-                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="found-city-reason">@problem.Message</RadzenText>
-            }
+            <FoundCityPrompt @key="unit.Id" View="@View" Ruleset="@Ruleset" UnitId="@unit.Id" Busy="@Busy" Command="@Command"/>
         }
         @if (definition.CanBuildImprovements)
         {

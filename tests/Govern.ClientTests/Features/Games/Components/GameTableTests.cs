@@ -206,15 +206,88 @@ public class GameTableTests : ClientTestContext
     }
 
     [Fact]
-    public void FoundCity_Allowed_SendsIt()
+    public void FoundCity_Click_AsksForANamePrefilledWithAnUnusedSuggestion()
     {
-        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
-        var cut = RenderTable(TestGames.Started());
+        var cut = RenderTable(TestGames.Started(view: Create([Settler(1, You, At(2, 2))], [City(7, You, At(8, 6), "Ambermoor")])));
 
         _board.Click(At(2, 2));
         cut.Find("button.found-city").Click();
 
-        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString().ShouldBe("""{"type":"found_city","unitId":{"value":1}}"""));
+        var name = cut.Find("input.city-name-input").GetAttribute("value");
+        Ruleset.SuggestedCityNames.ShouldContain(name);
+        name.ShouldNotBe("Ambermoor");
+        Api.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void FoundCity_SuggestAnother_ChangesTheName()
+    {
+        var cut = RenderTable(TestGames.Started());
+        _board.Click(At(2, 2));
+        cut.Find("button.found-city").Click();
+        var first = cut.Find("input.city-name-input").GetAttribute("value");
+
+        cut.Find("button.suggest-name").Click();
+
+        cut.Find("input.city-name-input").GetAttribute("value").ShouldNotBe(first);
+    }
+
+    [Fact]
+    public void FoundCity_TypedName_SendsIt()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
+        var cut = RenderTable(TestGames.Started());
+        _board.Click(At(2, 2));
+        cut.Find("button.found-city").Click();
+
+        cut.Find("input.city-name-input").Input("New Harbour");
+        cut.Find("button.confirm-found-city").Click();
+
+        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
+            .ShouldBe("""{"type":"found_city","unitId":{"value":1},"name":"New Harbour"}"""));
+    }
+
+    [Theory]
+    [InlineData("", "Use 1 to 24 letters, digits, spaces, apostrophes, hyphens or dots.")]
+    [InlineData("<b>", "Use 1 to 24 letters, digits, spaces, apostrophes, hyphens or dots.")]
+    [InlineData("home", "One of your cities already has this name.")]
+    public void FoundCity_InvalidName_DisablesFoundWithTheReason(string name, string reason)
+    {
+        var cut = RenderTable(TestGames.Started(view: Create([Settler(1, You, At(2, 2))], [City(7, You, At(8, 6), "Home")])));
+        _board.Click(At(2, 2));
+        cut.Find("button.found-city").Click();
+
+        cut.Find("input.city-name-input").Input(name);
+
+        cut.Find("button.confirm-found-city").HasAttribute("disabled").ShouldBeTrue();
+        cut.Find(".city-name-reason").TextContent.ShouldBe(reason);
+    }
+
+    [Fact]
+    public void FoundCity_Cancel_SendsNothingAndShowsTheButtonAgain()
+    {
+        var cut = RenderTable(TestGames.Started());
+        _board.Click(At(2, 2));
+        cut.Find("button.found-city").Click();
+
+        cut.Find(".found-city-prompt button.dismiss").Click();
+
+        cut.FindAll("input.city-name-input").ShouldBeEmpty();
+        cut.FindAll("button.found-city").Count.ShouldBe(1);
+        Api.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void FoundCity_Escape_ClosesThePromptAndKeepsTheSelection()
+    {
+        var cut = RenderTable(TestGames.Started());
+        _board.Click(At(2, 2));
+        cut.Find("button.found-city").Click();
+
+        cut.Find(".found-city-prompt").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        cut.FindAll("input.city-name-input").ShouldBeEmpty();
+        cut.FindAll("button.found-city").Count.ShouldBe(1);
     }
 
     [Fact]

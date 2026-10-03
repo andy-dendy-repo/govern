@@ -142,8 +142,10 @@ The **forecast** (see [View previews](#view-previews-what-the-client-can-check))
 4. No city may stand on its tile → `city.tile_taken`.
 5. No city of **any** player may be closer than [`cities.minimumSpacing`] → `city.too_close`.
 6. Its tile must not be in any city's territory → `city.in_territory`.
-7. Create the city on the unit's tile: a new random id, the owner, the name from the text [`cities.nameTemplate`] with `{n}` = the owner's city count + 1, producing [`cities.initialProduction`] with progress 0, with the stock [`cities.startingStock`]. It claims every tile within [`territory.initialRadius`] that no city owns.
-8. The founding unit is removed.
+7. The command's name, trimmed and with every run of spaces inside it made one space, must be 1 to 24 characters of letters, digits, spaces, `'`, `-` and `.` → `city.name_invalid`.
+8. None of the **actor's own** cities may have that name, ignoring case → `city.name_taken`. Other players' cities don't count, so the rejection never reveals a hidden city's name.
+9. Create the city on the unit's tile: a new random id, the owner, that name, producing [`cities.initialProduction`] with progress 0, with the stock [`cities.startingStock`]. It claims every tile within [`territory.initialRadius`] that no city owns.
+10. The founding unit is removed.
 
 ### Set production
 

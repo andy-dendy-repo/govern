@@ -22,7 +22,7 @@ public class TerritoryRuleTests
         var builder = new GameStateBuilder().WithCapitals();
         var settler = builder.AddUnit(P1, TestRulesets.Settler, 5, 5);
 
-        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new FoundCityCommand(settler)).ShouldSucceed();
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new FoundCityCommand(settler, "Ambermoor")).ShouldSucceed();
 
         var city = update.State.CityAt(At(5, 5))!;
         update.State.Map.Tiles.Where(tile => tile.Territory == city.Id).Select(static tile => tile.Coord)
@@ -39,7 +39,7 @@ public class TerritoryRuleTests
         builder.WithTerritory(enemy, (6, 5));
         var settler = builder.AddUnit(P1, TestRulesets.Settler, 5, 5);
 
-        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new FoundCityCommand(settler)).ShouldSucceed();
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new FoundCityCommand(settler, "Ambermoor")).ShouldSucceed();
 
         update.State.Map.TileAt(At(6, 5)).Territory.ShouldBe(enemy);
         update.State.Map.Tiles.Count(tile => tile.Territory == update.State.CityAt(At(5, 5))!.Id).ShouldBe(6);
@@ -54,7 +54,7 @@ public class TerritoryRuleTests
         var settler = builder.AddUnit(P1, TestRulesets.Settler, 6, 5);
         var state = builder.Build();
 
-        GameEngine.Execute(TestRulesets.Default, state, P1, new FoundCityCommand(settler)).ShouldFailWith(RuleViolations.CityInTerritory);
+        GameEngine.Execute(TestRulesets.Default, state, P1, new FoundCityCommand(settler, "Ambermoor")).ShouldFailWith(RuleViolations.CityInTerritory);
         GameEngine.CheckFoundCity(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), settler)
             .ShouldBe(RuleViolations.CityInTerritory, "the settler's own tile shows its territory");
     }

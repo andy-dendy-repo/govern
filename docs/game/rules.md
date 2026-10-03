@@ -1,13 +1,13 @@
 ---
 title: Game rules reference (for players)
 tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
-code: [rulesets/default/v8.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
+code: [rulesets/default/v9.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
 updated: 2026-10-03
 ---
 
 # Game rules reference
 
-How Govern is played today, written for players. Every number on this page comes from the game's ruleset ([`rulesets/default/v8.json`](../../rulesets/default/v8.json)); the step-by-step algorithms behind each rule, with the ruleset keys, are in [game logic](game-logic.md).
+How Govern is played today, written for players. Every number on this page comes from the game's ruleset ([`rulesets/default/v9.json`](../../rulesets/default/v9.json)); the step-by-step algorithms behind each rule, with the ruleset keys, are in [game logic](game-logic.md).
 
 ## Goal and victory
 
@@ -144,7 +144,8 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - A unit with the Found city ability that still has movement left can found a city on its own tile. The unit is used up.
 - A city can't be founded on another city, closer to any city (yours or the enemy's, seen or not) than the minimum distance under "Game numbers", or on a tile that already belongs to a city's territory.
 - A new city owns its own tile and the tiles around it that no city owns yet, up to the radius in "Territory of a new city (radius)" under "Game numbers" (see "Territory"), and starts with a few resources: 5 Food, 5 Water, 5 Wood and 5 Stone.
-- A new city is named "City n", where n is the number of cities you own, including the new one. It starts producing the unit in "First unit a new city produces" under "Game numbers".
+- You name the city when you found it. The game suggests a name you haven't used yet (ask for another as often as you like), or you type your own: 1 to 24 letters, digits, spaces, apostrophes, hyphens or dots, and not the name of another of your cities (upper and lower case don't matter, so "Oakhaven" and "oakhaven" are the same name). An enemy city may have the same name. A captured city keeps its name.
+- A new city starts producing the unit in "First unit a new city produces" under "Game numbers".
 
 ## Cities and production
 
