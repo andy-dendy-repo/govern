@@ -5,6 +5,7 @@ using Govern.Client.Features.Games.Services;
 using Govern.Core.Cities;
 using Govern.Core.Map;
 using Govern.Core.Units;
+using Govern.Core.Visibility;
 using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Helpers;
@@ -28,6 +29,19 @@ public class BoardOverlayBuilderTests
         var (x, z) = BoardSceneBuilder.Center(At(5, 2));
         overlay.Tiles[2].X.ShouldBe(x);
         overlay.Tiles[2].Z.ShouldBe(z);
+    }
+
+    [Fact]
+    public void Build_Route_TintsItsTilesAndLabelsTheDestinationWithItsTurns()
+    {
+        var route = new DestinationPreview([At(4, 2), At(5, 2), At(6, 2)], 2);
+        var highlights = BoardHighlights.None with { Route = route };
+
+        var overlay = BoardOverlayBuilder.Build(Start(), BoardSelection.None, highlights, null);
+
+        overlay.Tiles.Select(static tile => tile.Tint).ShouldBe(["--gv-overlay-route", "--gv-overlay-route", "--gv-overlay-destination"]);
+        overlay.Tiles[^1].Label.ShouldBe("2");
+        (overlay.Tiles[^1].X, overlay.Tiles[^1].Z).ShouldBe(BoardSceneBuilder.Center(At(6, 2)));
     }
 
     [Fact]

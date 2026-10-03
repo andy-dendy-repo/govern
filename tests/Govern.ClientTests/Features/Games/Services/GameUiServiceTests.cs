@@ -212,6 +212,20 @@ public class GameUiServiceTests
     }
 
     [Fact]
+    public void ToggleDestination_SelectedUnit_ChoosesUntilEscape()
+    {
+        var view = Create([Soldier(2, You, At(3, 2))]);
+        _ui.Select(Ruleset, view, BoardSelection.Of(new UnitId(2)));
+
+        _ui.ToggleDestination(Ruleset, view);
+
+        _ui.Selection.Destination.ShouldBeTrue();
+        _ui.Highlights.Reachable.ShouldBeEmpty();
+        _ui.Escape(Ruleset, view).ShouldBeTrue();
+        _ui.Selection.ShouldBe(BoardSelection.Of(new UnitId(2)));
+    }
+
+    [Fact]
     public void IdleUnits_LeavesOutEnemiesSpentUnitsAndWorkers()
     {
         var view = Create(
@@ -221,6 +235,7 @@ public class GameUiServiceTests
             Soldier(3, You, At(3, 2), movementLeft: 0),
             Settler(5, You, At(4, 2)) with { Job = new UnitJob(0, 3, Improvement: Farm) },
             Soldier(6, Opponent, At(5, 2)),
+            Soldier(7, You, At(6, 4)) with { Destination = At(8, 4) },
         ]);
 
         GameUiService.IdleUnits(view).Select(static unit => unit.Id.Value).ShouldBe([2, 4]);

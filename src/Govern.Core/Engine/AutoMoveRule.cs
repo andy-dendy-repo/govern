@@ -29,7 +29,8 @@ internal static class AutoMoveRule
         var visible = VisibilityCalculator.VisibleTiles(ruleset, state, unit.Owner);
         var known = owner.Explored.ToHashSet();
         known.UnionWith(visible);
-        return PathFinder.Find(unit.Position, target, ruleset.Unit(unit.Type).Movement, (from, to) => KnownStepCost(ruleset, state, unit.Owner, known, visible, from, to));
+        var knowledge = new Knowledge(ruleset, state, unit.Owner, known, visible);
+        return PathFinder.Find(unit.Position, target, ruleset.Unit(unit.Type).Movement, knowledge.StepCost);
     }
 
     // Walks every one of the player's units that has a destination, in id order (at the start of the player's turn).
@@ -99,31 +100,28 @@ internal static class AutoMoveRule
             .ToHashSet();
     }
 
-    // A step as the owner knows it: onto a known passable tile, not onto a unit or enemy city they see; a river counts where they
-    // know of it, and a bridge only where they see it.
-    private static int? KnownStepCost(
-        Ruleset ruleset,
-        GameState state,
-        PlayerId owner,
-        HashSet<HexCoord> known,
-        IReadOnlySet<HexCoord> visible,
-        HexCoord from,
-        HexCoord to)
+    // What the owner knows of the map: the tiles they explored or see, and those they see now.
+    private sealed record Knowledge(Ruleset Ruleset, GameState State, PlayerId Owner, HashSet<HexCoord> Known, IReadOnlySet<HexCoord> Visible)
     {
-        if (!known.Contains(to) || !state.Map.IsPassable(ruleset, to))
+        // A step as the owner knows it: onto a known passable tile, not onto a unit or enemy city they see; a river counts where
+        // they know of it, and a bridge only where they see it.
+        public int? StepCost(HexCoord from, HexCoord to)
         {
-            return null;
-        }
+            if (!Known.Contains(to) || !State.Map.IsPassable(Ruleset, to))
+            {
+                return null;
+            }
 
-        if (visible.Contains(to) && (state.UnitAt(to) is not null || state.CityAt(to) is { } city && city.Owner != owner))
-        {
-            return null;
-        }
+            if (Visible.Contains(to) && (State.UnitAt(to) is not null || State.CityAt(to) is { } city && city.Owner != Owner))
+            {
+                return null;
+            }
 
-        var river = HexEdge.Between(from, to) is { } edge && known.Contains(edge.Owner)
-            && !(visible.Contains(edge.Owner) && state.Map.BridgeBetween(from, to))
-                ? state.Map.RiverBetween(from, to)
-                : null;
-        return ReachabilityCalculator.StepCost(ruleset, state.Map.TileAt(to).Terrain, river);
+            var river = HexEdge.Between(from, to) is { } edge && Known.Contains(edge.Owner)
+                && !(Visible.Contains(edge.Owner) && State.Map.BridgeBetween(from, to))
+                    ? State.Map.RiverBetween(from, to)
+                    : null;
+            return ReachabilityCalculator.StepCost(Ruleset, State.Map.TileAt(to).Terrain, river);
+        }
     }
 }

@@ -7,10 +7,12 @@ updated: 2026-10-03
 
 # Plan: F19 unit auto moves
 
+Status: done 2026-10-03 (approved by the owner the same day). Auto-explore was moved to the backlog as F20 (Deferred).
+
 ## Context
 Andrii asked for "auto moves" (2026-10-03). Today a unit only moves to a tile it can reach this turn, so a long walk is a click on every unit every turn. The default reading: a unit can be given a destination anywhere on the map the player has explored, and it keeps walking there on its own, turn after turn, until it arrives, is blocked, or the player gives it another order.
 
-Alternatives considered and not planned (one line each, for the owner to pick instead): automatic exploring (the unit walks to the nearest unexplored tile by itself); patrol between two tiles; "sentry" (skip the unit until an enemy comes into sight). They can reuse the same order field later.
+Alternatives considered and not planned: automatic exploring (the unit walks to the nearest unexplored tile by itself; the owner wants it later, backlog F20); patrol between two tiles; "sentry" (skip the unit until an enemy comes into sight). They can reuse the same order field later.
 
 ## Scope
 - In: a destination order on a unit; walking it when the order is given and at the start of each of the owner's turns; stopping rules; a log line when a walk ends; a "Go to" mode in the unit card, the path and destination marked on the board, a "Heading to" line with Cancel.
@@ -31,7 +33,7 @@ Alternatives considered and not planned (one line each, for the owner to pick in
 
 ## Affected areas
 - Core: `Units/Unit.cs` (`Destination`, left out of the JSON while null, so old saves load), `Actions/SetDestinationAction.cs` (command + rule), `Map/PathFinder.cs` (multi-turn cheapest path, reusing `ReachabilityCalculator.StepCost`), `Engine/AutoMoveRule.cs` (walk one unit, walk all of a player's), `Events/UnitOrderEndedEvent.cs` + `Units/OrderEndReason.cs`, `Actions/EndTurnAction.cs` (call it after `ResetMovement`), the other unit actions (clear `Destination`), `Engine/GameEngine.cs` (dispatch + preview `DestinationPath(ruleset, view, unitId, target)`), `Visibility/UnitView.cs`, `Visibility/EventVisibilityCalculator.cs` (owner only).
-- Client: `Helpers/BoardClickResolver.cs` (a `Destination` mode like bridge mode; a click on an explored tile sends the command), `Models/BoardSelection.cs`, `Models/BoardHighlights.cs` (path tiles + destination), the WebGL board overlay for the path, `Components/UnitPanel.razor` ("Go to", "Heading to … (N turns)", Cancel), `Helpers/GameLogFormatter.cs`, `Helpers/TileCardBuilder.cs` (the destination tile says so).
+- Client: `Helpers/BoardClickResolver.cs` (a `Destination` mode like bridge mode; a click on an explored tile sends the command), `Models/BoardSelection.cs`, `Models/BoardHighlights.cs` (path tiles + destination), the WebGL board overlay for the path, `Components/UnitPanel.razor` ("Go to", "Heading to … (N turns)", Cancel), `Helpers/GameLogFormatter.cs`; `Services/GameUiService.cs` (`ToggleDestination`, Esc, units with a destination aren't idle).
 - No ruleset change, no server code change (commands pass through as today), no migration.
 
 ## Steps
@@ -42,7 +44,8 @@ Alternatives considered and not planned (one line each, for the owner to pick in
 ## Tests
 - Unit (Core): path over explored tiles only; path avoids visible units and enemy cities, ignores hidden ones; set destination walks at once and drops the job; walk continues at the next turn start; arrival, blocked and enemy-sighted end the order with the event; hidden blocker stops the walk but keeps the order; other commands clear it; invalid targets (unexplored, impassable, own tile, enemy's unit) rejected; serializer round trip and old JSON without the field; event hidden from the opponent; `UnitView` hides the opponent's destination.
 - Client (bUnit): "Go to" mode, click sends `SetDestinationCommand`, highlights show the path, panel shows "Heading to" and Cancel sends the null command, log line text.
-- Integration: one command round trip through `SendGameCommandEndpoint` (happy path, 400 for an invalid target).
+- Integration: one command round trip through `SendGameCommandEndpoint` (happy path, 409 `move.no_path` for an unexplored target; rule violations are 409 in this Api).
+- Parity: `GameEnginePreviewTests.DestinationPath_View_MatchesSetDestinationCommands` compares the preview with `Execute` for every tile of the map in every preview scenario.
 - Architecture: none, existing rules cover it.
 
 ## Docs & rules

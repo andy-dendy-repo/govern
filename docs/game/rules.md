@@ -2,7 +2,7 @@
 title: Game rules reference (for players)
 tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
 code: [rulesets/default/v7.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
-updated: 2026-10-01
+updated: 2026-10-03
 ---
 
 # Game rules reference
@@ -96,6 +96,14 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - A unit can't enter a tile with another unit on it, an enemy city, or impassable terrain, and it can't cross a deep river. It can enter your own cities.
 - Only one unit can stand on a tile.
 - A tile blocked by an enemy unit you can't see is simply unreachable; the game doesn't tell you why, so it reveals nothing about the hidden unit.
+
+## Sending a unit to a destination
+
+- **Go to** sends a unit to any tile you have explored. It walks there on its own: at once with the movement it has left, then at the start of each of your turns with full movement, before you act.
+- It takes the cheapest way over what you know of the map. Terrain you haven't explored isn't used, units and cities you can't see don't count, and the way is worked out again every turn.
+- The order ends when the unit arrives, when no known way leads there any more, or when a step brings an enemy unit or city into the unit's sight, so you decide what to do. A unit you couldn't see in the way only stops it for that turn.
+- Giving the unit any other order (moving, attacking, building), giving it a new destination or pressing Stop cancels the order. Starting the walk drops what the unit was building.
+- Your opponent never sees where your units are heading.
 
 ## Attacking
 

@@ -1,6 +1,6 @@
 @* The selected unit: its type in its owner's colour, its health and combat stats (for any unit the player sees) and, for the
    player's own unit, its movement left, sight with the bonus of the terrain it stands on, cost, build production and what it
-   is building, its upkeep and whether it gets it where it stands.
+   is building, where it is walking to on its own, its upkeep and whether it gets it where it stands.
    Its actions are in the action bar (Screen/ActionBar). *@
 @using Govern.Core.Engine
 @using Govern.Core.Rulesets
@@ -27,6 +27,10 @@
         {
             <RadzenText TextStyle="TextStyle.Caption" class="@($"unit-supply {(supply.Supplied ? "supplied" : "short")} rz-m-0")">@SupplyText(supply)</RadzenText>
         }
+    }
+    @if (IsOwn && Unit.Destination is not null)
+    {
+        <RadzenText TextStyle="TextStyle.Body2" class="unit-destination rz-m-0">@DestinationText</RadzenText>
     }
     @if (IsOwn && Unit.Job is { } job)
     {

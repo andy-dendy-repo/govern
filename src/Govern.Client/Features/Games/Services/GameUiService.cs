@@ -110,7 +110,22 @@ public sealed class GameUiService
             return;
         }
 
-        Select(ruleset, view, Selection with { Target = null, Bridge = !Selection.Bridge });
+        Select(ruleset, view, Selection with { Target = null, Destination = false, Bridge = !Selection.Bridge });
+    }
+
+    /// <summary>
+    /// Starts choosing a destination for the selected unit (the action bar's Go to), or stops when it is choosing one.
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The view on screen.</param>
+    public void ToggleDestination(Ruleset ruleset, PlayerView view)
+    {
+        if (Selection.Unit is null)
+        {
+            return;
+        }
+
+        Select(ruleset, view, Selection with { Target = null, Bridge = false, Destination = !Selection.Destination });
     }
 
     /// <summary>
@@ -131,7 +146,7 @@ public sealed class GameUiService
     }
 
     /// <summary>
-    /// The player's units that can still act this turn: movement left and no job running, in id order (the top bar's
+    /// The player's units that can still act this turn: movement left, no job running and no destination to walk to, in id order (the top bar's
     /// "units can still move").
     /// </summary>
     /// <param name="view">The view on screen.</param>
@@ -140,7 +155,7 @@ public sealed class GameUiService
     {
         ArgumentNullException.ThrowIfNull(view);
         return [.. view.Units
-            .Where(unit => unit.Owner == view.Viewer && unit.MovementLeft > 0 && unit.Job is null)
+            .Where(unit => unit.Owner == view.Viewer && unit.MovementLeft > 0 && unit.Job is null && unit.Destination is null)
             .OrderBy(static unit => unit.Id.Value)];
     }
 
@@ -159,7 +174,7 @@ public sealed class GameUiService
         Select(ruleset, view, BoardSelection.Of(next.Id));
     }
 
-    /// <summary>Handles Escape: closes the log drawer, else cancels a pending attack, bridge mode or placing a building, else clears the selection.</summary>
+    /// <summary>Handles Escape: closes the log drawer, else cancels a pending attack, bridge mode, choosing a destination or placing a building, else clears the selection.</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The view on screen.</param>
     /// <returns>Whether anything changed.</returns>
@@ -172,9 +187,9 @@ public sealed class GameUiService
             return true;
         }
 
-        if (Selection.Bridge || Selection.Placing is not null)
+        if (Selection.Bridge || Selection.Destination || Selection.Placing is not null)
         {
-            Select(ruleset, view, Selection with { Bridge = false, Placing = null });
+            Select(ruleset, view, Selection with { Bridge = false, Destination = false, Placing = null });
             return true;
         }
 

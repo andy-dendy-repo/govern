@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Govern.Core.Map;
+using Govern.Core.Visibility;
 
 namespace Govern.Client.Features.Games.Models;
 
@@ -14,11 +15,16 @@ namespace Govern.Client.Features.Games.Models;
 /// While the selected city chooses a tile for a building (<see cref="BoardSelection.Placing"/>), the tiles that can take it;
 /// empty otherwise.
 /// </param>
+/// <param name="Route">
+/// The way the selected own unit walks to its destination on its own, when it has one and a known way there; otherwise
+/// <see langword="null"/>.
+/// </param>
 public sealed record BoardHighlights(
     ImmutableHashSet<HexCoord> Reachable,
     ImmutableHashSet<HexCoord> Attackable,
     ImmutableHashSet<HexCoord> Bridgeable,
-    ImmutableHashSet<HexCoord> Placeable)
+    ImmutableHashSet<HexCoord> Placeable,
+    DestinationPreview? Route = null)
 {
     /// <summary>No tiles marked.</summary>
     public static BoardHighlights None { get; } = new([], [], [], []);

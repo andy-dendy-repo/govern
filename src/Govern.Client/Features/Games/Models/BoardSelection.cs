@@ -16,11 +16,21 @@ namespace Govern.Client.Features.Games.Models;
 /// Whether the selected own unit is choosing where to build a bridge: the board marks the river edges it can bridge, and a
 /// click on one starts the bridge.
 /// </param>
+/// <param name="Destination">
+/// Whether the selected own unit is choosing a destination to walk to on its own: a click on any explored tile with a known way
+/// there gives the order.
+/// </param>
 /// <param name="Placing">
 /// The building the selected own city is choosing a tile for: the board marks the tiles of its territory that can take it, and
 /// a click on one orders the building there. <see langword="null"/> when no tile is being chosen.
 /// </param>
-public sealed record BoardSelection(UnitId? Unit, CityId? City, HexCoord? Target = null, bool Bridge = false, BuildingType? Placing = null)
+public sealed record BoardSelection(
+    UnitId? Unit,
+    CityId? City,
+    HexCoord? Target = null,
+    bool Bridge = false,
+    BuildingType? Placing = null,
+    bool Destination = false)
 {
     /// <summary>Nothing selected.</summary>
     public static BoardSelection None { get; } = new(null, null);
