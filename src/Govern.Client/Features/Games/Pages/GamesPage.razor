@@ -8,7 +8,9 @@
 
 <ApiErrorAlert Error="@_error"/>
 
-<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" class="rz-mb-4">
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap" class="rz-mb-4">
+    <RadzenDropDown TValue="string" Data="@Maps.Options" TextProperty="@nameof(MapOption.Name)" ValueProperty="@nameof(MapOption.Value)"
+                    @bind-Value="@_map" Disabled="@_creating" aria-label="Map" class="map-choice"/>
     <RadzenButton Text="New game" Icon="add" IsBusy="@_creating" Click="@CreateAsync" class="new-game"/>
     <RadzenLink Path="join" Text="Join with a code" class="join-link"/>
 </RadzenStack>

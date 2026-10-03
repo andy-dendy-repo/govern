@@ -1,9 +1,11 @@
+using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Games.Models;
 using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
+using Govern.Domain.ValueObjects;
 using Govern.Utils.Mediator.Abstractions;
 using Govern.Utils.Results;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +15,11 @@ namespace Govern.Application.Games.Contracts;
 /// <summary>
 /// Creates a lobby for the caller, who takes seat 0. Share the returned invite code with the second player.
 /// </summary>
-public sealed record CreateGameRequest : IRequest<CreateGameRequest, CreateGameResponse>;
+/// <param name="Map">
+/// The map to play on: <c>random</c> (any pool map, drawn at the start), <c>generated</c>, or a pool map's key
+/// (<see cref="MapPoolService"/>); <see langword="null"/> for <c>random</c>.
+/// </param>
+public sealed record CreateGameRequest(string? Map = null) : IRequest<CreateGameRequest, CreateGameResponse>;
 
 /// <summary>
 /// The new lobby.
@@ -21,6 +27,19 @@ public sealed record CreateGameRequest : IRequest<CreateGameRequest, CreateGameR
 /// <param name="Id">Game id.</param>
 /// <param name="InviteCode">The secret code another user joins with; share it only with the intended player.</param>
 public sealed record CreateGameResponse(Guid Id, string InviteCode) : IResponse;
+
+/// <summary>
+/// Validates <see cref="CreateGameRequest"/>: the map is a choice the pool offers.
+/// </summary>
+public sealed class CreateGameValidator : AbstractValidator<CreateGameRequest>
+{
+    /// <summary>Creates the validation rules.</summary>
+    /// <param name="maps">The map pool.</param>
+    public CreateGameValidator(MapPoolService maps) =>
+        RuleFor(request => request.Map)
+            .Must(map => map is null || maps.IsChoice(map))
+            .WithMessage("'Map' must be 'random', 'generated' or the key of a map in the pool.");
+}
 
 /// <summary>
 /// Handles <see cref="CreateGameRequest"/>; a user may hold at most <see cref="GameErrors.MaxOpenLobbiesPerUser"/> unstarted
@@ -53,7 +72,7 @@ internal sealed class CreateGameHandler(
             return limit;
         }
 
-        var game = Game.Create(userId, now);
+        var game = Game.Create(userId, now, request.Map is { } map ? MapChoice.Create(map) : MapChoice.Random);
         db.Games.Add(game);
         await db.SaveChangesAsync(cancellationToken);
 

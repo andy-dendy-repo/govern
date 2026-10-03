@@ -1,7 +1,11 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
+using Govern.Application.Games.Contracts;
 using Govern.Core.Serialization;
 using Govern.Core.State;
+using Govern.Domain.Entities;
+using Govern.Domain.ValueObjects;
 using Govern.Domain.Enums;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
@@ -38,6 +42,45 @@ public class StartGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixt
             var seats = stored.Players.OrderBy(p => p.Seat).Select(p => new PlayerId(p.Id));
             stored.State.ShouldNotBeNull().Players.Select(p => p.Id).ShouldBe(seats);
         }
+    }
+
+    [Theory]
+    [InlineData("basin", "basin", 32, 20)]
+    [InlineData("random", "basin", 32, 20)]
+    [InlineData("generated", "generated", 20, 14)]
+    public async Task Post_LobbyWithAMapChoice_StartsOnThatMap(string choice, string started, int width, int height)
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+        var joiner = await GamesApi.NewPlayerAsync(Client, Ct);
+        var created = await GamesApi.CreateWithMapAsync(Client, creator.AccessToken, choice, Ct);
+        var game = (await created.Content.ReadFromJsonAsync<CreateGameResponse>(GamesApi.Json, Ct))!;
+        await GamesApi.JoinAsync(Client, joiner.AccessToken, game.InviteCode, Ct);
+
+        var body = await GamesApi.ReadGameAsync(await GamesApi.StartAsync(Client, creator.AccessToken, game.Id, Ct), Ct);
+
+        body.Map.ShouldBe(started);
+        body.View.ShouldNotBeNull().Width.ShouldBe(width);
+        body.View.Height.ShouldBe(height);
+    }
+
+    [Fact]
+    public async Task Post_LobbyWhoseMapLeftThePool_Returns409()
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+        var joiner = await GamesApi.NewPlayerAsync(Client, Ct);
+        var lobby = Game.Create(creator.UserId, DateTimeOffset.UtcNow, MapChoice.Create("retired_map"));
+        lobby.Join(joiner.UserId, DateTimeOffset.UtcNow);
+        var (scope, db) = await Fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            db.Games.Add(lobby);
+            await db.SaveChangesAsync(Ct);
+        }
+
+        var response = await GamesApi.StartAsync(Client, creator.AccessToken, lobby.Id, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.map_not_in_pool", Ct);
     }
 
     [Fact]

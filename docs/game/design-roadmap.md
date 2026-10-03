@@ -1,6 +1,6 @@
 ---
 title: Game design roadmap (future mechanics)
-tags: [game, design, roadmap, game, design, ui, rules, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
+tags: [game, design, roadmap, maps, map-pool, game, design, ui, rules, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
 code: [src/Govern.Core, src/Govern.Client/Features/Games]
 updated: 2026-10-03
 ---
@@ -28,6 +28,7 @@ Items are numbered **G1–G15** so they don't clash with the follow-up numbers. 
 | G13 | [Colonies founded by governors (settlers removed)](#g13-colonies-founded-by-governors-settlers-removed) | G12 | M |
 | G14 | [Seasons](#g14-seasons) | G5, G6 | M |
 | G15 | [Ships and naval movement](#g15-ships-and-naval-movement) | G4, G6, G9, G10 | L |
+| G18 | [Predefined maps](#g18-predefined-maps) *(done: the pool and The Basin)* | G4, G6 | M |
 
 **Suggested order** (design dependencies; the [backlog](../plans/backlog.md) decides the actual order): G1 and G2 first, because every later item adds UI and rules. Then G3 as the foundation for the data. Then the map (G4 → G5 → G6), cities (G7 → G8), units (G9), builders (G10), ships (G15, which need harbours from G10), the trees (G11), civilizations and governors (G12 → G13), and seasons last (G14), since they modify almost everything before them.
 
@@ -277,6 +278,12 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 - **Carrying units:** units board a ship in a city or on an adjacent shore tile and unload on an adjacent land tile. Decide what happens to units aboard when the ship is destroyed (proposal: they are lost).
 - **Fog of war:** units aboard an enemy ship are hidden; only the ship is visible.
 - **Combat:** a counter matrix with land units too (for example ranged ships bombard coastal units and cities; melee land units can't attack ships at sea).
+
+## G18. Predefined maps
+
+- **Status:** the pool and its first map are done 2026-10-03 ([plan](../plans/done/G18-predefined-maps.md), [maps](maps.md)). Hand-made maps in `maps/<key>.json`, validated against the ruleset (mirrored tiles and rivers, connected, spawn candidates in the left half); the lobby picks Random from the pool (default), a named map, or Generated. First map: The Basin, 32 × 20 (home valleys, ridges with hill passes, a central lake splitting the front into two flanks).
+- **Ideas for later maps** (from Civ 6 map types, taken as ideas only): Lakes (many small lakes as water sources to expand to), Tilted Axis (bands with a character: a wood-rich, a stone-rich and a barren desert band), Highlands on its own (ranges and passes everywhere). Water-heavy types (Continents, Island Plates, Archipelago) wait for ships (G15).
+- **Open:** a player-facing map preview in the lobby, map thumbnails, and choosing maps for more than 2 players (F10).
 
 ## Open questions
 
