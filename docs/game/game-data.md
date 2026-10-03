@@ -2,12 +2,12 @@
 title: Game data (the loadable ruleset)
 tags: [game, core, ruleset, upkeep, resource-cost, map-generation, builders, buildings, improvements, bridges, resources, terrain, rivers, sight-bonus, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
 code: [rulesets, src/Govern.Core/Rulesets, src/Govern.Application/Games/Services/DefaultRulesetService.cs, src/Govern.Client/Features/Games/Services/RulesetService.cs]
-updated: 2026-10-01
+updated: 2026-10-03
 ---
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v7.json`](../../rulesets/default/v7.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7; [`v1.json`](../../rulesets/default/v1.json) to [`v6.json`](../../rulesets/default/v6.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v8.json`](../../rulesets/default/v8.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8; [`v1.json`](../../rulesets/default/v1.json) to [`v7.json`](../../rulesets/default/v7.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -268,7 +268,8 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
   { "id": "spearman", "class": "anti_cavalry", "movement": 2, "sight": 2, "productionCost": 4, "strength": 18, "resourceCost": [{ "resource": "wood", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["attack"] },
   { "id": "horseman", "class": "cavalry", "movement": 3, "sight": 3, "productionCost": 6, "strength": 20, "resourceCost": [{ "resource": "food", "amount": 3 }, { "resource": "water", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 2 }, { "resource": "water", "amount": 2 }], "abilities": ["attack"] },
   { "id": "archer", "class": "ranged", "movement": 2, "sight": 2, "productionCost": 5, "strength": 10, "ranged": { "strength": 22, "range": 2 }, "resourceCost": [{ "resource": "wood", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["ranged_attack"] },
-  { "id": "builder", "class": "civilian", "movement": 2, "sight": 2, "productionCost": 5, "buildProduction": 2, "resourceCost": [{ "resource": "food", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["build_improvement", "build_bridge"] }
+  { "id": "builder", "class": "civilian", "movement": 2, "sight": 2, "productionCost": 5, "buildProduction": 2, "resourceCost": [{ "resource": "food", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["build_improvement", "build_bridge"] },
+  { "id": "scout", "class": "recon", "movement": 4, "sight": 4, "productionCost": 3, "strength": 8, "resourceCost": [{ "resource": "food", "amount": 1 }], "upkeep": [{ "resource": "food", "amount": 1 }], "abilities": [] }
 ]
 ```
 
@@ -354,11 +355,13 @@ Everything a player reads about the game's content comes from here: unit, class 
   "unit.horseman.name": "Horseman",
   "unit.archer.name": "Archer",
   "unit.builder.name": "Builder",
+  "unit.scout.name": "Scout",
   "class.civilian.name": "Civilian",
   "class.melee.name": "Melee",
   "class.anti_cavalry.name": "Anti-cavalry",
   "class.cavalry.name": "Cavalry",
   "class.ranged.name": "Ranged",
+  "class.recon.name": "Recon",
   "terrain.plains.name": "Plains",
   "terrain.forest.name": "Forest",
   "terrain.hills.name": "Hills",

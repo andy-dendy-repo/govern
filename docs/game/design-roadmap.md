@@ -2,7 +2,7 @@
 title: Game design roadmap (future mechanics)
 tags: [game, design, roadmap, game, design, ui, rules, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
 code: [src/Govern.Core, src/Govern.Client/Features/Games]
-updated: 2026-10-02
+updated: 2026-10-03
 ---
 
 # Game design roadmap
@@ -170,7 +170,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G9. Army units and combat
 
-- **Status:** done 2026-09-30 ([plan](../plans/done/G9-units-and-combat.md)). Shipped: health (100), five units (settler, soldier, spearman, horseman, archer) with classes and a counter table (melee > anti-cavalry > cavalry > ranged, ranged shoots from range 2 without damage back), strength scaled by health, integer damage with a hashed ±20 % roll, terrain defence (forest and hills +3), healing for resting units, a combat forecast that `Execute` always respects, health bars and a two-step attack in the client. Still open from the list below: attacks per turn and moving after attacking (until a unit differs), siege and city defence, recon, later eras. Resource costs and upkeep came with G8a, river defence with G6.
+- **Status:** done 2026-09-30 ([plan](../plans/done/G9-units-and-combat.md)). Shipped: health (100), five units (settler, soldier, spearman, horseman, archer) with classes and a counter table (melee > anti-cavalry > cavalry > ranged, ranged shoots from range 2 without damage back), strength scaled by health, integer damage with a hashed ±20 % roll, terrain defence (forest and hills +3), healing for resting units, a combat forecast that `Execute` always respects, health bars and a two-step attack in the client. Still open from the list below: attacks per turn and moving after attacking (until a unit differs), siege and city defence, later eras. Resource costs and upkeep came with G8a, river defence with G6. **G9b** (recon) is done 2026-10-03: the scout, ruleset v8 ([plan](../plans/done/G9b-scout.md)).
 - **Unit parameters (requested):** type, health, moves per turn, attacks per turn, production cost, resource cost (G5). Defence is **computed from the attacker's type and the defender's health**.
 - **Suggested roster (by era):**
 

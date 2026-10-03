@@ -1,8 +1,8 @@
 ---
 title: Game data, building and economy sections (yields, territory, costs, upkeep, bridges, resources, improvements, buildings)
 tags: [game, core, ruleset, json, resource-cost, upkeep, supply, building-health, builders, build-production, territory, tile-yields, city-stock, water, desert, culture, bridges, resources, improvements, farm, mine, lumber-camp, buildings, campus, harbour, army-camp, validation]
-code: [rulesets/default/v7.json, src/Govern.Core/Rulesets, src/Govern.Core/Economy, src/Govern.Core/Rulesets/EconomyRulesValidator.cs, src/Govern.Core/Rulesets/UpkeepRulesValidator.cs]
-updated: 2026-10-01
+code: [rulesets/default/v8.json, src/Govern.Core/Rulesets, src/Govern.Core/Economy, src/Govern.Core/Rulesets/EconomyRulesValidator.cs, src/Govern.Core/Rulesets/UpkeepRulesValidator.cs]
+updated: 2026-10-03
 ---
 
 # Game data: building sections of the ruleset
