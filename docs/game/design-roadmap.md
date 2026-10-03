@@ -282,7 +282,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 
 ## G17. Trading: markets, traders, routes and deals
 
-- **Status: done** 2026-10-03 ([plan](../plans/done/G17-trading.md)), ruleset v10. Rules for players: [Trading](rules.md#trading); algorithms: [game logic: trading](game-logic-trade.md); data: [`trade`](game-data-economy.md#trade-trade).
+- **Status: done** 2026-10-03 (PR #56, [plan](../plans/done/G17-trading.md)), ruleset v10. Rules for players: [Trading](rules.md#trading); algorithms: [game logic: trading](game-logic-trade.md); data: [`trade`](game-data-economy.md#trade-trade).
 - **Owner's request (2026-10-03):** each city chooses what it sells and buys, each with a cap; other players produce traders and choose the city to trade with; rates follow need and proposition, like real life; players can offer better deals to compete.
 - **Owner's model (his corrections the same day), not Civ 6:** there is no money (gold is a resource); water can't be traded; a host accepts a better proposal and cancels an older deal to make room; a trader walks to the other city's trade post to open a route, then keeps the deal active by walking back and forth, getting goods swapped every turn; killing it breaks the deal.
 - **What was built:** a market per city with a trade post (sell or buy up to a cap per tradable resource), demand levels per resource moved by need and offer, the trader (from a trade post), routes (2 per city), proposals, accept with cancel-to-make-room, decline, cancel and close, the exchange at the end of the host owner's turn, paused routes, broken deals on the trader's death and ended routes on capture.
