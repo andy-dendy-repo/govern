@@ -40,7 +40,7 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 
 | # | Id | Item | Area | Size | Notes |
 |---|---|---|---|---|---|
-| 1 | F12 | Player-chosen city names | core, client | S–M | Also closes a small leak: `City N` counts the founder's cities at founding, hidden ones included ([game-core](../features/game-core.md)) |
+| 1 | F12 | Player-chosen city names | core, client | S–M | Also closes a small leak: `City N` counts the founder's cities at founding, hidden ones included ([game-core](../features/game-core.md)). Planned: [plan](active/F12-city-names.md) |
 | 2 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
 | 3 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
 
