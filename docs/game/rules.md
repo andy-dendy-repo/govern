@@ -1,13 +1,13 @@
 ---
 title: Game rules reference (for players)
-tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
-code: [rulesets/default/v7.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
-updated: 2026-10-01
+tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
+code: [rulesets/default/v8.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
+updated: 2026-10-03
 ---
 
 # Game rules reference
 
-How Govern is played today, written for players. Every number on this page comes from the game's ruleset ([`rulesets/default/v5.json`](../../rulesets/default/v5.json)); the step-by-step algorithms behind each rule, with the ruleset keys, are in [game logic](game-logic.md).
+How Govern is played today, written for players. Every number on this page comes from the game's ruleset ([`rulesets/default/v8.json`](../../rulesets/default/v8.json)); the step-by-step algorithms behind each rule, with the ruleset keys, are in [game logic](game-logic.md).
 
 ## Goal and victory
 
@@ -75,6 +75,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 | Horseman | Cavalry | 20 | — | 3 | 3 | 6 | — | Attack |
 | Archer | Ranged | 10 | 22 (range 2) | 2 | 2 | 5 | — | Ranged attack |
 | Builder | Civilian | — | — | 2 | 2 | 5 | 2 | Build improvements, Build bridges |
+| Scout | Recon | 8 | — | 4 | 4 | 3 | — | — |
 
 - **Class:** what the unit is strong or weak against (see "Class counters").
 - **Strength:** how hard the unit fights in melee and when it is attacked. A unit with no strength (a civilian) can't fight: any attack destroys it.
@@ -116,6 +117,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
   - **River:** against a melee attack across a river, the defender also gets the river's defence bonus (see "Rivers").
 - **Damage** each side takes: the damage between equal units, plus the extra damage per point by which the other side is stronger (less when it is weaker), kept between the least and the most damage under "Game numbers". A random roll then moves it up or down by up to the random spread, but never below 1, and never more than the health left.
 - **Civilians** (the settler and the builder) are destroyed by any attack and do no damage back.
+- **The scout** can't attack, but it has a strength, so when it is attacked it fights back like any other unit and is not destroyed by the first hit. It is the fastest and farthest-seeing unit, made for exploring.
 - **Healing:** at the end of your turn, each of your hurt units that neither moved, attacked nor worked on a job this turn heals, more in one of your cities (under "Game numbers"), up to full health, as long as it gets its upkeep (see "Costs and upkeep").
 
 ## Class counters
@@ -127,6 +129,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 | Cavalry | Ranged | +5 |
 
 - Ranged units counter melee in their own way: they shoot from two tiles away and take no damage back.
+- Recon (the scout) has no counter either way.
 
 ## Founding a city
 
@@ -184,6 +187,7 @@ Units and buildings cost resources as well as production, and need resources eve
 | Horseman | 3 Food, 2 Water | 2 Food, 2 Water |
 | Archer | 2 Wood | 1 Food, 1 Water |
 | Builder | 2 Food | 1 Food, 1 Water |
+| Scout | 1 Food | 1 Food |
 | Army camp | 4 Stone, 2 Wood | 1 Food |
 | Campus | 4 Stone | 1 Gold |
 | Trade post | 4 Wood | — |

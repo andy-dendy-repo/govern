@@ -299,6 +299,31 @@ public class AttackActionTests
     }
 
     [Fact]
+    public void Execute_Scout_ReturnsCannotAttack()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var scout = builder.AddUnit(P1, TestRulesets.Scout, 3, 3);
+        builder.AddUnit(P2, TestRulesets.Settler, 4, 3);
+
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(scout, At(4, 3)));
+
+        result.ShouldFailWith(RuleViolations.CannotAttack);
+    }
+
+    [Fact]
+    public void Execute_SoldierAttacksScout_TheScoutSurvivesAndHitsBack()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        var scout = builder.AddUnit(P2, TestRulesets.Scout, 4, 3);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(attacker, At(4, 3))).ShouldSucceed();
+
+        update.State.FindUnit(scout)!.Damage.ShouldBeInRange(1, 99);
+        update.State.FindUnit(attacker)!.Damage.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
     public void Execute_OwnUnit_ReturnsOwnTarget()
     {
         var builder = new GameStateBuilder().WithCapitals();

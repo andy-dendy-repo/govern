@@ -2,7 +2,7 @@
 title: Game Core engine
 tags: [game, core, engine, upkeep, resource-cost, supply, building-health, upkeep-priority, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, game-log, events-for, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
-updated: 2026-10-01
+updated: 2026-10-03
 ---
 
 # Game Core engine
@@ -285,7 +285,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v7.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v8.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`
