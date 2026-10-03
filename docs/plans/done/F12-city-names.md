@@ -7,7 +7,7 @@ updated: 2026-10-03
 
 # Plan: F12 player-chosen city names
 
-**Status:** done 2026-10-03 (PR #PR). Built as planned, with two small changes: the name check is `FoundCityRule.CheckName` in `Actions/FoundCityAction.cs` (no separate class), and the prompt is inline in the action bar (`Screen/FoundCityPrompt.razor`, like `ConfirmButton`) rather than a dialog.
+**Status:** done 2026-10-03 (PR #54). Built as planned, with two small changes: the name check is `FoundCityRule.CheckName` in `Actions/FoundCityAction.cs` (no separate class), and the prompt is inline in the action bar (`Screen/FoundCityPrompt.razor`, like `ConfirmButton`) rather than a dialog.
 
 ## Context
 A new city is named by the server from the ruleset template `City {n}`, where `n` counts the founder's cities at founding, hidden ones included. Players can't pick a name, and the number tells the opponent how many cities its founder had (a known residual leak in [game-core](../../features/game-core.md)). F12 lets the player name each city when founding it and removes the count from every name the game makes up.
