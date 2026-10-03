@@ -13,6 +13,13 @@ internal static class TradeRulesValidator
 
     public static void Validate(RulesetDocument document, List<RulesetProblem> problems)
     {
+        ValidateResources(document, problems);
+        ValidateTraders(document, problems);
+        ValidateSection(document, problems);
+    }
+
+    private static void ValidateResources(RulesetDocument document, List<RulesetProblem> problems)
+    {
         for (var index = 0; index < document.Resources.Length; index++)
         {
             var resource = document.Resources[index];
@@ -30,7 +37,10 @@ internal static class TradeRulesValidator
         {
             problems.Add(new("$.resources", "At least one resource must be tradable (a tradeValue of 1 or more)."));
         }
+    }
 
+    private static void ValidateTraders(RulesetDocument document, List<RulesetProblem> problems)
+    {
         // A trader on a route takes no other order, so the trade ability can't share a unit with another one.
         for (var index = 0; index < document.Units.Length; index++)
         {
@@ -40,7 +50,10 @@ internal static class TradeRulesValidator
                 problems.Add(new($"$.units[{index}].abilities", "A unit with 'trade' can have no other ability."));
             }
         }
+    }
 
+    private static void ValidateSection(RulesetDocument document, List<RulesetProblem> problems)
+    {
         var trade = document.Trade;
         if (document.Buildings.All(building => building.Id != trade.Building))
         {
