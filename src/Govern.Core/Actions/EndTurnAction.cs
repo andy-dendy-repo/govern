@@ -12,7 +12,7 @@ namespace Govern.Core.Actions;
 
 /// <summary>
 /// Ends the actor's turn: their resting units heal, their units' building jobs advance, their cities yield resources and
-/// produce, and the next active player moves.
+/// produce, and the next active player moves (their units with a destination walk on first).
 /// </summary>
 public sealed record EndTurnCommand : GameCommand;
 
@@ -20,7 +20,8 @@ public sealed record EndTurnCommand : GameCommand;
 /// Ends the actor's turn: their units' jobs advance (see <see cref="ConstructionRule"/>), their cities add their income to their
 /// stock, pay upkeep (see <see cref="UpkeepRule"/>: unsupplied units and buildings lose health, supplied units that rested heal),
 /// grow their territory (see <see cref="TerritoryRule"/>) and produce (except a city whose production a job used; an item begins
-/// once its resource cost is paid), then the next active player moves with full movement.
+/// once its resource cost is paid), then the next active player moves with full movement, and their units with a destination walk
+/// on (see <see cref="AutoMoveRule"/>).
 /// </summary>
 internal static class EndTurnRule
 {
@@ -39,7 +40,8 @@ internal static class EndTurnRule
         return new GameUpdate(PassTurn(ruleset, produced, events), events.ToImmutable());
     }
 
-    // Hands the turn to the next active player in turn order; the round number increases when it wraps around.
+    // Hands the turn to the next active player in turn order; the round number increases when it wraps around. Their units get
+    // full movement, and those with a destination walk on at once, so the player sees where they got to before acting.
     private static GameState PassTurn(Ruleset ruleset, GameState state, ImmutableArray<GameEvent>.Builder events)
     {
         var players = state.Players;
@@ -55,7 +57,8 @@ internal static class EndTurnRule
 
             var turn = currentIndex + step >= players.Length ? state.Turn + 1 : state.Turn;
             events.Add(new TurnEndedEvent(state.CurrentPlayer, next.Id, turn));
-            return ResetMovement(ruleset, state with { CurrentPlayer = next.Id, Turn = turn }, next.Id);
+            var started = ResetMovement(ruleset, state with { CurrentPlayer = next.Id, Turn = turn }, next.Id);
+            return AutoMoveRule.WalkAll(ruleset, started, next.Id, events);
         }
 
         return state;

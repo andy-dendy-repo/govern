@@ -9,6 +9,7 @@ namespace Govern.Core.Engine;
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(MoveUnitCommand), "move_unit")]
+[JsonDerivedType(typeof(SetDestinationCommand), "set_destination")]
 [JsonDerivedType(typeof(AttackCommand), "attack")]
 [JsonDerivedType(typeof(FoundCityCommand), "found_city")]
 [JsonDerivedType(typeof(SetProductionCommand), "set_production")]
