@@ -11,7 +11,9 @@ namespace Govern.Core.Rulesets;
 /// <param name="MinimumSpacing">The smallest hex distance between two cities.</param>
 /// <param name="ProductionPerTurn">Production points a city adds at the end of its owner's turn.</param>
 /// <param name="InitialProduction">What a new city builds first.</param>
-/// <param name="NameTemplate">The text key of a new city's name; <c>{n}</c> in the text is the founder's city count.</param>
+/// <param name="SuggestedNames">
+/// Text keys of the names the client suggests for a new city (at least one). The player picks the name; these are only offered.
+/// </param>
 /// <param name="CaptureResetsProduction">Whether a captured city's production progress goes back to 0.</param>
 /// <param name="Yields">What a city gives every turn on top of its tiles and buildings (may be empty).</param>
 /// <param name="StartingStock">The resources a new city starts with (may be empty).</param>
@@ -20,7 +22,7 @@ public sealed record CityRules(
     int MinimumSpacing,
     int ProductionPerTurn,
     UnitType InitialProduction,
-    string NameTemplate,
+    ImmutableArray<string> SuggestedNames,
     bool CaptureResetsProduction,
     ImmutableArray<ResourceAmount> Yields,
     ImmutableArray<ResourceAmount> StartingStock);

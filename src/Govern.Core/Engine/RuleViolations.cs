@@ -46,6 +46,15 @@ public static class RuleViolations
     /// <summary>The settler's tile is in a city's territory.</summary>
     public static readonly RuleViolation CityInTerritory = new("city.in_territory", "This tile already belongs to a city.");
 
+    /// <summary>
+    /// A new city's name is empty, longer than <see cref="Actions.FoundCityCommand.MaxNameLength"/> characters or uses a character
+    /// other than letters, digits, spaces and <c>' - .</c>.
+    /// </summary>
+    public static readonly RuleViolation CityNameInvalid = new("city.name_invalid", "Use 1 to 24 letters, digits, spaces, apostrophes, hyphens or dots.");
+
+    /// <summary>Another of the actor's cities already has that name (ignoring case).</summary>
+    public static readonly RuleViolation CityNameTaken = new("city.name_taken", "One of your cities already has this name.");
+
     /// <summary>The actor has no city with that id (it does not exist or belongs to someone else; the two are not distinguished).</summary>
     public static readonly RuleViolation CityNotFound = new("city.not_found", "You have no such city.");
 

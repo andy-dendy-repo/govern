@@ -216,9 +216,6 @@ public sealed class Ruleset
     /// <returns>The text <c>class.{id}.name</c>.</returns>
     public string ClassName(string unitClass) => Text($"class.{unitClass}.name");
 
-    /// <summary>The name of a player's new city.</summary>
-    /// <param name="number">The founder's city count including the new one.</param>
-    /// <returns>The <see cref="CityRules.NameTemplate"/> text with <c>{n}</c> replaced.</returns>
-    public string CityName(int number) =>
-        Text(Cities.NameTemplate).Replace("{n}", number.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal);
+    /// <summary>The names the client suggests for a new city: the texts of <see cref="CityRules.SuggestedNames"/>, in order.</summary>
+    public ImmutableArray<string> SuggestedCityNames => [.. Cities.SuggestedNames.Select(Text)];
 }

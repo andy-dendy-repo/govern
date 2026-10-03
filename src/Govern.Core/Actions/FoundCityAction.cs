@@ -13,11 +13,22 @@ namespace Govern.Core.Actions;
 /// Founds a city on the settler's tile; the settler is consumed.
 /// </summary>
 /// <param name="UnitId">The actor's settler.</param>
-public sealed record FoundCityCommand(UnitId UnitId) : GameCommand;
+/// <param name="Name">
+/// The new city's name, chosen by the player: trimmed, inner spaces collapsed, <see cref="MaxNameLength"/> characters at
+/// most, letters, digits, spaces and <c>' - .</c> only, and not the name of another of the actor's cities (ignoring case).
+/// </param>
+public sealed record FoundCityCommand(UnitId UnitId, string Name) : GameCommand
+{
+    /// <summary>
+    /// The longest city name, in characters. An input limit (it keeps names readable on the board and in panels), not a game
+    /// rule, so it is not in the ruleset.
+    /// </summary>
+    public const int MaxNameLength = 24;
+}
 
 /// <summary>
 /// Turns a settler into a city on its tile, at least the ruleset's <see cref="CityRules.MinimumSpacing"/> away from every other
-/// city and outside every city's territory. The city is named from the ruleset's template, builds its initial production, starts
+/// city and outside every city's territory. The city takes the player's name for it, builds its initial production, starts
 /// with <see cref="CityRules.StartingStock"/> and claims the unowned tiles within <see cref="TerritoryRules.InitialRadius"/>.
 /// </summary>
 internal static class FoundCityRule
@@ -35,8 +46,13 @@ internal static class FoundCityRule
             return violation;
         }
 
+        if (CheckName(command.Name, state.Cities.Where(city => city.Owner == actor).Select(static city => city.Name)) is { } nameViolation)
+        {
+            return nameViolation;
+        }
+
         var (allocated, id) = state.AllocateId();
-        var name = ruleset.CityName(state.Cities.Count(city => city.Owner == actor) + 1);
+        var name = NormaliseName(command.Name);
         var stock = YieldCalculator.Sum(ruleset, ruleset.Cities.StartingStock);
         var city = new City(new CityId(id), actor, name, settler.Position, ruleset.Cities.InitialProduction, ProductionProgress: 0, Stock: stock.IsEmpty ? null : stock);
         var founded = allocated.WithoutUnit(settler.Id);
@@ -73,4 +89,31 @@ internal static class FoundCityRule
 
         return tileOwned ? RuleViolations.CityInTerritory : null;
     }
+
+    // Shared with the view-based preview and the ruleset validator. Only the actor's own cities count as taken, so a rejection
+    // never tells them the name of a city they can't see.
+    public static RuleViolation? CheckName(string? name, IEnumerable<string> ownCityNames)
+    {
+        if (name is null)
+        {
+            return RuleViolations.CityNameInvalid;
+        }
+
+        var normalised = NormaliseName(name);
+        if (normalised.Length is 0 or > FoundCityCommand.MaxNameLength || !normalised.All(IsAllowed))
+        {
+            return RuleViolations.CityNameInvalid;
+        }
+
+        return ownCityNames.Any(own => string.Equals(own, normalised, StringComparison.OrdinalIgnoreCase))
+            ? RuleViolations.CityNameTaken
+            : null;
+    }
+
+    // Trims the name and collapses every run of whitespace inside it into one space.
+    public static string NormaliseName(string name) =>
+        string.Join(' ', name.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static bool IsAllowed(char character) =>
+        char.IsLetterOrDigit(character) || character is ' ' or '\'' or '-' or '.';
 }
