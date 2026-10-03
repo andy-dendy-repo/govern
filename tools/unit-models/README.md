@@ -6,11 +6,11 @@ required; its licence is kept next to the models in `src/Govern.Client/wwwroot/m
 
 `bake.mjs` turns the pack's rigged, animated and textured characters into the small static models the board loads:
 
-1. It downloads `Knight`, `Barbarian`, `Rogue` and `Mage` (`.glb`) into `cache/` (git-ignored).
+1. It downloads `Knight`, `Barbarian`, `Rogue`, `Rogue_Hooded` and `Mage` (`.glb`) into `cache/` (git-ignored).
 2. It reads the texture at each vertex into a vertex colour and drops the texture, so the board loads no images.
 3. It poses each unit once from one of the pack's animations (`Idle`; `Sit_Chair_Idle` for the horseman's rider).
 4. It keeps the unit's own body parts and its accessories (a sword and round shield for the soldier, a crossbow for the
-   archer…), turns the soldier's sword into a spear for the spearman, and splits off the parts drawn in the owner's seat colour
+   archer, a knife for the scout…), turns the soldier's sword into a spear for the spearman, and splits off the parts drawn in the owner's seat colour
    (capes, shields, the settler's hat), whose colours are reduced to light and shade.
 5. It writes `src/Govern.Client/wwwroot/models/units/<model>.json`: `body` and `seat`, each with `positions`, `colours`
    (0–255) and `indices`, sized so the standing knight's body is one unit tall, standing on y = 0 with its body centred on the origin.

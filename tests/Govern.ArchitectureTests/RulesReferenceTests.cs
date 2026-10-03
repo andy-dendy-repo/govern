@@ -75,7 +75,7 @@ public class RulesReferenceTests
                 unit.Sight,
                 unit.ProductionCost,
                 unit.BuildProduction == 0 ? "—" : $"{unit.BuildProduction}",
-                string.Join(", ", unit.Abilities.Select(static ability => AbilityLabels[ability]))))
+                unit.Abilities.IsEmpty ? "—" : string.Join(", ", unit.Abilities.Select(static ability => AbilityLabels[ability]))))
             .ToList();
 
         Table("Unit types").ShouldBe(expected, ignoreOrder: true, Because);

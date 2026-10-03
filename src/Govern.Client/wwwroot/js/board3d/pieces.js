@@ -24,7 +24,7 @@ const painted = new MeshLambertMaterial({ flatShading: true, vertexColors: true 
 
 // The baked characters, by file name, each split into its own colours (`name`) and its seat parts (`name:seat`); filled once
 // by loadFigures, and empty until then (units then show only their base).
-const FIGURES = ['soldier', 'spearman', 'archer', 'builder', 'settler', 'rider'];
+const FIGURES = ['soldier', 'spearman', 'archer', 'builder', 'settler', 'scout', 'rider'];
 const figures = new Map();
 let loading = null;
 
@@ -58,6 +58,7 @@ const models = {
     archer: c => [...standing(c, 'archer')],
     builder: c => [...standing(c, 'builder')],
     settler: c => [...standing(c, 'settler')],
+    scout: c => [...standing(c, 'scout')],
     horseman: c => [
         ['disc', 0, 0, 0, 0.5, 0.03, 0.5, c.base],
         ...turned(Math.PI / 2, [
