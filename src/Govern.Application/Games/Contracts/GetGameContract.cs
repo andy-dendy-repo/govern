@@ -32,6 +32,10 @@ public sealed record GetGameRequest(Guid GameId) : IRequest<GetGameRequest, GetG
 /// <param name="Players">Seats in order.</param>
 /// <param name="View">The caller's view of the board once started; <see langword="null"/> in the lobby.</param>
 /// <param name="CreatedAt">When the game was created.</param>
+/// <param name="Map">
+/// The map: <c>generated</c>, a pool map's key (its name is in the map pool, which the client embeds too) or, in the lobby only,
+/// <c>random</c>.
+/// </param>
 /// <param name="Log">
 /// The caller's recent game log (<see cref="GameLogService"/>), oldest first: only the events they may see. Empty in the lobby.
 /// </param>
@@ -43,6 +47,7 @@ public sealed record GetGameResponse(
     IReadOnlyList<GamePlayerSummary> Players,
     PlayerView? View,
     DateTimeOffset CreatedAt,
+    string Map,
     IReadOnlyList<GameLogItem> Log) : IResponse
 {
     /// <summary>Maps a loaded game (with its players) for one of its players.</summary>
@@ -72,6 +77,7 @@ public sealed record GetGameResponse(
             players,
             game.State is { } state ? GameEngine.ViewFor(ruleset, state, caller.PlayerId) : null,
             game.CreatedAt,
+            game.Map.Value,
             log);
     }
 }

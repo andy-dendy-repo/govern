@@ -10,6 +10,7 @@ Govern is an HTTP Web API with a Blazor WASM client. The server layers follow Cl
 | `tests/` | `Govern.UnitTests` (Utils, Core and Domain only), `Govern.IntegrationTests` (everything else on the server, Postgres Testcontainers), `Govern.ClientTests` (Blazor client, bUnit), `Govern.ArchitectureTests` (rules) |
 | `docs/` | Knowledge base used for RAG (see `docs.md` rule) |
 | `rulesets/` | Game rulesets: `<key>/v<N>.json`, the loadable data Core plays with (format: `docs/game/game-data.md`). A published version is never edited; a change is a new version |
+| `maps/` | The map pool: `<key>.json`, hand-made maps a lobby can choose (format: `docs/game/maps.md`), embedded in Application and Client. A running game keeps its own copy, so a file may be edited |
 | `infra/` | Bicep (Azure) |
 | `tools/` | Offline Node tools, run by hand: `unit-models` bakes the 3D board's units (`wwwroot/models/units`) from the CC0 KayKit pack |
 | `.github/workflows/`, `.github/scripts/` | CI (PR → stage/main) and release (stage → main); `configure-client.sh` fills the client's CSP and Api origin at release |
@@ -53,6 +54,7 @@ Extra constraints:
 | A background job / outbox processor | `Infrastructure/Background/` |
 | A game action (command + the rule that applies it) or game event | `Core/Actions/XxxAction.cs` (`XxxCommand` + `XxxRule`), `Core/Events/XxxEvent.cs` (see `game-core.md`) |
 | A game number, list or text (unit or terrain stat, city rule, name) | the ruleset: `rulesets/<key>/vN.json`; a new kind of field also needs its record in `Core/Rulesets` (or `UnitDefinition`/`TerrainDefinition`) and a `RulesetValidator` check (see `game-core.md`, `docs/game/game-data.md`) |
+| A hand-made map | `maps/<key>.json`, checked by `PredefinedMapTests` against the default ruleset (see `docs/game/maps.md`) |
 | An HTTP endpoint | `Api/Features/[Feature]/[UseCase]Endpoint.cs` (one per file) |
 | Request/response pipeline logic | `Api/Middlewares` (global) or `Api/Filters` (endpoint filters) |
 | A health check | `Api/HealthChecks/XxxHealthCheck.cs` |

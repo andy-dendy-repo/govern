@@ -35,7 +35,8 @@ internal sealed class StartGameHandler(
     IApplicationDbContextFactory dbContextFactory,
     ICurrentUserService currentUser,
     TimeProvider timeProvider,
-    DefaultRulesetService rulesets) : IRequestHandler<StartGameRequest, GetGameResponse>
+    DefaultRulesetService rulesets,
+    MapPoolService maps) : IRequestHandler<StartGameRequest, GetGameResponse>
 {
     /// <inheritdoc />
     public async ValueTask<Result<GetGameResponse>> HandleAsync(StartGameRequest request, CancellationToken cancellationToken)
@@ -58,7 +59,13 @@ internal sealed class StartGameHandler(
             return error;
         }
 
-        game.Start(userId, rulesets.Ruleset, timeProvider.GetUtcNow());
+        var map = maps.Resolve(game.Map);
+        if (map is null && !game.Map.IsGenerated)
+        {
+            return GameErrors.MapNotInPool;
+        }
+
+        game.Start(userId, rulesets.Ruleset, timeProvider.GetUtcNow(), map);
         try
         {
             await db.SaveChangesAsync(cancellationToken);

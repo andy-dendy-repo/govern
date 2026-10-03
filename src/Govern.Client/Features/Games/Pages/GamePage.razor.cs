@@ -37,6 +37,9 @@ public partial class GamePage : IAsyncDisposable
     [Inject]
     private NavigationManager Navigation { get; set; } = null!;
 
+    [Inject]
+    private MapPoolService Maps { get; set; } = null!;
+
     // Whether the board is on screen (a started or finished game), which fills the window with the game screen.
     private bool OnBoard => _game is { Phase: not GamePhase.Lobby, View: not null } && !_notFound && _watch?.Status != GameWatchStatus.Gone;
 

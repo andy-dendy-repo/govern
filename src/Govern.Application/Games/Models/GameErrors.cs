@@ -61,6 +61,10 @@ public static class GameErrors
     /// <summary>The creator tried to start before a second player joined.</summary>
     public static readonly Error NotEnoughPlayers = Error.Conflict("game.not_enough_players", "The game needs two players to start.");
 
+    /// <summary>The lobby's map was removed from the pool after the lobby was created; cancel it and create a new one.</summary>
+    public static readonly Error MapNotInPool = Error.Conflict(
+        "game.map_not_in_pool", "The map this lobby chose is no longer available. Create a new game.");
+
     /// <summary>A command was sent to a game that is still in the lobby.</summary>
     public static readonly Error NotStarted = Error.Conflict("game.not_started", "The game has not started yet.");
 

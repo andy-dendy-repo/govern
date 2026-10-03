@@ -41,6 +41,63 @@ public class CreateGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fix
     }
 
     [Fact]
+    public async Task Post_WithoutBody_ChoosesARandomPoolMap()
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+        var body = await GamesApi.CreateGameAsync(Client, creator, Ct);
+
+        (await StoredMapAsync(body.Id)).ShouldBe("random");
+        (await GamesApi.GetGameAsync(Client, creator, body.Id, Ct)).Map.ShouldBe("random");
+    }
+
+    [Theory]
+    [InlineData("basin")]
+    [InlineData("generated")]
+    [InlineData("random")]
+    [InlineData(null)]
+    public async Task Post_WithAMapChoice_Returns201AndStoresIt(string? map)
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        var response = await GamesApi.CreateWithMapAsync(Client, creator.AccessToken, map, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var body = (await response.Content.ReadFromJsonAsync<CreateGameResponse>(GamesApi.Json, Ct))!;
+        (await StoredMapAsync(body.Id)).ShouldBe(map ?? "random");
+    }
+
+    [Theory]
+    [InlineData("atlantis")]
+    [InlineData("")]
+    [InlineData("BASIN")]
+    public async Task Post_WithAMapNotInThePool_Returns400(string map)
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        var response = await GamesApi.CreateWithMapAsync(Client, creator.AccessToken, map, Ct);
+
+        await response.ShouldBeValidationProblemAsync(Ct, "Map");
+    }
+
+    [Fact]
+    public async Task Post_WithAMapWithoutToken_Returns401()
+    {
+        var response = await GamesApi.CreateWithMapAsync(Client, accessToken: null, "basin", Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    private async Task<string> StoredMapAsync(Guid gameId)
+    {
+        var (scope, db) = await Fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            return (await db.Games.AsNoTracking().SingleAsync(g => g.Id == gameId, Ct)).Map.Value;
+        }
+    }
+
+    [Fact]
     public async Task Post_WithoutToken_Returns401()
     {
         var response = await GamesApi.CreateAsync(Client, accessToken: null, Ct);

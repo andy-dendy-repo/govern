@@ -96,3 +96,9 @@ Checks worth repeating:
 - **Parity theories built without explored tiles:** `GameStateBuilder` players had `Explored = []`, so `GameEnginePreviewTests` scenarios never contain explored-but-not-visible tiles; any preview whose rule reads Explored needs scenarios with `WithMapExplored` (hidden unit/city/bridge on a known tile).
 - **Moves made inside the opponent's command** (turn-start auto walks in PassTurn) let the opponent tell automated moves from manual ones and predict the next walk; the docs' accepted-leak list and player rules must say so.
 - Enum names in docs: GameSerializer/ApiJson use camelCase (`enemySighted`), not snake_case.
+
+G18 review (2026-10-03, claude/project-thread-69iq1k: PredefinedMap, MapChoice, MapPoolService, maps/basin.json). No critical. Found:
+- **Public spawn candidates shrink the opponent's start to n known tiles** (basin n=3; the validator allows n=1, which reveals it exactly). Docs claimed only "your own start doesn't tell you which". Ask for a minimum candidate count and an accepted-leak line whenever spawn options come from public data.
+- STJ `RespectNullableAnnotations` does not cover collection elements: `rows: [null]` gives a NullReferenceException from `PredefinedMap.Parse` (verified), not a problem. Check element nulls in every strict document parser.
+- `Lazy<T>` caches a load exception, so "an invalid file stops the first request" really means every request until restart.
+Verified OK, don't re-derive: right-side spawn row = mirror of the left row (W-1-c-k), so the left-only spawn check covers both sides via terrain symmetry; `random` resolves with crypto RNG in Application (not the seed); the state keeps its own map copy.
