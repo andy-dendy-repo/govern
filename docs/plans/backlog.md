@@ -2,7 +2,7 @@
 title: Backlog (all open work, prioritised)
 tags: [plan, backlog, priorities, roadmap, deferred, game, ui, ruleset, content]
 code: [docs/plans, docs/game/design-roadmap.md]
-updated: 2026-10-02
+updated: 2026-10-03
 ---
 
 # Backlog
@@ -64,6 +64,7 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 | G12 | Civilizations and governors | 2026-09-30 | Not in content slice C1; needs G8, G11 | C1 is done; then pick the next slice | [G12](../game/design-roadmap.md#g12-civilizations-and-governors) |
 | G13 | Colonies founded by governors | 2026-09-30 | Not in content slice C1; needs G12 | C1 is done; then pick the next slice | [G13](../game/design-roadmap.md#g13-colonies-founded-by-governors-settlers-removed) |
 | G14 | Seasons | 2026-09-30 | Not in content slice C1; modifies almost everything; last | C1 is done; then pick the next slice | [G14](../game/design-roadmap.md#g14-seasons) |
+| F20 | Auto-explore: a unit walks on its own to the nearest unexplored tiles, turn after turn, reusing the F19 destination order | 2026-10-03 | The owner wants auto moves (F19) first and auto-explore later | F19 is in play, or scouts (G9b) need it | [F19 plan](done/F19-unit-auto-moves.md) |
 | G15 | Ships and naval movement | 2026-09-30 | Not in content slice C1; needs harbours (G10a, done) and G10b (G6 rivers are done) | C1 is done; then pick the next slice | [G15](../game/design-roadmap.md#g15-ships-and-naval-movement) |
 | G16 | Diplomacy (war and peace, trade, alliances, diplomacy points) | 2026-09-30 | Not needed for 1-vs-1 | F10, or resource trading (G5) is wanted | [open question 1](../game/design-roadmap.md#open-questions) |
 
@@ -75,6 +76,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| F19 | Unit auto moves: Go to sends a unit to any explored tile; it walks there on its own, at once and at the start of each of the owner's turns, over the cheapest path the owner knows, until it arrives, has no known way, or sights an enemy; the board shows its route and turns, the unit card a Stop button ([game logic](../game/game-logic.md#set-a-destination-auto-moves)) | 2026-10-03, PR #PRNUM | [F19](done/F19-unit-auto-moves.md) |
 | F18 | Board tile card and WebGL context loss: a card in the board's corner for the tile under the mouse or last tapped (terrain, pieces, building or improvement with "being built", territory, rivers and bridges, the lens's sentences), the pointer cursor where a click acts, the clicked tile's card read out to screen readers, and a lost WebGL context reported and redrawn, with Reload after 5 seconds ([game UI](../features/game-ui.md#game-board)). The regression review's A1/A2 (animations and `HexLayout` in board units) stay a possible clean-up | 2026-10-02, PR #51 | [F18](done/F18-board-hover-card.md) |
 | F17 | Retire the SVG board: the WebGL board is the only board, with no 2D/3D toggle; the SVG board, `board.js` and their tests are gone, the game table tests click through the renderer, and a browser without WebGL gets a message instead of a fallback board ([game UI](../features/game-ui.md#game-board)) | 2026-10-02, PR #50 | [F17](done/F17-retire-svg-board.md) |
 | F16 | Full-screen game view: the board fills the window and the controls float over it (top strip with the title, counters, Log, Full screen, Resign and End turn; the selection card with the unit's actions bottom left; the attack forecast beside its target; the log drawer; notices), browser full screen, and a phone layout with bottom sheets ([game UI](../features/game-ui.md#game-screen-layout-full-screen-view)) | 2026-10-02, PR #49 | [F16](done/F16-full-screen-game-view.md) |

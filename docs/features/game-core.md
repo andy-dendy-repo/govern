@@ -2,7 +2,7 @@
 title: Game Core engine
 tags: [game, core, engine, upkeep, resource-cost, supply, building-health, upkeep-priority, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, game-log, events-for, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
-updated: 2026-10-01
+updated: 2026-10-03
 ---
 
 # Game Core engine
@@ -142,6 +142,7 @@ Andrii's model: everything a city makes costs resources once and upkeep every tu
 | Command (`type` in JSON) | Rule |
 |---|---|
 | `MoveUnitCommand` (`move_unit`) | Cheapest path (Dijkstra) to an empty tile within `MovementLeft`. Never through units or enemy cities. Emits `UnitMovedEvent` with the path |
+| `SetDestinationCommand` (`set_destination`) | Own unit; `target` an explored tile with a path over the actor's knowledge (no visible unit on it), or null to cancel. Sets `Unit.Destination`, drops the job and walks at once (`UnitMovedEvent`); the unit walks on at the start of each of its owner's turns until it arrives, has no path, or sights an enemy (`UnitOrderEndedEvent`) (F19, [game logic](../game/game-logic.md#set-a-destination-auto-moves)) |
 | `FoundCityCommand` (`found_city`) | Settler with movement left, not on a city, spacing respected. The settler is removed and a city created (`CityFoundedEvent`) |
 | `SetProductionCommand` (`set_production`) | Own city; changes what it builds and keeps its progress, refunding a paid resource cost (`ProductionChangedEvent`) |
 | `AttackCommand` (`attack`) | A unit with `attack` or `ranged_attack` and movement left; a target in range (adjacent for melee). Against a unit, both fight ([combat](#combat-g9)): `UnitAttackedEvent`, then `UnitDestroyedEvent` for each unit at 0 health; an undefended enemy city is captured by a melee attacker, which moves in (`CityCapturedEvent`). Movement drops to 0 |
@@ -149,7 +150,7 @@ Andrii's model: everything a city makes costs resources once and upkeep every tu
 | `BuildBridgeCommand` (`build_bridge`) | A unit with `build_bridge` and movement left starts a bridge job over the river towards a neighbour |
 | `ProduceBuildingCommand` (`produce_building`) | Own city; produces a building it doesn't have yet on a free `site` of its territory (needs the adjacent terrain next to the site, if any), keeps its progress (`ProductionChangedEvent` with `Building`); the same building on another site moves the reservation ([G10c](#builders-improvements-buildings-and-bridges-g10a)) |
 | `SetUpkeepPriorityCommand` (`set_upkeep_priority`) | Own city; pays buildings first or units first from the next end of turn (`UpkeepPrioritySetEvent`) |
-| `EndTurnCommand` (`end_turn`) | Jobs advance, yields are collected, upkeep is paid (units heal or starve), territory grows, then the actor's cities pay resource costs and produce. A finished unit spawns on the city or its first free neighbour with 0 movement; if the city is surrounded, it waits. The next active player gets full movement; the round (`Turn`) increases on wrap (`TurnEndedEvent`) |
+| `EndTurnCommand` (`end_turn`) | Jobs advance, yields are collected, upkeep is paid (units heal or starve), territory grows, then the actor's cities pay resource costs and produce. A finished unit spawns on the city or its first free neighbour with 0 movement; if the city is surrounded, it waits. The next active player gets full movement; the round (`Turn`) increases on wrap (`TurnEndedEvent`); then their units with a destination walk on |
 | `ResignCommand` (`resign`) | Any active player, any time (`PlayerResignedEvent`) |
 
 **Turn guard:** every command except Resign requires a running game and `actor == CurrentPlayer`. The unit or city must exist and belong to the actor.
@@ -172,6 +173,7 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `unit.no_movement` | No movement left this turn |
 | `unit.cannot_found_city` / `unit.cannot_attack` | Wrong unit type for the command |
 | `move.occupied` / `move.unreachable` | A **visible** unit stands on the target / off map, own tile, blocked, too far, or a hidden unit is there |
+| `move.no_path` | A destination is off the map, the unit's own tile, unexplored, impassable, or has no path over the tiles the actor knows |
 | `city.tile_taken` / `city.too_close` / `city.in_territory` | Founding on a city / closer than the minimum spacing / on a tile in any city's territory |
 | `city.not_found` / `city.unknown_unit_type` | The actor has no such city / a unit type the game's ruleset doesn't have |
 | `attack.not_adjacent` / `attack.out_of_range` / `attack.no_target` / `attack.own_target` | Attack target problems (`out_of_range` for ranged units; `no_target` also for a ranged unit aimed at an empty city) |
@@ -212,7 +214,7 @@ Exceptions are reserved for programming errors: an invalid `GameSetup`, an unkno
 | `city_captured` | when the city's tile is seen or the city was theirs |
 | `unit_destroyed`, `city_founded`, `unit_created`, `improvement_built`, `territory_grew` | when the tile is seen; `unit_created` and `territory_grew` without their `cityId` (the view never says which enemy city a tile belongs to) |
 | `bridge_built` | when the builder's tile (`from`) is seen, since the builder stays there |
-| `production_changed`, `build_started`, `building_completed`, `building_damaged`, `upkeep_priority_set`, `unit_starved` | never: the view already shows what the opponent may know |
+| `production_changed`, `build_started`, `building_completed`, `building_damaged`, `upkeep_priority_set`, `unit_starved`, `unit_order_ended` | never: the view already shows what the opponent may know (an enemy unit's `Destination` is hidden in the view too) |
 
 Hidden events are dropped, never counted, so the log adds nothing the two views don't already give (`EventVisibilityTests` checks every event type for both players).
 
@@ -228,6 +230,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 | `GameEngine.CheckFoundCity(view, unitId)` | `null`, or the `RuleViolation` | what a `FoundCityCommand` would return |
 | `GameEngine.CheckBuildImprovement(view, unitId, improvement)` / `CheckProduceBuilding(view, cityId, building)` | `null`, or the `RuleViolation` (for a building: of the site that came closest, when no site is accepted) | what a `BuildImprovementCommand` / `ProduceBuildingCommand` would return |
 | `GameEngine.BuildingSites(view, cityId, building)` | The tiles of the city's territory, row then column | each tile a `ProduceBuildingCommand` would accept as its site |
+| `GameEngine.DestinationPath(view, unitId, target)` | The path (`DestinationPreview.Path`) and the coming turns it still needs (`Turns`, 0 when the movement left gets there), or `null` | whether a `SetDestinationCommand` would be accepted, and the steps its walk takes. Planned over the view's knowledge, which is exactly what the rule plans over (explored terrain and rivers, bridges, units and cities on visible tiles); `GameEnginePreviewTests` compares it with `Execute` for every tile of the map in every scenario |
 | `GameEngine.BridgeTargets(view, unitId)` | The neighbours the unit can bridge to, row then column | the targets a `BuildBridgeCommand` would be accepted for |
 | `GameEngine.CityIncome(ruleset, view, cityId)` | What the viewer's own city adds to its stock at the end of the turn (empty for another player's city) | what `EndTurnCommand` adds |
 | `GameEngine.CityForecast(ruleset, view, cityId)` | The income, the upkeep paid, the unpaid buildings and units, and what the item still needs to begin; `null` for another player's city | what `EndTurnCommand` pays and charges |

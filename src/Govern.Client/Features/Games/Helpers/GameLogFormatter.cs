@@ -35,6 +35,7 @@ public static class GameLogFormatter
         UnitAttackedEvent attacked => Attacked(names, attacked),
         UnitDestroyedEvent destroyed => new($"{names.Unit(destroyed.Owner, destroyed.UnitType)} was destroyed", destroyed.Position, names.IsYou(destroyed.Owner)),
         UnitCreatedEvent created => new($"{names.Player(created.Owner)} trained {Article(names.UnitType(created.UnitType))}", created.Position, names.IsYou(created.Owner)),
+        UnitOrderEndedEvent ended => new($"{names.Unit(ended.Owner, ended.UnitType)} {OrderEnd(ended.Reason)}", ended.Position, true),
         UnitStarvedEvent starved => new($"{names.OwnUnit(starved.UnitId)} is short of supplies: {starved.Health} health left", names.UnitTile(starved.UnitId), true),
         BuildStartedEvent started => new($"{names.OwnUnit(started.UnitId)} started {names.Job(started.Job)}", names.UnitTile(started.UnitId), true),
         ImprovementBuiltEvent built => new($"{names.Player(built.Owner)} built {Article(names.Improvement(built))}", built.Position, names.IsYou(built.Owner)),
@@ -90,6 +91,13 @@ public static class GameLogFormatter
         ArgumentNullException.ThrowIfNull(name);
         return name.Length > 0 && "AEIOUaeiou".Contains(name[0], StringComparison.Ordinal) ? $"an {name}" : $"a {name}";
     }
+
+    private static string OrderEnd(OrderEndReason reason) => reason switch
+    {
+        OrderEndReason.Arrived => "arrived at its destination",
+        OrderEndReason.EnemySighted => "stopped: an enemy came into sight",
+        _ => "stopped: there is no known way to its destination",
+    };
 
     private static string Priority(UpkeepPriority priority) => priority == UpkeepPriority.UnitsFirst ? "units" : "buildings";
 

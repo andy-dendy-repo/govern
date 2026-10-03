@@ -7,7 +7,7 @@ namespace Govern.Client.Features.Games.Helpers;
 
 /// <summary>
 /// Builds the <see cref="BoardOverlay"/> the board draws over its scene: the active lens's marks and edge badges, then the selection's highlights (the pending target in its own
-/// tint), and the selected unit's or city's tile.
+/// tint, the selected unit's route to its destination with the turns it needs), and the selected unit's or city's tile.
 /// </summary>
 public static class BoardOverlayBuilder
 {
@@ -34,6 +34,7 @@ public static class BoardOverlayBuilder
         AddHighlights(view, highlights.Attackable.Where(coord => coord == selection.Target), "--gv-overlay-target", tiles);
         AddHighlights(view, highlights.Bridgeable, "--gv-overlay-bridgeable", tiles);
         AddHighlights(view, highlights.Placeable, "--gv-overlay-placeable", tiles);
+        AddRoute(view, highlights.Route, tiles);
         var selected = Selected(view, selection) is { } at && view.Contains(at) ? Tile(view, at, "--gv-selected") : null;
         return tiles.Count == 0 && edges.Count == 0 && selected is null ? BoardOverlay.None : new BoardOverlay(tiles, edges, selected);
     }
@@ -58,6 +59,19 @@ public static class BoardOverlayBuilder
                 edges.Add(new OverlayEdge(x / HexLayout.Size, y / HexLayout.Size, height, edgeMark.Label, edgeMark.Class));
             }
         }
+    }
+
+    // The route's tiles, then its destination labelled with the turns the walk still needs (at least the next one: a standing
+    // order walks on at the start of the player's turn).
+    private static void AddRoute(PlayerView view, DestinationPreview? route, List<OverlayTile> tiles)
+    {
+        if (route is not { Path: [.., var destination] })
+        {
+            return;
+        }
+
+        AddHighlights(view, route.Path.Take(route.Path.Length - 1), "--gv-overlay-route", tiles);
+        tiles.Add(Tile(view, destination, "--gv-overlay-destination") with { Label = $"{Math.Max(1, route.Turns)}" });
     }
 
     private static void AddHighlights(PlayerView view, IEnumerable<HexCoord> coords, string tint, List<OverlayTile> tiles) =>

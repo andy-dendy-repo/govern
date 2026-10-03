@@ -2,7 +2,7 @@
 title: Game logic (Core algorithms)
 tags: [game, core, rules, algorithms, upkeep, resource-cost, supply, shortage, building-health, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, game-log, events, determinism]
 code: [src/Govern.Core]
-updated: 2026-10-01
+updated: 2026-10-03
 ---
 
 # Game logic: Core algorithms
@@ -86,7 +86,30 @@ Every player action is a command sent by one player (the actor). The engine runs
    - a path may not cost more than the movement left, so a unit with 1 movement left can't enter a cost-2 tile;
    - equal costs are broken by row, then column, so the path is always the same.
 5. The target isn't among the reachable tiles → `move.unreachable`.
-6. Move the unit to the target and subtract the path's cost from its movement. Its job, if any, is dropped.
+6. Move the unit to the target and subtract the path's cost from its movement. Its job, if any, is dropped, and so is its destination.
+
+### Set a destination (auto moves)
+
+A unit can be given a destination it walks to on its own, turn after turn (F19). Any other command on the unit (move, attack, start a job) drops the destination.
+
+1. The unit must be the actor's → `unit.not_found`. A null target cancels the order (nothing else changes).
+2. If the target holds a unit **the actor can see** → `move.occupied`.
+3. **Plan** the path over the actor's knowledge only, so it reveals nothing hidden: Dijkstra by total movement cost, without the one-turn limit, from the unit's tile to the target, where a step:
+   - enters a tile the actor has explored (or sees), on the map, with passable terrain;
+   - doesn't enter a tile the actor sees with a unit or an enemy city on it (hidden units and cities are not known, so they don't block the plan);
+   - costs what a move step costs, with the river the actor knows of on the edge (rivers are known on explored tiles) unless they see a bridge on it (bridges are known only on visible tiles);
+   - is skipped when it costs more than the unit's full [`units.*.movement`], since the unit could never take it;
+   - breaks equal costs by row, then column.
+   No path (off the map, the unit's own tile, unexplored, impassable, walled off) → `move.no_path`.
+4. Set the destination, drop the unit's job, and **walk** at once (below) with the movement it has left.
+
+**Walking**, when the order is given and at the start of each of the owner's turns (after their movement is restored, units in id order):
+
+1. Plan again as in step 3, so a newly seen blocker or bridge is used. No path → the order ends as `blocked`; already on the target → `arrived`.
+2. Note the tiles in the unit's own sight ([`units.*.sight`] plus the [`terrains.*.sightBonus`] of its tile) that hold an enemy unit or city.
+3. Take the path's steps one at a time on the real map, while the next step's real cost fits in the movement left. A step onto a unit or enemy city the owner couldn't see stops the walk for this turn but keeps the order.
+4. After each step, if the unit's sight holds an enemy unit or city that wasn't in it in step 2, stop; the order ends as `enemy_sighted`.
+5. The steps taken form one `unit_moved` event. Reaching the target ends the order as `arrived`. Each end of an order is a `unit_order_ended` event (unit, owner, type, tile, destination, reason) that only the owner sees.
 
 ### Attack
 
@@ -191,6 +214,7 @@ Run at the end of the owner's turn (see [End turn](#end-turn)), for the owner's 
    5. If a spawn tile exists, create the unit there with a new random id and **0 movement**, and reset the progress to 0; the next unit is unpaid. If none exists (the city is surrounded), the progress stays full and the unit appears in a later turn.
 7. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
 8. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
+9. **Walk on:** every unit of the new current player with a destination walks on (see [Set a destination](#set-a-destination-auto-moves)), so the player sees where it got to before acting.
 
 ### Costs and upkeep
 

@@ -60,6 +60,36 @@ public class GameTableBuildTests : ClientTestContext
     }
 
     [Fact]
+    public void GoTo_PickAFarTile_SendsTheDestination()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
+        var cut = RenderTable(Create([Soldier(2, You, At(3, 2))]));
+        _board.Click(At(3, 2));
+
+        cut.Find("button.go-to").Click();
+        cut.Find(".action-hint").TextContent.ShouldStartWith("Click any tile you have explored");
+        _board.Click(At(7, 2));
+
+        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
+            .ShouldBe($$$"""{"type":"set_destination","unitId":{"value":2},"target":{"q":{{{At(7, 2).Q}}},"r":{{{At(7, 2).R}}}}}"""));
+    }
+
+    [Fact]
+    public void GoTo_UnitWithADestination_ShowsTheRouteAndStopCancelsIt()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
+        var cut = RenderTable(Create([Soldier(2, You, At(3, 2), movementLeft: 0) with { Destination = At(6, 2) }]));
+        _board.Click(At(3, 2));
+
+        _board.Tinted("--gv-overlay-destination").Count.ShouldBe(1);
+        cut.Find(".unit-destination").TextContent.ShouldBe("Walking to its destination: 2 turns away. Stop or any other order cancels it.");
+        cut.Find("button.stop-order").Click();
+
+        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
+            .ShouldBe("""{"type":"set_destination","unitId":{"value":2},"target":null}"""));
+    }
+
+    [Fact]
     public void BuildBridge_PickATileAcrossTheRiver_SendsIt()
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));

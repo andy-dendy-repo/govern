@@ -80,18 +80,12 @@ public static class GameEngine
         return ViewPreviewCalculator.ReachableTiles(ruleset, view, unitId);
     }
 
-    /// <summary>
-    /// The way one of the viewer's units would walk to a destination, worked out from their view alone (for the client). A
-    /// preview is returned exactly when a <see cref="SetDestinationCommand"/> to the tile would be accepted.
-    /// </summary>
+    /// <summary>How one of the viewer's units would walk to a destination, from their view alone (for the client).</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The viewer's current view.</param>
     /// <param name="unitId">The unit.</param>
     /// <param name="target">The destination.</param>
-    /// <returns>
-    /// The path and the number of turns; <see langword="null"/> when it is not the viewer's turn, the game is over, the viewer has
-    /// no such unit, or the tile has a unit on it or no known path.
-    /// </returns>
+    /// <returns>The path and turns; <see langword="null"/> exactly when a <see cref="SetDestinationCommand"/> would be rejected.</returns>
     public static DestinationPreview? DestinationPath(Ruleset ruleset, PlayerView view, UnitId unitId, HexCoord target)
     {
         ArgumentNullException.ThrowIfNull(ruleset);
