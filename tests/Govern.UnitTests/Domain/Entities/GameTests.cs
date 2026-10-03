@@ -1,10 +1,12 @@
 using Govern.Core.Actions;
 using Govern.Core.Engine;
 using Govern.Core.Events;
+using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
 using Govern.Domain.Events;
+using Govern.Domain.ValueObjects;
 using Govern.UnitTests.Core.Builders;
 
 namespace Govern.UnitTests.Domain.Entities;
@@ -91,6 +93,54 @@ public class GameTests
 
         Should.Throw<InvalidOperationException>(() => game.Join(Guid.CreateVersion7(), Now));
         game.Join(Joiner, Now).Seat.ShouldBe(1);
+    }
+
+    private static readonly PredefinedMap Basin = PredefinedMap.ParseValid(
+        TestRulesets.Default, File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "maps", "basin.json")));
+
+    [Fact]
+    public void Create_WithoutAMap_IsGenerated()
+    {
+        Game.Create(Creator, Now).Map.ShouldBe(MapChoice.Generated);
+    }
+
+    [Fact]
+    public void Start_RandomLobby_PlaysOnTheGivenMapAndRecordsItsKey()
+    {
+        var game = Game.Create(Creator, Now, MapChoice.Random);
+        game.Join(Joiner, Now);
+
+        game.Start(Creator, TestRulesets.Default, Now, Basin);
+
+        game.Map.Key.ShouldBe("basin");
+        game.State.ShouldNotBeNull().Map.Width.ShouldBe(Basin.Map.Width);
+    }
+
+    [Fact]
+    public void Start_LobbyOfAKey_PlaysOnThatMap()
+    {
+        var game = Game.Create(Creator, Now, MapChoice.Create("basin"));
+        game.Join(Joiner, Now);
+
+        game.Start(Creator, TestRulesets.Default, Now, Basin);
+
+        game.State.ShouldNotBeNull().Map.Height.ShouldBe(Basin.Map.Height);
+    }
+
+    [Fact]
+    public void Start_MapThatDoesNotFitTheChoice_Throws()
+    {
+        var generated = Game.Create(Creator, Now);
+        generated.Join(Joiner, Now);
+        var other = Game.Create(Creator, Now, MapChoice.Create("other"));
+        other.Join(Joiner, Now);
+        var random = Game.Create(Creator, Now, MapChoice.Random);
+        random.Join(Joiner, Now);
+
+        Should.Throw<InvalidOperationException>(() => generated.Start(Creator, TestRulesets.Default, Now, Basin));
+        Should.Throw<InvalidOperationException>(() => other.Start(Creator, TestRulesets.Default, Now, Basin));
+        Should.Throw<InvalidOperationException>(() => random.Start(Creator, TestRulesets.Default, Now));
+        random.Phase.ShouldBe(GamePhase.Lobby);
     }
 
     [Fact]

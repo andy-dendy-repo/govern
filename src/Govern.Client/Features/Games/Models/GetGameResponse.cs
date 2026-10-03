@@ -14,6 +14,10 @@ namespace Govern.Client.Features.Games.Models;
 /// <param name="Players">Seats in order.</param>
 /// <param name="View">The caller's fog-of-war view of the board once started; <see langword="null"/> in the lobby.</param>
 /// <param name="CreatedAt">When the game was created.</param>
+/// <param name="Map">
+/// The map: <c>generated</c>, a pool map's key or, in the lobby only, <c>random</c>; its name comes from
+/// <see cref="Services.MapPoolService.NameOf"/>. <see langword="null"/> from an Api older than the map pool.
+/// </param>
 /// <param name="Log">The caller's recent game log (the previous round and this one), oldest first; empty in the lobby.</param>
 public sealed record GetGameResponse(
     Guid Id,
@@ -23,4 +27,5 @@ public sealed record GetGameResponse(
     IReadOnlyList<GamePlayerSummary> Players,
     PlayerView? View,
     DateTimeOffset CreatedAt,
-    IReadOnlyList<GameLogItem>? Log = null);
+    IReadOnlyList<GameLogItem>? Log = null,
+    string? Map = null);

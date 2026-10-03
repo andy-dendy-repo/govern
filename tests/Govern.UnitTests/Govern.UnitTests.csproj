@@ -21,6 +21,7 @@
 
     <ItemGroup>
       <None Include="..\..\rulesets\**\*.json" Link="rulesets\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+      <None Include="..\..\maps\*.json" Link="maps\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

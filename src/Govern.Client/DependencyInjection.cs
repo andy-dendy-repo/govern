@@ -47,6 +47,7 @@ public static class DependencyInjection
             services.AddScoped<Board3DInteropService>();
             services.AddScoped<GameScreenInteropService>();
             services.AddSingleton<RulesetService>();
+            services.AddSingleton<MapPoolService>();
             services.AddSingleton<IMapLens, MovementCostLens>();
             services.AddSingleton<IMapLens, YieldLens>();
             services.AddScoped<ClipboardService>();
