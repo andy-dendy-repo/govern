@@ -1,13 +1,13 @@
 ---
 title: Game data (the loadable ruleset)
-tags: [game, core, ruleset, upkeep, resource-cost, map-generation, builders, buildings, improvements, bridges, resources, terrain, rivers, sight-bonus, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
+tags: [game, core, ruleset, ships, naval, domain, water, upkeep, resource-cost, map-generation, builders, buildings, improvements, bridges, resources, terrain, rivers, sight-bonus, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
 code: [rulesets, src/Govern.Core/Rulesets, src/Govern.Application/Games/Services/DefaultRulesetService.cs, src/Govern.Client/Features/Games/Services/RulesetService.cs]
 updated: 2026-10-04
 ---
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v11.json`](../../rulesets/default/v11.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8, F12 suggested city names instead of the name template in v9, G17 the trader, trade values and the `trade` section in v10, G11a the `science` section, unit lines and building upgrades in v11; [`v1.json`](../../rulesets/default/v1.json) to [`v10.json`](../../rulesets/default/v10.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v12.json`](../../rulesets/default/v12.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8, F12 suggested city names instead of the name template in v9, G17 the trader, trade values and the `trade` section in v10, G11a the `science` section, unit lines and building upgrades in v11, G15a water terrain (`isWater`), unit `domain` and `requiresBuilding`, and the galley and bireme in v12; [`v1.json`](../../rulesets/default/v1.json) to [`v11.json`](../../rulesets/default/v11.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -205,6 +205,7 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 | `id` | id | `plains` |
 | `movementCost` | int ≥ 1 | Movement points to enter the tile (not used while `isPassable` is false, but still required) |
 | `isPassable` | bool | Whether land units can enter it |
+| `isWater` | bool, optional (default false) | Whether naval units can sail it (G15a); a water terrain is never passable. `lake` in v12 |
 | `sightBonus` | int ≥ 0 | Extra sight, in tiles, for a unit or city standing on the tile |
 | `defenceBonus` | int 0..100 | Extra strength for a unit defending on the tile (G9) |
 
@@ -214,9 +215,11 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
   { "id": "forest", "movementCost": 2, "isPassable": true, "sightBonus": 0, "defenceBonus": 3 },
   { "id": "hills", "movementCost": 2, "isPassable": true, "sightBonus": 1, "defenceBonus": 3 },
   { "id": "mountains", "movementCost": 1, "isPassable": false, "sightBonus": 0, "defenceBonus": 0 },
-  { "id": "lake", "movementCost": 1, "isPassable": false, "sightBonus": 0, "defenceBonus": 0 }
+  { "id": "lake", "movementCost": 1, "isPassable": false, "isWater": true, "sightBonus": 0, "defenceBonus": 0 }
 ]
 ```
+
+- A ship pays a water tile's `movementCost` (lake: 1); land units never enter it.
 
 - One flat list for now: a tile has exactly one terrain, so there are no forested hills. Layers (base terrain, elevation, feature) wait until a mechanic needs combinations, likely G5 yields.
 - A `sightBonus` only adds sight, so it keeps the fog invariants below. Terrain that blocks sight (forests) is deferred: it would break them.
@@ -263,6 +266,8 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 | `upkeep` | list of `{ "resource", "amount" }` | Resources paid every turn to keep the unit | 1 food, 1 water |
 | `abilities` | list of abilities | What it can do | `attack`, `build_bridge` |
 | `replaces`, `upgradeCost` | unit id, resource list; optional | The older unit this one replaces and the price of upgrading into it ([science](game-data-science.md#unit-lines-unitsreplaces-unitsupgradecost)) | — |
+| `domain` | `land` or `naval`, optional (default `land`) | Where it moves: passable land, or water (`isWater`) tiles; melee attacks only reach units of the same domain (G15a) | `land` |
+| `requiresBuilding` | building id, optional | A city needs this building, or an upgrade of it, to produce the unit; a naval unit appears on water next to that building's tile and heals as in a city next to it (G15a) | — |
 
 ```json
 "units": [
@@ -273,7 +278,8 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
   { "id": "archer", "class": "ranged", "movement": 2, "sight": 2, "productionCost": 5, "strength": 10, "ranged": { "strength": 22, "range": 2 }, "resourceCost": [{ "resource": "wood", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["ranged_attack"] },
   { "id": "builder", "class": "civilian", "movement": 2, "sight": 2, "productionCost": 5, "buildProduction": 2, "resourceCost": [{ "resource": "food", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }, { "resource": "water", "amount": 1 }], "abilities": ["build_improvement", "build_bridge"] },
   { "id": "scout", "class": "recon", "movement": 4, "sight": 4, "productionCost": 3, "strength": 8, "resourceCost": [{ "resource": "food", "amount": 1 }], "upkeep": [{ "resource": "food", "amount": 1 }], "abilities": [] },
-  { "id": "trader", "class": "civilian", "movement": 3, "sight": 3, "productionCost": 6, "resourceCost": [{ "resource": "food", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }], "abilities": ["trade"] }
+  { "id": "trader", "class": "civilian", "movement": 3, "sight": 3, "productionCost": 6, "resourceCost": [{ "resource": "food", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }], "abilities": ["trade"] },
+  { "id": "galley", "class": "melee", "domain": "naval", "requiresBuilding": "harbour", "movement": 3, "sight": 3, "productionCost": 6, "strength": 20, "resourceCost": [{ "resource": "wood", "amount": 4 }], "upkeep": [{ "resource": "food", "amount": 1 }], "abilities": ["attack"] }
 ]
 ```
 
@@ -291,6 +297,7 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 - A unit with `attack` or `ranged_attack` needs a `strength`; a unit can't have both attacks.
 - `ranged.range` ≤ `sight`, so every target in range is visible and the attack preview stays exact.
 - The order of `units` is the order the client lists them in (the city's Build buttons).
+- **Ships (G15a):** v12 has two, both `"domain": "naval"` and `"requiresBuilding": "harbour"`: the galley (melee, unlocked by `sailing`) and the bireme (ranged, range 2, unlocked by `shipbuilding`). A naval unit's `attack` reaches only naval units and never captures a city; its `ranged_attack` reaches land units too.
 
 ## Cities (`cities`)
 
@@ -398,7 +405,8 @@ Everything a player reads about the game's content comes from here: unit, class 
 - Numbers are in range: movement, sight, costs, city sight, spacing and production ≥ 1; `8 ≤ minSize ≤ maxSize ≤ 40`; the default size within them; `players` = 2.
 - Spawn: `zoneColumnsPerMille` 1–250; `edgeMargin` ≥ 1 and less than the zone on the smallest map; `startingUnits` no more than that zone.
 - At least one terrain is passable, and `defaultTerrain` is.
-- **Fog invariants:** every unit's `sight` ≥ `movement` ÷ the cheapest passable terrain cost, every unit with `found_city` has `sight` ≥ `cities.minimumSpacing` − 1, a ranged unit's `range` ≤ `sight`, and a unit with upkeep has `sight` ≥ `upkeep.supplyRadius` + 1. The view previews are exact only while these hold.
+- **Ships and buildings units need (G15a):** a water terrain is not passable; `requiresBuilding` names a building; a naval unit needs a water terrain, a `requiresBuilding` whose `requiresAdjacentTerrain` lists a water terrain (so the ship can be launched), and no ability but `attack` or `ranged_attack`; starting units and `cities.initialProduction` are land units without `requiresBuilding`.
+- **Fog invariants:** every unit's `sight` ≥ `movement` ÷ the cheapest cost of its domain's ground (passable terrain for land units, water for naval ones), every unit with `found_city` has `sight` ≥ `cities.minimumSpacing` − 1, a ranged unit's `range` ≤ `sight`, and a unit with upkeep has `sight` ≥ `upkeep.supplyRadius` + 1. The view previews are exact only while these hold.
 - At least one starting unit has `found_city`.
 - The texts listed in [Texts and languages](#texts-and-languages) exist and aren't empty.
 
@@ -418,14 +426,14 @@ Each [roadmap](design-roadmap.md) item adds a section here, with fields, example
 |---|---|
 | `terrains` gains elevation and features (layers), yields | G5 |
 | `resources` (groups, yields, reserves, reveal tech) | G5 |
-| `rivers` gains ship navigation (G15), seasonal kinds (G14) | G15, G14 |
+| `rivers` gains ship navigation (G15b), seasonal kinds (G14) | G15b, G14 |
 | `cities` gains growth, housing, loyalty | G8b |
 | `units` gains attacks per turn (deferred from G9 until a unit differs) | G9 |
-| `buildings` gains housing and their own mechanics (faster army production, ships; traders came with G17) | G10b |
+| `buildings` gains housing and their own mechanics (faster army production; traders came with G17, ships with G15a) | G10b |
 | `culture` tree (like `science`: points per turn, prerequisites, unlocks); `science` came with G11a | G11b |
 | `civilizations` and `governors` (skill trees) | G12, G13 |
 | `seasons` (length, per-season modifiers) | G14 |
-| `ships` (capacity, water movement) | G15 |
+| `units` gains ship capacity (carrying land units); `terrains` gains sea and ocean (water movement came with G15a) | G15b |
 
 ## Open questions
 

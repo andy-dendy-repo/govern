@@ -189,8 +189,8 @@ public static class TradePreviewCalculator
 
     // A trade post is never a city's tile, so only its terrain and the river on the way matter.
     private static int? KnownStepCostOntoPost(Ruleset ruleset, PlayerView view, HexCoord from, HexCoord to) =>
-        view.TileAt(to).Terrain is { } terrain && ruleset.Terrain(terrain).IsPassable
-            ? ReachabilityCalculator.StepCost(ruleset, terrain, view.CrossedRiverBetween(from, to))
+        view.TileAt(to).Terrain is { } terrain
+            ? ReachabilityCalculator.StepCost(ruleset, UnitDomain.Land, terrain, view.CrossedRiverBetween(from, to))
             : null;
 
     private static CityView? FindCity(PlayerView view, CityId id) => view.Cities.FirstOrDefault(city => city.Id == id);

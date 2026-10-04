@@ -45,6 +45,7 @@ internal static class RulesetValidator
         RiverRulesValidator.Validate(document, rivers, terrains, problems);
         EconomyRulesValidator.Validate(document, terrains, problems);
         ScienceRulesValidator.Validate(document, problems);
+        NavalRulesValidator.Validate(document, problems);
 
         return [.. problems];
     }
@@ -229,16 +230,15 @@ internal static class RulesetValidator
         }
     }
 
-    // The view previews are exact only while a unit sees every tile it could reach, and a settler sees every city that
+    // The view previews are exact only while a unit sees every tile it could reach (over its domain's cheapest ground), and a settler sees every city that
     // blocks founding (see ViewPreviewCalculator).
     private static void CheckFogInvariants(RulesetDocument document, List<RulesetProblem> problems)
     {
-        var passable = document.Terrains.Where(static terrain => terrain.IsPassable && terrain.MovementCost >= 1).ToList();
-        var cheapest = passable.Count == 0 ? 1 : passable.Min(static terrain => terrain.MovementCost);
-
         for (var index = 0; index < document.Units.Length; index++)
         {
             var unit = document.Units[index];
+            var ground = document.Terrains.Where(terrain => terrain.AllowsDomain(unit.Domain) && terrain.MovementCost >= 1).ToList();
+            var cheapest = ground.Count == 0 ? 1 : ground.Min(static terrain => terrain.MovementCost);
             if (unit.Sight < unit.Movement / cheapest)
             {
                 problems.Add(new($"$.units[{index}].sight", $"Must be at least {unit.Movement / cheapest}, the farthest the unit can move."));

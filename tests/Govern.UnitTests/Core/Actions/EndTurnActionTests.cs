@@ -219,4 +219,50 @@ public class EndTurnActionTests
         update.State.FindUnit(moved)!.Damage.ShouldBe(40);
         update.State.FindUnit(enemy)!.Damage.ShouldBe(40, "only the player ending the turn heals");
     }
+
+    [Fact]
+    public void Execute_ShipProductionComplete_LaunchesOnTheWaterNextToTheHarbour()
+    {
+        var builder = new GameStateBuilder().WithNodes(P1, "sailing").WithTerrain(TestRulesets.Lake, (4, 2), (4, 6));
+        var cost = TestRulesets.Default.Unit(TestRulesets.Galley).ProductionCost;
+        var city = builder.AddCity(P1, 2, 2, TestRulesets.Galley, progress: cost - 1, paid: true, buildings: TestRulesets.Harbour);
+        builder.AddCity(P2, 10, 8);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.WithBuilding(TestRulesets.Harbour, (3, 2)).Build(), P1, new EndTurnCommand()).ShouldSucceed();
+
+        var created = update.Events.OfType<UnitCreatedEvent>().ShouldHaveSingleItem();
+        created.CityId.ShouldBe(city);
+        created.UnitType.ShouldBe(TestRulesets.Galley);
+        created.Position.ShouldBe(At(4, 2));
+    }
+
+    [Fact]
+    public void Execute_HarbourWaterTaken_ShipWaitsWithFullProgress()
+    {
+        var builder = new GameStateBuilder().WithNodes(P1, "sailing").WithTerrain(TestRulesets.Lake, (4, 2));
+        var cost = TestRulesets.Default.Unit(TestRulesets.Galley).ProductionCost;
+        var city = builder.AddCity(P1, 2, 2, TestRulesets.Galley, progress: cost - 1, paid: true, buildings: TestRulesets.Harbour);
+        builder.AddCity(P2, 10, 8);
+        builder.AddUnit(P2, TestRulesets.Galley, 4, 2);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.WithBuilding(TestRulesets.Harbour, (3, 2)).Build(), P1, new EndTurnCommand()).ShouldSucceed();
+
+        update.Events.OfType<UnitCreatedEvent>().ShouldBeEmpty();
+        update.State.FindCity(city)!.ProductionProgress.ShouldBe(cost);
+    }
+
+    [Fact]
+    public void Execute_HurtShipNextToOwnHarbour_HealsAsInACity()
+    {
+        var builder = new GameStateBuilder().WithTerrain(TestRulesets.Lake, (4, 2), (7, 5), (6, 5), (8, 5), (7, 4), (7, 6), (6, 4), (6, 6));
+        builder.AddCity(P1, 2, 2, buildings: TestRulesets.Harbour);
+        builder.AddCity(P2, 10, 8);
+        var docked = builder.AddUnit(P1, TestRulesets.Galley, 4, 2, damage: 40);
+        var away = builder.AddUnit(P1, TestRulesets.Galley, 7, 5, damage: 40);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.WithBuilding(TestRulesets.Harbour, (3, 2)).Build(), P1, new EndTurnCommand()).ShouldSucceed();
+
+        update.State.FindUnit(docked)!.Damage.ShouldBe(20);
+        update.State.FindUnit(away)!.Damage.ShouldBe(30);
+    }
 }

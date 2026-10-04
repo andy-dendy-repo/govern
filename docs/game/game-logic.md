@@ -1,6 +1,6 @@
 ---
 title: Game logic (Core algorithms)
-tags: [game, core, rules, algorithms, science, unit-upgrade, building-upgrade, trading, upkeep, resource-cost, supply, shortage, building-health, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, game-log, events, determinism]
+tags: [game, core, rules, algorithms, ships, naval, domain, science, unit-upgrade, building-upgrade, trading, upkeep, resource-cost, supply, shortage, building-health, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, game-log, events, determinism]
 code: [src/Govern.Core]
 updated: 2026-10-04
 ---
@@ -92,8 +92,8 @@ Every player action is a command sent by one player (the actor). The engine runs
 2. It must have movement left → `unit.no_movement`.
 3. If the target holds a unit **the actor can see** → `move.occupied`. A hidden blocker is not revealed; it just makes the tile unreachable.
 4. Find the cheapest paths (Dijkstra) from the unit's tile, spending at most its movement left:
-   - a tile can be entered if it is on the map, its terrain is passable [`terrains.*.isPassable`], no unit stands on it, and no enemy city stands on it;
-   - a step from one tile to a neighbour costs the entered tile's [`terrains.*.movementCost`] (default ruleset: plains 1, forest and hills 2) plus, when a river runs along the edge between them and the edge has no bridge, its [`rivers.*.crossingCost`] (default: stream 0, river 1); a river whose [`rivers.*.isCrossable`] is false (the deep river) can't be stepped over unless the edge is bridged;
+   - a tile can be entered if it is on the map, its terrain is the unit's ground, no unit stands on it, and no enemy city stands on it. The ground depends on the unit's [`units.*.domain`]: a land unit needs passable terrain [`terrains.*.isPassable`], a naval unit water [`terrains.*.isWater`] (so a ship never enters a city, which stands on land);
+   - a step from one tile to a neighbour costs the entered tile's [`terrains.*.movementCost`] (default ruleset: plains 1, forest and hills 2) plus, when a river runs along the edge between them and the edge has no bridge, its [`rivers.*.crossingCost`] (default: stream 0, river 1); a river whose [`rivers.*.isCrossable`] is false (the deep river) can't be stepped over unless the edge is bridged. Rivers don't affect a naval unit's step;
    - a path may not cost more than the movement left, so a unit with 1 movement left can't enter a cost-2 tile;
    - equal costs are broken by row, then column, so the path is always the same.
 5. The target isn't among the reachable tiles → `move.unreachable`.
@@ -106,7 +106,7 @@ A unit can be given a destination it walks to on its own, turn after turn (F19).
 1. The unit must be the actor's → `unit.not_found`. A null target cancels the order (nothing else changes).
 2. If the target holds a unit **the actor can see** → `move.occupied`.
 3. **Plan** the path over the actor's knowledge only, so it reveals nothing hidden: Dijkstra by total movement cost, without the one-turn limit, from the unit's tile to the target, where a step:
-   - enters a tile the actor has explored (or sees), on the map, with passable terrain;
+   - enters a tile the actor has explored (or sees), on the map, with terrain of the unit's ground (as in a move);
    - doesn't enter a tile the actor sees with a unit or an enemy city on it (hidden units and cities are not known, so they don't block the plan);
    - costs what a move step costs, with the river the actor knows of on the edge (rivers are known on explored tiles) unless they see a bridge on it (bridges are known only on visible tiles);
    - is skipped when it costs more than the unit's full [`units.*.movement`], since the unit could never take it;
@@ -128,7 +128,7 @@ A unit can be given a destination it walks to on its own, turn after turn (F19).
 2. Its type must have the `attack` or `ranged_attack` ability [`units.*.abilities`] → `unit.cannot_attack`.
 3. It must have movement left → `unit.no_movement`.
 4. The target must be on the map and within the unit's range: 1 for `attack`, [`units.*.ranged.range`] for `ranged_attack` → `attack.not_adjacent` (melee) or `attack.out_of_range` (ranged).
-5. The target must hold a unit or a city → `attack.no_target`, and it must not be the actor's own → `attack.own_target`. A ranged unit's target must hold a unit → `attack.no_target`. A melee unit can't capture an undefended city across an uncrossable, unbridged river [`rivers.*.isCrossable`] → `attack.river_in_the_way` (it can still fight a unit there).
+5. The target must hold a unit or a city → `attack.no_target`, and it must not be the actor's own → `attack.own_target`. A ranged unit's target must hold a unit → `attack.no_target`. A melee unit's target must be of its own [`units.*.domain`] → `attack.other_domain`: a land unit can't attack a ship, and a ship can't attack a land unit or a city (a city counts as land); ranged attacks reach both domains. A melee unit can't capture an undefended city across an uncrossable, unbridged river [`rivers.*.isCrossable`] → `attack.river_in_the_way` (it can still fight a unit there).
 6. **If a unit stands there:** they fight (see [Combat](#combat)). The attacker stays where it is, its movement drops to 0 and its job, if any, is dropped.
 7. **Otherwise (an undefended city, melee only):** the city is captured: its owner becomes the actor, its production progress resets to 0 when [`cities.captureResetsProduction`] is true (it is by default), it stops producing a building (back to its unit), its item is unpaid again (a resource cost the old owner paid is lost), it keeps its buildings, and the attacker moves into it with movement 0.
 
@@ -162,8 +162,9 @@ The **forecast** (see [View previews](#view-previews-what-the-client-can-check))
 
 1. The city must be the actor's → `city.not_found`.
 2. The unit type must exist → `city.unknown_unit_type`; it must not be locked by science or replaced by a newer unit ([production under locks](game-logic-science.md#production-under-locks)).
-3. If it already produces that type (and no building), nothing changes.
-4. Otherwise, when the resource cost of what it produced was already paid, it goes back to the stock (`ProductionPaid` clears). The city now produces that type, and stops producing a building. Its progress is kept.
+3. A trader needs the [`trade.building`] (or an upgrade of it) in the city → `trade.no_trade_post`; a unit with [`units.*.requiresBuilding`] (the ships) needs that building or an upgrade of it → `city.missing_building`.
+4. If it already produces that type (and no building), nothing changes.
+5. Otherwise, when the resource cost of what it produced was already paid, it goes back to the stock (`ProductionPaid` clears). The city now produces that type, and stops producing a building. Its progress is kept.
 
 ### Produce a building
 
@@ -217,14 +218,14 @@ Run at the end of the owner's turn (see [End turn](#end-turn)), for the owner's 
 1. **Resting units:** note the actor's hurt units whose movement left is still full and that have no job (they neither moved, attacked nor worked this turn). They heal in step 4.
 2. **Jobs:** advance the actor's unit jobs (see [Building with units](#building-with-units-jobs)).
 3. **Income:** each of the actor's cities adds to its stock the tile yield of every tile in its territory, [`cities.yields`] and the yields of its working buildings [`buildings.*.yields`] (a building at 0 health gives nothing), except [`science.resource`], which is never stored ([science](game-logic-science.md)).
-4. **Upkeep:** see [Costs and upkeep](#costs-and-upkeep): cities pay for their buildings and the units on their territory, units outside territory live off the land, unpaid items lose health, paid buildings recover, and a supplied resting unit loses [`combat.healing.perTurn`] damage, or [`combat.healing.inOwnCity`] on one of the actor's cities, down to 0.
+4. **Upkeep:** see [Costs and upkeep](#costs-and-upkeep): cities pay for their buildings and the units on their territory, units outside territory live off the land, unpaid items lose health, paid buildings recover, and a supplied resting unit loses [`combat.healing.perTurn`] damage, or [`combat.healing.inOwnCity`] on one of the actor's cities (for a naval unit: next to a tile of the actor's territory holding its [`units.*.requiresBuilding`] or an upgrade of it), down to 0.
 5. **Trade:** the deals hosted by the actor's cities swap their goods, then the actor's trading cities move their demand levels (see [trading](game-logic-trade.md#exchange-at-the-end-of-the-host-owners-turn)).
 6. **Territory:** each of the actor's cities, by id, whose stock holds the price of its next tile in [`territory.growthResource`] (see [Territory](#territory)) pays it and claims that tile (`territory_grew`).
 7. **Produce**, for each of the actor's cities that didn't feed a job this turn, with its production per turn = [`cities.productionPerTurn`] plus each working building's [`buildings.*.production`]:
    1. If the item's resource cost [`units.*.resourceCost`, `buildings.*.resourceCost`] isn't paid yet: when the stock holds all of it, pay it and go on; otherwise the item waits and gains no production this turn.
    2. If it produces a building: add the production; when the progress reaches [`buildings.*.cost`], the city gains the building (`building_completed`) at full health, its progress resets to 0, the next item is unpaid, and it goes back to producing its unit. A new building therefore yields from the next turn.
    3. Otherwise add the production to its progress, capped at the unit's [`units.*.productionCost`].
-   4. If the progress has reached the cost, find a spawn tile: the city's tile if free, otherwise the first free neighbour (in fixed direction order) that is passable and has no unit and no enemy city.
+   4. If the progress has reached the cost, find a spawn tile: the city's tile if free, otherwise the first free neighbour (in fixed direction order) that is passable and has no unit and no enemy city. A naval unit is launched instead: the tiles of the city's territory holding its [`units.*.requiresBuilding`] (or an upgrade of it), in row-major order, then each one's neighbours in fixed direction order; the first water tile [`terrains.*.isWater`] with no unit.
    5. If a spawn tile exists, create the unit there with a new random id and **0 movement**, and reset the progress to 0; the next unit is unpaid, and the city goes on with the newest version of that unit it may produce ([science](game-logic-science.md#production-under-locks)). If none exists (the city is surrounded), the progress stays full and the unit appears in a later turn.
 8. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
 9. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
@@ -316,7 +317,7 @@ These answers are **exactly** what the engine would decide, because they share t
 
 ## Future mechanics
 
-Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), city growth, housing, loyalty and the production queue (G8b), pillage, repair and the other buildings' own mechanics (G10b; the trade post's is [trading](game-logic-trade.md), G17; building upgrades came with [science](game-logic-science.md), G11a), the culture tree (G11b), governors (G12, G13), seasons (G14), ships and river navigation (G15).
+Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), city growth, housing, loyalty and the production queue (G8b), pillage, repair and the other buildings' own mechanics (G10b; the trade post's is [trading](game-logic-trade.md), G17; building upgrades came with [science](game-logic-science.md), G11a), the culture tree (G11b), governors (G12, G13), seasons (G14), carrying units, seas and river navigation (G15b; ships themselves came with G15a, in the steps above).
 
 ## Open questions
 

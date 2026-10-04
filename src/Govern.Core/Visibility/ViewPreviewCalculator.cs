@@ -49,7 +49,7 @@ internal static class ViewPreviewCalculator
         }
 
         return [.. unit.Position.WithinRadius(ruleset.Unit(unit.Type).AttackRange)
-            .Where(target => AttackRule.Check(ruleset, unit, target, TargetOf(view, unit.Position, target)) is null)
+            .Where(target => AttackRule.Check(ruleset, unit, target, TargetOf(ruleset, view, unit.Position, target)) is null)
             .OrderBy(static coord => coord.Row)
             .ThenBy(static coord => coord.Column)];
     }
@@ -57,7 +57,7 @@ internal static class ViewPreviewCalculator
     public static CombatForecast? CombatForecast(Ruleset ruleset, PlayerView view, UnitId unitId, HexCoord target)
     {
         if (ActingUnit(ruleset, view, unitId) is not { } unit
-            || TargetOf(view, unit.Position, target) is var targetInfo && AttackRule.Check(ruleset, unit, target, targetInfo) is not null
+            || TargetOf(ruleset, view, unit.Position, target) is var targetInfo && AttackRule.Check(ruleset, unit, target, targetInfo) is not null
             || view.UnitAt(target) is not { } defender)
         {
             return null;
@@ -69,11 +69,12 @@ internal static class ViewPreviewCalculator
         return CombatCalculator.Forecast(ruleset, attacker, defending, targetInfo.River);
     }
 
-    private static AttackTarget TargetOf(PlayerView view, HexCoord attacker, HexCoord target)
+    private static AttackTarget TargetOf(Ruleset ruleset, PlayerView view, HexCoord attacker, HexCoord target)
     {
         var defender = view.Contains(target) ? view.UnitAt(target) : null;
         var owner = defender?.Owner ?? (view.Contains(target) ? view.CityAt(target)?.Owner : null);
-        return new AttackTarget(view.Contains(target), owner, defender is not null, view.CrossedRiverBetween(attacker, target));
+        var domain = defender is null ? UnitDomain.Land : ruleset.Unit(defender.Type).Domain;
+        return new AttackTarget(view.Contains(target), owner, defender is not null, view.CrossedRiverBetween(attacker, target), domain);
     }
 
     // The viewer always sees their own cities, so the name check gives the rule's answer.
@@ -240,20 +241,18 @@ internal static class ViewPreviewCalculator
     private static int? StepCost(Ruleset ruleset, PlayerView view, Unit unit, HexCoord from, HexCoord to) =>
         view.Contains(to)
         && view.TileAt(to) is { Visibility: TileVisibility.Visible, Terrain: { } terrain }
-        && ruleset.Terrain(terrain).IsPassable
         && view.UnitAt(to) is null
         && (view.CityAt(to) is not { } city || city.Owner == unit.Owner)
-            ? ReachabilityCalculator.StepCost(ruleset, terrain, view.CrossedRiverBetween(from, to))
+            ? ReachabilityCalculator.StepCost(ruleset, ruleset.Unit(unit.Type).Domain, terrain, view.CrossedRiverBetween(from, to))
             : null;
 
-    // A step as the viewer knows it, for a walk to a destination: onto any explored passable tile, not onto a unit or enemy city
+    // A step as the viewer knows it, for a walk to a destination: onto any explored tile of the unit's domain, not onto a unit or enemy city
     // they see. The view shows rivers on explored tiles and bridges only on visible ones, as AutoMoveRule plans on the state.
     internal static int? KnownStepCost(Ruleset ruleset, PlayerView view, Unit unit, HexCoord from, HexCoord to) =>
         view.Contains(to)
         && view.TileAt(to) is { Terrain: { } terrain } tile
-        && ruleset.Terrain(terrain).IsPassable
         && (tile.Visibility != TileVisibility.Visible || (view.UnitAt(to) is null && (view.CityAt(to) is not { } city || city.Owner == unit.Owner)))
-            ? ReachabilityCalculator.StepCost(ruleset, terrain, view.CrossedRiverBetween(from, to))
+            ? ReachabilityCalculator.StepCost(ruleset, ruleset.Unit(unit.Type).Domain, terrain, view.CrossedRiverBetween(from, to))
             : null;
 
     // The viewer's unit when they may act with it now; otherwise null.

@@ -51,6 +51,18 @@ const turned = (angle, parts) => parts.map(([shape, x, y, z, sx, sy, sz, colour,
     shape, x * Math.cos(angle) + z * Math.sin(angle), y, z * Math.cos(angle) - x * Math.sin(angle), sx, sy, sz, colour, turn + angle,
 ]);
 
+// A ship side on: a hull with a raised prow and stern, a mast with its sail in seat colour (along the hull, so it faces the
+// camera), and `rows` rows of oars a side. Ships float on water, so they have no base.
+const ship = (c, rows) => turned(Math.PI / 2, [
+    ['box', 0, 0, 0, 0.2, 0.08, 0.6, c.hull],
+    ['box', 0, 0.06, 0.28, 0.12, 0.1, 0.08, c.hull],
+    ['box', 0, 0.06, -0.28, 0.12, 0.07, 0.08, c.hull],
+    ['post', 0, 0.08, 0.04, 0.025, 0.42, 0.025, c.wall],
+    ['box', 0, 0.2, 0.04, 0.02, 0.24, 0.3, c.seat],
+    ...[-0.16, -0.04, 0.08, 0.2].flatMap(z => Array.from({ length: rows }, (_, row) => [-1, 1].map(side =>
+        ['box', side * 0.14, 0.02 + row * 0.03, z, 0.14, 0.012, 0.018, c.wall]))).flat(),
+]);
+
 // The parts of each model: [shape or figure, x, y, z, width, height, depth, colour, optional turn], z towards the camera.
 const models = {
     soldier: c => [...standing(c, 'soldier')],
@@ -64,6 +76,13 @@ const models = {
         ...standing(c, 'settler'),
         ['box', 0, 0.2, -0.13, 0.17, 0.17, 0.1, c.wall],
         ['box', 0, 0.37, -0.13, 0.13, 0.05, 0.08, c.seat],
+    ],
+    galley: c => [...ship(c, 1)],
+    // Two rows of oars a side, with a small archer at the stern facing the camera (the hull runs along x once turned).
+    bireme: c => [
+        ...ship(c, 2),
+        ['archer', -0.17, 0.08, 0, 0.26, 0.26, 0.26, c.tint],
+        ['archer:seat', -0.17, 0.08, 0, 0.26, 0.26, 0.26, c.seat],
     ],
     horseman: c => [
         ['disc', 0, 0, 0, 0.5, 0.03, 0.5, c.base],
@@ -100,6 +119,7 @@ function colours(piece, palette) {
         ground: wall.clone().multiplyScalar(0.8),
         horse: palette.token('--gv-board3d-horse'),
         mane: palette.token('--gv-board3d-horse').multiplyScalar(0.55),
+        hull: palette.token('--gv-board3d-horse').multiplyScalar(0.75),
     };
 }
 

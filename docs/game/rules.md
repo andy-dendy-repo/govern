@@ -1,7 +1,7 @@
 ---
 title: Game rules reference (for players)
-tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, science, science-tree, unlocks, unit-upgrade, building-upgrade, swordsman, pikeman, crossbowman, knight, workshop, barracks, university, market, port, trade-routes, deals, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
-code: [rulesets/default/v11.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
+tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, ships, naval, galley, bireme, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, science, science-tree, unlocks, unit-upgrade, building-upgrade, swordsman, pikeman, crossbowman, knight, workshop, barracks, university, market, port, trade-routes, deals, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
+code: [rulesets/default/v12.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
 updated: 2026-10-04
 ---
 
@@ -47,6 +47,7 @@ A tile's terrain decides how many movement points it costs to enter, whether lan
 | Lake | — | No | — | — | 1 Food, 3 Water |
 | Desert | 1 | Yes | — | — | — |
 
+- **Passable** is for land units. A lake is water: ships sail it at 1 movement point a tile (see "Ships").
 - **Sight bonus:** a unit or city standing on the tile sees this many tiles further than its own sight.
 - **Defence bonus:** a unit attacked on the tile fights with this much extra strength (see "Combat"). Attacking from it gives nothing.
 - **Yield per turn:** what the tile gives (see "Tile yields").
@@ -90,6 +91,8 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 | Pikeman | Anti-cavalry | 24 | — | 2 | 2 | 6 | — | Attack |
 | Crossbowman | Ranged | 14 | 28 (range 2) | 2 | 2 | 7 | — | Ranged attack |
 | Knight | Cavalry | 28 | — | 3 | 3 | 8 | — | Attack |
+| Galley | Melee | 20 | — | 3 | 3 | 6 | — | Attack |
+| Bireme | Ranged | 12 | 22 (range 2) | 3 | 3 | 8 | — | Ranged attack |
 
 - **Class:** what the unit is strong or weak against (see "Class counters").
 - **Strength:** how hard the unit fights in melee and when it is attacked. A unit with no strength (a civilian) can't fight: any attack destroys it.
@@ -104,13 +107,15 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - **Build improvements:** the unit can build an improvement on its tile in your cities' territory, but not on a city (see "Improvements").
 - **Build bridges:** the unit can bridge the river between its tile and a neighbouring one (see "Bridges").
 - **Trade:** the unit opens trade routes and carries their deals (see "Trading"). Only a city with a trade post (or a market) can produce it.
-- Archers, horsemen, traders and the four units at the bottom of the table need a science item first, and the last four replace older units (see "Science").
+- Archers, horsemen, traders, the swordsman, pikeman, crossbowman and knight, and the two ships need a science item first; the swordsman, pikeman, crossbowman and knight replace older units (see "Science").
+- **The galley and the bireme are ships:** they sail lakes instead of walking, only a city with a harbour (or a port) builds them, and they follow their own rules (see "Ships").
 
 ## Moving a unit
 
 - A unit moves along the cheapest path to a tile it can reach with the movement it has left. The movement spent is the path's total cost.
 - A step can't cost more than the movement left: a unit with 1 movement left can't enter forest or hills, or cross a river, that turn.
 - A unit can't enter a tile with another unit on it, an enemy city, or impassable terrain, and it can't cross a deep river. It can enter your own cities.
+- Ships move the other way round: only on lakes, never onto land or into a city (see "Ships").
 - Only one unit can stand on a tile.
 - A tile blocked by an enemy unit you can't see is simply unreachable; the game doesn't tell you why, so it reveals nothing about the hidden unit.
 
@@ -125,8 +130,8 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 ## Attacking
 
 - A unit with Attack or Ranged attack that still has movement left can attack. Attacking uses up all its movement for the turn, and it stays where it is.
-- **Attack (melee):** an enemy unit or city on a neighbouring tile. Both units fight and both take damage (see "Combat").
-- **Ranged attack:** an enemy unit up to the unit's range away. Only the target takes damage: it can't hit back. A ranged unit can't attack a city with no unit on it.
+- **Attack (melee):** an enemy unit or city on a neighbouring tile. Both units fight and both take damage (see "Combat"). Melee only reaches the same ground: a land unit can't attack a ship, and a ship can't attack a land unit or a city.
+- **Ranged attack:** an enemy unit up to the unit's range away, on land or on a lake. Only the target takes damage: it can't hit back. A ranged unit can't attack a city with no unit on it.
 - **Attacking a city with no unit on it** (melee only, and not across a deep river) captures the city. The attacker moves into it with 0 movement, the city becomes yours, and its production progress resets when "Capturing a city resets its production" is Yes under "Game numbers".
 - A city with a unit on it is defended: fight the unit first.
 - Before you attack a unit, the game shows the forecast: both units' strength in this fight, what changes it, and how much damage each side can take. Click the forecast's Attack button to attack, or Cancel (Esc). The damage always lands within the forecast.
@@ -142,7 +147,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - **Damage** each side takes: the damage between equal units, plus the extra damage per point by which the other side is stronger (less when it is weaker), kept between the least and the most damage under "Game numbers". A random roll then moves it up or down by up to the random spread, but never below 1, and never more than the health left.
 - **Civilians** (the settler and the builder) are destroyed by any attack and do no damage back.
 - **The scout** can't attack, but it has a strength, so when it is attacked it fights back like any other unit and is not destroyed by the first hit. It is the fastest and farthest-seeing unit, made for exploring.
-- **Healing:** at the end of your turn, each of your hurt units that neither moved, attacked nor worked on a job this turn heals, more in one of your cities (under "Game numbers"), up to full health, as long as it gets its upkeep (see "Costs and upkeep").
+- **Healing:** at the end of your turn, each of your hurt units that neither moved, attacked nor worked on a job this turn heals, more in one of your cities or, for a ship, next to your harbour or port (under "Game numbers"), up to full health, as long as it gets its upkeep (see "Costs and upkeep").
 
 ## Class counters
 
@@ -169,7 +174,18 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - A unit or building also costs resources, which the city pays in full when it starts producing it; until it can pay, it waits (see "Costs and upkeep").
 - When you end your turn, each of your cities adds its production per turn (under "Game numbers") to its progress. When the progress reaches the unit's production cost, the unit appears on the city's tile, or on the first free neighbouring tile a unit can stand on if the city's tile is taken, with 0 movement. Progress then starts again from 0.
 - If every tile around the city is taken, the finished unit waits and appears in a later turn.
+- A ship appears instead on the first free lake tile next to the city's harbour (or port); if they are all taken, it waits the same way.
 - Cities see as far as the city sight under "Game numbers", plus the sight bonus of their tile.
+
+## Ships
+
+Ships fight on lakes. The galley rams other ships; the bireme shoots ships and units on the shore from two tiles away.
+- **Building ships:** only a city with a harbour (or a port, its upgrade) can produce a ship, and the ship's science item must be working (Sailing for the galley, Shipbuilding for the bireme). The ship appears on a free lake tile next to the harbour.
+- **Sailing:** a ship moves only on lake tiles, 1 movement point each; rivers don't stop it. It never lands, enters a city or carries other units.
+- **Fighting:** a galley's melee attack only reaches enemy ships, and land units can't attack ships in melee either. Ranged attacks cross the shore both ways: a bireme can shoot units on land within range, and archers and crossbowmen can shoot ships. A lake gives no defence bonus. A ship can't capture a city.
+- **Healing:** a ship resting next to your harbour or port heals as much as a unit in your city; anywhere else it heals the usual amount.
+- **Upkeep:** like any unit: from the city whose territory it is in, otherwise from the tiles around it (lakes yield Food).
+- Lakes are small for now. Carrying land units, seas and sailing rivers come later.
 
 ## Building with units
 
@@ -218,6 +234,8 @@ Units and buildings cost resources as well as production, and need resources eve
 | Pikeman | 2 Wood, 2 Stone | 1 Food, 1 Water |
 | Crossbowman | 3 Wood, 1 Stone | 1 Food, 1 Water |
 | Knight | 3 Food, 2 Water, 2 Stone | 2 Food, 2 Water |
+| Galley | 4 Wood | 1 Food |
+| Bireme | 4 Wood, 2 Stone | 1 Food, 1 Wood |
 | Army camp | 4 Stone, 2 Wood | 1 Food |
 | Campus | 4 Stone | 1 Gold |
 | Trade post | 4 Wood | — |
@@ -282,7 +300,7 @@ Every building stands on its own tile of the city's territory, which you pick wh
 
 - **Yield per turn:** added to the city's resources at the end of every one of your turns, from the turn after the building is finished.
 - **Extra production:** added to the city's production per turn, for its own production and for jobs in its territory.
-- Buildings also cost resources and upkeep (see "Costs and upkeep"). A trade post also lets its city train traders and trade (see "Trading"). Later, army camps will speed up army production and harbours will build ships.
+- Buildings also cost resources and upkeep (see "Costs and upkeep"). A trade post also lets its city train traders and trade (see "Trading"). A harbour (or port) lets its city build ships (see "Ships"). Later, army camps will speed up army production.
 - The trade post, the harbour and the last five buildings need a science item first. Barracks, University, Market and Port are **upgrades** of the Army camp, Campus, Trade post and Harbour: a city never produces them; a builder upgrades the old building in place (see "Science"). A city with an upgrade counts as having the old building too, so it can't build that again, and a Market trades like a Trade post.
 
 ## Science
@@ -301,14 +319,14 @@ Science unlocks new units, new buildings and better versions of old ones.
 | Archery | 1 | — | Archer |
 | Horseback riding | 1 | — | Horseman |
 | Trade | 1 | — | Trader, Trade post |
-| Sailing | 1 | — | Harbour |
+| Sailing | 1 | — | Galley, Harbour |
 | Bronze working | 1 | — | Swordsman |
 | Education | 2 | — | University |
 | Iron working | 2 | Bronze working | Pikeman, Barracks |
 | Machinery | 2 | Archery | Crossbowman, Workshop |
 | Stirrups | 2 | Horseback riding | Knight |
 | Currency | 2 | Trade | Market |
-| Shipbuilding | 2 | Sailing | Port |
+| Shipbuilding | 2 | Sailing | Bireme, Port |
 
 | New unit | Replaces | Upgrade cost |
 |---|---|---|

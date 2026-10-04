@@ -112,6 +112,23 @@ public class GameTableScienceTests : ClientTestContext
     }
 
     [Fact]
+    public void CityUnits_ShipWithoutAHarbour_IsDisabledWithTheReason()
+    {
+        var inland = City(7, You, At(2, 2));
+        var harbour = City(8, You, At(6, 2)) with { Buildings = [Harbour] };
+        var cut = RenderTable(WithNodes(Create(cities: [inland, harbour]), 1, "sailing"));
+
+        _board.Click(At(2, 2));
+
+        cut.Find("button.produce-galley").HasAttribute("disabled").ShouldBeTrue();
+        cut.Find("button.produce-galley").GetAttribute("title").ShouldBe("Needs a Harbour");
+
+        _board.Click(At(6, 2));
+
+        cut.Find("button.produce-galley").HasAttribute("disabled").ShouldBeFalse();
+    }
+
+    [Fact]
     public void CityBuildings_UpgradeHasNoButton_AndItsBuildingCountsAsBuilt()
     {
         var city = City(7, You, At(2, 2)) with { Buildings = [University] };
