@@ -40,7 +40,8 @@ internal static class AttackRule
             state.Map.Contains(command.Target),
             defender?.Owner ?? city?.Owner,
             defender is not null,
-            state.Map.CrossedRiverBetween(attacker.Position, command.Target));
+            state.Map.CrossedRiverBetween(attacker.Position, command.Target),
+            defender is null ? UnitDomain.Land : ruleset.Unit(defender.Type).Domain);
         if (Check(ruleset, attacker, command.Target, target) is { } violation)
         {
             return violation;
@@ -75,6 +76,7 @@ internal static class AttackRule
             null => RuleViolations.NoTarget,
             var owner when owner == attacker.Owner => RuleViolations.OwnTarget,
             _ when definition.CanRangedAttack && !targetInfo.HasUnit => RuleViolations.NoTarget,
+            _ when !definition.CanRangedAttack && targetInfo.Domain != definition.Domain => RuleViolations.OtherDomain,
             _ when !targetInfo.HasUnit && targetInfo.River is { } river && !ruleset.River(river).IsCrossable => RuleViolations.RiverInTheWay,
             _ => null,
         };

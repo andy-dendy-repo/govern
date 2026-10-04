@@ -46,6 +46,12 @@ internal static class SetProductionRule
             return RuleViolations.NoTradePost;
         }
 
+        // A ship is built only where it can be launched: a city with a harbour (or one of its upgrades).
+        if (unit.RequiresBuilding is { } needed && !city.BuildingList.Any(building => ruleset.IsKindOf(building, needed)))
+        {
+            return RuleViolations.MissingBuilding;
+        }
+
         var changed = city.ProducingBuilding is null && city.Producing == command.UnitType
             ? city
             : CityProduction.Refund(ruleset, city) with { Producing = command.UnitType, ProducingBuilding = null, ProducingBuildingSite = null };

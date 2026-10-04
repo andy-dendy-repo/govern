@@ -121,8 +121,14 @@ public partial class CityPanel
         _ => "Producing nothing",
     };
 
-    // A trader is trained only in a city with a trade post or an upgrade of it (the engine's check).
-    private bool NeedsTradePost(UnitDefinition unit) => unit.CanTrade && !HasKindOf(Ruleset.Trade.Building);
+    // The building the city lacks to produce a unit, or null (the engine's checks): a trader needs a trade post, a ship its
+    // harbour, each or an upgrade of it.
+    private BuildingType? MissingBuilding(UnitDefinition unit) => unit switch
+    {
+        { CanTrade: true } when !HasKindOf(Ruleset.Trade.Building) => Ruleset.Trade.Building,
+        { RequiresBuilding: { } needed } when !HasKindOf(needed) => needed,
+        _ => null,
+    };
 
     // Whether the city has a building or one of its upgrades.
     private bool HasKindOf(BuildingType building) => City.BuildingList.Any(built => Ruleset.IsKindOf(built, building));

@@ -105,10 +105,26 @@ internal static class UpkeepRule
         return unit with { Damage = damage };
     }
 
-    // A supplied unit that rested heals, more in one of its owner's cities.
+    // A supplied unit that rested heals, more in one of its owner's cities, or, for a ship, next to its owner's harbour.
     private static Unit Heal(Ruleset ruleset, GameState state, Unit unit)
     {
-        var heal = state.CityAt(unit.Position)?.Owner == unit.Owner ? ruleset.Combat.Healing.InOwnCity : ruleset.Combat.Healing.PerTurn;
+        var heal = AtHome(ruleset, state, unit) ? ruleset.Combat.Healing.InOwnCity : ruleset.Combat.Healing.PerTurn;
         return unit with { Damage = Math.Max(0, unit.Damage - heal) };
+    }
+
+    // A ship never enters a city, so its home is next to a tile of its owner's territory holding the building it is made in.
+    private static bool AtHome(Ruleset ruleset, GameState state, Unit unit)
+    {
+        var definition = ruleset.Unit(unit.Type);
+        if (!definition.IsNaval)
+        {
+            return state.CityAt(unit.Position)?.Owner == unit.Owner;
+        }
+
+        return definition.RequiresBuilding is { } needed && unit.Position.Neighbors()
+            .Where(state.Map.Contains)
+            .Select(state.Map.TileAt)
+            .Any(tile => tile.Building is { } building && ruleset.IsKindOf(building, needed)
+                && tile.Territory is { } city && state.FindCity(city)?.Owner == unit.Owner);
     }
 }

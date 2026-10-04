@@ -327,4 +327,27 @@ public class MoveUnitActionTests
 
         GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(3, 2))).ShouldSucceed();
     }
+
+    [Fact]
+    public void Execute_Ship_SailsTheLakeButNeverLandsOrEntersACity()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Lake, (4, 4), (5, 4), (6, 4));
+        var galley = builder.AddUnit(P1, TestRulesets.Galley, 4, 4);
+        builder.AddCity(P1, 4, 5);
+        var state = builder.Build();
+
+        GameEngine.Execute(TestRulesets.Default, state, P1, new MoveUnitCommand(galley, At(6, 4))).ShouldSucceed()
+            .State.FindUnit(galley)!.Position.ShouldBe(At(6, 4));
+        GameEngine.Execute(TestRulesets.Default, state, P1, new MoveUnitCommand(galley, At(4, 3))).ShouldFailWith(RuleViolations.Unreachable);
+        GameEngine.Execute(TestRulesets.Default, state, P1, new MoveUnitCommand(galley, At(4, 5))).ShouldFailWith(RuleViolations.Unreachable);
+    }
+
+    [Fact]
+    public void Execute_LandUnit_NeverEntersTheLake()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Lake, (5, 4));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 4, 4);
+
+        GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(soldier, At(5, 4))).ShouldFailWith(RuleViolations.Unreachable);
+    }
 }
