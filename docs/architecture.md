@@ -54,7 +54,7 @@ Folders are created on demand. The templates list which folders **may** exist; n
 - **UF (utility folders):** Helpers, Models, Enums, Options, Exceptions, Extensions, Attributes, Services.
 - **AGFT (application general folders):** UF plus Abstractions, EventHandlers and Repositories, with root files `DependencyInjection.cs` and `GlobalUsings.cs`.
 - **3DFT (DDD folders):** AGFT plus one folder per feature. Each feature folder follows AGFT and adds `Contracts/`.
-- **Core template (game engine):** a fixed set of concept folders (`Engine`, `State`, `Map`, `Units`, `Cities`, `Economy`, `Events`, `Visibility`, `Serialization`, `Rulesets`) plus a flat `Actions/` folder where each `XxxAction.cs` holds one player action: its `XxxCommand` and the `XxxRule` that applies it. It deliberately avoids UF names: UF suffix rules (e.g. `Services` → `Service`) don't fit engine code.
+- **Core template (game engine):** a fixed set of concept folders (`Engine`, `State`, `Map`, `Units`, `Cities`, `Economy`, `Events`, `Visibility`, `Serialization`, `Rulesets`, `Science`) plus a flat `Actions/` folder where each `XxxAction.cs` holds one player action: its `XxxCommand` and the `XxxRule` that applies it. It deliberately avoids UF names: UF suffix rules (e.g. `Services` → `Service`) don't fit engine code.
 
 | Project | Template | Extras |
 |---|---|---|
@@ -63,7 +63,7 @@ Folders are created on demand. The templates list which folders **may** exist; n
 | Infrastructure | UF | one folder per concern (each UF), `Background/`, `Persistence/` (Configurations, Interceptors, Migrations, `ApplicationDbContext*.cs`) |
 | Domain | UF | Entities, Events, ValueObjects, EntityBase |
 | Api | UF | Middlewares, Filters, HealthChecks, `Features/[Feature]/XxxEndpoint.cs` |
-| Core | Core template | `Engine/`, `State/`, `Map/`, `Units/`, `Cities/`, `Economy/`, `Events/`, `Visibility/`, `Serialization/`, `Rulesets/`, plus flat `Actions/XxxAction.cs` holding exactly `XxxCommand` + `XxxRule`; no root files (see [game-core](features/game-core.md)) |
+| Core | Core template | `Engine/`, `State/`, `Map/`, `Units/`, `Cities/`, `Economy/`, `Events/`, `Visibility/`, `Serialization/`, `Rulesets/`, `Science/`, plus flat `Actions/XxxAction.cs` holding exactly `XxxCommand` + `XxxRule`; no root files (see [game-core](features/game-core.md)) |
 | Client | CFT (UF) | Layout, Components, Auth, `Features/[Feature]/` with `Pages/XxxPage.razor`, `Components/`, `Clients/XxxClient.cs` (see [client](features/client.md)) |
 
 ## Naming rules
