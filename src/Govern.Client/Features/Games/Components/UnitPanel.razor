@@ -32,6 +32,10 @@
     {
         <RadzenText TextStyle="TextStyle.Body2" class="unit-destination rz-m-0">@DestinationText</RadzenText>
     }
+    @if (IsOwn && Unit.Exploring)
+    {
+        <RadzenText TextStyle="TextStyle.Body2" class="unit-exploring rz-m-0">Exploring: it walks on to unexplored land at the start of each turn. Stop or any other order cancels it.</RadzenText>
+    }
     @if (IsOwn && Unit.Job is { } job)
     {
         <RadzenText TextStyle="TextStyle.Body2" class="unit-job rz-m-0">@JobText(job)</RadzenText>

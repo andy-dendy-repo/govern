@@ -89,21 +89,26 @@ Every player action is a command sent by one player (the actor). The engine runs
 ### Move a unit
 
 1. The unit must be the actor's → otherwise `unit.not_found` (an enemy unit is reported the same way, so probing ids reveals nothing).
-2. It must have movement left → `unit.no_movement`.
-3. If the target holds a unit **the actor can see** → `move.occupied`. A hidden blocker is not revealed; it just makes the tile unreachable.
-4. Find the cheapest paths (Dijkstra) from the unit's tile, spending at most its movement left:
+2. A trader on a trade route → `trade.on_route`; a unit with a job (it is building) → `unit.busy`, so a stray click never stops a build ([Cancel a job](#cancel-a-job)).
+3. It must have movement left → `unit.no_movement`.
+4. If the target holds a unit **the actor can see** → `move.occupied`. A hidden blocker is not revealed; it just makes the tile unreachable.
+5. Find the cheapest paths (Dijkstra) from the unit's tile, spending at most its movement left:
    - a tile can be entered if it is on the map, its terrain is the unit's ground, no unit stands on it, and no enemy city stands on it. The ground depends on the unit's [`units.*.domain`]: a land unit needs passable terrain [`terrains.*.isPassable`], a naval unit water [`terrains.*.isWater`] (so a ship never enters a city, which stands on land);
    - a step from one tile to a neighbour costs the entered tile's [`terrains.*.movementCost`] (default ruleset: plains 1, forest and hills 2) plus, when a river runs along the edge between them and the edge has no bridge, its [`rivers.*.crossingCost`] (default: stream 0, river 1); a river whose [`rivers.*.isCrossable`] is false (the deep river) can't be stepped over unless the edge is bridged. Rivers don't affect a naval unit's step;
    - a path may not cost more than the movement left, so a unit with 1 movement left can't enter a cost-2 tile;
    - equal costs are broken by row, then column, so the path is always the same.
-5. The target isn't among the reachable tiles → `move.unreachable`.
-6. Move the unit to the target and subtract the path's cost from its movement. Its job, if any, is dropped, and so is its destination.
+6. The target isn't among the reachable tiles → `move.unreachable`.
+7. Move the unit to the target and subtract the path's cost from its movement. Its destination and its exploring, if any, are dropped.
+
+### Cancel a job
+
+`cancel_job`: the unit must be the actor's (`unit.not_found`) and have a job (`unit.no_job`). The job is dropped with its progress; the movement it took when it started stays spent. No event: the job was never shown to the opponent.
 
 ### Set a destination (auto moves)
 
-A unit can be given a destination it walks to on its own, turn after turn (F19). Any other command on the unit (move, attack, start a job) drops the destination.
+A unit can be given a destination it walks to on its own, turn after turn (F19). Any other command on the unit (move, attack, start a job, explore) drops the destination.
 
-1. The unit must be the actor's → `unit.not_found`. A null target cancels the order (nothing else changes).
+1. The unit must be the actor's → `unit.not_found`. A null target cancels the order, and the unit's exploring (nothing else changes). A unit with a job → `unit.busy`.
 2. If the target holds a unit **the actor can see** → `move.occupied`.
 3. **Plan** the path over the actor's knowledge only, so it reveals nothing hidden: Dijkstra by total movement cost, without the one-turn limit, from the unit's tile to the target, where a step:
    - enters a tile the actor has explored (or sees), on the map, with terrain of the unit's ground (as in a move);
@@ -112,7 +117,7 @@ A unit can be given a destination it walks to on its own, turn after turn (F19).
    - is skipped when it costs more than the unit's full [`units.*.movement`], since the unit could never take it;
    - breaks equal costs by row, then column.
    No path (off the map, the unit's own tile, unexplored, impassable, walled off) → `move.no_path`.
-4. Set the destination, drop the unit's job, and **walk** at once (below) with the movement it has left.
+4. Set the destination, stop the unit exploring, and **walk** at once (below) with the movement it has left.
 
 **Walking**, when the order is given and at the start of each of the owner's turns (after their movement is restored, units in id order):
 
@@ -121,6 +126,16 @@ A unit can be given a destination it walks to on its own, turn after turn (F19).
 3. Take the path's steps one at a time on the real map, while the next step's real cost fits in the movement left. A unit or enemy city the owner couldn't see on the path always comes into the unit's sight a step before it (sight is at least 1), so step 4 ends the order before the walk reaches it; the real cost of a step can only be lower than planned (a bridge on an explored tile the owner doesn't see).
 4. After each step, if the unit's sight holds an enemy unit or city that wasn't in it in step 2, stop; the order ends as `enemySighted`.
 5. The steps taken form one `unit_moved` event. Reaching the target ends the order as `arrived`. Each end of an order is a `unit_order_ended` event (unit, owner, type, tile, destination, reason) that only the owner sees.
+
+### Explore
+
+`explore` (F20) sets a unit exploring (`Unit.Exploring`, shown to the owner only): it walks on its own, turn after turn, to land its owner has never seen. Any other command on the unit drops it, and so does a destination with a null target (Stop).
+
+1. The unit must be the actor's → `unit.not_found`; a trader on a route → `trade.on_route`; a unit with a job → `unit.busy`.
+2. **Find the nearest frontier** over the actor's knowledge, with the step costs of [Set a destination](#set-a-destination-auto-moves) step 3 (Dijkstra by total cost, ties by row, then column): the first tile, other than the unit's own, that has a neighbour on the map the actor has neither explored nor sees now. None → `move.nothing_to_explore`.
+3. Drop the unit's destination, set it exploring and **walk** at once with the movement it has left.
+
+**Walking an explorer**, when the order is given and at the start of each of the owner's turns (with the units that have a destination, in id order): while it has movement left, find the nearest frontier (step 2) and take the planned path's steps as a destination walk does (steps 2 to 4 of Walking), then look again from where it stands, since the steps showed new land. It stops for the turn when the next step costs more than the movement left. All the steps of a turn form one `unit_moved` event. Exploring ends with a `unit_order_ended` event (its destination is the tile the unit stands on) as `explored` when no frontier is left, or as `enemySighted` when a step brings an enemy unit or city into the unit's sight.
 
 ### Attack
 
@@ -229,7 +244,7 @@ Run at the end of the owner's turn (see [End turn](#end-turn)), for the owner's 
    5. If a spawn tile exists, create the unit there with a new random id and **0 movement**, and reset the progress to 0; the next unit is unpaid, and the city goes on with the newest version of that unit it may produce ([science](game-logic-science.md#production-under-locks)). If none exists (the city is surrounded), the progress stays full and the unit appears in a later turn.
 8. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
 9. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
-10. **Walk on:** every unit of the new current player with a destination walks on (see [Set a destination](#set-a-destination-auto-moves); a trader on a route walks its route instead, see [trading](game-logic-trade.md#the-traders-walk)), so the player sees where it got to before acting.
+10. **Walk on:** every unit of the new current player with a destination, or exploring, walks on (see [Set a destination](#set-a-destination-auto-moves); a trader on a route walks its route instead, see [trading](game-logic-trade.md#the-traders-walk)), so the player sees where it got to before acting.
 
 ### Costs and upkeep
 
@@ -272,7 +287,7 @@ If no tile qualifies, nothing is paid and the stock keeps growing. Cities never 
 3. **The view** a player receives:
    - every tile, as unexplored (no terrain), explored (terrain, as last seen) or visible; an explored or visible tile also shows the rivers on the edges it stores (rivers never change). An edge stored by an unexplored neighbour shows once that tile is explored. Improvements, buildings standing on tiles, bridges (stored like rivers) and which player's territory a tile is in are shown on visible tiles only, since they change, so an enemy's placed buildings show where the player can see them; which of the player's own cities owns a tile is shown for their own territory only;
    - their own units and cities, plus enemy units and cities on currently visible tiles;
-   - enemy cities without their production or their list of buildings, and enemy units without their movement left, job or destination (their health is shown). The stock, tiles gained and reserved building site of the player's own cities, never the opponent's. A known, accepted leak: a hurt unit heals only when it kept all its movement and has no job, so an opponent who sees a hurt unit on the same tile before and after its owner's turn learns whether it moved, or, when it stayed and didn't heal, that it is working on a job (one bit per hurt, visible unit per turn). A second accepted leak: a visible enemy territory tile shows that an enemy city is within [`territory.maxRadius`], and watching when enemy borders grow shows roughly that city's culture income (and so whether it has a culture building). A fourth accepted leak: auto moves walk at the start of their owner's turn, inside the opponent's End turn command, so the opponent sees in that update and its log that the visible units which moved are on standing orders, can guess where they are heading, and can tell that their own unit was seen when such a walk stops as it comes into sight. A third accepted leak: a unit that loses health without a fight, or doesn't heal while resting, at the end of its owner's turn shows that it was not supplied, so the land around it, or the stock of the city whose territory it stands on, is short;
+   - enemy cities without their production or their list of buildings, and enemy units without their movement left, job, destination or exploring (their health is shown). The stock, tiles gained and reserved building site of the player's own cities, never the opponent's. A known, accepted leak: a hurt unit heals only when it kept all its movement and has no job, so an opponent who sees a hurt unit on the same tile before and after its owner's turn learns whether it moved, or, when it stayed and didn't heal, that it is working on a job (one bit per hurt, visible unit per turn). A second accepted leak: a visible enemy territory tile shows that an enemy city is within [`territory.maxRadius`], and watching when enemy borders grow shows roughly that city's culture income (and so whether it has a culture building). A fourth accepted leak: auto moves walk at the start of their owner's turn, inside the opponent's End turn command, so the opponent sees in that update and its log that the visible units which moved are on standing orders, can guess where they are heading, and can tell that their own unit was seen when such a walk stops as it comes into sight; an explorer heads for the nearest land its owner never saw, so its route also hints at where that land lies. A third accepted leak: a unit that loses health without a fight, or doesn't heal while resting, at the end of its owner's turn shows that it was not supplied, so the land around it, or the stock of the city whose territory it stands on, is short;
    - units and cities ordered by id, so the order reveals nothing about when they were created;
    - the trade routes they are a side of (see [what each side sees](game-logic-trade.md#what-each-side-sees));
    - their own science per turn and science items, never the opponent's (see [science](game-logic-science.md#what-each-player-sees));
@@ -292,7 +307,8 @@ The client never has the full game state, only its view. From the view alone, Co
 - **Can build this improvement here**, **the tiles it can bridge to** and **can this city produce this building:** the same checks as [Build an improvement](#build-an-improvement), [Build a bridge](#build-a-bridge) and [Produce a building](#produce-a-building).
 - **A city's income:** for one of the player's own cities, what step 3 of [End turn](#end-turn) will add to its stock (its territory is always visible to its owner).
 - **A city's forecast:** its income, the upkeep it will pay, the buildings and units it can't pay for (step 4), what is still missing before its item can begin (step 7.1), and the production its item gains (from the buildings still working after step 4; none while it can't begin). Costs never use [`territory.growthResource`], so territory growth between the two steps can't change the answer. The last two assume the city's production doesn't go to a job this turn; the client checks that from the units' jobs (step 3 of [Building with units](#building-with-units-jobs)). The forecast leaves out the trade of step 5: a deal the city hosts swaps only when the other city has its part, which the player can't see.
-- **Destination path:** the path and the turns a walk to a destination needs, planned over exactly the knowledge the view holds (explored terrain and rivers, bridges, units and cities on visible tiles), which is what [Set a destination](#set-a-destination-auto-moves) plans over; a path exists exactly when the order would be accepted.
+- **Destination path:** the path and the turns a walk to a destination needs, planned over exactly the knowledge the view holds (explored terrain and rivers, bridges, units and cities on visible tiles), which is what [Set a destination](#set-a-destination-auto-moves) plans over; a path exists exactly when the order would be accepted (none for a unit with a job).
+- **Explore:** whether [Explore](#explore) would be accepted, its frontier search run over exactly the knowledge the view holds (a tile counts as never seen when the view shows it unexplored).
 - **A unit's supply:** which own city keeps it up, or, outside territory, what the land around it lacks.
 - **Science:** whether a node can be unlocked, a unit upgraded or a building upgrade started, with the same checks as [science](game-logic-science.md#science-previews).
 - **Trade:** whether a trader can open a route, a deal can be proposed, and a proposal accepted (after cancelling given deals), with the same checks as the [trade commands](game-logic-trade.md#the-trade-commands).

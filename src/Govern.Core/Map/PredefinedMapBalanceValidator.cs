@@ -1,53 +1,41 @@
 using System.Collections.Immutable;
+using Govern.Core.Economy;
 using Govern.Core.Rulesets;
 
 namespace Govern.Core.Map;
 
-// The fairness checks on a built predefined map: it is the same after a 180° turn (terrain and rivers), every passable tile is
-// reachable from every other without crossing a river that can't be crossed, and every spawn candidate leaves room for the
-// starting units in the left half, as GameFactory places them (the k-th unit k columns towards the centre).
+// The fairness checks on a built predefined map. Its halves need not be mirrors, so fairness is measured: every passable tile is
+// reachable from every other without crossing a river that can't be crossed; each player's spawn candidates leave room for the
+// starting units in their own half, as GameFactory places them (the k-th unit k columns towards the centre); the two halves
+// yield about as much of every resource; and every spawn candidate starts among land worth about the same, on both sides.
 internal static class PredefinedMapBalanceValidator
 {
-    // Enough mismatches to locate a mistake without flooding the report.
-    private const int MaxReported = 5;
+    // How far apart the halves' yields of one resource, and a spawn candidate's start from the mean of all, may be.
+    public const int HalfTolerancePercent = 15;
+    public const int StartTolerancePercent = 10;
+    public const int SideTolerancePercent = 5;
 
-    public static void Validate(Ruleset ruleset, GameMap map, ImmutableArray<HexCoord> spawns, List<RulesetProblem> problems)
+    // The land a start is judged by: the tiles within this distance of the spawn, the first city's neighbourhood.
+    public const int StartRadius = 3;
+
+    public static void Validate(Ruleset ruleset, GameMap map, ImmutableArray<HexCoord> first, ImmutableArray<HexCoord> second, List<RulesetProblem> problems)
     {
-        CheckTerrainSymmetry(map, problems);
-        CheckRiverSymmetry(map, problems);
         CheckConnected(ruleset, map, problems);
-        CheckSpawns(ruleset, map, spawns, problems);
+        CheckSpawns(ruleset, map, first, isLeftSide: true, problems);
+        CheckSpawns(ruleset, map, second, isLeftSide: false, problems);
+        CheckHalves(ruleset, map, problems);
+        CheckStarts(ruleset, map, first, second, problems);
     }
 
-    private static void CheckTerrainSymmetry(GameMap map, List<RulesetProblem> problems)
+    // What a start is worth: the yields (every resource alike) of the tiles within StartRadius and of the rivers between them.
+    public static int StartValue(Ruleset ruleset, GameMap map, HexCoord spawn)
     {
-        var mismatches = map.Tiles
-            .Where(tile => Index(map, tile.Coord) < Index(map, map.MirrorOf(tile.Coord)))
-            .Where(tile => tile.Terrain != map.TileAt(map.MirrorOf(tile.Coord)).Terrain)
-            .Take(MaxReported);
-        foreach (var tile in mismatches)
-        {
-            var mirror = map.MirrorOf(tile.Coord);
-            problems.Add(new("$.rows", $"Tile {Name(tile.Coord)} is {tile.Terrain} but its mirror {Name(mirror)} is {map.TileAt(mirror).Terrain}."));
-        }
-    }
-
-    // Every edge once, by its owner and side, compared with its mirror edge; a mismatched pair is reported from its first edge.
-    private static void CheckRiverSymmetry(GameMap map, List<RulesetProblem> problems)
-    {
-        var mismatches = map.Tiles
-            .SelectMany(static tile => Enum.GetValues<HexSide>().Select(side => new HexEdge(tile.Coord, side)))
-            .Where(edge => map.Contains(edge.Neighbor()))
-            .Select(edge => (Edge: edge, Mirror: HexEdge.Between(map.MirrorOf(edge.Owner), map.MirrorOf(edge.Neighbor()))!.Value))
-            .Where(pair => Key(map, pair.Edge) < Key(map, pair.Mirror))
-            .Where(pair => map.RiverBetween(pair.Edge.Owner, pair.Edge.Neighbor()) != map.RiverBetween(pair.Mirror.Owner, pair.Mirror.Neighbor()))
-            .Take(MaxReported);
-        foreach (var (edge, mirror) in mismatches)
-        {
-            var river = map.RiverBetween(edge.Owner, edge.Neighbor());
-            var other = map.RiverBetween(mirror.Owner, mirror.Neighbor());
-            problems.Add(new("$.rivers", $"The edge {Name(edge.Owner)}–{Name(edge.Neighbor())} has {river?.Id ?? "no river"} but its mirror {Name(mirror.Owner)}–{Name(mirror.Neighbor())} has {other?.Id ?? "no river"}."));
-        }
+        var area = spawn.WithinRadius(StartRadius).Where(map.Contains).ToHashSet();
+        var tiles = area.Sum(coord => Total(ruleset.Terrain(map.TileAt(coord).Terrain).Yields));
+        var rivers = Edges(map)
+            .Where(edge => area.Contains(edge.Owner) && area.Contains(edge.Neighbor()))
+            .Sum(edge => map.RiverBetween(edge.Owner, edge.Neighbor()) is { } river ? Total(ruleset.River(river).Yields) : 0);
+        return tiles + rivers;
     }
 
     // A flood fill from one passable tile over the steps a land unit can take.
@@ -87,24 +75,105 @@ internal static class PredefinedMapBalanceValidator
         }
     }
 
-    private static void CheckSpawns(Ruleset ruleset, GameMap map, ImmutableArray<HexCoord> spawns, List<RulesetProblem> problems)
+    private static void CheckSpawns(Ruleset ruleset, GameMap map, ImmutableArray<HexCoord> spawns, bool isLeftSide, List<RulesetProblem> problems)
     {
+        var path = isLeftSide ? "$.firstSpawns" : "$.secondSpawns";
+        var towardsCentre = isLeftSide ? 1 : -1;
+        var half = isLeftSide ? "left" : "right";
         for (var index = 0; index < spawns.Length; index++)
         {
             for (var slot = 0; slot < ruleset.Setup.StartingUnits.Length; slot++)
             {
-                var tile = HexCoord.FromOffset(spawns[index].Column + slot, spawns[index].Row);
-                if (!map.Contains(tile) || tile.Column >= map.Width / 2 || !map.IsPassable(ruleset, tile))
+                var tile = HexCoord.FromOffset(spawns[index].Column + (slot * towardsCentre), spawns[index].Row);
+                var inHalf = isLeftSide ? IsLeft(map, tile) : IsRight(map, tile);
+                if (!map.Contains(tile) || !inHalf || !map.IsPassable(ruleset, tile))
                 {
-                    problems.Add(new($"$.spawns[{index}]", $"Starting unit {slot + 1} would stand on {Name(tile)}, which must be a passable tile in the left half."));
+                    problems.Add(new($"{path}[{index}]", $"Starting unit {slot + 1} would stand on {Name(tile)}, which must be a passable tile in the {half} half."));
                 }
             }
         }
     }
 
-    private static int Index(GameMap map, HexCoord coord) => (coord.Row * map.Width) + coord.Column;
+    // Each resource's yield in the left and the right half (a river edge counts in the half of the tile that owns it; the middle
+    // column of an odd width in neither).
+    private static void CheckHalves(Ruleset ruleset, GameMap map, List<RulesetProblem> problems)
+    {
+        var left = new Dictionary<ResourceType, int>();
+        var right = new Dictionary<ResourceType, int>();
+        foreach (var tile in map.Tiles)
+        {
+            Add(HalfOf(map, tile.Coord, left, right), ruleset.Terrain(tile.Terrain).Yields);
+        }
 
-    private static int Key(GameMap map, HexEdge edge) => (Index(map, edge.Owner) * 3) + (int)edge.Side;
+        foreach (var edge in Edges(map))
+        {
+            if (map.RiverBetween(edge.Owner, edge.Neighbor()) is { } river)
+            {
+                Add(HalfOf(map, edge.Owner, left, right), ruleset.River(river).Yields);
+            }
+        }
+
+        foreach (var resource in left.Keys.Union(right.Keys).OrderBy(static resource => resource.Id, StringComparer.Ordinal))
+        {
+            var (a, b) = (left.GetValueOrDefault(resource), right.GetValueOrDefault(resource));
+            if (!Close(a, b, HalfTolerancePercent))
+            {
+                problems.Add(new("$.rows", $"The left half yields {a} {resource.Id} and the right half {b}: they must be within {HalfTolerancePercent}% of each other."));
+            }
+        }
+    }
+
+    private static void CheckStarts(Ruleset ruleset, GameMap map, ImmutableArray<HexCoord> first, ImmutableArray<HexCoord> second, List<RulesetProblem> problems)
+    {
+        var firstValues = first.Select(spawn => StartValue(ruleset, map, spawn)).ToList();
+        var secondValues = second.Select(spawn => StartValue(ruleset, map, spawn)).ToList();
+        var mean = firstValues.Concat(secondValues).Average();
+        foreach (var (path, spawns, values) in new[] { ("$.firstSpawns", first, firstValues), ("$.secondSpawns", second, secondValues) })
+        {
+            for (var index = 0; index < spawns.Length; index++)
+            {
+                if (Math.Abs(values[index] - mean) * 100 > mean * StartTolerancePercent)
+                {
+                    problems.Add(new($"{path}[{index}]", $"The start at {Name(spawns[index])} is worth {values[index]}, more than {StartTolerancePercent}% from the mean of all starts ({mean:0.#}): the yields within {StartRadius} tiles must be about the same for every spawn."));
+                }
+            }
+        }
+
+        var (firstMean, secondMean) = (firstValues.Average(), secondValues.Average());
+        if (Math.Abs(firstMean - secondMean) * 100 > Math.Max(firstMean, secondMean) * SideTolerancePercent)
+        {
+            problems.Add(new("$.secondSpawns", $"The first player's starts are worth {firstMean:0.#} on average and the second's {secondMean:0.#}: they must be within {SideTolerancePercent}% of each other."));
+        }
+    }
+
+    // Every edge between two tiles of the map once, by the tile that owns it.
+    private static IEnumerable<HexEdge> Edges(GameMap map) => map.Tiles
+        .SelectMany(static tile => Enum.GetValues<HexSide>().Select(side => new HexEdge(tile.Coord, side)))
+        .Where(edge => map.Contains(edge.Neighbor()));
+
+    private static bool IsLeft(GameMap map, HexCoord coord) => coord.Column < map.Width / 2;
+
+    private static bool IsRight(GameMap map, HexCoord coord) => coord.Column >= map.Width - (map.Width / 2);
+
+    private static Dictionary<ResourceType, int>? HalfOf(GameMap map, HexCoord coord, Dictionary<ResourceType, int> left, Dictionary<ResourceType, int> right) =>
+        IsLeft(map, coord) ? left : IsRight(map, coord) ? right : null;
+
+    private static void Add(Dictionary<ResourceType, int>? totals, ImmutableArray<ResourceAmount> yields)
+    {
+        if (totals is null)
+        {
+            return;
+        }
+
+        foreach (var amount in yields)
+        {
+            totals[amount.Resource] = totals.GetValueOrDefault(amount.Resource) + amount.Amount;
+        }
+    }
+
+    private static int Total(ImmutableArray<ResourceAmount> yields) => yields.Sum(static amount => amount.Amount);
+
+    private static bool Close(int a, int b, int percent) => Math.Abs(a - b) * 100 <= Math.Max(a, b) * percent;
 
     private static string Name(HexCoord coord) => $"[{coord.Column}, {coord.Row}]";
 }

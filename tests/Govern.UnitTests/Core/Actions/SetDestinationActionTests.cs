@@ -125,18 +125,39 @@ public class SetDestinationActionTests
     }
 
     [Fact]
-    public void Execute_NoMovementLeft_KeepsTheOrderAndDropsTheJob()
+    public void Execute_NoMovementLeft_KeepsTheOrder()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        var worker = builder.AddUnit(P1, TestRulesets.Builder, 1, 1, movementLeft: 0, job: new UnitJob(1, 1, Improvement: TestRulesets.Farm));
+        var worker = builder.AddUnit(P1, TestRulesets.Builder, 1, 1, movementLeft: 0);
 
         var update = Execute(builder.Build(), P1, new SetDestinationCommand(worker, At(3, 2)));
 
         var unit = update.State.FindUnit(worker)!;
         unit.Position.ShouldBe(At(1, 1));
-        unit.Job.ShouldBeNull();
         unit.Destination.ShouldBe(At(3, 2));
         update.Events.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Execute_UnitWithAJob_IsRefused()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var worker = builder.AddUnit(P1, TestRulesets.Builder, 1, 1, job: new UnitJob(1, 1, Improvement: TestRulesets.Farm));
+
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new SetDestinationCommand(worker, At(3, 2)));
+
+        result.ShouldFailWith(RuleViolations.UnitBusy);
+    }
+
+    [Fact]
+    public void Execute_NullTarget_StopsExploring()
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        var scout = builder.AddUnit(P1, TestRulesets.Soldier, 1, 1, exploring: true);
+
+        var update = Execute(builder.Build(), P1, new SetDestinationCommand(scout, null));
+
+        update.State.FindUnit(scout)!.Exploring.ShouldBeFalse();
     }
 
     [Fact]

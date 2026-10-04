@@ -5,19 +5,20 @@ namespace Govern.Core.Map;
 
 /// <summary>
 /// A hand-made map from the map pool (<c>maps/&lt;key&gt;.json</c>), played instead of a generated one when a game's
-/// <see cref="State.GameSetup"/> names it. Like a generated map it is the same after a 180° turn
-/// (<see cref="GameMap.MirrorOf"/>), so neither player gets the better half. A game keeps its own copy of the map in its
-/// state, so editing a map file never changes a running game.
+/// <see cref="State.GameSetup"/> names it. Unlike a generated map its two halves need not be mirrors: each side has a land of its
+/// own, and the validator checks that they are worth the same (their yields, and what lies around every spawn candidate). A game
+/// keeps its own copy of the map in its state, so editing a map file never changes a running game.
 /// </summary>
 /// <param name="Key">The map's id, lower snake_case, such as <c>basin</c>.</param>
 /// <param name="Name">The name players see, such as <c>The Basin</c>.</param>
 /// <param name="Map">The terrain and rivers.</param>
-/// <param name="Spawns">
-/// The first player's candidate spawn tiles (at least 2), in the left half; the second player's are their mirrors. The game's
-/// seed picks one for each player on its own, so a player's own start doesn't tell them which of the opponent's candidates
-/// they got. The candidates are public, so they do narrow the opponent's start down to these few tiles: an accepted leak.
+/// <param name="FirstSpawns">
+/// The first player's candidate spawn tiles (at least 2), in the left half. The game's seed picks one for each player on its
+/// own, so a player's own start doesn't tell them which of the opponent's candidates they got. The candidates are public, so
+/// they do narrow the opponent's start down to these few tiles: an accepted leak.
 /// </param>
-public sealed record PredefinedMap(string Key, string Name, GameMap Map, ImmutableArray<HexCoord> Spawns)
+/// <param name="SecondSpawns">The second player's candidate spawn tiles (at least 2), in the right half.</param>
+public sealed record PredefinedMap(string Key, string Name, GameMap Map, ImmutableArray<HexCoord> FirstSpawns, ImmutableArray<HexCoord> SecondSpawns)
 {
     /// <summary>Parses and validates a map document against the ruleset it will be played with.</summary>
     /// <param name="ruleset">The ruleset (its terrains, rivers, map size limits and starting units are checked).</param>

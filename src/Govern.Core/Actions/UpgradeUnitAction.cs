@@ -43,7 +43,7 @@ internal static class UpgradeUnitRule
         var stock = UpkeepCalculator.Subtract(ruleset, city!.StockList, upgrade.UpgradeCost ?? []);
         var upgraded = state
             .WithCity(city with { Stock = stock.IsEmpty ? null : stock })
-            .WithUnit(unit with { Type = upgrade.Id, MovementLeft = 0, Job = null, Destination = null });
+            .WithUnit(unit with { Type = upgrade.Id, MovementLeft = 0, Job = null, Destination = null, Exploring = false });
         return new GameUpdate(upgraded, [new UnitUpgradedEvent(unit.Id, actor, unit.Position, unit.Type, upgrade.Id)]);
     }
 

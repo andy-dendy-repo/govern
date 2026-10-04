@@ -102,6 +102,62 @@ public class GameTableBuildTests : ClientTestContext
     }
 
     [Fact]
+    public void Explore_UnexploredLandNearby_SendsIt()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
+        var cut = RenderTable(Create([Soldier(2, You, At(3, 2))], visibility: static coord => coord.Column > 6 ? TileVisibility.Unexplored : TileVisibility.Visible));
+        _board.Click(At(3, 2));
+
+        cut.Find("button.explore").Click();
+
+        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString().ShouldBe("""{"type":"explore","unitId":{"value":2}}"""));
+    }
+
+    [Fact]
+    public void Explore_ExploringUnit_SaysSoAndStopCancelsIt()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
+        var cut = RenderTable(Create([Soldier(2, You, At(3, 2), movementLeft: 0) with { Exploring = true }]));
+        _board.Click(At(3, 2));
+
+        cut.FindAll("button.explore").ShouldBeEmpty();
+        cut.Find(".unit-exploring").TextContent.ShouldStartWith("Exploring:");
+        cut.Find("button.stop-order").Click();
+
+        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
+            .ShouldBe("""{"type":"set_destination","unitId":{"value":2},"target":null}"""));
+    }
+
+    [Fact]
+    public void Explore_EverythingKnown_IsDisabled()
+    {
+        var cut = RenderTable(Create([Soldier(2, You, At(3, 2))]));
+
+        _board.Click(At(3, 2));
+
+        cut.Find("button.explore").HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void CancelJob_BuilderAtWork_AClickElsewhereDoesNotMoveItAndCancelSendsIt()
+    {
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
+        var builder = Unit(1, You, BuilderType, At(3, 2)) with { Job = new UnitJob(2, 1, Improvement: Farm) };
+        var cut = RenderTable(Create([builder], [City(7, You, At(2, 2))]));
+        _board.Click(At(3, 2));
+
+        _board.Tinted("--gv-overlay-reachable").ShouldBeEmpty();
+        cut.FindAll("button.go-to").ShouldBeEmpty();
+        cut.Find(".action-hint").TextContent.ShouldBe("Building a Farm. Cancel the job to move the unit.");
+        _board.Click(At(4, 2));
+        Api.RequestsTo(TestGames.CommandsPath()).ShouldBeEmpty();
+        _board.Click(At(3, 2));
+        cut.Find("button.cancel-job").Click();
+
+        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString().ShouldBe("""{"type":"cancel_job","unitId":{"value":1}}"""));
+    }
+
+    [Fact]
     public void BuildBridge_PickATileAcrossTheRiver_SendsIt()
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));

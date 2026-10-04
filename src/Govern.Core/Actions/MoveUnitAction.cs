@@ -16,7 +16,7 @@ namespace Govern.Core.Actions;
 public sealed record MoveUnitCommand(UnitId UnitId, HexCoord Target) : GameCommand;
 
 /// <summary>
-/// Moves a unit along the cheapest path to an empty tile it can reach with its remaining movement. Moving drops the unit's job and its destination.
+/// Moves a unit along the cheapest path to an empty tile it can reach with its remaining movement. A unit with a job can't move (its owner cancels the job first); moving drops the unit's destination and its exploring.
 /// </summary>
 internal static class MoveUnitRule
 {
@@ -27,14 +27,9 @@ internal static class MoveUnitRule
             return error;
         }
 
-        if (unit.RouteId is not null)
+        if (CheckFree(unit) is { } busy)
         {
-            return RuleViolations.OnTradeRoute;
-        }
-
-        if (unit.MovementLeft <= 0)
-        {
-            return RuleViolations.NoMovementLeft;
+            return busy;
         }
 
         // Only a visible blocker is reported as occupied; a hidden one must look like any other unreachable tile.
@@ -54,10 +49,19 @@ internal static class MoveUnitRule
         {
             Position = command.Target,
             MovementLeft = unit.MovementLeft - reachability.CostTo(command.Target),
-            Job = null,
             Destination = null,
+            Exploring = false,
         };
 
         return new GameUpdate(state.WithUnit(moved), [new UnitMovedEvent(unit.Id, unit.Owner, unit.Type, reachability.PathTo(command.Target))]);
     }
+
+    // A unit on a trade route, with a job or without movement left can't take a step.
+    private static RuleViolation? CheckFree(Unit unit) => unit switch
+    {
+        { RouteId: not null } => RuleViolations.OnTradeRoute,
+        { Job: not null } => RuleViolations.UnitBusy,
+        { MovementLeft: <= 0 } => RuleViolations.NoMovementLeft,
+        _ => null,
+    };
 }

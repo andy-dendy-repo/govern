@@ -37,6 +37,15 @@ public static class RuleViolations
     /// </summary>
     public static readonly RuleViolation NoPath = new("move.no_path", "The unit has no known way to that tile.");
 
+    /// <summary>The unit is building (it has a job): it can't move until its owner cancels the job.</summary>
+    public static readonly RuleViolation UnitBusy = new("unit.busy", "The unit is building; cancel its job to move it.");
+
+    /// <summary>The unit has no job to cancel.</summary>
+    public static readonly RuleViolation NoJob = new("unit.no_job", "The unit is not building anything.");
+
+    /// <summary>No tile next to one the player never saw can be reached over the tiles they know.</summary>
+    public static readonly RuleViolation NothingToExplore = new("move.nothing_to_explore", "The unit has no known way to anything left to explore.");
+
     /// <summary>The tile already holds a city.</summary>
     public static readonly RuleViolation CityTileTaken = new("city.tile_taken", "A city already stands on this tile.");
 

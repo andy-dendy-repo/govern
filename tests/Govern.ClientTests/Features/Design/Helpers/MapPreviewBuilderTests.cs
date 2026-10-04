@@ -13,7 +13,7 @@ public class MapPreviewBuilderTests
           "legend": { ".": "plains", "~": "lake" },
           "rows": ["........", "........", "...~....", "........", "........", "....~...", "........", "........"],
           "rivers": [ { "tile": [2, 4], "side": "east", "river": "stream" }, { "tile": [4, 3], "side": "east", "river": "stream" } ],
-          "spawns": [[1, 2], [1, 5]]
+          "firstSpawns": [[1, 2], [1, 5]], "secondSpawns": [[6, 5], [6, 2]]
         }
         """);
 
@@ -30,13 +30,12 @@ public class MapPreviewBuilderTests
     }
 
     [Fact]
-    public void Build_PutsAUnitOnEverySpawnCandidateAndItsMirror()
+    public void Build_PutsAUnitOnEverySpawnCandidateOfBothSides()
     {
         var view = MapPreviewBuilder.Build(Ruleset, Map, version: 1);
 
-        view.Units.Where(static unit => unit.Owner == MapPreviewBuilder.You).Select(static unit => unit.Position).ShouldBe(Map.Spawns);
-        view.Units.Where(static unit => unit.Owner == MapPreviewBuilder.Them).Select(static unit => unit.Position)
-            .ShouldBe(Map.Spawns.Select(Map.Map.MirrorOf));
+        view.Units.Where(static unit => unit.Owner == MapPreviewBuilder.You).Select(static unit => unit.Position).ShouldBe(Map.FirstSpawns);
+        view.Units.Where(static unit => unit.Owner == MapPreviewBuilder.Them).Select(static unit => unit.Position).ShouldBe(Map.SecondSpawns);
         view.Units.Select(static unit => unit.Id).Distinct().Count().ShouldBe(4);
         view.Units.ShouldAllBe(unit => unit.Type == Ruleset.Setup.StartingUnits[0]);
     }

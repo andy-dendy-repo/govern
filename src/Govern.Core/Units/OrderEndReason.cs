@@ -13,4 +13,7 @@ public enum OrderEndReason
 
     /// <summary>An enemy unit or city came into its owner's sight while it walked, so the owner decides what to do.</summary>
     EnemySighted,
+
+    /// <summary>An exploring unit has no known way left to any tile its owner never saw.</summary>
+    Explored,
 }
