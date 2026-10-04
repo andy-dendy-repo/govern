@@ -211,7 +211,7 @@ public class ConstructionRuleTests
     [Fact]
     public void EndTurn_BuildingFinished_JoinsTheCityStandsOnItsSiteAndProductionGoesBackToTheUnit()
     {
-        var builder = new GameStateBuilder().WithCapitals().WithBuilding(TestRulesets.TradePost, (6, 5));
+        var builder = new GameStateBuilder().WithCapitals().WithNodes(P1, "archery", "trade").WithBuilding(TestRulesets.TradePost, (6, 5));
         var city = builder.AddCity(P1, 5, 5, TestRulesets.Archer, progress: 7, producingBuilding: TestRulesets.Campus, paid: true, buildingSite: (5, 4), buildings: [TestRulesets.TradePost]);
 
         var update = EndTurn(builder.Build());

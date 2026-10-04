@@ -105,7 +105,7 @@ internal static class EndTurnRule
     }
 
     // A finished building joins the city and stands on its reserved tile, and the city goes back to producing its unit from
-    // scratch. The site is still valid: the reservation keeps improvements off it, and its territory changes hands only with the
+    // scratch (its newest version the owner may produce, like after a finished unit). The site is still valid: the reservation keeps improvements off it, and its territory changes hands only with the
     // city, whose capture drops the reservation. A game saved before buildings had sites has none; that building stays off the map.
     private static GameState ProduceBuilding(Ruleset ruleset, GameState state, City city, int perTurn, ImmutableArray<GameEvent>.Builder events)
     {
@@ -120,6 +120,7 @@ internal static class EndTurnRule
         events.Add(new BuildingCompletedEvent(city.Id, building, site ?? city.Position));
         var done = state.WithCity(city with
         {
+            Producing = ScienceCalculator.NextProduction(ruleset, state.FindPlayer(city.Owner)!.NodeList, city.Producing),
             ProducingBuilding = null,
             ProducingBuildingSite = null,
             ProductionProgress = 0,
