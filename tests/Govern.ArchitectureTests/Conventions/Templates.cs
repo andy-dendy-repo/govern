@@ -28,7 +28,7 @@ public static class Templates
     /// Concept folders of the game engine (<c>Govern.Core</c>); see <c>.claude/rules/game-core.md</c>.
     /// </summary>
     public static readonly string[] CoreFolders =
-        ["Engine", "State", "Map", "Units", "Cities", "Economy", "Events", "Visibility", "Serialization", "Rulesets"];
+        ["Engine", "State", "Map", "Units", "Cities", "Economy", "Events", "Visibility", "Serialization", "Rulesets", "Science"];
 
     /// <summary>
     /// Folder specs per project. Projects that are not listed here are not validated.
