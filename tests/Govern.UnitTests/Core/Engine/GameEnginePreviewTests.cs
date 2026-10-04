@@ -44,7 +44,11 @@ public class GameEnginePreviewTests
         "enemies across rivers",
         "horseman along a river",
         "bridged deep river wall",
-        "enemies across bridges");
+        "enemies across bridges",
+        "galley on a lake",
+        "bireme on a lake",
+        "soldier on the shore",
+        "archer on the shore");
 
     [Theory]
     [MemberData(nameof(Scenarios))]
@@ -347,6 +351,16 @@ public class GameEnginePreviewTests
             // An undefended enemy city over a bridged deep river (a target) and an enemy unit over a bridged river.
             "enemies across bridges" => (Soldier(builder, 5, 5), EnemyCity(builder, 6, 5, Blocker(builder, P2, 4, 5))),
             "horseman along a river" => (builder.AddUnit(P1, TestRulesets.Horseman, 5, 5), At(5, 5)),
+            // On the lake: an enemy galley next to it (a target), an enemy soldier and an undefended city on the shore next to it
+            // (no targets: melee reaches only ships).
+            "galley on a lake" => (builder.AddUnit(P1, TestRulesets.Galley, 5, 5),
+                EnemyCity(builder, 6, 5, Blocker(builder, P2, 5, 4, Ship(builder, P2, 4, 5)))),
+            // Ranged reaches both: the enemy galley two tiles away and the soldier on the shore; never the city.
+            "bireme on a lake" => (builder.AddUnit(P1, TestRulesets.Bireme, 5, 5),
+                EnemyCity(builder, 6, 5, Blocker(builder, P2, 5, 4, Ship(builder, P2, 3, 5)))),
+            // An enemy galley next to a soldier on the shore can't be attacked, and the soldier can't step onto the lake.
+            "soldier on the shore" => (Soldier(builder, 5, 5), Ship(builder, P2, 4, 5)),
+            "archer on the shore" => (builder.AddUnit(P1, TestRulesets.Archer, 5, 5), Ship(builder, P2, 3, 5)),
             _ => (Soldier(builder, 5, 5), At(5, 5)),
         };
 
@@ -408,8 +422,21 @@ public class GameEnginePreviewTests
             "horseman along a river" => builder.WithRiver(
                 TestRulesets.River,
                 ((5, 5), (6, 5)), ((6, 4), (6, 5)), ((6, 4), (7, 4)), ((6, 6), (6, 5)), ((6, 6), (7, 6))),
+            // A lake two tiles round the unit, with the shore tiles north (5, 4) and east (6, 5) left as land, and a deep river
+            // between two lake tiles that ships ignore.
+            "galley on a lake" or "bireme on a lake" => builder
+                .WithTerrain(TestRulesets.Lake, [.. At(5, 5).WithinRadius(2).Where(static coord => coord != At(5, 4) && coord != At(6, 5)).Select(static coord => (coord.Column, coord.Row))])
+                .WithRiver(TestRulesets.DeepRiver, ((4, 5), (4, 6))),
+            "soldier on the shore" or "archer on the shore" => builder.WithTerrain(TestRulesets.Lake, (4, 5), (3, 5), (4, 6), (4, 4)),
             _ => builder,
         };
+    }
+
+    // Adds an enemy ship that only serves as a target; returns the tested unit's origin for chaining.
+    private static HexCoord Ship(GameStateBuilder builder, PlayerId owner, int column, int row)
+    {
+        builder.AddUnit(owner, TestRulesets.Galley, column, row);
+        return At(5, 5);
     }
 
     private static UnitId Soldier(GameStateBuilder builder, int column, int row, PlayerId? owner = null) =>

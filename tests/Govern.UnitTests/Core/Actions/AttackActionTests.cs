@@ -381,4 +381,59 @@ public class AttackActionTests
 
         update.State.FindCity(city)!.ProductionProgress.ShouldBe(2);
     }
+
+    [Fact]
+    public void Execute_ShipInMelee_CannotAttackLandUnitsOrCities()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Lake, (4, 3));
+        var galley = builder.AddUnit(P1, TestRulesets.Galley, 4, 3);
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 6, 3);
+        builder.AddUnit(P2, TestRulesets.Soldier, 5, 3);
+        builder.AddCity(P2, 3, 3);
+        var state = builder.Build();
+
+        GameEngine.Execute(TestRulesets.Default, state, P1, new AttackCommand(galley, At(5, 3))).ShouldFailWith(RuleViolations.OtherDomain);
+        GameEngine.Execute(TestRulesets.Default, state, P1, new AttackCommand(galley, At(3, 3))).ShouldFailWith(RuleViolations.OtherDomain);
+        GameEngine.Execute(TestRulesets.Default, state, P1, new AttackCommand(soldier, At(5, 3))).ShouldSucceed();
+    }
+
+    [Fact]
+    public void Execute_SoldierAgainstAShip_IsRejected()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Lake, (5, 3));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 4, 3);
+        builder.AddUnit(P2, TestRulesets.Galley, 5, 3);
+
+        GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(soldier, At(5, 3))).ShouldFailWith(RuleViolations.OtherDomain);
+    }
+
+    [Fact]
+    public void Execute_ShipsInMelee_BothTakeDamage()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Lake, (4, 3), (5, 3));
+        var galley = builder.AddUnit(P1, TestRulesets.Galley, 4, 3);
+        builder.AddUnit(P2, TestRulesets.Galley, 5, 3);
+
+        var hit = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new AttackCommand(galley, At(5, 3))).ShouldSucceed()
+            .Events.OfType<UnitAttackedEvent>().ShouldHaveSingleItem();
+
+        hit.DamageDealt.ShouldBeInRange(24, 36);
+        hit.DamageTaken.ShouldBeInRange(24, 36);
+    }
+
+    [Fact]
+    public void Execute_RangedAcrossTheShore_HitsBothWays()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Lake, (3, 3), (4, 3));
+        var bireme = builder.AddUnit(P1, TestRulesets.Bireme, 3, 3);
+        var archer = builder.AddUnit(P1, TestRulesets.Archer, 6, 3);
+        builder.AddUnit(P2, TestRulesets.Soldier, 5, 3);
+        builder.AddUnit(P2, TestRulesets.Galley, 4, 3);
+        var state = builder.Build();
+
+        GameEngine.Execute(TestRulesets.Default, state, P1, new AttackCommand(bireme, At(5, 3))).ShouldSucceed()
+            .Events.OfType<UnitAttackedEvent>().ShouldHaveSingleItem().DamageTaken.ShouldBe(0);
+        GameEngine.Execute(TestRulesets.Default, state, P1, new AttackCommand(archer, At(4, 3))).ShouldSucceed()
+            .Events.OfType<UnitAttackedEvent>().ShouldHaveSingleItem().DamageDealt.ShouldBeGreaterThan(0);
+    }
 }

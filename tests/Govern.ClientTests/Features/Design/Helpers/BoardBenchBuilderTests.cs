@@ -23,7 +23,7 @@ public class BoardBenchBuilderTests
         view.Units.Select(static unit => unit.Owner).Distinct().Count().ShouldBe(2);
         view.Units.Select(static unit => unit.Type).Distinct().Count().ShouldBe(Ruleset.Units.Length);
         view.Cities.ShouldNotBeEmpty();
-        view.Units.Select(static unit => unit.Position).ShouldAllBe(position => Ruleset.Terrain(view.TileAt(position).Terrain!.Value).IsPassable);
+        view.Units.ShouldAllBe(unit => Ruleset.Terrain(view.TileAt(unit.Position).Terrain!.Value).AllowsDomain(Ruleset.Unit(unit.Type).Domain));
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class BoardBenchBuilderTests
     }
 
     [Fact]
-    public void March_MovesOnlyTheViewersUnitsEastOntoFreePassableTiles()
+    public void March_MovesOnlyTheViewersUnitsEastOntoFreeTilesOfTheirGround()
     {
         var view = BoardBenchBuilder.Build(Ruleset, revealed: true);
 
@@ -60,5 +60,6 @@ public class BoardBenchBuilderTests
         moves.Where(static pair => pair.First.Position != pair.Second.Position)
             .ShouldAllBe(pair => pair.Second.Position == HexCoord.FromOffset(pair.First.Position.Column + 1, pair.First.Position.Row));
         next.Units.Select(static unit => unit.Position).Distinct().Count().ShouldBe(next.Units.Length);
+        next.Units.ShouldAllBe(unit => Ruleset.Terrain(next.TileAt(unit.Position).Terrain!.Value).AllowsDomain(Ruleset.Unit(unit.Type).Domain));
     }
 }

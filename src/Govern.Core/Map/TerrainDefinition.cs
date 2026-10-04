@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Govern.Core.Economy;
+using Govern.Core.Units;
 
 namespace Govern.Core.Map;
 
@@ -12,4 +13,18 @@ namespace Govern.Core.Map;
 /// <param name="SightBonus">Extra sight, in tiles, for a unit or city standing on the tile (0 for none).</param>
 /// <param name="DefenceBonus">Extra strength for a unit defending on the tile (0 for none).</param>
 /// <param name="Yields">What the tile gives every turn on its own, before rivers and improvements (may be empty).</param>
-public sealed record TerrainDefinition(TerrainType Id, int MovementCost, bool IsPassable, int SightBonus, int DefenceBonus, ImmutableArray<ResourceAmount> Yields);
+/// <param name="IsWater">Whether naval units may sail the tile (land units then can't enter it: it is never passable).</param>
+public sealed record TerrainDefinition(
+    TerrainType Id,
+    int MovementCost,
+    bool IsPassable,
+    int SightBonus,
+    int DefenceBonus,
+    ImmutableArray<ResourceAmount> Yields,
+    bool IsWater = false)
+{
+    /// <summary>Whether a unit of a domain may enter a tile of this terrain: land units passable land, naval units water.</summary>
+    /// <param name="domain">The unit's domain.</param>
+    /// <returns><see langword="true"/> when the unit may stand on the tile.</returns>
+    public bool AllowsDomain(UnitDomain domain) => domain == UnitDomain.Naval ? IsWater : IsPassable;
+}

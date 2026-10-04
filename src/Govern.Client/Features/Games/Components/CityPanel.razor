@@ -60,10 +60,11 @@
                         @foreach (var unit in Ruleset.Units.Where(unit => ProducingUnit(unit.Id) || ProduceProblem(unit.Id) != RuleViolations.Replaced))
                         {
                             var locked = ProduceProblem(unit.Id) == RuleViolations.Locked;
+                            var missing = MissingBuilding(unit);
                             <RadzenButton Size="ButtonSize.Small"
                                           ButtonStyle="@(ProducingUnit(unit.Id) ? ButtonStyle.Primary : ButtonStyle.Light)"
-                                          Disabled="@(Busy || !CanAct || ProducingUnit(unit.Id) || NeedsTradePost(unit) || locked)"
-                                          title="@(locked ? RuleViolations.Locked.Message : NeedsTradePost(unit) ? $"Needs a {Ruleset.BuildingName(Ruleset.Trade.Building)}" : null)"
+                                          Disabled="@(Busy || !CanAct || ProducingUnit(unit.Id) || missing is not null || locked)"
+                                          title="@(locked ? RuleViolations.Locked.Message : missing is { } building ? $"Needs a {Ruleset.BuildingName(building)}" : null)"
                                           Click="@(() => Command.InvokeAsync(new SetProductionCommand(City.Id, unit.Id)))"
                                           class="@($"produce produce-{unit.Id.Id}")">
                                 <span class="produce-name">Build @Ruleset.UnitName(unit.Id)</span>

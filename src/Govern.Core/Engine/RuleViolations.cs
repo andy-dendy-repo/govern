@@ -61,6 +61,9 @@ public static class RuleViolations
     /// <summary>The upkeep order is not one the game knows.</summary>
     public static readonly RuleViolation UnknownUpkeepPriority = new("city.unknown_upkeep_priority", "That upkeep order does not exist.");
 
+    /// <summary>The unit is produced only in a city with a certain building (or an upgrade of it), such as a ship in a harbour.</summary>
+    public static readonly RuleViolation MissingBuilding = new("city.missing_building", "The city needs the building this unit is produced in.");
+
     /// <summary>The unit type is not defined.</summary>
     public static readonly RuleViolation UnknownUnitType = new("city.unknown_unit_type", "That unit type does not exist.");
 
@@ -69,6 +72,12 @@ public static class RuleViolations
 
     /// <summary>The target is farther than a ranged unit's range.</summary>
     public static readonly RuleViolation OutOfRange = new("attack.out_of_range", "The target is out of the unit's range.");
+
+    /// <summary>
+    /// A melee attack on a unit of the other domain (a land unit attacking a ship, or a ship attacking a land unit or a city):
+    /// melee only reaches the same ground; ranged attacks reach both.
+    /// </summary>
+    public static readonly RuleViolation OtherDomain = new("attack.other_domain", "Melee attacks only reach units on the same ground: land against land, ships against ships.");
 
     /// <summary>There is no enemy unit or city on the target tile, or a ranged unit targets a city with no unit on it.</summary>
     public static readonly RuleViolation NoTarget = new("attack.no_target", "There is nothing to attack on that tile.");

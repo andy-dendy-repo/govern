@@ -140,7 +140,7 @@ Unique per city: a city has each building at most once. Each one stands on its o
 ]
 ```
 
-The trade post (`trade.building`) holds its city's market and lets it produce traders ([trade](#trade-trade)). v11 adds the workshop and four upgrades (barracks, university, market, port), listed in [game data: science](game-data-science.md#building-upgrades-buildingsupgrades); a building a science node lists is locked until the node is owned and enabled. Later items give the other buildings their own mechanics (faster army production in army camps, ships from harbours), pillage and repair ([design roadmap](design-roadmap.md), G10b).
+The trade post (`trade.building`) holds its city's market and lets it produce traders ([trade](#trade-trade)). v11 adds the workshop and four upgrades (barracks, university, market, port), listed in [game data: science](game-data-science.md#building-upgrades-buildingsupgrades); a building a science node lists is locked until the node is owned and enabled. A harbour (or port) lets its city produce ships (units with `requiresBuilding`, G15a, see [game data: units](game-data.md#units-units)). Later items give the other buildings their own mechanics (faster army production in army camps), pillage and repair ([design roadmap](design-roadmap.md), G10b).
 
 ## Trade (`trade`)
 

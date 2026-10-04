@@ -7,12 +7,12 @@ using Govern.Core.Units;
 namespace Govern.UnitTests.Core.Builders;
 
 /// <summary>
-/// The real default ruleset (<c>rulesets/default/v11.json</c>, copied next to the tests) and variants of it for rules whose data
+/// The real default ruleset (<c>rulesets/default/v12.json</c>, copied next to the tests) and variants of it for rules whose data
 /// matters to a test.
 /// </summary>
 internal static class TestRulesets
 {
-    public static readonly string DefaultJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "rulesets", "default", "v11.json"));
+    public static readonly string DefaultJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "rulesets", "default", "v12.json"));
 
     public static readonly Ruleset Default = Ruleset.ParseValid(DefaultJson);
 
@@ -28,6 +28,8 @@ internal static class TestRulesets
     public static readonly UnitType Pikeman = new("pikeman");
     public static readonly UnitType Crossbowman = new("crossbowman");
     public static readonly UnitType Knight = new("knight");
+    public static readonly UnitType Galley = new("galley");
+    public static readonly UnitType Bireme = new("bireme");
     public static readonly TerrainType Plains = new("plains");
     public static readonly TerrainType Forest = new("forest");
     public static readonly TerrainType Hills = new("hills");
