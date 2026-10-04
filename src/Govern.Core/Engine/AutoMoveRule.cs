@@ -126,7 +126,8 @@ internal static class AutoMoveRule
 
     // Walks an exploring unit to the nearest unexplored edge of what its owner knows, then on to the next one, while its movement
     // lasts: one move event for the whole walk. Exploring ends when nothing known is left to explore, or when a step brings an
-    // enemy into the unit's sight.
+    // enemy into the unit's sight. What the unit saw at the end of each leg is recorded as explored before the next one is
+    // planned, so a walk never steers by land its owner won't keep.
     private static GameState Explore(Ruleset ruleset, GameState state, Unit unit, ImmutableArray<GameEvent>.Builder events)
     {
         var walked = ImmutableArray.CreateBuilder<HexCoord>();
@@ -140,7 +141,7 @@ internal static class AutoMoveRule
             }
 
             var (walkedState, walker, steps, sighted) = TakeSteps(ruleset, state, unit, path, stopOnSighting: true);
-            (state, unit) = (walkedState, walker);
+            (state, unit) = (VisibilityCalculator.UpdateExplored(ruleset, walkedState), walker);
             walked.AddRange(steps);
             if (sighted)
             {

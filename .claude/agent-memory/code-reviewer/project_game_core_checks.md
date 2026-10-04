@@ -109,3 +109,8 @@ G18 review (2026-10-03, claude/project-thread-69iq1k: PredefinedMap, MapChoice, 
 - STJ `RespectNullableAnnotations` does not cover collection elements: `rows: [null]` gives a NullReferenceException from `PredefinedMap.Parse` (verified), not a problem. Check element nulls in every strict document parser.
 - `Lazy<T>` caches a load exception, so "an invalid file stops the first request" really means every request until restart.
 Verified OK, don't re-derive: right-side spawn row = mirror of the left row (W-1-c-k), so the left-only spawn check covers both sides via terrain symmetry; `random` resolves with crypto RNG in Application (not the seed); the state keeps its own map copy.
+
+F20 review (2026-10-04, PR #61 claude/builder-lock-camera-map-polish-y5nkz6: ExploreCommand, builder lock/CancelJob, asymmetric Basin, WASD pan). No critical. Verified, don't re-derive: CheckExplore = Execute (same guard order; frontier "not Explored and not Visible" equals TileView Unexplored; Knowledge.StepCost equals KnownStepCost); Explore loop terminates (validator movementCost >= 1); with sight >= movement the first leg's frontier costs >= movement, so a second leg only follows a partial leg (a step cost > movement left).
+Checks worth repeating:
+- **Re-planning inside one command uses mid-walk sight that UpdateExplored never records** (Explored is updated once per Execute, from the final positions). Any new multi-leg walk should either update Explored per leg or plan once.
+- Global window key handlers in board JS: check macOS Cmd-held keyup loss, focus scope (dialogs, dropdown typeahead) and the per-frame hover raycast they trigger on the full ground mesh.

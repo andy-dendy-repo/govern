@@ -29,6 +29,7 @@ public class GameLogFormatterTests
     [InlineData(OrderEndReason.Arrived, "Your Soldier arrived at its destination")]
     [InlineData(OrderEndReason.EnemySighted, "Your Soldier stopped: an enemy came into sight")]
     [InlineData(OrderEndReason.Blocked, "Your Soldier stopped: there is no known way to its destination")]
+    [InlineData(OrderEndReason.Explored, "Your Soldier finished exploring: no known way leads to anything unexplored")]
     public void Describe_OrderEnded_SaysWhy(OrderEndReason reason, string text)
     {
         var line = GameLogFormatter.Describe(Ruleset, View, new UnitOrderEndedEvent(new UnitId(1), You, SoldierType, At(2, 2), At(6, 2), reason))!;
