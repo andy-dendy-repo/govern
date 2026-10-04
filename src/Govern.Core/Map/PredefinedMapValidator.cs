@@ -24,14 +24,15 @@ internal static class PredefinedMapValidator
 
         var map = ReadTiles(document, legend, problems);
         map = ReadRivers(ruleset, document, map, problems);
-        var spawns = ReadSpawns(document, map, problems);
+        var first = ReadSpawns(document.FirstSpawns, "$.firstSpawns", map, problems);
+        var second = ReadSpawns(document.SecondSpawns, "$.secondSpawns", map, problems);
         if (problems.Count > 0)
         {
             return null;
         }
 
-        PredefinedMapBalanceValidator.Validate(ruleset, map, spawns, problems);
-        return problems.Count == 0 ? new PredefinedMap(document.Key, document.Name, map, spawns) : null;
+        PredefinedMapBalanceValidator.Validate(ruleset, map, first, second, problems);
+        return problems.Count == 0 ? new PredefinedMap(document.Key, document.Name, map, first, second) : null;
     }
 
     private static void CheckHeader(Ruleset ruleset, PredefinedMapDocument document, List<RulesetProblem> problems)
@@ -53,12 +54,6 @@ internal static class PredefinedMapValidator
             {
                 problems.Add(new(path, $"Must be from {rules.MinSize} to {rules.MaxSize}."));
             }
-        }
-
-        // GameMap.MirrorOf keeps neighbours neighbours only on an even height.
-        if (document.Height % 2 != 0)
-        {
-            problems.Add(new("$.height", "Must be even, so the map's 180° turn keeps neighbours neighbours."));
         }
     }
 
@@ -186,24 +181,24 @@ internal static class PredefinedMapValidator
         return edge;
     }
 
-    private static ImmutableArray<HexCoord> ReadSpawns(PredefinedMapDocument document, GameMap map, List<RulesetProblem> problems)
+    private static ImmutableArray<HexCoord> ReadSpawns(ImmutableArray<ImmutableArray<int>> pairs, string path, GameMap map, List<RulesetProblem> problems)
     {
-        if (document.Spawns.Length < MinSpawns)
+        if (pairs.Length < MinSpawns)
         {
-            problems.Add(new("$.spawns", $"At least {MinSpawns} spawn tiles are required, so the opponent's start stays uncertain."));
+            problems.Add(new(path, $"At least {MinSpawns} spawn tiles are required, so the opponent's start stays uncertain."));
         }
 
         var spawns = new List<HexCoord>();
-        for (var index = 0; index < document.Spawns.Length; index++)
+        for (var index = 0; index < pairs.Length; index++)
         {
-            if (ReadCoord(document.Spawns[index], map, $"$.spawns[{index}]", problems) is not { } spawn)
+            if (ReadCoord(pairs[index], map, $"{path}[{index}]", problems) is not { } spawn)
             {
                 continue;
             }
 
             if (spawns.Contains(spawn))
             {
-                problems.Add(new($"$.spawns[{index}]", "The tile is listed twice."));
+                problems.Add(new($"{path}[{index}]", "The tile is listed twice."));
             }
             else
             {

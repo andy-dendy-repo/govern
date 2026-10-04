@@ -46,13 +46,13 @@ public static class GameEngine
     /// <param name="state">Current state.</param>
     /// <param name="viewer">Player asking; other players' units always give an empty result, so hidden units stay hidden.</param>
     /// <param name="unitId">The unit.</param>
-    /// <returns>Reachable tiles ordered by row then column; empty when the viewer has no such unit or it cannot move.</returns>
+    /// <returns>Reachable tiles ordered by row then column; empty when the viewer has no such unit or it cannot move (no movement left, or a job).</returns>
     public static ImmutableArray<HexCoord> ReachableTiles(Ruleset ruleset, GameState state, PlayerId viewer, UnitId unitId)
     {
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(state);
 
-        if (state.FindUnit(unitId) is not { MovementLeft: > 0 } unit || unit.Owner != viewer)
+        if (state.FindUnit(unitId) is not { MovementLeft: > 0, Job: null } unit || unit.Owner != viewer)
         {
             return [];
         }
@@ -91,6 +91,21 @@ public static class GameEngine
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(view);
         return ViewPreviewCalculator.DestinationPath(ruleset, view, unitId, target);
+    }
+
+    /// <summary>Whether one of the viewer's units can start exploring now, worked out from their view alone (for the client).</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The viewer's current view.</param>
+    /// <param name="unitId">The unit.</param>
+    /// <returns>
+    /// <see langword="null"/> when an <see cref="ExploreCommand"/> would be accepted; otherwise the violation it would be rejected
+    /// with.
+    /// </returns>
+    public static RuleViolation? CheckExplore(Ruleset ruleset, PlayerView view, UnitId unitId)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(view);
+        return ExplorePreviewCalculator.CheckExplore(ruleset, view, unitId);
     }
 
     /// <summary>

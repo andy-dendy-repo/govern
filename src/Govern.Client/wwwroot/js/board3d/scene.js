@@ -1,10 +1,12 @@
-// One 3D board: the WebGL renderer in its host element, the light, the camera and the gestures (gestures.js). It draws on
-// demand (after a scene, a camera move or a resize), and every frame only while an animation plays (motion.js).
+// One 3D board: the WebGL renderer in its host element, the light, the camera, the gestures (gestures.js) and the keys that pan
+// it (keys.js). It draws on demand (after a scene, a camera move or a resize), and every frame only while an animation plays
+// (motion.js) or a pan key is held.
 import {
     DirectionalLight, Group, HemisphereLight, NeutralToneMapping, PCFShadowMap, Raycaster, Scene, Vector2, WebGLRenderer,
 } from '../../lib/three/three.module.js';
 import { CameraRig } from './camera.js';
 import { Gestures } from './gestures.js';
+import { KeyPan } from './keys.js';
 import { Palette } from './palette.js';
 import { Labels } from './labels.js';
 import { buildBorders, buildOverlay, disposeShared as disposeBorders } from './overlays.js';
@@ -80,6 +82,7 @@ export class Board3D {
 
     listen() {
         this.gestures = new Gestures(this);
+        this.keyPan = new KeyPan(this);
         // A lost context (a phone backgrounding the tab, a GPU reset) stops drawing until the browser gives it back; Three.js
         // then uploads everything again, and the board draws the scene it kept.
         this.onContextLost = event => {
@@ -304,7 +307,9 @@ export class Board3D {
         if (!this.frame && !this.lost) {
             this.frame = requestAnimationFrame(() => {
                 this.frame = 0;
-                const animating = this.motion.tick(performance.now());
+                const now = performance.now();
+                const panning = this.keyPan.tick(now);
+                const animating = this.motion.tick(now) || panning;
                 this.renderer.render(this.world, this.rig.camera);
                 this.labels.place(this.rig.camera, this.canvas.clientWidth, this.canvas.clientHeight);
                 if (animating) {
@@ -378,6 +383,7 @@ export class Board3D {
         cancelAnimationFrame(this.frame);
         cancelAnimationFrame(this.hoverFrame);
         this.gestures.dispose();
+        this.keyPan.dispose();
         this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
         this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
         this.resizeObserver.disconnect();

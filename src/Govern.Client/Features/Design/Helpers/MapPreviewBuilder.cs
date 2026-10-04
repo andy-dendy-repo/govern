@@ -8,7 +8,7 @@ namespace Govern.Client.Features.Design.Helpers;
 
 /// <summary>
 /// The view the map preview (<c>/design/maps</c>) draws for a pool map: every tile in sight with its terrain and rivers, and a
-/// first starting unit on each spawn candidate (the first player's in the west, their mirrors for the second player), so an
+/// first starting unit on each spawn candidate (the first player's in the west, the second player's in the east), so an
 /// author sees where games can begin.
 /// </summary>
 public static class MapPreviewBuilder
@@ -30,8 +30,8 @@ public static class MapPreviewBuilder
         ArgumentNullException.ThrowIfNull(map);
         var type = ruleset.Setup.StartingUnits[0];
         var health = ruleset.Combat.MaxHealth;
-        var spawns = map.Spawns.Select(spawn => (Owner: You, Position: spawn))
-            .Concat(map.Spawns.Select(spawn => (Owner: Them, Position: map.Map.MirrorOf(spawn))));
+        var spawns = map.FirstSpawns.Select(spawn => (Owner: You, Position: spawn))
+            .Concat(map.SecondSpawns.Select(spawn => (Owner: Them, Position: spawn)));
         var units = spawns.Select((spawn, index) =>
             new UnitView(new UnitId(index + 1), spawn.Owner, type, spawn.Position, spawn.Owner == You ? 0 : null, health));
         var tiles = map.Map.Tiles.Select(static tile => new TileView(TileVisibility.Visible, tile.Terrain, tile.Rivers));
