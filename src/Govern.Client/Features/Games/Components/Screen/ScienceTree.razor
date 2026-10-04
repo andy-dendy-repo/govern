@@ -1,0 +1,67 @@
+@* The science tree (G11a), a large view over the board opened by the top strip's science counter and closed by its close
+   button, the counter again or Esc. The header says how much of the player's science per turn their nodes take. Each node
+   (a TreeView item, by its prerequisites) shows the science it takes every turn, what it builds on, what it unlocks (a unit
+   that replaces an older one, a building that upgrades another) and its state: working, off (its cities make too little
+   science, so it switched off and its units and buildings are locked until it fits again), or an Unlock button, disabled with
+   the rule's reason. A node is never dropped once unlocked. *@
+@using Govern.Client.Features.Games.Services
+@using Govern.Core.Actions
+@using Govern.Core.Rulesets
+@using Govern.Core.Science
+@using Govern.Core.Visibility
+
+<section class="hud-card science-tree" aria-label="Science">
+    <div class="science-tree-heading">
+        <RadzenStack Gap="0">
+            <RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.H2" class="rz-m-0">Science</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="science-budget rz-m-0">@BudgetText</RadzenText>
+        </RadzenStack>
+        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Size="ButtonSize.Small" aria-label="Close the science tree"
+                      Click="@(() => Ui.ToggleScience())" class="science-close"/>
+    </div>
+    <RadzenText TextStyle="TextStyle.Caption" class="science-hint rz-m-0">
+        Your cities make science every turn, and each item you unlock takes its science every turn. When they make less, your newest
+        items switch off (their units and buildings can't be started) until there is enough again.
+    </RadzenText>
+    <TreeView TItem="ScienceNode" Items="@Ruleset.Science.Nodes" Key="@(static node => node.Id)" Requires="@(static node => node.Requires)"
+              Label="Science items">
+        <ItemTemplate Context="node">
+            @{
+                var state = StateOf(node);
+            }
+            <article class="@($"science-node science-node-{node.Id} node-{state.Class}")" aria-label="@Ruleset.NodeName(node.Id)">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3" class="rz-m-0">@Ruleset.NodeName(node.Id)</RadzenText>
+                    <CostLabel Amount="@node.Points" Icon="@Icons.Resource(Ruleset.Science.Resource)" Label="Science a turn"/>
+                </RadzenStack>
+                @if (!node.Requires.IsEmpty)
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" class="node-requires rz-m-0">Builds on @string.Join(", ", node.Requires.Select(Ruleset.NodeName))</RadzenText>
+                }
+                <ul class="node-unlocks">
+                    @foreach (var unit in node.Units)
+                    {
+                        <li><GameIcon Id="@Icons.Unit(unit)"/> @UnitText(unit)</li>
+                    }
+                    @foreach (var building in node.Buildings)
+                    {
+                        <li><GameIcon Id="@Icons.Building(building)"/> @BuildingText(building)</li>
+                    }
+                </ul>
+                @if (state.Owned)
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" class="node-state rz-m-0">@state.Text</RadzenText>
+                }
+                else
+                {
+                    <RadzenButton Size="ButtonSize.Small" Text="Unlock" Disabled="@(Busy || state.Problem is not null)"
+                                  Click="@(() => Command.InvokeAsync(new UnlockNodeCommand(node.Id)))" class="unlock-node"/>
+                    @if (state.Problem is { } problem)
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption" class="node-reason rz-m-0">@problem.Message</RadzenText>
+                    }
+                }
+            </article>
+        </ItemTemplate>
+    </TreeView>
+</section>

@@ -2,12 +2,14 @@
    with the reason when the rules forbid it. A new ability adds its button here. Moves and attacks are board clicks; Go to
    turns on destination mode, where a click on any explored tile sends the unit walking there on its own (Stop cancels the
    order); Build bridge turns on bridge mode, where a click on a marked neighbour starts the bridge; a trader gets its route
-   orders (TraderOrders) and, while on a route, takes no other order. *@
+   orders (TraderOrders) and, while on a route, takes no other order. A unit with a newer unlocked version gets Upgrade to
+   (paid by the city owning its tile), and a builder on a building with an unlocked upgrade gets Upgrade the building (a job). *@
 @using Govern.Core.Economy
 @using Govern.Client.Features.Games.Services
 @using Govern.Core.Actions
 @using Govern.Core.Engine
 @using Govern.Core.Rulesets
+@using Govern.Core.Science
 @using Govern.Core.State
 @using Govern.Core.Units
 @using Govern.Core.Visibility
@@ -28,6 +30,20 @@
         {
             <RadzenButton Disabled="@(Busy || !MyTurn)" ButtonStyle="ButtonStyle.Secondary" Icon="block" Text="Stop"
                           Click="@(() => Command.InvokeAsync(new SetDestinationCommand(unit.Id, null)))" class="stop-order"/>
+        }
+        @if (ScienceCalculator.UnitUpgrade(Ruleset, Nodes, unit.Type) is { } upgrade && unit.RouteId is null)
+        {
+            var problem = SciencePreviewCalculator.CheckUpgradeUnit(Ruleset, View, unit.Id);
+            <RadzenButton Disabled="@(Busy || problem is not null)" ButtonStyle="ButtonStyle.Secondary"
+                          Click="@(() => Command.InvokeAsync(new UpgradeUnitCommand(unit.Id)))" class="upgrade-unit">
+                <GameIcon Id="@Icons.Unit(upgrade.Id)"/>
+                <span>Upgrade to @Ruleset.UnitName(upgrade.Id)</span>
+                <ResourceCostLabels Ruleset="@Ruleset" Amounts="@(upgrade.UpgradeCost ?? [])"/>
+            </RadzenButton>
+            @if (problem is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="upgrade-unit-reason">@problem.Message</RadzenText>
+            }
         }
         @if (definition.CanFoundCity)
         {
@@ -54,6 +70,22 @@
             @if (fitting.Count == 0)
             {
                 <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="no-improvement">No improvement fits this terrain.</RadzenText>
+            }
+        }
+        @if (definition.CanBuildImprovements && BuildingHere(unit) is { } building
+             && ScienceCalculator.BuildingUpgrade(Ruleset, Nodes, building) is { } next && unit.Job?.UpgradeTo is null)
+        {
+            var problem = SciencePreviewCalculator.CheckUpgradeBuilding(Ruleset, View, unit.Id);
+            <RadzenButton Disabled="@(Busy || problem is not null)" ButtonStyle="ButtonStyle.Secondary"
+                          Click="@(() => Command.InvokeAsync(new UpgradeBuildingCommand(unit.Id)))" class="upgrade-building">
+                <GameIcon Id="@Icons.Building(next.Id)"/>
+                <span>Upgrade the @Ruleset.BuildingName(building) to a @Ruleset.BuildingName(next.Id)</span>
+                <CostLabel Amount="@next.Cost"/>
+                <ResourceCostLabels Ruleset="@Ruleset" Amounts="@next.ResourceCost"/>
+            </RadzenButton>
+            @if (problem is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="upgrade-building-reason">@problem.Message</RadzenText>
             }
         }
         @if (definition.CanTrade)
@@ -98,10 +130,16 @@
         _ when Ui.Selection.Destination => "Click any tile you have explored to send the unit there; it walks on at the start of each turn. Esc cancels.",
         (true, _) => "Click a marked tile across the river to build a bridge to it. Esc cancels.",
         (_, { Improvement: { } improvement }) => $"Building a {Ruleset.ImprovementName(improvement)}. Moving or starting another job stops it.",
+        (_, { UpgradeTo: { } upgrade }) => $"Upgrading the building here to a {Ruleset.BuildingName(upgrade)}. Moving or starting another job stops it.",
         (_, { BridgeTo: not null }) => "Building a bridge. Moving or starting another job stops it.",
         _ when definition.AttackRange > 0 => "Click a highlighted tile to move, or an enemy to see the attack forecast.",
         _ => "Click a highlighted tile to move.",
     };
+
+    private IEnumerable<OwnedNode> Nodes => View.Science?.NodeList ?? [];
+
+    // The building on the unit's tile, if the player can see one there (always, on their own territory).
+    private BuildingType? BuildingHere(UnitView unit) => View.TileAt(unit.Position).Building;
 
     // The improvements that can go on the unit's terrain; their other checks show as the button's reason.
     private IEnumerable<ImprovementDefinition> Fitting(UnitView unit) =>

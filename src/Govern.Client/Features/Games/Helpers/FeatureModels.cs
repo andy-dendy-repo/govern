@@ -30,6 +30,11 @@ public static class FeatureModels
         ["trade_post"] = FeatureModel.Stall,
         ["culture_centre"] = FeatureModel.Hall,
         ["harbour"] = FeatureModel.Pier,
+        ["workshop"] = FeatureModel.Hall,
+        ["barracks"] = FeatureModel.Tents,
+        ["university"] = FeatureModel.Dome,
+        ["market"] = FeatureModel.Stall,
+        ["port"] = FeatureModel.Pier,
     };
 
     /// <summary>The improvement ids that have an entry.</summary>

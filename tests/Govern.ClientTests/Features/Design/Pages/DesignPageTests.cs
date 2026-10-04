@@ -18,7 +18,8 @@ public class DesignPageTests : ClientTestContext
         cut.FindAll(".design-icons use").Count.ShouldBeGreaterThanOrEqualTo(
             TestViews.Ruleset.Units.Length + TestViews.Ruleset.Terrains.Length + TestViews.Ruleset.Improvements.Length
             + TestViews.Ruleset.Buildings.Length + TestViews.Ruleset.Resources.Length);
-        cut.FindAll(".stat-table, .progress, .cost-label, .confirm-button").Count.ShouldBe(4);
+        cut.FindAll(".stat-table, .progress, .cost-label, .confirm-button").Count.ShouldBe(4 + TestViews.Ruleset.Science.Nodes.Length);
+        cut.FindAll(".tree-view .tree-item").Count.ShouldBe(TestViews.Ruleset.Science.Nodes.Length);
     }
 
     [Theory]

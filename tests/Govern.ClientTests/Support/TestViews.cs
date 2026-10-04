@@ -4,6 +4,7 @@ using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -108,6 +109,10 @@ public static class TestViews
             [.. (cities ?? []).OrderBy(static city => city.Id.Value)],
             [new PlayerSummary(You, PlayerStatus.Active), new PlayerSummary(Opponent, PlayerStatus.Active)]);
     }
+
+    /// <summary>The view with your science: the nodes you own (all enabled) and your science per turn.</summary>
+    public static PlayerView WithNodes(PlayerView view, int income, params string[] nodes) =>
+        view with { Science = new ScienceView(income, [.. nodes.Select(static node => new OwnedNode(node))]) };
 
     private static TileView WithTerritory(TileView tile, CityView? city) => city is null
         ? tile

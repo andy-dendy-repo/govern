@@ -1,5 +1,7 @@
 @* The top strip over the game board: the game's title and connection badge, the player's seat, the turn and whose turn it is,
-   the resources in all their cities together (one counter per ruleset resource; each city keeps and spends its own), on the
+   the resources in all their cities together (one counter per ruleset resource but science; each city keeps and spends its own),
+   the science counter (what the player's science items take of what their cities make a turn; a click opens the science
+   tree), on the
    player's turn how many of their units can still move (a click selects the next one), End turn, Resign (asks first), the Log
    button with the number of new entries, and Full screen where the browser has it. On phones only the title, the turn and End
    turn stay in the strip; the rest opens under the More button. Later counters (season) are added with the resources. *@
@@ -11,6 +13,7 @@
 @using Govern.Core.Engine
 @using Govern.Core.Economy
 @using Govern.Core.Rulesets
+@using Govern.Core.Science
 @using Govern.Core.State
 @using Govern.Core.Visibility
 
@@ -37,13 +40,22 @@
         @if (Ruleset.Resources.Length > 0)
         {
             <div class="stockpile" role="group" aria-label="Resources in all your cities">
-                @foreach (var resource in Ruleset.Resources)
+                @foreach (var resource in Ruleset.Resources.Where(resource => resource.Id != Ruleset.Science.Resource))
                 {
                     <span class="@($"stock stock-{resource.Id.Id}")">
                         <CostLabel Amount="@Stock(resource.Id)" Icon="@Icons.Resource(resource.Id)" Label="@Ruleset.ResourceName(resource.Id)"/>
                     </span>
                 }
             </div>
+        }
+        @if (Ruleset.Science.Nodes.Length > 0)
+        {
+            <RadzenButton ButtonStyle="@(Ui.ScienceOpen ? ButtonStyle.Primary : ButtonStyle.Light)" Click="@(() => Ui.ToggleScience())"
+                          aria-pressed="@(Ui.ScienceOpen ? "true" : "false")" title="Science: used of made a turn. Opens the science tree."
+                          class="science-toggle">
+                <CostLabel Amount="@ScienceUsed" Icon="@Icons.Resource(Ruleset.Science.Resource)" Label="Science"/>
+                <span class="science-income">/ @(View.Science?.Income ?? 0)</span>
+            </RadzenButton>
         }
         @if (View.Status == GameStatus.InProgress && IsYourTurn && GameUiService.IdleUnits(View).Count is > 0 and var idle)
         {
@@ -103,6 +115,8 @@
 
     private int Stock(ResourceType resource) =>
         View.Cities.Where(city => city.Owner == View.Viewer).Sum(city => YieldCalculator.AmountOf(city.StockList, resource));
+
+    private int ScienceUsed => ScienceCalculator.Used(Ruleset, View.Science?.NodeList ?? []);
 
     private bool IsYourTurn => View.CurrentPlayer == View.Viewer;
 
