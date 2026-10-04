@@ -1,0 +1,50 @@
+@* Items laid out in columns by depth (science and culture trees, later governor skills): an item that requires nothing goes in
+   the first column, any other one column after the deepest item it requires. Items keep their order inside a column. Each item
+   is drawn by ItemTemplate; the tree only places them. Requirements point at earlier items (the ruleset validator keeps that);
+   an unknown requirement counts as none. The columns scroll sideways inside the tree. *@
+@typeparam TItem
+
+<div class="tree-view" role="list" aria-label="@Label">
+    @foreach (var column in Columns())
+    {
+        <div class="tree-column" role="presentation">
+            @foreach (var item in column)
+            {
+                <div class="tree-item" role="listitem">@ItemTemplate(item)</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = [];
+
+    /// <summary>The item's id, which other items name in their requirements.</summary>
+    [Parameter, EditorRequired] public Func<TItem, string> Key { get; set; } = null!;
+
+    /// <summary>The ids of the items an item requires.</summary>
+    [Parameter] public Func<TItem, IEnumerable<string>> Requires { get; set; } = static _ => [];
+
+    [Parameter, EditorRequired] public RenderFragment<TItem> ItemTemplate { get; set; } = null!;
+
+    [Parameter] public string? Label { get; set; }
+
+    private List<List<TItem>> Columns()
+    {
+        var depths = new Dictionary<string, int>(StringComparer.Ordinal);
+        var columns = new List<List<TItem>>();
+        foreach (var item in Items)
+        {
+            var depth = Requires(item).Select(id => depths.TryGetValue(id, out var known) ? known + 1 : 0).DefaultIfEmpty(0).Max();
+            depths[Key(item)] = depth;
+            while (columns.Count <= depth)
+            {
+                columns.Add([]);
+            }
+
+            columns[depth].Add(item);
+        }
+
+        return columns;
+    }
+}

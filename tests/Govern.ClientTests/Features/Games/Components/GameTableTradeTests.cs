@@ -45,7 +45,7 @@ public class GameTableTradeTests : ClientTestContext
     public void Market_Orders_ShowTheSideTheCapUsedAndTheRate()
     {
         var city = Home with { Demand = [new ResourceDemand(Stone, 150)] };
-        var cut = RenderTable(Create(cities: [city]));
+        var cut = RenderTable(WithNodes(Create(cities: [city]), 1, "trade"));
 
         _board.Click(At(2, 2));
 

@@ -4,6 +4,7 @@
    building a new component, and add each new one here. *@
 @using Govern.Client.Features.Games.Services
 @using Govern.Core.Rulesets
+@using Govern.Core.Science
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 
 @if (!Environment.IsDevelopment())
@@ -80,6 +81,16 @@ else
         <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2">HealthBar</RadzenText>
         <HealthBar Health="100" Max="100"/>
         <HealthBar Health="30" Max="100"/>
+
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2">TreeView</RadzenText>
+        <TreeView TItem="ScienceNode" Items="@Ruleset.Science.Nodes" Key="@(static node => node.Id)" Requires="@(static node => node.Requires)" Label="Science items">
+            <ItemTemplate Context="node">
+                <div class="science-node">
+                    <strong>@Ruleset.NodeName(node.Id)</strong>
+                    <CostLabel Amount="@node.Points" Icon="@Icons.Resource(Ruleset.Science.Resource)" Label="Science a turn"/>
+                </div>
+            </ItemTemplate>
+        </TreeView>
 
         <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2">ConfirmButton</RadzenText>
         <ConfirmButton Text="Disband" Icon="delete" Question="Disband this unit?" ConfirmText="Yes, disband" Class="disband"/>

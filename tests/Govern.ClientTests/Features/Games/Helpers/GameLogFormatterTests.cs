@@ -2,6 +2,7 @@ using Govern.Client.Features.Games.Helpers;
 using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Events;
+using Govern.Core.Science;
 using Govern.Core.Units;
 using Govern.ClientTests.Support;
 using static Govern.ClientTests.Support.TestViews;
@@ -117,5 +118,47 @@ public class GameLogFormatterTests
     [Theory]
     [InlineData("Archer", "an Archer")]
     [InlineData("Soldier", "a Soldier")]
-    public void Article_ChoosesByTheFirstLetter(string name, string expected) => GameLogFormatter.Article(name).ShouldBe(expected);
+    [InlineData("University", "a University")]
+    public void Article_ChoosesByTheFirstSound(string name, string expected) => GameLogFormatter.Article(name).ShouldBe(expected);
+
+    [Theory]
+    [InlineData(ScienceNodeChange.Unlocked, "You unlocked Archery")]
+    [InlineData(ScienceNodeChange.Disabled, "Archery switched off: your cities make too little science")]
+    [InlineData(ScienceNodeChange.Enabled, "Archery works again")]
+    public void Describe_ScienceNodeChanged_SaysWhatHappened(ScienceNodeChange change, string text)
+    {
+        var line = GameLogFormatter.Describe(Ruleset, View, new ScienceNodeChangedEvent(You, "archery", change))!;
+
+        line.Text.ShouldBe(text);
+        line.Tile.ShouldBeNull();
+        line.IsYours.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Describe_UnitUpgraded_NamesBothVersions()
+    {
+        var line = GameLogFormatter.Describe(Ruleset, View, new UnitUpgradedEvent(new UnitId(1), You, At(2, 2), SoldierType, new UnitType("swordsman")))!;
+
+        line.Text.ShouldBe("You upgraded a Soldier to a Swordsman");
+        line.Tile.ShouldBe(At(2, 2));
+    }
+
+    [Fact]
+    public void Describe_EnemyBuildingUpgraded_NamesTheSeat()
+    {
+        var upgraded = new BuildingUpgradedEvent(new UnitId(9), Opponent, At(5, 2), Campus, new BuildingType("university"), null);
+
+        var line = GameLogFormatter.Describe(Ruleset, View, upgraded)!;
+
+        line.Text.ShouldBe("Seat 2 upgraded a Campus to a University");
+        line.IsYours.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Describe_UpgradeStarted_NamesTheUpgrade()
+    {
+        var line = GameLogFormatter.Describe(Ruleset, View, new BuildStartedEvent(new UnitId(1), UnitJob.ForUpgrade(new BuildingType("university"), 3)))!;
+
+        line.Text.ShouldBe("Your Soldier started an upgrade to a University");
+    }
 }

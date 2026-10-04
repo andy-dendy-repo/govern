@@ -3,6 +3,7 @@ using Govern.Client.Helpers;
 using Govern.Core.Cities;
 using Govern.Core.Events;
 using Govern.Core.Rulesets;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -26,7 +27,7 @@ public static class GameLogFormatter
         ArgumentNullException.ThrowIfNull(view);
 
         var names = new Names(ruleset, view);
-        return Units(names, gameEvent) ?? Cities(names, gameEvent) ?? Game(names, gameEvent) ?? TradeLogFormatter.Describe(ruleset, view, gameEvent);
+        return Units(names, gameEvent) ?? Cities(names, gameEvent) ?? Game(names, gameEvent) ?? Science(names, gameEvent) ?? TradeLogFormatter.Describe(ruleset, view, gameEvent);
     }
 
     private static GameLogLine? Units(Names names, GameEvent gameEvent) => gameEvent switch
@@ -83,13 +84,31 @@ public static class GameLogFormatter
         _ => null,
     };
 
-    /// <summary>Puts "a" or "an" before a name, by its first letter.</summary>
+    private static GameLogLine? Science(Names names, GameEvent gameEvent) => gameEvent switch
+    {
+        ScienceNodeChangedEvent { Change: ScienceNodeChange.Unlocked } node => new($"You unlocked {names.Node(node.Node)}", null, true),
+        ScienceNodeChangedEvent { Change: ScienceNodeChange.Disabled } node => new($"{names.Node(node.Node)} switched off: your cities make too little science", null, true),
+        ScienceNodeChangedEvent node => new($"{names.Node(node.Node)} works again", null, true),
+        UnitUpgradedEvent unit => new(
+            $"{names.Player(unit.Owner)} upgraded {Article(names.UnitType(unit.From))} to {Article(names.UnitType(unit.To))}",
+            unit.Position,
+            names.IsYou(unit.Owner)),
+        BuildingUpgradedEvent building => new(
+            $"{names.Player(building.Owner)} upgraded {Article(names.Building(building.From))} to {Article(names.Building(building.To))}",
+            building.Position,
+            names.IsYou(building.Owner)),
+        _ => null,
+    };
+
+    /// <summary>Puts "a" or "an" before a name, by its first sound ("a University", "an Archer").</summary>
     /// <param name="name">A unit, improvement or building name.</param>
     /// <returns>The name with its article, such as "an Archer".</returns>
     public static string Article(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
-        return name.Length > 0 && "AEIOUaeiou".Contains(name[0], StringComparison.Ordinal) ? $"an {name}" : $"a {name}";
+        var vowelSound = name.Length > 0 && "AEIOUaeiou".Contains(name[0], StringComparison.Ordinal)
+            && !name.StartsWith("uni", StringComparison.OrdinalIgnoreCase);
+        return vowelSound ? $"an {name}" : $"a {name}";
     }
 
     private static string OrderEnd(OrderEndReason reason) => reason switch
@@ -135,7 +154,14 @@ public static class GameLogFormatter
 
         public string Building(Core.Economy.BuildingType building) => ruleset.BuildingName(building);
 
-        public string Job(UnitJob job) => job.Improvement is { } improvement ? Article(ruleset.ImprovementName(improvement)) : "a bridge";
+        public string Job(UnitJob job) => job switch
+        {
+            { Improvement: { } improvement } => Article(ruleset.ImprovementName(improvement)),
+            { UpgradeTo: { } upgrade } => $"an upgrade to {Article(Building(upgrade))}",
+            _ => "a bridge",
+        };
+
+        public string Node(string id) => ruleset.NodeName(id);
 
         public string Production(ProductionChangedEvent changed) =>
             changed.Building is { } building ? Article(Building(building)) : $"{UnitType(changed.UnitType)} units";

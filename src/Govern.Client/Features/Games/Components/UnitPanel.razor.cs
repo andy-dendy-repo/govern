@@ -97,11 +97,21 @@ public partial class UnitPanel
 
     private static string Turns(int turns) => turns == 1 ? "1 turn" : $"{turns} turns";
 
-    private string JobText(UnitJob job) => job.Improvement is { } improvement
-        ? $"Building a {Ruleset.ImprovementName(improvement)}: {job.Progress} of {JobCost(job)}"
-        : $"Building a bridge: {job.Progress} of {JobCost(job)}";
+    private string JobText(UnitJob job) => job switch
+    {
+        { Improvement: { } improvement } => $"Building a {Ruleset.ImprovementName(improvement)}: {job.Progress} of {JobCost(job)}",
+        { UpgradeTo: { } upgrade } when job.Progress >= JobCost(job) =>
+            $"Upgrading to a {Ruleset.BuildingName(upgrade)}: done, waiting for the city to pay {ResourceFormatter.Describe(Ruleset, Ruleset.Building(upgrade).ResourceCost)}",
+        { UpgradeTo: { } upgrade } => $"Upgrading to a {Ruleset.BuildingName(upgrade)}: {job.Progress} of {JobCost(job)}",
+        _ => $"Building a bridge: {job.Progress} of {JobCost(job)}",
+    };
 
-    private int JobCost(UnitJob job) => job.Improvement is { } improvement ? Ruleset.Improvement(improvement).Cost : Ruleset.Bridges.Cost;
+    private int JobCost(UnitJob job) => job switch
+    {
+        { Improvement: { } improvement } => Ruleset.Improvement(improvement).Cost,
+        { UpgradeTo: { } upgrade } => Ruleset.Building(upgrade).Cost,
+        _ => Ruleset.Bridges.Cost,
+    };
 
     // Sight plus the bonus of the tile the unit stands on (hills); the own unit's tile is always visible, so its terrain is known.
     private StatRow SightRow(int sight)
