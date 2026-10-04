@@ -7,7 +7,7 @@ updated: 2026-10-04
 
 # Plan: F20 auto-explore (and the polish bundle)
 
-Status: done 2026-10-04. The owner asked for six changes in one PR (2026-10-04); the plan-for-go step was skipped at the owner's request.
+Status: done 2026-10-04 (PR #61). The owner asked for six changes in one PR (2026-10-04); the plan-for-go step was skipped at the owner's request.
 
 ## Context
 Andrii asked for: a builder at work that can't be moved by a misclick, with a cancel button; camera panning with WASD; richer tile textures with variants; a better river texture; The Basin no longer the same on both sides; and auto-explore (F20, deferred since F19). All six ship together.
