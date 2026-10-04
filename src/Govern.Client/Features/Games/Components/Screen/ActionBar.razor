@@ -33,7 +33,7 @@
                           Icon="near_me" Text="@(Ui.Selection.Destination ? "Cancel go to" : "Go to")" class="go-to"/>
             @if (!unit.Exploring)
             {
-                var exploreProblem = GameEngine.CheckExplore(Ruleset, View, unit.Id);
+                var exploreProblem = ExploreProblem(unit.Id);
                 <RadzenButton Disabled="@(Busy || exploreProblem is not null)" ButtonStyle="ButtonStyle.Secondary" Icon="travel_explore" Text="Explore"
                               Click="@(() => Command.InvokeAsync(new ExploreCommand(unit.Id)))" title="@exploreProblem?.Message" class="explore"/>
             }

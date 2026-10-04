@@ -132,6 +132,22 @@ public class PredefinedMapTests
     }
 
     [Fact]
+    public void Parse_OneSidesStartsRicherOnAverage_ReportsTheSides()
+    {
+        var document = ValidDocument();
+        // Each half has 6 forest tiles, but only the east's lie within reach of its starts: every start is near the mean,
+        // yet the east's average is 6.5% above the west's.
+        document["width"] = 16;
+        document["rows"] = new JsonArray("................", "......f.......f.", "......f......f..", "......f......f..", "......f......f..", "......f......f..", "......f.......f.", "................");
+        document["rivers"] = new JsonArray();
+        document["secondSpawns"] = new JsonArray(new JsonArray(14, 5), new JsonArray(14, 2));
+
+        var result = Parse(document);
+
+        result.Problems.ShouldHaveSingleItem(string.Join("; ", result.Problems)).Path.ShouldBe("$.secondSpawns");
+    }
+
+    [Fact]
     public void Parse_LakeWallAcrossTheMap_ReportsTheCut()
     {
         var document = ValidDocument();

@@ -226,7 +226,7 @@ public class GameUiServiceTests
     }
 
     [Fact]
-    public void IdleUnits_LeavesOutEnemiesSpentUnitsAndWorkers()
+    public void IdleUnits_LeavesOutEnemiesSpentUnitsWorkersAndUnitsOnOrders()
     {
         var view = Create(
         [
@@ -236,6 +236,7 @@ public class GameUiServiceTests
             Settler(5, You, At(4, 2)) with { Job = new UnitJob(0, 3, Improvement: Farm) },
             Soldier(6, Opponent, At(5, 2)),
             Soldier(7, You, At(6, 4)) with { Destination = At(8, 4) },
+            Soldier(8, You, At(7, 4)) with { Exploring = true },
         ]);
 
         GameUiService.IdleUnits(view).Select(static unit => unit.Id.Value).ShouldBe([2, 4]);

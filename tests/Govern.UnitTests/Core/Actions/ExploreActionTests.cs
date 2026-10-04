@@ -120,25 +120,39 @@ public class ExploreActionTests
         sent.State.FindUnit(soldier)!.Exploring.ShouldBeFalse();
     }
 
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public void CheckExplore_View_MatchesExecute(bool mapKnown, bool working)
-    {
-        var builder = new GameStateBuilder().WithCapitals();
-        if (mapKnown)
-        {
-            builder.WithMapExplored(P1);
-        }
+    public static TheoryData<string> PreviewScenarios =>
+    [
+        "unknown_map", "known_map", "working", "no_movement", "one_gap", "hidden_enemies_round_the_gap",
+        "own_units_round_the_gap", "gap_behind_a_deep_river", "gap_in_a_lake",
+    ];
 
-        var unit = builder.AddUnit(P1, TestRulesets.Builder, 2, 2, job: working ? new UnitJob(1, 1, Improvement: TestRulesets.Farm) : null);
-        var state = builder.Build();
+    [Theory]
+    [MemberData(nameof(PreviewScenarios))]
+    public void CheckExplore_View_MatchesExecute(string scenario)
+    {
+        var (state, unit) = PreviewScenario(scenario);
 
         var preview = GameEngine.CheckExplore(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), unit);
         var result = GameEngine.Execute(TestRulesets.Default, state, P1, new ExploreCommand(unit));
 
         preview.ShouldBe(result.IsSuccess ? null : result.Violation);
+    }
+
+    [Fact]
+    public void Execute_NextStepTooDearForTheMovementLeft_KeepsExploringForNextTurn()
+    {
+        // Mountains all round but for a forest, which costs 2; the only unexplored tile lies past it.
+        var walls = At(2, 2).Neighbors().Where(static tile => tile != At(3, 2)).Select(static tile => (tile.Column, tile.Row)).ToArray();
+        var builder = new GameStateBuilder().WithCapitals().WithMapExplored(P1).WithTerrain(TestRulesets.Mountains, walls).WithTerrain(TestRulesets.Forest, (3, 2));
+        var soldier = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2, movementLeft: 1);
+        var state = Forget(builder.Build(), P1, At(5, 2));
+
+        var update = Execute(state, P1, new ExploreCommand(soldier));
+
+        var unit = update.State.FindUnit(soldier)!;
+        unit.Exploring.ShouldBeTrue();
+        unit.Position.ShouldBe(At(2, 2));
+        update.Events.ShouldBeEmpty();
     }
 
     [Fact]
@@ -161,6 +175,41 @@ public class ExploreActionTests
         var restored = GameSerializer.DeserializeState(GameSerializer.Serialize(builder.Build()));
 
         restored.FindUnit(soldier)!.Exploring.ShouldBeTrue();
+    }
+
+    // The preview scenarios: a soldier at (2, 2) with what its owner knows around a forgotten gap at (8, 2), far out of its sight.
+    private static (GameState State, Govern.Core.Units.UnitId Unit) PreviewScenario(string scenario)
+    {
+        var builder = new GameStateBuilder().WithCapitals();
+        if (scenario != "unknown_map")
+        {
+            builder.WithMapExplored(P1);
+        }
+
+        var gap = At(8, 2);
+        var around = gap.Neighbors().Where(static tile => tile.Column is >= 0 and < Width && tile.Row is >= 0 and < Height).ToList();
+        var unit = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2, movementLeft: scenario == "no_movement" ? 0 : null,
+            job: scenario == "working" ? new UnitJob(1, 1, Improvement: TestRulesets.Farm) : null);
+        switch (scenario)
+        {
+            case "hidden_enemies_round_the_gap":
+                around.ForEach(tile => builder.AddUnit(P2, TestRulesets.Soldier, tile.Column, tile.Row));
+                break;
+            case "own_units_round_the_gap":
+                around.ForEach(tile => builder.AddUnit(P1, TestRulesets.Soldier, tile.Column, tile.Row));
+                break;
+            case "gap_behind_a_deep_river":
+                builder.WithRiver(TestRulesets.DeepRiver, [.. around.SelectMany(tile => tile.Neighbors()
+                    .Where(other => other != gap && !around.Contains(other) && other.Column is >= 0 and < Width && other.Row is >= 0 and < Height)
+                    .Select(other => ((tile.Column, tile.Row), (other.Column, other.Row))))]);
+                break;
+            case "gap_in_a_lake":
+                builder.WithTerrain(TestRulesets.Lake, [.. around.Select(static tile => (tile.Column, tile.Row))]);
+                break;
+        }
+
+        var state = builder.Build();
+        return (scenario is "known_map" or "unknown_map" or "working" or "no_movement" ? state : Forget(state, P1, gap), unit);
     }
 
     private static int Explored(GameState state) => state.Players.Single(player => player.Id == P1).Explored.Length;
