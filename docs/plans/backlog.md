@@ -2,7 +2,7 @@
 title: Backlog (all open work, prioritised)
 tags: [plan, backlog, priorities, roadmap, deferred, game, ui, ruleset, content]
 code: [docs/plans, docs/game/design-roadmap.md]
-updated: 2026-10-03
+updated: 2026-10-04
 ---
 
 # Backlog
@@ -24,7 +24,7 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 ## Now
 
-Empty: G17 is done (see Recently done). The owner picks the next item from Next or Deferred.
+Empty: G11a is done (see Recently done). The owner said the culture tree (G11b) goes next.
 
 ### Content slice C1: G2, G4, G9
 
@@ -40,8 +40,9 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 
 | # | Id | Item | Area | Size | Notes |
 |---|---|---|---|---|---|
-| 1 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
-| 2 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
+| 1 | G11b | Culture tree: like the science tree (points per turn from culture, items that take them every turn, newest switched off when short), unlocking culture content (governors, policies, territory) | game | L | Owner, 2026-10-04: culture goes next. Needs plan. Open: culture also pays for territory today ([G11](../game/design-roadmap.md#g11-science-and-culture-trees)) |
+| 2 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
+| 3 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
 
 ## Deferred
 
@@ -58,9 +59,8 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 | F9 | Simultaneous turns (Civ 6 style) | 2026-09-30 | Content and UI first | Alternating turns become the main complaint in play | [F9](deferred/follow-ups.md#f9-simultaneous-turns-civ-6-style) |
 | F10 | More than two players | 2026-09-30 | Content and UI first | 1-vs-1 play is solid; after F8 and F9 | [F10](deferred/follow-ups.md#f10-more-than-two-players) |
 | G8b | City stats, part b: population, housing, loyalty and the production queue. Split from G8 on 2026-10-01; G8a (costs and upkeep) is done | 2026-10-01 | The owner wants costs, upkeep and supply first (G8a) | G8a is done and cities need to grow or be managed | [G8](../game/design-roadmap.md#g8-city-stats-and-the-production-queue) |
-| G10b | Builders and buildings, part b: upgrades, pillage and repair (building health came with G8a), removing an improvement, the buildings' own mechanics (faster army production, ships from harbours; traders came with G17). Split from G10 on 2026-10-01; G10a is done | 2026-09-30 | Not in content slice C1; G10a gives the base; the rest needs G7, G8 (and G15 for ships) | The owner picks the next G item | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
-| G11 | Science and culture trees | 2026-09-30 | Not in content slice C1; needs G8 | C1 is done; then pick the next slice | [G11](../game/design-roadmap.md#g11-science-and-culture-trees) |
-| G12 | Civilizations and governors | 2026-09-30 | Not in content slice C1; needs G8, G11 | C1 is done; then pick the next slice | [G12](../game/design-roadmap.md#g12-civilizations-and-governors) |
+| G10b | Builders and buildings, part b: improvement upgrades, pillage and repair (building health came with G8a; unit and building upgrades with G11a), removing an improvement, the buildings' own mechanics (faster army production, ships from harbours; traders came with G17). Split from G10 on 2026-10-01; G10a is done | 2026-09-30 | Not in content slice C1; G10a gives the base; the rest needs G7, G8 (and G15 for ships) | The owner picks the next G item | [G10](../game/design-roadmap.md#g10-builders-and-buildings-with-upgrades) |
+| G12 | Civilizations and governors | 2026-09-30 | Not in content slice C1; needs G8, G11b | C1 is done; then pick the next slice | [G12](../game/design-roadmap.md#g12-civilizations-and-governors) |
 | G13 | Colonies founded by governors | 2026-09-30 | Not in content slice C1; needs G12 | C1 is done; then pick the next slice | [G13](../game/design-roadmap.md#g13-colonies-founded-by-governors-settlers-removed) |
 | G14 | Seasons | 2026-09-30 | Not in content slice C1; modifies almost everything; last | C1 is done; then pick the next slice | [G14](../game/design-roadmap.md#g14-seasons) |
 | F20 | Auto-explore: a unit walks on its own to the nearest unexplored tiles, turn after turn, reusing the F19 destination order | 2026-10-03 | The owner wants auto moves (F19) first and auto-explore later | F19 is in play, or scouts (G9b) need it | [F19 plan](done/F19-unit-auto-moves.md) |
@@ -75,6 +75,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| G11a | Science tree: science is a budget per turn (1 a city, campus 2, university 4), never stored; unlocking an item takes its science every turn, prerequisites too, and the newest items switch off when the cities make too little; 11 items lock the archer, horseman, trader, trade post and harbour and unlock four units that replace older ones (swordsman, pikeman, crossbowman, knight; old units upgrade in own territory), the workshop, and four building upgrades a builder makes in place (barracks, university, market, port); the science counter and full-screen tree (ruleset v11, [rules](../game/rules.md#science)) | 2026-10-04, PR #TBD | [G11a](done/G11a-science-tree.md) |
 | G17 | Trading: each city with a trade post sets a market (sell or buy food, wood, stone or gold, up to a cap per turn; water can't be traded), demand levels move with need and offer, traders from trade posts walk to another city's post to open a route (2 per city), propose a per-turn swap the host accepts (cancelling older deals to make room) or declines, and shuttle between the posts while the deal swaps goods at the end of the host owner's turn; killing the trader breaks the deal, capture ends the route. No money: gold is a resource (ruleset v10, [rules](../game/rules.md#trading)) | 2026-10-03, PR #56 | [G17](done/G17-trading.md) |
 | G18 | Predefined maps: a map pool (`maps/<key>.json`, mirrored, connected, spawn candidates) the lobby picks from (Random by default, a named map, or Generated), and its first map, The Basin, 32 × 20: home valleys, ridges with hill passes and a central lake that splits the front ([maps](../game/maps.md)) | 2026-10-03, PR #55 | [G18](done/G18-predefined-maps.md) |
 | F12 | Player-chosen city names: Found city asks for the name, prefilled with a random unused suggestion from the ruleset (v9, 30 names); 1 to 24 letters, digits, spaces, `'`, `-` or `.`, unique among the player's own cities. Removes the `City N` count leak ([rules](../game/rules.md#founding-a-city)) | 2026-10-03, PR #54 | [F12](done/F12-city-names.md) |

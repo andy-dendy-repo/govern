@@ -2,7 +2,7 @@
 title: Govern architecture
 tags: [architecture, layers, folders, naming, clean-architecture, architecture-tests]
 code: [src, tests/Govern.ArchitectureTests, src/Govern.Client]
-updated: 2026-10-01
+updated: 2026-10-04
 ---
 
 # Govern architecture

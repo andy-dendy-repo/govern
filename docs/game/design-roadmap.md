@@ -2,7 +2,7 @@
 title: Game design roadmap (future mechanics)
 tags: [game, design, roadmap, maps, map-pool, game, design, ui, rules, trading, traders, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
 code: [src/Govern.Core, src/Govern.Client/Features/Games]
-updated: 2026-10-03
+updated: 2026-10-04
 ---
 
 # Game design roadmap
@@ -215,9 +215,11 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 | palisade → walls → fortress (defence) |
 
 - **Health:** buildings can be damaged or pillaged by enemy units and repaired by builders.
-- **Unlocks:** each building and upgrade is unlocked by a science or culture node (G11).
+- **Unlocks:** each building and upgrade is unlocked by a science or culture node (G11). Science unlocks and building upgrades by builders came with G11a.
 
 ## G11. Science and culture trees
+
+**Split 2026-10-04:** G11a, the science tree, is done ([plan](../plans/done/G11a-science-tree.md), [rules](rules.md#science), [game logic](game-logic-science.md)); G11b, the culture tree, goes next. The owner changed the model for G11a: points are **not accumulated**. A player has a certain amount of science per turn (what their cities make now) and each owned item takes its points every turn; when the cities make less, the newest items switch off and switch back on oldest first. Every city makes 1 science; items can't be dropped; a new unit replaces its older version, which can be upgraded; building upgrades are made by builders. G11b follows the same model unless the owner decides otherwise.
 
 - **Requested:**
   - Each player has a **science tree** and a **culture tree**.
