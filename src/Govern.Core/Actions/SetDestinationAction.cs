@@ -13,11 +13,14 @@ namespace Govern.Core.Actions;
 /// Orders a unit to walk to a tile on its own, now and at the start of each of its owner's turns, or cancels that order.
 /// </summary>
 /// <param name="UnitId">The actor's unit.</param>
-/// <param name="Target">The destination: an explored tile with a known path; <see langword="null"/> cancels the order.</param>
+/// <param name="Target">
+/// The destination: an explored tile with a known path; <see langword="null"/> cancels the order (or the unit's exploring).
+/// </param>
 public sealed record SetDestinationCommand(UnitId UnitId, HexCoord? Target) : GameCommand;
 
 /// <summary>
-/// Gives a unit a destination (see <see cref="AutoMoveRule"/>): it drops its job and walks at once with the movement it has left.
+/// Gives a unit a destination (see <see cref="AutoMoveRule"/>): it stops exploring and walks at once with the movement it has
+/// left. A unit with a job can't be sent (its owner cancels the job first).
 /// A target with a unit the actor sees on it is occupied; one with no path over the tiles they know has no path.
 /// </summary>
 internal static class SetDestinationRule
@@ -36,7 +39,12 @@ internal static class SetDestinationRule
 
         if (command.Target is not { } target)
         {
-            return new GameUpdate(state.WithUnit(unit with { Destination = null }), []);
+            return new GameUpdate(state.WithUnit(unit with { Destination = null, Exploring = false }), []);
+        }
+
+        if (unit.Job is not null)
+        {
+            return RuleViolations.UnitBusy;
         }
 
         // Only a visible blocker is reported as occupied; a hidden one doesn't stop the order (the walk stops in front of it).
@@ -52,7 +60,7 @@ internal static class SetDestinationRule
         }
 
         var events = ImmutableArray.CreateBuilder<GameEvent>();
-        var ordered = state.WithUnit(unit with { Destination = target, Job = null });
+        var ordered = state.WithUnit(unit with { Destination = target, Exploring = false });
         return new GameUpdate(AutoMoveRule.Walk(ruleset, ordered, unit.Id, events), events.ToImmutable());
     }
 }

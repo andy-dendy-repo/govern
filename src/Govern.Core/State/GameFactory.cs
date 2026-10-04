@@ -12,9 +12,9 @@ namespace Govern.Core.State;
 /// Creates the initial <see cref="GameState"/> from the game's ruleset: a generated map (forests, hills and so on) or the
 /// setup's predefined map, and for each player its starting units. On a generated map the first player spawns in a zone at the
 /// left edge, the second at the right edge, and the seed picks the exact spawn tile; on a predefined map the seed picks one of
-/// its spawn candidates for the first player and, on its own, one of their mirrors for the second. The other starting units
-/// stand in a row from the spawn towards the centre. The map's two halves are mirrors of each other, but the spawns are not,
-/// so the map barely hints where the opponent started.
+/// the first player's spawn candidates and, on its own, one of the second player's. The other starting units stand in a row from
+/// the spawn towards the centre. A generated map's two halves are mirrors of each other, but the spawns are not, so the map
+/// barely hints where the opponent started.
 /// </summary>
 public static class GameFactory
 {
@@ -124,12 +124,12 @@ public static class GameFactory
         return HexCoord.FromOffset(column, row);
     }
 
-    // One of the map's candidates, or the mirror of one for the second player; the map's validator keeps the row of starting units
-    // passable and in the player's half. The pick is visible to its player, so it is a hashed draw.
+    // One of the player's candidates on the map; the map's validator keeps the row of starting units passable and in the player's
+    // half. The pick is visible to its player, so it is a hashed draw.
     private static HexCoord PredefinedSpawn(PredefinedMap map, DeterministicRandom random, bool isLeftSide)
     {
-        var spawn = map.Spawns[random.NextHashed(0, map.Spawns.Length)];
-        return isLeftSide ? spawn : map.Map.MirrorOf(spawn);
+        var spawns = isLeftSide ? map.FirstSpawns : map.SecondSpawns;
+        return spawns[random.NextHashed(0, spawns.Length)];
     }
 
     // The k-th starting unit stands k columns from the spawn towards the centre.

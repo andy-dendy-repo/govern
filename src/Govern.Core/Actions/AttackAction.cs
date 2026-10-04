@@ -96,7 +96,7 @@ internal static class AttackRule
         events.Add(new UnitAttackedEvent(
             attacker.Id, attacker.Owner, attacker.Type, attacker.Position, defender.Id, defender.Owner, defender.Type, defender.Position, dealt, taken));
         var next = Hurt(ruleset, state with { RngState = random.State }, defender, dealt, events);
-        next = Hurt(ruleset, next, attacker with { MovementLeft = 0, Job = null, Destination = null }, taken, events);
+        next = Hurt(ruleset, next, attacker with { MovementLeft = 0, Job = null, Destination = null, Exploring = false }, taken, events);
         return new GameUpdate(next, events.ToImmutable());
     }
 
@@ -132,7 +132,7 @@ internal static class AttackRule
         var producing = ScienceCalculator.NextProduction(ruleset, state.FindPlayer(attacker.Owner)!.NodeList, city.Producing);
         var next = state
             .WithCity(city with { Owner = attacker.Owner, Producing = producing, ProductionProgress = progress, ProducingBuilding = null, ProducingBuildingSite = null, ProductionPaid = false })
-            .WithUnit(attacker with { Position = city.Position, MovementLeft = 0, Job = null, Destination = null });
+            .WithUnit(attacker with { Position = city.Position, MovementLeft = 0, Job = null, Destination = null, Exploring = false });
 
         return new GameUpdate(next, [
             new UnitMovedEvent(attacker.Id, attacker.Owner, attacker.Type, [city.Position]),

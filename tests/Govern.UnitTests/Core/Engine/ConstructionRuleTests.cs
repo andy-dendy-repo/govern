@@ -126,15 +126,15 @@ public class ConstructionRuleTests
     }
 
     [Fact]
-    public void Move_DropsTheJob()
+    public void Move_UnitWithAJob_IsRefusedAndKeepsTheJob()
     {
         var builder = new GameStateBuilder().WithCapitals();
         builder.AddCity(P1, 6, 4);
         var unit = builder.AddUnit(P1, TestRulesets.Builder, 5, 5, job: new UnitJob(3, 1, Improvement: TestRulesets.Farm));
 
-        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(unit, At(4, 5))).ShouldSucceed();
+        var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new MoveUnitCommand(unit, At(4, 5)));
 
-        update.State.FindUnit(unit)!.Job.ShouldBeNull();
+        result.ShouldFailWith(RuleViolations.UnitBusy);
     }
 
     [Fact]

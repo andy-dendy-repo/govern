@@ -7,7 +7,7 @@ updated: 2026-10-03
 
 # Plan: F19 unit auto moves
 
-Status: done 2026-10-03 (approved by the owner the same day). Auto-explore was moved to the backlog as F20 (Deferred).
+Status: done 2026-10-03 (approved by the owner the same day). Auto-explore was moved to the backlog as F20, done 2026-10-04 ([F20](F20-auto-explore.md)).
 
 ## Context
 Andrii asked for "auto moves" (2026-10-03). Today a unit only moves to a tile it can reach this turn, so a long walk is a click on every unit every turn. The default reading: a unit can be given a destination anywhere on the map the player has explored, and it keeps walking there on its own, turn after turn, until it arrives, is blocked, or the player gives it another order.

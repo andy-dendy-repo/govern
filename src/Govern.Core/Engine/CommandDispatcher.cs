@@ -12,6 +12,8 @@ internal static class CommandDispatcher
     {
         MoveUnitCommand move => MoveUnitRule.Apply(ruleset, state, actor, move),
         SetDestinationCommand destination => SetDestinationRule.Apply(ruleset, state, actor, destination),
+        ExploreCommand explore => ExploreRule.Apply(ruleset, state, actor, explore),
+        CancelJobCommand cancel => CancelJobRule.Apply(state, actor, cancel),
         AttackCommand attack => AttackRule.Apply(ruleset, state, actor, attack),
         FoundCityCommand found => FoundCityRule.Apply(ruleset, state, actor, found),
         SetProductionCommand production => SetProductionRule.Apply(ruleset, state, actor, production),

@@ -7,7 +7,7 @@ namespace Govern.UnitTests.Core.Map;
 
 public class PredefinedMapTests
 {
-    // An 8×8 map of plains with a lake tile and its mirror, a stream edge and its mirror, and two spawn candidates.
+    // An 8×8 map of plains with a lake tile and its mirror, a stream edge and its mirror, and two spawn candidates a side.
     private static JsonObject ValidDocument() => new()
     {
         ["key"] = "test_map",
@@ -17,7 +17,8 @@ public class PredefinedMapTests
         ["legend"] = new JsonObject { ["."] = "plains", ["~"] = "lake", ["f"] = "forest" },
         ["rows"] = new JsonArray("........", "........", "...~....", "f.......", ".......f", "....~...", "........", "........"),
         ["rivers"] = new JsonArray(River(2, 4, "east", "stream"), River(4, 3, "east", "stream")),
-        ["spawns"] = new JsonArray(new JsonArray(1, 2), new JsonArray(1, 5)),
+        ["firstSpawns"] = new JsonArray(new JsonArray(1, 2), new JsonArray(1, 5)),
+        ["secondSpawns"] = new JsonArray(new JsonArray(6, 5), new JsonArray(6, 2)),
     };
 
     private static JsonObject River(int column, int row, string side, string river) =>
@@ -39,7 +40,8 @@ public class PredefinedMapTests
         map.Map.TileAt(HexCoord.FromOffset(3, 2)).Terrain.ShouldBe(TestRulesets.Lake);
         map.Map.TileAt(HexCoord.FromOffset(0, 3)).Terrain.ShouldBe(TestRulesets.Forest);
         map.Map.RiverBetween(HexCoord.FromOffset(2, 4), HexCoord.FromOffset(3, 4)).ShouldBe(TestRulesets.Stream);
-        map.Spawns.ShouldBe([HexCoord.FromOffset(1, 2), HexCoord.FromOffset(1, 5)]);
+        map.FirstSpawns.ShouldBe([HexCoord.FromOffset(1, 2), HexCoord.FromOffset(1, 5)]);
+        map.SecondSpawns.ShouldBe([HexCoord.FromOffset(6, 5), HexCoord.FromOffset(6, 2)]);
     }
 
     [Fact]
@@ -61,27 +63,29 @@ public class PredefinedMapTests
         { """{"key":"Bad Key"}""", "$.key" },
         { """{"name":" spaced"}""", "$.name" },
         { """{"width":41}""", "$.width" },
-        { """{"height":9}""", "$.height" },
+        { """{"height":41}""", "$.height" },
         { """{"legend":{".":"plains","~":"lake","f":"forest","xx":"plains"}}""", "$.legend['xx']" },
         { """{"legend":{".":"plains","~":"lake","f":"forest","s":"swamp"}}""", "$.legend['s']" },
         { """{"rows":["........","........","...~....","f.......",".......f","....~...","........"]}""", "$.rows" },
         { """{"rows":["........","........","...~....","f.......",".......f","....~...","........","......."]}""", "$.rows[7]" },
         { """{"rows":["........","........","...~....","f.......",".......f","....~...","........","...x...."]}""", "$.rows[7]" },
-        { """{"rows":["........","........","........","f.......",".......f","....~...","........","........"]}""", "$.rows" },
-        { """{"rivers":[{"tile":[2,4],"side":"east","river":"stream"}]}""", "$.rivers" },
+        { """{"rows":["ffff....","ffff....","ffff....","ffff....","ffff....","ffff....","ffff....","ffff...."]}""", "$.rows" },
         { """{"rivers":[{"tile":[7,4],"side":"east","river":"stream"},{"tile":[0,3],"side":"east","river":"stream"}]}""", "$.rivers[0]" },
         { """{"rivers":[{"tile":[2,4],"side":"east","river":"lava"}]}""", "$.rivers[0].river" },
         { """{"rivers":[{"tile":[2,4],"side":"east","river":"stream"},{"tile":[2,4],"side":"east","river":"stream"},{"tile":[4,3],"side":"east","river":"stream"}]}""", "$.rivers[1]" },
         { """{"rivers":[{"tile":[9,4],"side":"east","river":"stream"}]}""", "$.rivers[0].tile" },
-        { """{"spawns":[]}""", "$.spawns" },
-        { """{"spawns":[[1,2]]}""", "$.spawns" },
-        { """{"spawns":[[1],[1,5]]}""", "$.spawns[0]" },
-        { """{"spawns":[null,[1,5]]}""", "$.spawns[0]" },
+        { """{"firstSpawns":[]}""", "$.firstSpawns" },
+        { """{"secondSpawns":[[6,2]]}""", "$.secondSpawns" },
+        { """{"firstSpawns":[[1],[1,5]]}""", "$.firstSpawns[0]" },
+        { """{"secondSpawns":[null,[6,5]]}""", "$.secondSpawns[0]" },
         { """{"rows":["........","........","...~....","f.......",".......f","....~...","........",null]}""", "$.rows[7]" },
         { """{"rivers":[null]}""", "$.rivers[0]" },
-        { """{"spawns":[[3,2],[1,5]]}""", "$.spawns[0]" },
-        { """{"spawns":[[3,4],[1,5]]}""", "$.spawns[0]" },
-        { """{"spawns":[[1,2],[1,2]]}""", "$.spawns[1]" },
+        { """{"firstSpawns":[[3,2],[1,5]]}""", "$.firstSpawns[0]" },
+        { """{"firstSpawns":[[3,4],[1,5]]}""", "$.firstSpawns[0]" },
+        { """{"firstSpawns":[[1,2],[1,2]]}""", "$.firstSpawns[1]" },
+        { """{"secondSpawns":[[1,2],[6,2]]}""", "$.secondSpawns[0]" },
+        { """{"secondSpawns":[[4,5],[6,2]]}""", "$.secondSpawns[0]" },
+        { """{"spawns":[[1,2],[1,5]]}""", "$.spawns" },
         { """{"extra":1}""", "$.extra" },
     };
 
@@ -102,12 +106,55 @@ public class PredefinedMapTests
     }
 
     [Fact]
+    public void Parse_DifferentButFairHalves_IsValid()
+    {
+        var document = ValidDocument();
+        // The east half's lake moved and a forest added on each side in different places: not a mirror, but worth the same.
+        document["rows"] = new JsonArray("........", "......f.", "...~....", "f.......", ".....f..", "........", "......~.", ".f......");
+        document["rivers"] = new JsonArray(River(2, 4, "east", "stream"), River(5, 1, "east", "stream"));
+
+        var result = Parse(document);
+
+        result.Problems.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Parse_AStartFarPoorerThanTheOthers_ReportsTheSpawn()
+    {
+        var document = ValidDocument();
+        document["rows"] = new JsonArray("dddd....", "dddd....", "dddd....", "f.......", ".......f", "....dddd", "....dddd", "....dddd");
+        document["legend"] = new JsonObject { ["."] = "plains", ["~"] = "lake", ["f"] = "forest", ["d"] = "desert" };
+        document["rivers"] = new JsonArray();
+
+        var result = Parse(document);
+
+        result.Problems.ShouldContain(problem => problem.Path == "$.firstSpawns[0]" && problem.Message.Contains("mean of all starts"), string.Join("; ", result.Problems));
+    }
+
+    [Fact]
+    public void Parse_OneSidesStartsRicherOnAverage_ReportsTheSides()
+    {
+        var document = ValidDocument();
+        // Each half has 6 forest tiles, but only the east's lie within reach of its starts: every start is near the mean,
+        // yet the east's average is 6.5% above the west's.
+        document["width"] = 16;
+        document["rows"] = new JsonArray("................", "......f.......f.", "......f......f..", "......f......f..", "......f......f..", "......f......f..", "......f.......f.", "................");
+        document["rivers"] = new JsonArray();
+        document["secondSpawns"] = new JsonArray(new JsonArray(14, 5), new JsonArray(14, 2));
+
+        var result = Parse(document);
+
+        result.Problems.ShouldHaveSingleItem(string.Join("; ", result.Problems)).Path.ShouldBe("$.secondSpawns");
+    }
+
+    [Fact]
     public void Parse_LakeWallAcrossTheMap_ReportsTheCut()
     {
         var document = ValidDocument();
         document["rows"] = new JsonArray("...~....", "...~....", "...~....", "...~....", "....~...", "....~...", "....~...", "....~...");
         document["rivers"] = new JsonArray();
-        document["spawns"] = new JsonArray(new JsonArray(0, 2), new JsonArray(0, 1));
+        document["firstSpawns"] = new JsonArray(new JsonArray(0, 2), new JsonArray(0, 1));
+        document["secondSpawns"] = new JsonArray(new JsonArray(7, 5), new JsonArray(7, 6));
 
         var result = Parse(document);
 

@@ -149,7 +149,7 @@ public sealed class GameUiService
     }
 
     /// <summary>
-    /// The player's units that can still act this turn: movement left, no job running and no destination to walk to, in id order (the top bar's
+    /// The player's units that can still act this turn: movement left, no job running, no destination to walk to and not exploring, in id order (the top bar's
     /// "units can still move").
     /// </summary>
     /// <param name="view">The view on screen.</param>
@@ -158,7 +158,7 @@ public sealed class GameUiService
     {
         ArgumentNullException.ThrowIfNull(view);
         return [.. view.Units
-            .Where(unit => unit.Owner == view.Viewer && unit.MovementLeft > 0 && unit.Job is null && unit.Destination is null)
+            .Where(unit => unit.Owner == view.Viewer && unit.MovementLeft > 0 && unit.Job is null && unit.Destination is null && !unit.Exploring)
             .OrderBy(static unit => unit.Id.Value)];
     }
 

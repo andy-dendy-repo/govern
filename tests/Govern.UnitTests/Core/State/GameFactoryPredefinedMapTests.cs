@@ -36,14 +36,14 @@ public class GameFactoryPredefinedMapTests
     [InlineData(2UL)]
     [InlineData(17UL)]
     [InlineData(123UL)]
-    public void Create_WithAMap_PutsEachPlayerOnACandidateOrItsMirror(ulong seed)
+    public void Create_WithAMap_PutsEachPlayerOnOneOfTheirCandidates(ulong seed)
     {
         var state = Create(seed);
         var first = state.Units.Where(static unit => unit.Owner == GameStateBuilder.P1).Select(static unit => unit.Position).ToList();
         var second = state.Units.Where(static unit => unit.Owner == GameStateBuilder.P2).Select(static unit => unit.Position).ToList();
 
-        Basin.Spawns.ShouldContain(first[0]);
-        Basin.Spawns.Select(Basin.Map.MirrorOf).ShouldContain(second[0]);
+        Basin.FirstSpawns.ShouldContain(first[0]);
+        Basin.SecondSpawns.ShouldContain(second[0]);
         first[1].ShouldBe(HexCoord.FromOffset(first[0].Column + 1, first[0].Row));
         second[1].ShouldBe(HexCoord.FromOffset(second[0].Column - 1, second[0].Row));
     }
@@ -53,11 +53,12 @@ public class GameFactoryPredefinedMapTests
     {
         var pairs = Enumerable.Range(1, 60)
             .Select(static seed => Create((ulong)seed))
-            .Select(static state => (state.Units[0].Position, Basin.Map.MirrorOf(state.Units[2].Position)))
+            .Select(static state => (First: Basin.FirstSpawns.IndexOf(state.Units[0].Position), Second: Basin.SecondSpawns.IndexOf(state.Units[2].Position)))
             .ToHashSet();
 
-        pairs.Select(static pair => pair.Item1).Distinct().Count().ShouldBe(Basin.Spawns.Length);
-        pairs.ShouldContain(static pair => pair.Item1 != pair.Item2);
+        pairs.Select(static pair => pair.First).Distinct().Count().ShouldBe(Basin.FirstSpawns.Length);
+        pairs.Select(static pair => pair.Second).Distinct().Count().ShouldBe(Basin.SecondSpawns.Length);
+        pairs.ShouldContain(static pair => pair.First != pair.Second);
     }
 
     [Fact]
