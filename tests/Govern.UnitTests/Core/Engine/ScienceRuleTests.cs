@@ -75,6 +75,33 @@ public class ScienceRuleTests
         update.State.FindCity(city)!.Producing.ShouldBe(TestRulesets.Swordsman);
     }
 
+    [Theory]
+    [InlineData("bronze_working", false, "soldier", "swordsman")]
+    [InlineData("archery", true, "archer", "soldier")]
+    public void ProduceBuilding_Finished_GoesBackToTheNewestUnitThePlayerMayProduce(string node, bool disabled, string unit, string expected)
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithNodes(P1, new OwnedNode(node, disabled));
+        var city = builder.AddCity(P1, 5, 5, new Govern.Core.Units.UnitType(unit), progress: 7, producingBuilding: TestRulesets.Campus, paid: true, buildingSite: (5, 4));
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new EndTurnCommand()).ShouldSucceed();
+
+        update.Events.OfType<BuildingCompletedEvent>().ShouldHaveSingleItem();
+        update.State.FindCity(city)!.Producing.ShouldBe(new Govern.Core.Units.UnitType(expected));
+    }
+
+    [Fact]
+    public void Balance_OldestDisabledNodeDoesNotFit_NewerOnesWaitBehindIt()
+    {
+        // One city makes 1 science: education (2) can't come back, and archery (1) is not let past it.
+        var state = new GameStateBuilder().WithCapitals()
+            .WithNodes(P1, new OwnedNode("education", Disabled: true), new OwnedNode("archery", Disabled: true)).Build();
+
+        var update = GameEngine.Execute(TestRulesets.Default, state, P1, new EndTurnCommand()).ShouldSucceed();
+
+        update.State.FindPlayer(P1)!.NodeList.ShouldAllBe(static owned => owned.Disabled);
+        update.Events.OfType<ScienceNodeChangedEvent>().ShouldBeEmpty();
+    }
+
     [Fact]
     public void Production_LockedUnit_IsRefusedUntilItsNodeIsOwned()
     {

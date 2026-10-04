@@ -32,7 +32,7 @@ updated: 2026-10-04
 
 After every command (any player's, so a capture or a damaged campus is noticed at once), for every player who owns a node, with their income now:
 1. While used > income, switch off the newest enabled node (`science_node_changed`, disabled).
-2. Then go through the switched-off nodes, oldest first: switch one on again (`science_node_changed`, enabled) when its points fit in income − used and every node it requires is enabled; stop at the first that doesn't fit, so an older node is never skipped for a newer one.
+2. Then go through the switched-off nodes, oldest first: switch one on again (`science_node_changed`, enabled) when its points fit in income − used and every node it requires is enabled; stop at the first that doesn't fit, so re-enabling never skips an older node for a newer one. (Unlocking a new node only needs free science, so a player may unlock a cheap node while an older, dearer one waits.)
 
 A switched-off node takes nothing, locks its units and buildings again, and blocks unlocking nodes that require it. Units and buildings that already exist keep working.
 
@@ -63,9 +63,13 @@ A switched-off node takes nothing, locks its units and buildings again, and bloc
 6. It must have movement left → `unit.no_movement`; and not be upgrading this building already → `build.already_building`.
 7. The unit's job becomes the upgrade with progress 0, and its movement drops to 0 (`build_started`).
 
-At the end of the owner's turn the job advances like any other ([Building with units](game-logic.md#building-with-units-jobs)): the builder's [`buildProduction`] plus its city's production, up to the upgrade's [`buildings.*.cost`]. Each turn the job is checked again (the building is still there and in the actor's territory, the upgrade still unlocked) and dropped when it fails. When the progress reaches the cost, the city owning the tile pays the upgrade's [`buildings.*.resourceCost`]; while it can't, the finished job waits and takes no more production. Once paid, the new building replaces the old one in the city's buildings and on the tile, at full health, and the job ends (`building_upgraded`).
+At the end of the owner's turn the job advances like any other ([Building with units](game-logic.md#building-with-units-jobs)): the builder's [`buildProduction`] plus its city's production, up to the upgrade's [`buildings.*.cost`]. Each turn the job is checked again (the building is still there and in the actor's territory) and dropped when it fails. Like an item a city started, a job already started is finished even if its node is switched off meanwhile. When the progress reaches the cost, the city owning the tile pays the upgrade's [`buildings.*.resourceCost`]; while it can't, the finished job waits and takes no more production. Once paid, the new building replaces the old one in the city's buildings and on the tile, at full health, and the job ends (`building_upgraded`).
 
 A rule that asks for a building in any version (the trade post's market and traders, "the city has this building already") counts an upgrade of it, following [`upgrades`] links.
+
+## Forecasts
+
+The city forecast (income, upkeep, what is missing to begin) leaves out the resource cost a city pays for a finished building upgrade at the end of the turn, like it leaves out trade; on that turn the city panel's numbers are a little optimistic.
 
 ## What each player sees
 
