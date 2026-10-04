@@ -7,7 +7,7 @@ updated: 2026-10-04
 
 # Plan: G11a the science tree
 
-**Status:** done 2026-10-04 (PR #TBD). Split from [G11](../../game/design-roadmap.md#g11-science-and-culture-trees): this is the science tree; the culture tree is G11b, which goes next.
+**Status:** done 2026-10-04 (PR #59). Split from [G11](../../game/design-roadmap.md#g11-science-and-culture-trees): this is the science tree; the culture tree is G11b, which goes next.
 
 ## Context
 
