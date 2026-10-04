@@ -57,6 +57,12 @@
     --gv-board3d-seabed: #7fb7a8;
     --gv-board3d-mist: #fbfbf8;
     --gv-board3d-unexplored: #d9d4c7;
+    /* The ground's small dressing (js/board3d/terrain.js, rivers.js): meadow flowers, blossoms, cacti, lake reeds, river banks. */
+    --gv-board3d-flower: #f2d14b;
+    --gv-board3d-blossom: #f4f1ea;
+    --gv-board3d-cactus: #5f8f4e;
+    --gv-board3d-reed: #7d8f4a;
+    --gv-board3d-riverbank: #a8a173;
     --gv-board3d-memory: #e6dcc6;
     /* 3D models of improvements and buildings (js/board3d/models.js): walls, roofs (a building's roof takes its seat colour
        instead), tilled fields, mine rock and tent canvas; bridges and timber use --gv-bridge. */
@@ -130,6 +136,11 @@
         --gv-board3d-seabed: #3f6f68;
         --gv-board3d-mist: #5b6170;
         --gv-board3d-unexplored: #2b3038;
+        --gv-board3d-flower: #c9ad3e;
+        --gv-board3d-blossom: #c9c6bf;
+        --gv-board3d-cactus: #4a7340;
+        --gv-board3d-reed: #62703a;
+        --gv-board3d-riverbank: #7a7553;
         --gv-board3d-memory: #4a4a52;
         --gv-board3d-wall: #b9b09e;
         --gv-board3d-roof: #7d3f2c;

@@ -31,7 +31,7 @@ public class MapPreviewPageTests : ClientTestContext
         var cut = Render<MapPreviewPage>();
 
         cut.Find("h1").TextContent.ShouldBe("Map preview");
-        cut.Find(".preview-size").TextContent.ShouldContain("32×20, 3 spawn candidates a side");
+        cut.Find(".preview-size").TextContent.ShouldContain("32×20, spawn candidates: 3 west, 3 east");
         var scene = Scenes().Single();
         scene.Tiles.Count.ShouldBe(32 * 20);
         scene.Pieces.Count.ShouldBe(6);

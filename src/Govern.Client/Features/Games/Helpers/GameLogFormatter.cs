@@ -115,6 +115,7 @@ public static class GameLogFormatter
     {
         OrderEndReason.Arrived => "arrived at its destination",
         OrderEndReason.EnemySighted => "stopped: an enemy came into sight",
+        OrderEndReason.Explored => "finished exploring: no known way leads to anything unexplored",
         _ => "stopped: there is no known way to its destination",
     };
 

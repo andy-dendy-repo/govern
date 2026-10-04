@@ -13,7 +13,8 @@ namespace Govern.Core.Engine;
 /// terrain and rivers, bridges, units and cities only on tiles they see now), so it never reveals anything hidden, and is planned
 /// again at every walk. The walk itself takes real steps while the next one fits in the movement left; a unit or city the owner
 /// could not see on the way comes into the unit's sight before it is reached. The order ends, with a <see cref="UnitOrderEndedEvent"/>, when the unit arrives, when no
-/// known path is left, or when a step brings an enemy unit or city into the unit's sight.
+/// known path is left, or when a step brings an enemy unit or city into the unit's sight. An exploring unit (<see cref="Unit.Exploring"/>)
+/// walks the same way to the nearest known tile next to one its owner never saw, and on to the next, until none is left.
 /// </summary>
 internal static class AutoMoveRule
 {
@@ -23,29 +24,47 @@ internal static class AutoMoveRule
     // next to it, and the real walk stops in front of the unit.
     public static ImmutableArray<(HexCoord Tile, int Cost)>? Plan(Ruleset ruleset, GameState state, Unit unit, HexCoord target, bool allowOccupiedTarget = false)
     {
-        if (!state.Map.Contains(target) || target == unit.Position || state.FindPlayer(unit.Owner) is not { } owner)
+        if (!state.Map.Contains(target) || target == unit.Position || KnowledgeOf(ruleset, state, unit, allowOccupiedTarget ? target : null) is not { } knowledge)
         {
             return null;
         }
 
-        var visible = VisibilityCalculator.VisibleTiles(ruleset, state, unit.Owner);
-        var known = owner.Explored.ToHashSet();
-        known.UnionWith(visible);
-        var knowledge = new Knowledge(ruleset, state, unit.Owner, ruleset.Unit(unit.Type).Domain, known, visible, allowOccupiedTarget ? target : null);
         return PathFinder.Find(unit.Position, target, ruleset.Unit(unit.Type).Movement, knowledge.StepCost);
     }
 
-    // Walks every one of the player's units that has a destination, in id order (at the start of the player's turn).
+    // Where an exploring unit heads next over the owner's knowledge: the nearest tile next to one they never saw (they have not
+    // explored it and don't see it now); null when no known path leads to any. Shared in meaning with the view-based preview
+    // (ViewPreviewCalculator.CheckExplore).
+    public static HexCoord? NearestUnexplored(Ruleset ruleset, GameState state, Unit unit)
+    {
+        if (KnowledgeOf(ruleset, state, unit, null) is not { } knowledge)
+        {
+            return null;
+        }
+
+        return ExploreFinder.Nearest(
+            unit.Position,
+            ruleset.Unit(unit.Type).Movement,
+            knowledge.StepCost,
+            coord => coord.Neighbors().Any(next => state.Map.Contains(next) && !knowledge.Known.Contains(next)));
+    }
+
+    // Walks every one of the player's units that has a destination or explores, in id order (at the start of the player's turn).
     public static GameState WalkAll(Ruleset ruleset, GameState state, PlayerId player, ImmutableArray<GameEvent>.Builder events) => state.Units
-        .Where(unit => unit.Owner == player && unit.Destination is not null)
+        .Where(unit => unit.Owner == player && (unit.Destination is not null || unit.Exploring))
         .Select(static unit => unit.Id)
         .OrderBy(static id => id.Value)
         .ToList()
         .Aggregate(state, (current, id) => Walk(ruleset, current, id, events));
 
-    // Walks one unit towards its destination as far as its movement left goes.
+    // Walks one unit towards its destination, or exploring, as far as its movement left goes.
     public static GameState Walk(Ruleset ruleset, GameState state, UnitId unitId, ImmutableArray<GameEvent>.Builder events)
     {
+        if (state.FindUnit(unitId) is { Exploring: true } explorer)
+        {
+            return Explore(ruleset, state, explorer, events);
+        }
+
         if (state.FindUnit(unitId) is not { Destination: { } destination } unit)
         {
             return state;
@@ -105,10 +124,69 @@ internal static class AutoMoveRule
         return (state, unit, walked.ToImmutable(), false);
     }
 
+    // Walks an exploring unit to the nearest unexplored edge of what its owner knows, then on to the next one, while its movement
+    // lasts: one move event for the whole walk. Exploring ends when nothing known is left to explore, or when a step brings an
+    // enemy into the unit's sight.
+    private static GameState Explore(Ruleset ruleset, GameState state, Unit unit, ImmutableArray<GameEvent>.Builder events)
+    {
+        var walked = ImmutableArray.CreateBuilder<HexCoord>();
+        OrderEndReason? ended = null;
+        while (unit.MovementLeft > 0)
+        {
+            if (NearestUnexplored(ruleset, state, unit) is not { } target || Plan(ruleset, state, unit, target) is not { } path)
+            {
+                ended = OrderEndReason.Explored;
+                break;
+            }
+
+            var (walkedState, walker, steps, sighted) = TakeSteps(ruleset, state, unit, path, stopOnSighting: true);
+            (state, unit) = (walkedState, walker);
+            walked.AddRange(steps);
+            if (sighted)
+            {
+                ended = OrderEndReason.EnemySighted;
+                break;
+            }
+
+            // The next step costs more than the movement left: the unit walks on next turn.
+            if (steps.Length == 0)
+            {
+                break;
+            }
+        }
+
+        if (walked.Count > 0)
+        {
+            events.Add(new UnitMovedEvent(unit.Id, unit.Owner, unit.Type, walked.ToImmutable()));
+        }
+
+        if (ended is not { } reason)
+        {
+            return state;
+        }
+
+        events.Add(new UnitOrderEndedEvent(unit.Id, unit.Owner, unit.Type, unit.Position, unit.Position, reason));
+        return state.WithUnit(unit with { Exploring = false });
+    }
+
     private static GameState End(GameState state, Unit unit, OrderEndReason reason, ImmutableArray<GameEvent>.Builder events)
     {
         events.Add(new UnitOrderEndedEvent(unit.Id, unit.Owner, unit.Type, unit.Position, unit.Destination!.Value, reason));
         return state.WithUnit(unit with { Destination = null });
+    }
+
+    // What the owner of a unit knows of the map, for planning its walks; null when the owner isn't in the game.
+    private static Knowledge? KnowledgeOf(Ruleset ruleset, GameState state, Unit unit, HexCoord? occupiedTargetAllowed)
+    {
+        if (state.FindPlayer(unit.Owner) is not { } owner)
+        {
+            return null;
+        }
+
+        var visible = VisibilityCalculator.VisibleTiles(ruleset, state, unit.Owner);
+        var known = owner.Explored.ToHashSet();
+        known.UnionWith(visible);
+        return new Knowledge(ruleset, state, unit.Owner, ruleset.Unit(unit.Type).Domain, known, visible, occupiedTargetAllowed);
     }
 
     // Tiles in the unit's own sight that hold an enemy unit or city.

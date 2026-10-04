@@ -35,7 +35,7 @@ internal static class BuildBridgeRule
         }
 
         var job = UnitJob.ForBridge(command.Target, state.Turn);
-        return new GameUpdate(state.WithUnit(unit with { MovementLeft = 0, Job = job, Destination = null }), [new BuildStartedEvent(unit.Id, job)]);
+        return new GameUpdate(state.WithUnit(unit with { MovementLeft = 0, Job = job, Destination = null, Exploring = false }), [new BuildStartedEvent(unit.Id, job)]);
     }
 
     // Shared with the view-based preview (ViewPreviewCalculator): both tiles are in sight (the target is a neighbour), and the view

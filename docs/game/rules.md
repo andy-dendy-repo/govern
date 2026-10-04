@@ -21,18 +21,18 @@ Govern is a turn-based strategy game for the number of players under "Game numbe
 - The map is a rectangle of hexagonal tiles. Each tile has 6 neighbours, and distances are counted in hex steps.
 - The game's creator picks the map in the lobby: a random map from the map pool (the default), a named map from the pool, or a generated map (see "Maps").
 - A generated map's size is in the table under "Game numbers". Each generated map is different: mostly plains, with patches of forest, hills, mountains, lakes and desert (see "Terrain types").
-- **Both halves of the map are the same.** The map turned half a turn around its centre looks exactly like itself, so neither player gets the better side. Once you have explored your own half you know the terrain of your opponent's half too. Starts are not mirrored, though: the map only hints that your opponent started on plains in their zone.
+- **Both halves of a generated map are the same.** The map turned half a turn around its centre looks exactly like itself, so neither player gets the better side. Once you have explored your own half you know the terrain of your opponent's half too. Starts are not mirrored, though: the map only hints that your opponent started on plains in their zone. Pool maps are different: each side has land of its own (see "Maps").
 - Rivers run along the edges between tiles (see "Rivers").
 - Mountains, lakes and deep rivers never cut the map in two: every tile you can walk on can be reached from every other.
 - Each player starts near their own edge of the map (the first player on the left, the second on the right) with the starting units listed under "Game numbers", placed side by side (on plains on a generated map).
 
 ## Maps
 
-The map pool holds hand-made maps. Like a generated map, each pool map looks the same after a half turn, so neither side is better. Each pool map has a few possible starts on each side (at least 2), and they are no secret: your opponent started on one of the possible starts on their side. A game picks one for each player on its own, so your own start doesn't tell you which one they got.
+The map pool holds hand-made maps. Unlike a generated map, the two sides of a pool map are not mirrors: each side has its own land, so exploring yours tells you little about your opponent's. They are checked to be worth the same: each half yields about as much of every resource (within 15%), and every possible start has land within 3 tiles worth about the same as the others (within 10%, and both sides' starts on average within 5%). Each pool map has a few possible starts on each side (at least 2), and they are no secret: your opponent started on one of the possible starts on their side. A game picks one for each player on its own, so your own start doesn't tell you which one they got.
 
 | Map | Size | Shape |
 |---|---|---|
-| The Basin | 32 × 20 | Each player has a home valley at their edge, with a river, forests and hills. A mountain ridge with two hill passes separates each valley from a large lake in the centre, so armies meet on a north and a south flank around the lake, each with forests, hills, a stream and a desert corner. 3 possible starts on each side |
+| The Basin | 32 × 20 | A lake in the centre, with a north and a south flank around it. The west is a river valley behind a straight mountain ridge with two hill passes, with forests and a stream in the north. The east is higher land behind a bent ridge with a wide northern gap and a hill pass: a small lake, two rivers, more hills and a desert corner in the north-east. 3 possible starts on each side |
 
 ## Terrain types
 
@@ -124,8 +124,16 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - **Go to** sends a unit to any tile you have explored. It walks there on its own: at once with the movement it has left, then at the start of each of your turns with full movement, before you act.
 - It takes the cheapest way over what you know of the map. Terrain you haven't explored isn't used, units and cities you can't see don't count, and the way is worked out again every turn.
 - The order ends when the unit arrives, when no known way leads there any more, or when a step brings an enemy unit or city into the unit's sight, so you decide what to do. A unit you couldn't see on the way comes into sight before the unit reaches it, which stops it the same way.
-- Giving the unit any other order (moving, attacking, building), giving it a new destination or pressing Stop cancels the order. Starting the walk drops what the unit was building.
+- Giving the unit any other order (moving, attacking, building, exploring), giving it a new destination or pressing Stop cancels the order. A unit that is building can't be sent anywhere: cancel its job first.
 - Your opponent doesn't see a unit's destination, but can see your units walking on their own at the start of your turn.
+
+## Exploring
+
+- **Explore** sends a unit to discover the map on its own: it walks to the nearest tile you know that lies next to one you have never seen, then on to the next, at once with the movement it has left and at the start of each of your turns, before you act.
+- It walks over what you know only, like Go to, so it never runs into terrain you haven't seen.
+- Exploring ends when no known way leads to anything unexplored any more, or when a step brings an enemy unit or city into the unit's sight, so you decide what to do.
+- Any other order, a destination or pressing Stop ends exploring. A unit that is building can't explore: cancel its job first. Ships explore lakes the same way.
+- Your opponent doesn't see that a unit is exploring.
 
 ## Attacking
 
@@ -194,7 +202,7 @@ Builders and soldiers build things with their own **build production** (under "U
 - At the end of each of your turns, the job gains the unit's build production. **In your city's territory**, the city's production is added too, and that city then doesn't spend it on its own production that turn. A city feeds one job a turn: the oldest job in its territory first.
 - Outside your cities' territory, a unit builds with its own build production only. For now that only matters for bridges.
 - When the progress reaches the cost, the improvement or bridge is finished at once (a building upgrade then waits for its city to pay, see "Science").
-- Moving the unit, attacking with it or starting another job stops the job, and its progress is lost.
+- **A unit that is building can't move**, so a stray click never stops a job. To move it, select it and press **Cancel job** first: the job stops and its progress is lost. Attacking with the unit or starting another job also stops the job.
 - A job whose site no longer allows it (the city whose territory it was in was captured, or someone bridged that river first) stops.
 
 ## Tile yields

@@ -6,7 +6,7 @@ namespace Govern.UnitTests.Domain.ValueObjects;
 
 public class MapChoiceTests
 {
-    private static readonly PredefinedMap Basin = new("basin", "The Basin", GameMap.Create(8, 8, TestRulesets.Plains), [HexCoord.FromOffset(1, 1)]);
+    private static readonly PredefinedMap Basin = new("basin", "The Basin", GameMap.Create(8, 8, TestRulesets.Plains), [HexCoord.FromOffset(1, 1)], [HexCoord.FromOffset(6, 6)]);
 
     [Fact]
     public void Create_ReservedValues_GiveTheGeneratedAndRandomChoices()

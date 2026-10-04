@@ -18,7 +18,7 @@ internal static class ViewPreviewCalculator
 {
     public static ImmutableArray<HexCoord> ReachableTiles(Ruleset ruleset, PlayerView view, UnitId unitId)
     {
-        if (ActingUnit(ruleset, view, unitId) is not { MovementLeft: > 0, RouteId: null } unit)
+        if (ActingUnit(ruleset, view, unitId) is not { MovementLeft: > 0, RouteId: null, Job: null } unit)
         {
             return [];
         }
@@ -30,7 +30,7 @@ internal static class ViewPreviewCalculator
 
     public static DestinationPreview? DestinationPath(Ruleset ruleset, PlayerView view, UnitId unitId, HexCoord target)
     {
-        if (ActingUnit(ruleset, view, unitId) is not { RouteId: null } unit || !view.Contains(target) || target == unit.Position || view.UnitAt(target) is not null)
+        if (ActingUnit(ruleset, view, unitId) is not { RouteId: null, Job: null } unit || !view.Contains(target) || target == unit.Position || view.UnitAt(target) is not null)
         {
             return null;
         }
@@ -262,7 +262,7 @@ internal static class ViewPreviewCalculator
     // The viewer's own unit as the rules' checks take it. Its movement is always in the view: only enemy movement is hidden.
     internal static Unit? OwnUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
         view.FindOwnUnit(unitId) is { MovementLeft: { } movementLeft } own
-            ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft, ruleset.Combat.MaxHealth - own.Health, own.Job, own.Destination, own.RouteId)
+            ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft, ruleset.Combat.MaxHealth - own.Health, own.Job, own.Destination, own.RouteId, own.Exploring)
             : null;
 
     internal static RuleViolation? CheckTurn(PlayerView view) => CommandGuardRule.CheckTurn(

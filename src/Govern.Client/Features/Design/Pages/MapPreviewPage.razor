@@ -1,6 +1,6 @@
 @page "/design/maps"
 @* The map preview (G18): each pool map (maps/<key>.json) on the board, fully in sight, with the first starting unit on every spawn
-   candidate and its mirror (docs/game/maps.md). For authoring maps. Development only: elsewhere it shows the not-found text. *@
+   candidate of both sides (docs/game/maps.md). For authoring maps. Development only: elsewhere it shows the not-found text. *@
 @using Govern.Client.Features.Design.Helpers
 @using Govern.Client.Features.Games.Components.Board
 @using Govern.Client.Features.Games.Services
@@ -25,7 +25,7 @@ else
                 <RadzenDropDown TValue="string" Data="@Maps.Maps" TextProperty="@nameof(PredefinedMap.Name)" ValueProperty="@nameof(PredefinedMap.Key)"
                                 Value="@_map.Key" ValueChanged="@Show" aria-label="Map" class="preview-map"/>
                 <RadzenText TextStyle="TextStyle.Body2" class="preview-size">
-                    @_map.Map.Width×@_map.Map.Height, @_map.Spawns.Length spawn @(_map.Spawns.Length == 1 ? "candidate" : "candidates") a side
+                    @_map.Map.Width×@_map.Map.Height, spawn candidates: @_map.FirstSpawns.Length west, @_map.SecondSpawns.Length east
                 </RadzenText>
             </RadzenStack>
             <GameBoard View="@_view" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens"

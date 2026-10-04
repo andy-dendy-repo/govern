@@ -50,7 +50,7 @@ internal static class TradeRule
     public static GameState SendTrader(Ruleset ruleset, GameState state, Unit trader, TradeRoute route, ImmutableArray<GameEvent>.Builder events)
     {
         var post = PostTile(ruleset, state.Map, route.Host);
-        var sent = state.WithRoute(route with { Trader = trader.Id }).WithUnit(trader with { RouteId = route.Id, Destination = post, Job = null });
+        var sent = state.WithRoute(route with { Trader = trader.Id }).WithUnit(trader with { RouteId = route.Id, Destination = post, Job = null, Exploring = false });
         return Walk(ruleset, sent, sent.FindUnit(trader.Id)!, events);
     }
 

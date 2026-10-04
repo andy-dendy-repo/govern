@@ -40,7 +40,7 @@ internal static class UpgradeBuildingRule
         }
 
         var job = UnitJob.ForUpgrade(ScienceCalculator.BuildingUpgrade(ruleset, nodes, tile.Building!.Value)!.Id, state.Turn);
-        return new GameUpdate(state.WithUnit(unit with { MovementLeft = 0, Job = job, Destination = null }), [new BuildStartedEvent(unit.Id, job)]);
+        return new GameUpdate(state.WithUnit(unit with { MovementLeft = 0, Job = job, Destination = null, Exploring = false }), [new BuildStartedEvent(unit.Id, job)]);
     }
 
     // Shared with the view-based preview: the unit's own tile, its building and whether it is the viewer's territory are always

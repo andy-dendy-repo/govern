@@ -27,6 +27,10 @@ namespace Govern.Core.Units;
 /// The trade route the unit, a trader, serves (G17): it walks to the host's trade post and, once a deal is accepted, back and
 /// forth between the two posts; its owner can't move it while it is on a route. Left out of the JSON otherwise.
 /// </param>
+/// <param name="Exploring">
+/// Whether the unit explores on its own (see <see cref="Actions.ExploreCommand"/>): turn after turn it walks to the nearest tile
+/// its owner knows next to one they never saw. Left out of the JSON while it has no such order.
+/// </param>
 public sealed record Unit(
     UnitId Id,
     PlayerId Owner,
@@ -36,7 +40,8 @@ public sealed record Unit(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int Damage = 0,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] UnitJob? Job = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? Destination = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TradeRouteId? RouteId = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TradeRouteId? RouteId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Exploring = false)
 {
     /// <summary>The unit's health under a ruleset: its maximum minus <see cref="Damage"/>.</summary>
     /// <param name="ruleset">The game's ruleset.</param>
