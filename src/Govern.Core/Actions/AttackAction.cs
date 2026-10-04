@@ -4,6 +4,7 @@ using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -126,8 +127,9 @@ internal static class AttackRule
     private static GameUpdate Capture(Ruleset ruleset, GameState state, Unit attacker, City city)
     {
         var progress = ruleset.Cities.CaptureResetsProduction ? 0 : city.ProductionProgress;
+        var producing = ScienceCalculator.NextProduction(ruleset, state.FindPlayer(attacker.Owner)!.NodeList, city.Producing);
         var next = state
-            .WithCity(city with { Owner = attacker.Owner, ProductionProgress = progress, ProducingBuilding = null, ProducingBuildingSite = null, ProductionPaid = false })
+            .WithCity(city with { Owner = attacker.Owner, Producing = producing, ProductionProgress = progress, ProducingBuilding = null, ProducingBuildingSite = null, ProductionPaid = false })
             .WithUnit(attacker with { Position = city.Position, MovementLeft = 0, Job = null, Destination = null });
 
         return new GameUpdate(next, [

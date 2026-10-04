@@ -16,6 +16,10 @@ namespace Govern.Core.Economy;
 /// <param name="RequiresAdjacentTerrain">
 /// Terrains of which at least one must be next to the building's tile for it to be produced there; empty when it can stand anywhere.
 /// </param>
+/// <param name="Upgrades">
+/// The building this one upgrades (it replaces it on its tile); a builder upgrades it, a city never produces it from scratch.
+/// <see langword="null"/> for a building a city produces.
+/// </param>
 public sealed record BuildingDefinition(
     BuildingType Id,
     int Cost,
@@ -23,4 +27,5 @@ public sealed record BuildingDefinition(
     ImmutableArray<ResourceAmount> Upkeep,
     ImmutableArray<ResourceAmount> Yields,
     int Production,
-    ImmutableArray<TerrainType> RequiresAdjacentTerrain);
+    ImmutableArray<TerrainType> RequiresAdjacentTerrain,
+    BuildingType? Upgrades = null);

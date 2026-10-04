@@ -6,6 +6,7 @@ using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Rulesets;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -120,8 +121,14 @@ public partial class CityPanel
         _ => "Producing nothing",
     };
 
-    // A trader is trained only in a city with a trade post (the engine's check: the post among its buildings).
-    private bool NeedsTradePost(UnitDefinition unit) => unit.CanTrade && !City.BuildingList.Contains(Ruleset.Trade.Building);
+    // A trader is trained only in a city with a trade post or an upgrade of it (the engine's check).
+    private bool NeedsTradePost(UnitDefinition unit) => unit.CanTrade && !HasKindOf(Ruleset.Trade.Building);
+
+    // Whether the city has a building or one of its upgrades.
+    private bool HasKindOf(BuildingType building) => City.BuildingList.Any(built => Ruleset.IsKindOf(built, building));
+
+    // Why the player's cities can't start a unit (locked by science or replaced by a newer one), or null.
+    private RuleViolation? ProduceProblem(UnitType unit) => ScienceCalculator.CheckProduce(Ruleset, View.Science?.NodeList ?? [], unit);
 
     // A unit button is pressed only while no building replaces the unit in production.
     private bool ProducingUnit(UnitType type) => City.ProducingBuilding is null && City.Producing == type;

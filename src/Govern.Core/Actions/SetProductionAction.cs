@@ -2,13 +2,15 @@ using Govern.Core.Cities;
 using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Rulesets;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 
 namespace Govern.Core.Actions;
 
 /// <summary>
-/// Chooses which unit a city builds (and stops producing a building, if it was); accumulated progress is kept. A resource cost
+/// Chooses which unit a city builds (and stops producing a building, if it was); accumulated progress is kept. The unit must be
+/// unlocked by the player's science and the newest unlocked version of its line. A resource cost
 /// already paid for the item it leaves goes back to the city's stock.
 /// </summary>
 /// <param name="CityId">The actor's city.</param>
@@ -33,8 +35,13 @@ internal static class SetProductionRule
             return RuleViolations.UnknownUnitType;
         }
 
-        // A trader is trained only where it can trade from: a city with a trade post.
-        if (unit.CanTrade && !city.Has(ruleset.Trade.Building))
+        if (ScienceCalculator.CheckProduce(ruleset, state.FindPlayer(actor)!.NodeList, unit.Id) is { } locked)
+        {
+            return locked;
+        }
+
+        // A trader is trained only where it can trade from: a city with a trade post (or one of its upgrades).
+        if (unit.CanTrade && !city.BuildingList.Any(building => ruleset.IsKindOf(building, ruleset.Trade.Building)))
         {
             return RuleViolations.NoTradePost;
         }

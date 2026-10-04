@@ -37,7 +37,7 @@ public static class GameEngine
             return error;
         }
 
-        var result = Dispatch(ruleset, state, actor, command);
+        var result = CommandDispatcher.Dispatch(ruleset, state, actor, command);
         return result.IsSuccess ? Complete(ruleset, result.Update) : result;
     }
 
@@ -273,26 +273,9 @@ public static class GameEngine
     public static PlayerView ViewFor(Ruleset ruleset, GameState state, PlayerId viewer) =>
         VisibilityCalculator.ViewFor(ruleset, state, viewer);
 
-    private static CommandResult Dispatch(Ruleset ruleset, GameState state, PlayerId actor, GameCommand command) => command switch
-    {
-        MoveUnitCommand move => MoveUnitRule.Apply(ruleset, state, actor, move),
-        SetDestinationCommand destination => SetDestinationRule.Apply(ruleset, state, actor, destination),
-        AttackCommand attack => AttackRule.Apply(ruleset, state, actor, attack),
-        FoundCityCommand found => FoundCityRule.Apply(ruleset, state, actor, found),
-        SetProductionCommand production => SetProductionRule.Apply(ruleset, state, actor, production),
-        BuildImprovementCommand build => BuildImprovementRule.Apply(ruleset, state, actor, build),
-        BuildBridgeCommand bridge => BuildBridgeRule.Apply(ruleset, state, actor, bridge),
-        ProduceBuildingCommand building => ProduceBuildingRule.Apply(ruleset, state, actor, building),
-        SetUpkeepPriorityCommand priority => SetUpkeepPriorityRule.Apply(state, actor, priority),
-        EndTurnCommand => EndTurnRule.Apply(ruleset, state, actor),
-        ResignCommand => ResignRule.Apply(state, actor),
-        _ => TradeRule.Dispatch(ruleset, state, actor, command)
-            ?? throw new ArgumentOutOfRangeException(nameof(command), command.GetType().Name, "Unknown command."),
-    };
-
     private static GameUpdate Complete(Ruleset ruleset, GameUpdate update)
     {
-        var decided = TradeRule.Reconcile(VictoryRule.Apply(ruleset, update));
+        var decided = ScienceRule.Balance(ruleset, TradeRule.Reconcile(VictoryRule.Apply(ruleset, update)));
         var explored = VisibilityCalculator.UpdateExplored(ruleset, decided.State);
         return decided with { State = explored with { Version = explored.Version + 1 } };
     }

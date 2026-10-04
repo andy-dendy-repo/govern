@@ -1,8 +1,8 @@
 ---
 title: Game logic (Core algorithms)
-tags: [game, core, rules, algorithms, trading, upkeep, resource-cost, supply, shortage, building-health, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, game-log, events, determinism]
+tags: [game, core, rules, algorithms, science, unit-upgrade, building-upgrade, trading, upkeep, resource-cost, supply, shortage, building-health, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, game-log, events, determinism]
 code: [src/Govern.Core]
-updated: 2026-10-03
+updated: 2026-10-04
 ---
 
 # Game logic: Core algorithms
@@ -82,7 +82,7 @@ Every player action is a command sent by one player (the actor). The engine runs
    2. The actor isn't an active player → `game.not_a_player`.
    3. The actor isn't the current player (and the command isn't Resign) → `game.not_your_turn`.
 2. **Apply** the command's own rule (below).
-3. **Victory:** run [Elimination and victory](#elimination-and-victory).
+3. **Victory:** run [Elimination and victory](#elimination-and-victory), then close trade routes and break deals that lost a side ([trading](game-logic-trade.md)), then balance every player's science budget ([science](game-logic-science.md#balancing-the-budget-after-every-command)).
 4. **Explore:** update every active player's explored tiles.
 5. **Count:** increase the state's internal version by 1 (never shown to players).
 
@@ -161,7 +161,7 @@ The **forecast** (see [View previews](#view-previews-what-the-client-can-check))
 ### Set production
 
 1. The city must be the actor's → `city.not_found`.
-2. The unit type must exist → `city.unknown_unit_type`.
+2. The unit type must exist → `city.unknown_unit_type`; it must not be locked by science or replaced by a newer unit ([production under locks](game-logic-science.md#production-under-locks)).
 3. If it already produces that type (and no building), nothing changes.
 4. Otherwise, when the resource cost of what it produced was already paid, it goes back to the stock (`ProductionPaid` clears). The city now produces that type, and stops producing a building. Its progress is kept.
 
@@ -169,7 +169,7 @@ The **forecast** (see [View previews](#view-previews-what-the-client-can-check))
 
 1. The city must be the actor's → `city.not_found`.
 2. The building must exist [`buildings`] → `city.unknown_building`.
-3. The city must not have it yet → `city.building_exists`.
+3. It must not be an upgrade, the city must not have it (or an upgrade of it) yet → `city.building_exists`, and it must not be locked ([production under locks](game-logic-science.md#production-under-locks)).
 4. The site (the command's tile) must be on the map, in this city's territory and not the city's own tile → `city.building_not_in_territory`.
 5. Its terrain must be passable [`terrains.*.isPassable`] → `city.building_wrong_terrain`.
 6. It must have no improvement and no building → `city.building_site_taken`.
@@ -210,13 +210,13 @@ Run at the end of the owner's turn (see [End turn](#end-turn)), for the owner's 
 1. If the job's site no longer allows it (the placement checks of step 6 of [Build an improvement](#build-an-improvement) or step 5 of [Build a bridge](#build-a-bridge) fail, e.g. the city was captured or the edge was bridged from the other bank), the job is dropped.
 2. Add the unit's [`units.*.buildProduction`].
 3. If the unit stands in the territory of one of the owner's cities and that city has not fed a job yet this turn, also add the city's production per turn ([`cities.productionPerTurn`] plus each of its buildings' [`buildings.*.production`]); the city is then used for this turn and skips its own production.
-4. When the progress reaches the cost ([`improvements.*.cost`] or [`bridges.cost`]), the improvement is put on the unit's tile, or the bridge on the edge, and the job ends (`improvement_built`, `bridge_built`).
+4. When the progress reaches the cost ([`improvements.*.cost`] or [`bridges.cost`]), the improvement is put on the unit's tile, or the bridge on the edge, and the job ends (`improvement_built`, `bridge_built`). A building upgrade is the third kind of job ([science](game-logic-science.md#upgrade-a-building-a-builders-job)).
 
 ### End turn
 
 1. **Resting units:** note the actor's hurt units whose movement left is still full and that have no job (they neither moved, attacked nor worked this turn). They heal in step 4.
 2. **Jobs:** advance the actor's unit jobs (see [Building with units](#building-with-units-jobs)).
-3. **Income:** each of the actor's cities adds to its stock the tile yield of every tile in its territory, [`cities.yields`] and the yields of its working buildings [`buildings.*.yields`] (a building at 0 health gives nothing).
+3. **Income:** each of the actor's cities adds to its stock the tile yield of every tile in its territory, [`cities.yields`] and the yields of its working buildings [`buildings.*.yields`] (a building at 0 health gives nothing), except [`science.resource`], which is never stored ([science](game-logic-science.md)).
 4. **Upkeep:** see [Costs and upkeep](#costs-and-upkeep): cities pay for their buildings and the units on their territory, units outside territory live off the land, unpaid items lose health, paid buildings recover, and a supplied resting unit loses [`combat.healing.perTurn`] damage, or [`combat.healing.inOwnCity`] on one of the actor's cities, down to 0.
 5. **Trade:** the deals hosted by the actor's cities swap their goods, then the actor's trading cities move their demand levels (see [trading](game-logic-trade.md#exchange-at-the-end-of-the-host-owners-turn)).
 6. **Territory:** each of the actor's cities, by id, whose stock holds the price of its next tile in [`territory.growthResource`] (see [Territory](#territory)) pays it and claims that tile (`territory_grew`).
@@ -225,7 +225,7 @@ Run at the end of the owner's turn (see [End turn](#end-turn)), for the owner's 
    2. If it produces a building: add the production; when the progress reaches [`buildings.*.cost`], the city gains the building (`building_completed`) at full health, its progress resets to 0, the next item is unpaid, and it goes back to producing its unit. A new building therefore yields from the next turn.
    3. Otherwise add the production to its progress, capped at the unit's [`units.*.productionCost`].
    4. If the progress has reached the cost, find a spawn tile: the city's tile if free, otherwise the first free neighbour (in fixed direction order) that is passable and has no unit and no enemy city.
-   5. If a spawn tile exists, create the unit there with a new random id and **0 movement**, and reset the progress to 0; the next unit is unpaid. If none exists (the city is surrounded), the progress stays full and the unit appears in a later turn.
+   5. If a spawn tile exists, create the unit there with a new random id and **0 movement**, and reset the progress to 0; the next unit is unpaid, and the city goes on with the newest version of that unit it may produce ([science](game-logic-science.md#production-under-locks)). If none exists (the city is surrounded), the progress stays full and the unit appears in a later turn.
 8. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
 9. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
 10. **Walk on:** every unit of the new current player with a destination walks on (see [Set a destination](#set-a-destination-auto-moves); a trader on a route walks its route instead, see [trading](game-logic-trade.md#the-traders-walk)), so the player sees where it got to before acting.
@@ -274,9 +274,10 @@ If no tile qualifies, nothing is paid and the stock keeps growing. Cities never 
    - enemy cities without their production or their list of buildings, and enemy units without their movement left, job or destination (their health is shown). The stock, tiles gained and reserved building site of the player's own cities, never the opponent's. A known, accepted leak: a hurt unit heals only when it kept all its movement and has no job, so an opponent who sees a hurt unit on the same tile before and after its owner's turn learns whether it moved, or, when it stayed and didn't heal, that it is working on a job (one bit per hurt, visible unit per turn). A second accepted leak: a visible enemy territory tile shows that an enemy city is within [`territory.maxRadius`], and watching when enemy borders grow shows roughly that city's culture income (and so whether it has a culture building). A fourth accepted leak: auto moves walk at the start of their owner's turn, inside the opponent's End turn command, so the opponent sees in that update and its log that the visible units which moved are on standing orders, can guess where they are heading, and can tell that their own unit was seen when such a walk stops as it comes into sight. A third accepted leak: a unit that loses health without a fight, or doesn't heal while resting, at the end of its owner's turn shows that it was not supplied, so the land around it, or the stock of the city whose territory it stands on, is short;
    - units and cities ordered by id, so the order reveals nothing about when they were created;
    - the trade routes they are a side of (see [what each side sees](game-logic-trade.md#what-each-side-sees));
+   - their own science per turn and science items, never the opponent's (see [science](game-logic-science.md#what-each-player-sees));
    - the round, the current player, the status, the winner and each player's status.
 4. **The view version** is a fingerprint (SHA-256) of everything in the view. It changes only when something the player can see changes, so it can't be used to count the opponent's hidden actions. A command must quote the version it was based on (the server rejects it with `game.stale_version` if the view changed since).
-5. **The game log** of a player: after every accepted command, the events of that command they may see, in order. The **seen tiles** are the tiles they could see before the command plus those they see after it. Everything about their own units and cities is kept. Of the other player's events they keep: the end of a turn, a resignation, an elimination and the win; a move cut to the seen tiles of its path (dropped when none is seen); an attack when either tile is seen or the attacked unit is theirs (an attacker on an unseen tile keeps only its owner and type, not its id or tile); a capture when the city's tile is seen or the city was theirs; a destroyed unit, a founded city, a new unit, a finished improvement or a grown territory tile when its tile is seen (a new unit and a grown tile without the city they came from), and a bridge when the builder's end is seen. Production, jobs started, buildings finished or damaged, the upkeep order and starving units are never kept for the other player. Trade events are kept by the two sides of their route only. Hidden events are dropped, never counted, and an entry has no version or time, so the log tells nothing the two views don't.
+5. **The game log** of a player: after every accepted command, the events of that command they may see, in order. The **seen tiles** are the tiles they could see before the command plus those they see after it. Everything about their own units and cities is kept. Of the other player's events they keep: the end of a turn, a resignation, an elimination and the win; a move cut to the seen tiles of its path (dropped when none is seen); an attack when either tile is seen or the attacked unit is theirs (an attacker on an unseen tile keeps only its owner and type, not its id or tile); a capture when the city's tile is seen or the city was theirs; a destroyed unit, a founded city, a new unit, a finished improvement or a grown territory tile when its tile is seen (a new unit and a grown tile without the city they came from), and a bridge when the builder's end is seen. Production, jobs started, buildings finished or damaged, the upkeep order and starving units are never kept for the other player. Trade events are kept by the two sides of their route only; a science item's change by its player only; a unit or building upgrade when its tile is seen (without the city for the other player). Hidden events are dropped, never counted, and an entry has no version or time, so the log tells nothing the two views don't.
 
 6. **Accepted leak on a pool map:** the spawn candidates are public, so a player knows the opponent started on the mirror of one of the map's candidates (at least 2, The Basin 3), against about half of all start spots on a generated map. The two draws are independent, so a player's own start tells them nothing about which one.
 
@@ -292,6 +293,7 @@ The client never has the full game state, only its view. From the view alone, Co
 - **A city's forecast:** its income, the upkeep it will pay, the buildings and units it can't pay for (step 4), what is still missing before its item can begin (step 7.1), and the production its item gains (from the buildings still working after step 4; none while it can't begin). Costs never use [`territory.growthResource`], so territory growth between the two steps can't change the answer. The last two assume the city's production doesn't go to a job this turn; the client checks that from the units' jobs (step 3 of [Building with units](#building-with-units-jobs)). The forecast leaves out the trade of step 5: a deal the city hosts swaps only when the other city has its part, which the player can't see.
 - **Destination path:** the path and the turns a walk to a destination needs, planned over exactly the knowledge the view holds (explored terrain and rivers, bridges, units and cities on visible tiles), which is what [Set a destination](#set-a-destination-auto-moves) plans over; a path exists exactly when the order would be accepted.
 - **A unit's supply:** which own city keeps it up, or, outside territory, what the land around it lacks.
+- **Science:** whether a node can be unlocked, a unit upgraded or a building upgrade started, with the same checks as [science](game-logic-science.md#science-previews).
 - **Trade:** whether a trader can open a route, a deal can be proposed, and a proposal accepted (after cancelling given deals), with the same checks as the [trade commands](game-logic-trade.md#the-trade-commands).
 
 These answers are **exactly** what the engine would decide, because they share the rules' own checks and because of three fog invariants: every unit sees at least as far as it moves [`units.*.sight` ≥ `units.*.movement`], a founding unit sees every city closer than the spacing [`sight` ≥ `cities.minimumSpacing` − 1], a ranged unit sees every tile in its range [`units.*.ranged.range` ≤ `sight`], and a unit with upkeep sees every tile that supplies it and the rivers on their edges [`sight` ≥ `upkeep.supplyRadius` + 1]. The ruleset validator enforces all four. The territory checks (founding, improvements, bridges) look only at the unit's own tile and a neighbour, which it always sees. A building's site may be any tile of the city's territory, and its check reads the tile's neighbours too: that is exact because the player's own territory is always visible (with its improvements, buildings and units) and the tiles around it are always explored (step 2 of [Fog of war](#fog-of-war)), so their terrain is known. Dropping that explored ring would break the preview and let `city.building_needs_terrain` reveal an unexplored tile's terrain.
@@ -314,7 +316,7 @@ These answers are **exactly** what the engine would decide, because they share t
 
 ## Future mechanics
 
-Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), city growth, housing, loyalty and the production queue (G8b), building upgrades, pillage, repair and the other buildings' own mechanics (G10b; the trade post's is [trading](game-logic-trade.md), G17), science and culture with upkeep (G11), governors (G12, G13), seasons (G14), ships and river navigation (G15).
+Each [roadmap](design-roadmap.md) item adds its algorithm here, in this style, before it is implemented: terrain layers (G4, deferred until G5), city growth, housing, loyalty and the production queue (G8b), pillage, repair and the other buildings' own mechanics (G10b; the trade post's is [trading](game-logic-trade.md), G17; building upgrades came with [science](game-logic-science.md), G11a), the culture tree (G11b), governors (G12, G13), seasons (G14), ships and river navigation (G15).
 
 ## Open questions
 

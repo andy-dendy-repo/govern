@@ -92,6 +92,16 @@
     flex-direction: column;
 }
 
+/* The large view (Screen/ScienceTree): covers the board below the top strip. */
+.hud-large {
+    top: calc(var(--gv-hud-top) + var(--gv-hud-gap) * 2);
+    left: var(--gv-hud-gap);
+    right: var(--gv-hud-gap);
+    bottom: var(--gv-hud-gap);
+    display: flex;
+    flex-direction: column;
+}
+
 /* A card over the board: the raised surface with a border and a shadow, so it reads over any terrain. */
 .top-bar,
 .hud-card,
@@ -188,6 +198,71 @@
     border-top: 1px solid var(--gv-border);
     border-radius: 0;
     box-shadow: none;
+}
+
+/* The science tree (Screen/ScienceTree) and its TreeView. */
+.science-tree {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: var(--gv-space-2);
+}
+
+.science-tree-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.science-tree .tree-view {
+    min-height: 0;
+    overflow: auto;
+}
+
+.science-toggle .science-income {
+    margin-left: var(--gv-space-1);
+}
+
+.tree-view {
+    display: flex;
+    gap: var(--gv-space-3);
+    align-items: flex-start;
+}
+
+.tree-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gv-space-2);
+    flex: 0 0 15rem;
+}
+
+.science-node {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gv-space-1);
+    padding: var(--gv-space-2);
+    border: 1px solid var(--gv-border);
+    border-radius: var(--gv-radius);
+}
+
+.science-node.node-working {
+    border-color: var(--gv-accent);
+}
+
+.science-node.node-off {
+    border-style: dashed;
+}
+
+.node-unlocks {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.node-unlocks li {
+    display: flex;
+    align-items: center;
+    gap: var(--gv-space-1);
 }
 
 /* The log drawer (Screen/LogDrawer). */

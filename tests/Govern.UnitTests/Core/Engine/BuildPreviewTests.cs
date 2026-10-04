@@ -176,7 +176,7 @@ public class BuildPreviewTests
 
     private static (GameState State, CityId City) BuildCity(string scenario)
     {
-        var builder = new GameStateBuilder().WithCapitals();
+        var builder = new GameStateBuilder().WithCapitals().WithNodes(P1, "trade", "sailing");
         var city = scenario switch
         {
             "city by a lake" => builder.WithTerrain(TestRulesets.Lake, (5, 6)).AddCity(P1, 5, 5),

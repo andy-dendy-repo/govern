@@ -3,14 +3,14 @@ using Govern.Core.Rulesets;
 namespace Govern.Client.Features.Games.Services;
 
 /// <summary>
-/// The ruleset the board previews and names units with: <c>rulesets/default/v10.json</c>, embedded in the client and parsed once.
+/// The ruleset the board previews and names units with: <c>rulesets/default/v11.json</c>, embedded in the client and parsed once.
 /// It is the same file the Api plays every game with.
 /// </summary>
 /// <remarks>Temporary: the client will fetch the ruleset each game is pinned to from the Api.</remarks>
 public sealed class RulesetService
 {
     /// <summary>The embedded resource name of the default ruleset.</summary>
-    public const string ResourceName = "Govern.Rulesets.default.v10.json";
+    public const string ResourceName = "Govern.Rulesets.default.v11.json";
 
     private readonly Lazy<Ruleset> _ruleset = new(Load);
 

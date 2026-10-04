@@ -35,6 +35,9 @@ public sealed class GameUiService
     /// <summary>Whether the game log drawer is open (closed until the player opens it with the top bar's Log button).</summary>
     public bool LogOpen { get; private set; }
 
+    /// <summary>Whether the science tree covers the board (opened by the top bar's science counter).</summary>
+    public bool ScienceOpen { get; private set; }
+
     /// <summary>The newest log entry's <see cref="GameLogItem.Sequence"/> when the drawer was last open (or the screen opened).</summary>
     public int LogSeen { get; private set; }
 
@@ -174,12 +177,19 @@ public sealed class GameUiService
         Select(ruleset, view, BoardSelection.Of(next.Id));
     }
 
-    /// <summary>Handles Escape: closes the log drawer, else cancels a pending attack, bridge mode, choosing a destination or placing a building, else clears the selection.</summary>
+    /// <summary>Handles Escape: closes the science tree, else the log drawer, else cancels a pending attack, bridge mode, choosing a destination or placing a building, else clears the selection.</summary>
     /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="view">The view on screen.</param>
     /// <returns>Whether anything changed.</returns>
     public bool Escape(Ruleset ruleset, PlayerView view)
     {
+        if (ScienceOpen)
+        {
+            ScienceOpen = false;
+            Changed?.Invoke();
+            return true;
+        }
+
         if (LogOpen)
         {
             LogOpen = false;
@@ -224,6 +234,13 @@ public sealed class GameUiService
     {
         LogOpen = !LogOpen;
         MarkLogSeen(log);
+        Changed?.Invoke();
+    }
+
+    /// <summary>Opens the science tree over the board, or closes it when it is open.</summary>
+    public void ToggleScience()
+    {
+        ScienceOpen = !ScienceOpen;
         Changed?.Invoke();
     }
 

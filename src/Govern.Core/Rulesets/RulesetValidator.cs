@@ -44,6 +44,7 @@ internal static class RulesetValidator
         CombatRulesValidator.Validate(document, problems);
         RiverRulesValidator.Validate(document, rivers, terrains, problems);
         EconomyRulesValidator.Validate(document, terrains, problems);
+        ScienceRulesValidator.Validate(document, problems);
 
         return [.. problems];
     }

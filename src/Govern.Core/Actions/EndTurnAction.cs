@@ -5,6 +5,7 @@ using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 
@@ -97,12 +98,14 @@ internal static class EndTurnRule
         var unit = new Unit(new UnitId(id), city.Owner, city.Producing, tile, MovementLeft: 0);
         events.Add(new UnitCreatedEvent(unit.Id, unit.Owner, unit.Type, unit.Position, city.Id));
 
-        var reset = allocated.WithCity(city with { ProductionProgress = 0, ProductionPaid = false });
+        // The city goes on with the newest version of the unit its owner may produce.
+        var next = ScienceCalculator.NextProduction(ruleset, state.FindPlayer(city.Owner)!.NodeList, city.Producing);
+        var reset = allocated.WithCity(city with { Producing = next, ProductionProgress = 0, ProductionPaid = false });
         return reset with { Units = reset.Units.Add(unit) };
     }
 
     // A finished building joins the city and stands on its reserved tile, and the city goes back to producing its unit from
-    // scratch. The site is still valid: the reservation keeps improvements off it, and its territory changes hands only with the
+    // scratch (its newest version the owner may produce, like after a finished unit). The site is still valid: the reservation keeps improvements off it, and its territory changes hands only with the
     // city, whose capture drops the reservation. A game saved before buildings had sites has none; that building stays off the map.
     private static GameState ProduceBuilding(Ruleset ruleset, GameState state, City city, int perTurn, ImmutableArray<GameEvent>.Builder events)
     {
@@ -117,6 +120,7 @@ internal static class EndTurnRule
         events.Add(new BuildingCompletedEvent(city.Id, building, site ?? city.Position));
         var done = state.WithCity(city with
         {
+            Producing = ScienceCalculator.NextProduction(ruleset, state.FindPlayer(city.Owner)!.NodeList, city.Producing),
             ProducingBuilding = null,
             ProducingBuildingSite = null,
             ProductionProgress = 0,

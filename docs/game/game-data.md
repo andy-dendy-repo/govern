@@ -2,12 +2,12 @@
 title: Game data (the loadable ruleset)
 tags: [game, core, ruleset, upkeep, resource-cost, map-generation, builders, buildings, improvements, bridges, resources, terrain, rivers, sight-bonus, config, data, json, catalogs, abilities, texts, localization, validation, versioning, hash]
 code: [rulesets, src/Govern.Core/Rulesets, src/Govern.Application/Games/Services/DefaultRulesetService.cs, src/Govern.Client/Features/Games/Services/RulesetService.cs]
-updated: 2026-10-03
+updated: 2026-10-04
 ---
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v10.json`](../../rulesets/default/v10.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8, F12 suggested city names instead of the name template in v9, G17 the trader, trade values and the `trade` section in v10; [`v1.json`](../../rulesets/default/v1.json) to [`v9.json`](../../rulesets/default/v9.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v11.json`](../../rulesets/default/v11.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8, F12 suggested city names instead of the name template in v9, G17 the trader, trade values and the `trade` section in v10, G11a the `science` section, unit lines and building upgrades in v11; [`v1.json`](../../rulesets/default/v1.json) to [`v10.json`](../../rulesets/default/v10.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -53,7 +53,7 @@ updated: 2026-10-03
 
 ## Versions in the repository
 
-*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9), `v3.json` when `rivers` and `map.generation.rivers` arrived (G6), `v4.json` when `bridges`, `resources`, `improvements`, `buildings` and `cities.workRadius` arrived (G10a), and `v5.json` when terrain and river `yields`, `cities.yields`, `cities.startingStock` and `territory` arrived and `cities.workRadius` left (G5, G7), `v6.json` when unit and building `resourceCost` and `upkeep` and the `upkeep` section arrived (G8a), `v8.json` when `cities.suggestedNames` replaced `cities.nameTemplate` (F12), and `v9.json` when the `trade` section arrived (G17); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
+*Decided 2026-09-30 (G4).* A published version file is never edited: a content change adds `v<N+1>.json` next to it, and `DefaultRulesetService` (Api), `RulesetService` (client) and `TestRulesets` (unit tests) embed or read the newest one. Until Ruleset B pins games to a version, every game, running ones included, is played with the newest file. That is safe as long as a new version keeps every id the old one had (a stored game's tiles and units refer to them). Because Core and the rulesets move together (no `schemaVersion`), an older file may stop parsing when Core adds a required field, as `v1.json` did when `sightBonus` and `map.generation` arrived (G4) `v2.json` when `class`, `defenceBonus` and `combat` arrived (G9), `v3.json` when `rivers` and `map.generation.rivers` arrived (G6), `v4.json` when `bridges`, `resources`, `improvements`, `buildings` and `cities.workRadius` arrived (G10a), and `v5.json` when terrain and river `yields`, `cities.yields`, `cities.startingStock` and `territory` arrived and `cities.workRadius` left (G5, G7), `v6.json` when unit and building `resourceCost` and `upkeep` and the `upkeep` section arrived (G8a), `v8.json` when `cities.suggestedNames` replaced `cities.nameTemplate` (F12), `v9.json` when the `trade` section arrived (G17), and `v10.json` when the `science` section arrived (G11a); they are kept as the record of what was published. A unit stores the damage it has taken, not its health, so until games are pinned a new version must not lower `combat.maxHealth` (a hurt unit could be left with no health).
 
 ## Format conventions
 
@@ -95,11 +95,12 @@ Reading is strict, so a typo fails loading instead of silently taking a default:
   "improvements": [ ],
   "buildings": [ ],
   "trade": { },
+  "science": { },
   "texts": { }
 }
 ```
 
-The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus `units[].buildProduction`, terrain and river `yields`, `cities.yields`, `cities.startingStock`, `territory`, unit and building `resourceCost` and `upkeep`, `upkeep`, and the trade fields `resources[].tradeValue` and `trade`) are described in [game data: building sections](game-data-economy.md).
+The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus `units[].buildProduction`, terrain and river `yields`, `cities.yields`, `cities.startingStock`, `territory`, unit and building `resourceCost` and `upkeep`, `upkeep`, and the trade fields `resources[].tradeValue` and `trade`) are described in [game data: building sections](game-data-economy.md). The `science` section, `units[].replaces`, `units[].upgradeCost` and `buildings[].upgrades` are described in [game data: science](game-data-science.md).
 
 ## Setup (`setup`)
 
@@ -261,6 +262,7 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 | `resourceCost` | list of `{ "resource", "amount" }` | Resources the city pays when production of the unit begins ([costs and upkeep](game-data-economy.md#resource-costs-and-upkeep-resourcecost-upkeep-upkeep-section)) | 2 food |
 | `upkeep` | list of `{ "resource", "amount" }` | Resources paid every turn to keep the unit | 1 food, 1 water |
 | `abilities` | list of abilities | What it can do | `attack`, `build_bridge` |
+| `replaces`, `upgradeCost` | unit id, resource list; optional | The older unit this one replaces and the price of upgrading into it ([science](game-data-science.md#unit-lines-unitsreplaces-unitsupgradecost)) | — |
 
 ```json
 "units": [
@@ -311,7 +313,7 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
   "initialProduction": "soldier",
   "suggestedNames": ["city.name.ambermoor", "city.name.brightwater", "city.name.cindervale"],
   "captureResetsProduction": true,
-  "yields": [{ "resource": "culture", "amount": 1 }],
+  "yields": [{ "resource": "science", "amount": 1 }, { "resource": "culture", "amount": 1 }],
   "startingStock": [{ "resource": "food", "amount": 5 }, { "resource": "water", "amount": 5 }, { "resource": "wood", "amount": 5 }, { "resource": "stone", "amount": 5 }]
 }
 ```
@@ -392,6 +394,7 @@ Everything a player reads about the game's content comes from here: unit, class 
 - Rivers: `crossingCost` and `defenceBonus` 0..100; at least one kind crossable; generation `count` 0..20, `1 ≤ minLength ≤ maxLength ≤ 100`, `sources` and `mouths` not empty and without repeats, `stages` not empty, starting at 0, strictly increasing, the first one crossable.
 - Units and combat: see [Units](#units-units) and [Combat](#combat-combat).
 - Bridges, resources, improvements, buildings, build production, tile yields, city stock, territory, resource costs, upkeep and trade: see [game data: building sections](game-data-economy.md#validation-of-the-building-sections).
+- Science, unit lines and building upgrades: see [game data: science](game-data-science.md#validation-of-the-science-section).
 - Numbers are in range: movement, sight, costs, city sight, spacing and production ≥ 1; `8 ≤ minSize ≤ maxSize ≤ 40`; the default size within them; `players` = 2.
 - Spawn: `zoneColumnsPerMille` 1–250; `edgeMargin` ≥ 1 and less than the zone on the smallest map; `startingUnits` no more than that zone.
 - At least one terrain is passable, and `defaultTerrain` is.
@@ -418,8 +421,8 @@ Each [roadmap](design-roadmap.md) item adds a section here, with fields, example
 | `rivers` gains ship navigation (G15), seasonal kinds (G14) | G15, G14 |
 | `cities` gains growth, housing, loyalty | G8b |
 | `units` gains attacks per turn (deferred from G9 until a unit differs) | G9 |
-| `buildings` gains housing, upgrade chains and their own mechanics (faster army production, ships; traders came with G17) | G10b |
-| `techs` and `civics` trees (cost, upkeep, prerequisites, unlocks) | G11 |
+| `buildings` gains housing and their own mechanics (faster army production, ships; traders came with G17) | G10b |
+| `culture` tree (like `science`: points per turn, prerequisites, unlocks); `science` came with G11a | G11b |
 | `civilizations` and `governors` (skill trees) | G12, G13 |
 | `seasons` (length, per-season modifiers) | G14 |
 | `ships` (capacity, water movement) | G15 |

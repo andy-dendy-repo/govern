@@ -5,6 +5,7 @@ using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
+using Govern.Core.Science;
 using Govern.Core.State;
 
 namespace Govern.Core.Actions;
@@ -19,7 +20,7 @@ namespace Govern.Core.Actions;
 public sealed record ProduceBuildingCommand(CityId CityId, BuildingType Building, HexCoord Site) : GameCommand;
 
 /// <summary>
-/// Switches a city to producing a building it doesn't have yet, keeping the accumulated progress, and reserves the building's
+/// Switches a city to producing a building it doesn't have yet (in any version), that is unlocked and isn't an upgrade, keeping the accumulated progress, and reserves the building's
 /// tile. The tile must be in the city's territory (off the city tile), passable, free of improvements and buildings and of an
 /// improvement being built; a building that requires an adjacent terrain needs one of those terrains next to the tile. Ordering
 /// the same building on another tile only moves the reservation, and on the same tile changes nothing.
@@ -34,7 +35,7 @@ internal static class ProduceBuildingRule
             return RuleViolations.CityNotFound;
         }
 
-        if (Check(ruleset, city, command.Building) is { } violation)
+        if (Check(ruleset, state.FindPlayer(actor)!.NodeList, city, command.Building) is { } violation)
         {
             return violation;
         }
@@ -56,14 +57,25 @@ internal static class ProduceBuildingRule
     }
 
     // Whether the city may produce the building at all, wherever it stands; shared with the view-based preview.
-    public static RuleViolation? Check(Ruleset ruleset, City city, BuildingType building)
+    // A city never produces an upgrade (a builder makes it), nor a building it has in any version, nor a locked one.
+    public static RuleViolation? Check(Ruleset ruleset, ImmutableArray<OwnedNode> nodes, City city, BuildingType building)
     {
-        if (ruleset.FindBuilding(building) is null)
+        if (ruleset.FindBuilding(building) is not { } definition)
         {
             return RuleViolations.UnknownBuilding;
         }
 
-        return city.Has(building) ? RuleViolations.BuildingExists : null;
+        if (definition.Upgrades is not null)
+        {
+            return RuleViolations.BuildingIsUpgrade;
+        }
+
+        if (city.BuildingList.Any(built => ruleset.IsKindOf(built, building)))
+        {
+            return RuleViolations.BuildingExists;
+        }
+
+        return ScienceCalculator.IsUnlocked(ruleset, nodes, building) ? null : RuleViolations.Locked;
     }
 
     // The site checks in the order CheckSite makes them; a later one means the site passed the earlier ones. The view preview
