@@ -7,12 +7,12 @@ using Govern.Core.Units;
 namespace Govern.UnitTests.Core.Builders;
 
 /// <summary>
-/// The real default ruleset (<c>rulesets/default/v10.json</c>, copied next to the tests) and variants of it for rules whose data
+/// The real default ruleset (<c>rulesets/default/v11.json</c>, copied next to the tests) and variants of it for rules whose data
 /// matters to a test.
 /// </summary>
 internal static class TestRulesets
 {
-    public static readonly string DefaultJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "rulesets", "default", "v10.json"));
+    public static readonly string DefaultJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "rulesets", "default", "v11.json"));
 
     public static readonly Ruleset Default = Ruleset.ParseValid(DefaultJson);
 
@@ -24,6 +24,10 @@ internal static class TestRulesets
     public static readonly UnitType Builder = new("builder");
     public static readonly UnitType Scout = new("scout");
     public static readonly UnitType Trader = new("trader");
+    public static readonly UnitType Swordsman = new("swordsman");
+    public static readonly UnitType Pikeman = new("pikeman");
+    public static readonly UnitType Crossbowman = new("crossbowman");
+    public static readonly UnitType Knight = new("knight");
     public static readonly TerrainType Plains = new("plains");
     public static readonly TerrainType Forest = new("forest");
     public static readonly TerrainType Hills = new("hills");
@@ -48,6 +52,11 @@ internal static class TestRulesets
     public static readonly BuildingType TradePost = new("trade_post");
     public static readonly BuildingType CultureCentre = new("culture_centre");
     public static readonly BuildingType Harbour = new("harbour");
+    public static readonly BuildingType Workshop = new("workshop");
+    public static readonly BuildingType Barracks = new("barracks");
+    public static readonly BuildingType University = new("university");
+    public static readonly BuildingType Market = new("market");
+    public static readonly BuildingType Port = new("port");
 
     // The default document after a change, e.g. With(json => json["cities"]!["productionPerTurn"] = 2).
     public static JsonNode Document(Action<JsonNode>? change = null)

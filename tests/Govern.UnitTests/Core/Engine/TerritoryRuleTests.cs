@@ -177,7 +177,8 @@ public class TerritoryRuleTests
         var income = GameEngine.CityIncome(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), city);
         var after = EndTurn(state).State.FindCity(city)!.StockList;
 
-        income.ShouldBe(after);
+        income.Where(static amount => amount.Resource != TestRulesets.Science).ShouldBe(after, "science goes to the player's budget, not the stock");
+        YieldCalculator.AmountOf(income, TestRulesets.Science).ShouldBe(1);
         GameEngine.CityIncome(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P2), city).ShouldBeEmpty("not the viewer's city");
     }
 
@@ -192,7 +193,8 @@ public class TerritoryRuleTests
         var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
 
         view.TileAt(At(2, 5)).Visibility.ShouldBe(TileVisibility.Explored, "next to the territory, known but not in sight");
-        GameEngine.CityIncome(TestRulesets.Default, view, city).ShouldBe(EndTurn(state).State.FindCity(city)!.StockList);
+        GameEngine.CityIncome(TestRulesets.Default, view, city).Where(static amount => amount.Resource != TestRulesets.Science)
+            .ShouldBe(EndTurn(state).State.FindCity(city)!.StockList);
     }
 
     private static GameUpdate EndTurn(GameState state, PlayerId? player = null) =>

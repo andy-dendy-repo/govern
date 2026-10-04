@@ -240,12 +240,13 @@ public class GameTableBuildTests : ClientTestContext
     [Fact]
     public void ProduceBuilding_NeedsALake_IsDisabledWithTheReason()
     {
-        var cut = RenderTable(Create(cities: [City(7, You, At(2, 2))]));
+        var cut = RenderTable(WithNodes(Create(cities: [City(7, You, At(2, 2))]), 1, "sailing"));
 
         _board.Click(At(2, 2));
 
         cut.Find("button.produce-building-harbour").HasAttribute("disabled").ShouldBeTrue();
-        cut.Find(".building-reason").TextContent.ShouldBe("This building needs a different terrain next to its tile.");
+        cut.Find("button.produce-building-harbour").ParentElement!.QuerySelector(".building-reason")!.TextContent
+            .ShouldBe("This building needs a different terrain next to its tile.");
     }
 
     [Fact]
@@ -289,13 +290,14 @@ public class GameTableBuildTests : ClientTestContext
     public void Render_Stockpile_ShowsEveryResourceSummedOverYourCities()
     {
         var cut = RenderTable(Create(cities: [
-            City(7, You, At(2, 2), stock: [new ResourceAmount(Science, 7)]),
-            City(8, You, At(6, 2), stock: [new ResourceAmount(Science, 3)]),
+            City(7, You, At(2, 2), stock: [new ResourceAmount(Culture, 7)]),
+            City(8, You, At(6, 2), stock: [new ResourceAmount(Culture, 3)]),
             City(9, Opponent, At(6, 5)),
         ]));
 
-        cut.FindAll(".stockpile .stock").Count.ShouldBe(Ruleset.Resources.Length);
-        cut.Find(".stock-science .cost-amount").TextContent.ShouldBe("10");
+        cut.FindAll(".stockpile .stock").Count.ShouldBe(Ruleset.Resources.Length - 1, "science is a budget a turn, shown by its own counter");
+        cut.FindAll(".stock-science").ShouldBeEmpty();
+        cut.Find(".stock-culture .cost-amount").TextContent.ShouldBe("10");
         cut.Find(".stock-food .cost-amount").TextContent.ShouldBe("0");
     }
 

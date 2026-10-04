@@ -46,7 +46,7 @@ public class SetProductionActionTests
     }
 
     [Theory]
-    [InlineData("knight")]
+    [InlineData("dragoon")]
     [InlineData("")]
     [InlineData("Settler")]
     public void Execute_UnitTypeNotInTheRuleset_ReturnsUnknownUnitType(string unitType)
@@ -75,7 +75,7 @@ public class SetProductionActionTests
     [Fact]
     public void Execute_TraderWithoutATradePost_IsRejected()
     {
-        var builder = new GameStateBuilder().WithCapitals();
+        var builder = new GameStateBuilder().WithCapitals().WithNodes(P1, "trade");
         var plain = builder.AddCity(P1, 5, 5);
         var trading = builder.AddCity(P1, 5, 1, buildings: TestRulesets.TradePost);
         var state = builder.WithBuilding(TestRulesets.TradePost, (6, 1)).Build();

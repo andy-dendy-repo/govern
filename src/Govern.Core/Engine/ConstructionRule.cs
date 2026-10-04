@@ -11,7 +11,7 @@ using Govern.Core.Units;
 namespace Govern.Core.Engine;
 
 // The end-of-turn economy of one player (EndTurnRule): their units' jobs advance, then each of their cities adds the yields of
-// its territory and buildings to its own stock.
+// its territory and buildings to its own stock (all but science, which is a per-turn budget: see ScienceRule).
 internal static class ConstructionRule
 {
     // Advances every job of the player's units, oldest first (then by unit id). A job gains its unit's build production, plus
@@ -42,29 +42,37 @@ internal static class ConstructionRule
                 continue;
             }
 
-            var progress = job.Progress + ruleset.Unit(unit.Type).BuildProduction;
-            if (state.Map.TileAt(unit.Position).Territory is { } territory
-                && state.FindCity(territory) is { } city
-                && city.Owner == player
-                && used.Add(city.Id))
+            // A finished upgrade waiting for its city's resources takes no more production.
+            if (job.Progress >= cost)
             {
-                progress += CityProduction.PerTurn(ruleset, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth));
+                state = Complete(ruleset, state, unit, job, events);
+                continue;
             }
 
+            var progress = job.Progress + ruleset.Unit(unit.Type).BuildProduction + LentProduction(ruleset, state, unit, used);
             state = progress >= cost
-                ? Complete(state, unit, job, events)
+                ? Complete(ruleset, state, unit, job with { Progress = cost }, events)
                 : state.WithUnit(unit with { Job = job with { Progress = progress } });
         }
 
         return (state, used);
     }
 
+    // The production of the own city whose territory holds the unit's tile, once per city per turn (recorded in `used`).
+    private static int LentProduction(Ruleset ruleset, GameState state, Unit unit, HashSet<CityId> used) =>
+        state.Map.TileAt(unit.Position).Territory is { } territory
+            && state.FindCity(territory) is { } city
+            && city.Owner == unit.Owner
+            && used.Add(city.Id)
+            ? CityProduction.PerTurn(ruleset, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth))
+            : 0;
+
     // Adds each of the player's cities' income (its territory's tiles, its own yields and its working buildings) to its stock.
     public static GameState CollectYields(Ruleset ruleset, GameState state, PlayerId player)
     {
         foreach (var city in state.Cities.Where(city => city.Owner == player).ToList())
         {
-            var income = Income(ruleset, state.Map, city);
+            var income = Income(ruleset, state.Map, city).Where(amount => amount.Resource != ruleset.Science.Resource);
             var stock = YieldCalculator.Sum(ruleset, city.StockList.Concat(income));
             state = state.WithCity(city with { Stock = stock.IsEmpty ? null : stock });
         }
@@ -84,6 +92,11 @@ internal static class ConstructionRule
     // the city whose territory it was in changed hands).
     private static int? CostOf(Ruleset ruleset, GameState state, Unit unit, UnitJob job)
     {
+        if (job.UpgradeTo is { } upgrade)
+        {
+            return UpgradeBuildingRule.StillValid(ruleset, state, unit, upgrade) ? ruleset.Building(upgrade).Cost : null;
+        }
+
         if (job.Improvement is { } improvement)
         {
             var definition = ruleset.Improvement(improvement);
@@ -97,8 +110,14 @@ internal static class ConstructionRule
             : null;
     }
 
-    private static GameState Complete(GameState state, Unit unit, UnitJob job, ImmutableArray<GameEvent>.Builder events)
+    // A finished upgrade waits, its progress full, until its city can pay the upgrade's resource cost.
+    private static GameState Complete(Ruleset ruleset, GameState state, Unit unit, UnitJob job, ImmutableArray<GameEvent>.Builder events)
     {
+        if (job.UpgradeTo is { } upgrade)
+        {
+            return UpgradeBuildingRule.Complete(ruleset, state, unit, upgrade, events) ?? state.WithUnit(unit with { Job = job });
+        }
+
         var idle = state.WithUnit(unit with { Job = null });
         if (job.Improvement is { } improvement)
         {

@@ -27,7 +27,7 @@ public class RulesetTests
         ["free terrain"] = json => json["terrains"]![0]!["movementCost"] = 0,
         ["three players"] = json => json["setup"]!["players"] = 3,
         ["no starting units"] = json => json["setup"]!["startingUnits"] = new JsonArray(),
-        ["unknown starting unit"] = json => json["setup"]!["startingUnits"] = new JsonArray("settler", "knight"),
+        ["unknown starting unit"] = json => json["setup"]!["startingUnits"] = new JsonArray("settler", "dragoon"),
         ["no founder"] = json => json["setup"]!["startingUnits"] = new JsonArray("soldier"),
         ["too many starting units"] = json => json["setup"]!["startingUnits"] = new JsonArray("settler", "soldier", "soldier"),
         ["map below the engine's minimum"] = json => json["map"]!["minSize"] = 7,
@@ -42,7 +42,7 @@ public class RulesetTests
         ["blind cities"] = json => json["cities"]!["sight"] = 0,
         ["no city spacing"] = json => json["cities"]!["minimumSpacing"] = 0,
         ["no production"] = json => json["cities"]!["productionPerTurn"] = 0,
-        ["unknown initial production"] = json => json["cities"]!["initialProduction"] = "knight",
+        ["unknown initial production"] = json => json["cities"]!["initialProduction"] = "dragoon",
         ["no suggested city names"] = json => json["cities"]!["suggestedNames"] = new JsonArray(),
         ["missing suggested city name"] = json => json["cities"]!["suggestedNames"]![0] = "city.missing",
         ["invalid suggested city name"] = json => json["texts"]!["city.name.ambermoor"] = "<Amber>",
@@ -176,6 +176,28 @@ public class RulesetTests
                 resource!.AsObject().Remove("tradeValue");
             }
         },
+        ["missing science section"] = json => json.AsObject().Remove("science"),
+        ["unknown science resource"] = json => json["science"]!["resource"] = "mana",
+        ["tradable science"] = json => json["resources"]![5]!["tradeValue"] = 1,
+        ["science as a cost"] = json => json["buildings"]![0]!["resourceCost"]!.AsArray().Add(new JsonObject { ["resource"] = "science", ["amount"] = 1 }),
+        ["node id not snake_case"] = json => json["science"]!["nodes"]![0]!["id"] = "Archery",
+        ["node without points"] = json => json["science"]!["nodes"]![0]!["points"] = 0,
+        ["node requires a later node"] = json => json["science"]!["nodes"]![0]!["requires"] = new JsonArray("iron_working"),
+        ["node requires an unknown node"] = json => json["science"]!["nodes"]![6]!["requires"] = new JsonArray("alchemy"),
+        ["node unlocks an unknown unit"] = json => json["science"]!["nodes"]![0]!["units"] = new JsonArray("dragoon"),
+        ["node unlocks an unknown building"] = json => json["science"]!["nodes"]![3]!["buildings"] = new JsonArray("lighthouse"),
+        ["unit unlocked by two nodes"] = json => json["science"]!["nodes"]![1]!["units"] = new JsonArray("horseman", "archer"),
+        ["node locks a starting unit"] = json => json["science"]!["nodes"]![0]!["units"] = new JsonArray("archer", "settler"),
+        ["missing node name"] = json => json["texts"]!.AsObject().Remove("science.archery.name"),
+        ["unit replaces an unknown unit"] = json => json["units"]![8]!["replaces"] = "legionary",
+        ["unit replaces another class"] = json => json["units"]![8]!["replaces"] = "archer",
+        ["two units replace one"] = json => json["units"]![9]!["replaces"] = "soldier",
+        ["replacing unit without an upgrade cost"] = json => json["units"]![8]!.AsObject().Remove("upgradeCost"),
+        ["upgrade cost without a replaced unit"] = json => json["units"]![1]!["upgradeCost"] = new JsonArray(),
+        ["units replace each other"] = json => json["units"]![1]!["replaces"] = "swordsman",
+        ["building upgrades itself"] = json => json["buildings"]![6]!["upgrades"] = "barracks",
+        ["two buildings upgrade one"] = json => json["buildings"]![8]!["upgrades"] = "campus",
+        ["trade building is an upgrade"] = json => json["trade"]!["building"] = "market",
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -337,6 +359,28 @@ public class RulesetTests
         { "missing trade section", "$" },
         { "trader that attacks", "$.units[7].abilities" },
         { "nothing tradable", "$.resources" },
+        { "missing science section", "$" },
+        { "unknown science resource", "$.science.resource" },
+        { "tradable science", "$.science.resource" },
+        { "science as a cost", "$.science.resource" },
+        { "node id not snake_case", "$.science.nodes[0].id" },
+        { "node without points", "$.science.nodes[0].points" },
+        { "node requires a later node", "$.science.nodes[0].requires" },
+        { "node requires an unknown node", "$.science.nodes[6].requires" },
+        { "node unlocks an unknown unit", "$.science.nodes[0].units" },
+        { "node unlocks an unknown building", "$.science.nodes[3].buildings" },
+        { "unit unlocked by two nodes", "$.science.nodes[1].units" },
+        { "node locks a starting unit", "$.science.nodes" },
+        { "missing node name", "$.texts" },
+        { "unit replaces an unknown unit", "$.units[8].replaces" },
+        { "unit replaces another class", "$.units[8].replaces" },
+        { "two units replace one", "$.units[9].replaces" },
+        { "replacing unit without an upgrade cost", "$.units[8].upgradeCost" },
+        { "upgrade cost without a replaced unit", "$.units[1].upgradeCost" },
+        { "units replace each other", "$.units" },
+        { "building upgrades itself", "$.buildings[6].upgrades" },
+        { "two buildings upgrade one", "$.buildings[8].upgrades" },
+        { "trade building is an upgrade", "$.trade.building" },
     };
 
     [Fact]
@@ -349,7 +393,20 @@ public class RulesetTests
         var ruleset = result.Ruleset;
         ruleset.Setup.Players.ShouldBe(2);
         ruleset.Setup.StartingUnits.ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
-        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder, TestRulesets.Scout, TestRulesets.Trader]);
+        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder, TestRulesets.Scout, TestRulesets.Trader, TestRulesets.Swordsman, TestRulesets.Pikeman, TestRulesets.Crossbowman, TestRulesets.Knight]);
+        ruleset.ReplacementOf(TestRulesets.Soldier)!.Id.ShouldBe(TestRulesets.Swordsman);
+        ruleset.ReplacementOf(TestRulesets.Archer)!.Id.ShouldBe(TestRulesets.Crossbowman);
+        ruleset.ReplacementOf(TestRulesets.Swordsman).ShouldBeNull();
+        ruleset.Unit(TestRulesets.Knight).UpgradeCost.ShouldBe([new ResourceAmount(TestRulesets.Stone, 3)]);
+        ruleset.Science.Resource.ShouldBe(TestRulesets.Science);
+        ruleset.Science.Nodes.Select(static node => node.Id).ShouldBe(["archery", "horseback_riding", "trade", "sailing", "bronze_working", "education", "iron_working", "machinery", "stirrups", "currency", "shipbuilding"]);
+        ruleset.NodeUnlocking(TestRulesets.Trader)!.Id.ShouldBe("trade");
+        ruleset.NodeUnlocking(TestRulesets.TradePost)!.Id.ShouldBe("trade");
+        ruleset.NodeUnlocking(TestRulesets.Soldier).ShouldBeNull();
+        ruleset.FindNode("iron_working")!.Requires.ShouldBe(["bronze_working"]);
+        ruleset.UpgradeOf(TestRulesets.Campus)!.Id.ShouldBe(TestRulesets.University);
+        ruleset.IsKindOf(TestRulesets.Market, TestRulesets.TradePost).ShouldBeTrue();
+        ruleset.IsKindOf(TestRulesets.TradePost, TestRulesets.Market).ShouldBeFalse();
         ruleset.Unit(TestRulesets.Trader).ShouldSatisfyAllConditions(
             static trader => trader.CanTrade.ShouldBeTrue(),
             static trader => trader.Strength.ShouldBeNull(),
@@ -373,7 +430,7 @@ public class RulesetTests
         ruleset.Territory.GrowthResource.ShouldBe(TestRulesets.Culture);
         ruleset.Territory.NextTileCost(0).ShouldBe(4);
         ruleset.Territory.NextTileCost(3).ShouldBe(10);
-        ruleset.Cities.Yields.ShouldBe([new ResourceAmount(TestRulesets.Culture, 1)]);
+        ruleset.Cities.Yields.ShouldBe([new ResourceAmount(TestRulesets.Science, 1), new ResourceAmount(TestRulesets.Culture, 1)]);
         ruleset.Cities.StartingStock.Select(static amount => amount.Resource).ShouldBe([TestRulesets.Food, TestRulesets.Water, TestRulesets.Wood, TestRulesets.Stone]);
         ruleset.Bridges.Cost.ShouldBe(6);
         ruleset.Resources.Select(static resource => resource.Id.Id).ShouldBe(["food", "water", "wood", "stone", "gold", "science", "culture"]);
@@ -381,7 +438,7 @@ public class RulesetTests
         ruleset.Improvement(TestRulesets.Mine).Terrains.ShouldBe([TestRulesets.Hills]);
         ruleset.Improvement(TestRulesets.Farm).Yields.ShouldHaveSingleItem().ShouldBe(new ResourceAmount(TestRulesets.Food, 2));
         ruleset.Buildings.Select(static building => building.Id)
-            .ShouldBe([TestRulesets.ArmyCamp, TestRulesets.Campus, TestRulesets.TradePost, TestRulesets.CultureCentre, TestRulesets.Harbour]);
+            .ShouldBe([TestRulesets.ArmyCamp, TestRulesets.Campus, TestRulesets.TradePost, TestRulesets.CultureCentre, TestRulesets.Harbour, TestRulesets.Workshop, TestRulesets.Barracks, TestRulesets.University, TestRulesets.Market, TestRulesets.Port]);
         ruleset.Building(TestRulesets.ArmyCamp).Production.ShouldBe(1);
         ruleset.Building(TestRulesets.ArmyCamp).ResourceCost.ShouldBe([new ResourceAmount(TestRulesets.Stone, 4), new ResourceAmount(TestRulesets.Wood, 2)]);
         ruleset.Building(TestRulesets.Campus).Upkeep.ShouldBe([new ResourceAmount(TestRulesets.Gold, 1)]);
@@ -511,12 +568,12 @@ public class RulesetTests
     {
         var ruleset = TestRulesets.Default;
 
-        ruleset.FindUnit(new UnitType("knight")).ShouldBeNull();
+        ruleset.FindUnit(new UnitType("dragoon")).ShouldBeNull();
         ruleset.FindUnit(default).ShouldBeNull();
-        Should.Throw<ArgumentException>(() => ruleset.Unit(new UnitType("knight")));
+        Should.Throw<ArgumentException>(() => ruleset.Unit(new UnitType("dragoon")));
         Should.Throw<ArgumentException>(() => ruleset.Terrain(new TerrainType("tundra")));
         Should.Throw<ArgumentException>(() => ruleset.River(new RiverType("canal")));
-        Should.Throw<ArgumentException>(() => ruleset.Text("unit.knight.name"));
+        Should.Throw<ArgumentException>(() => ruleset.Text("unit.dragoon.name"));
         ruleset.FindImprovement(new ImprovementType("plantation")).ShouldBeNull();
         ruleset.FindBuilding(new BuildingType("bank")).ShouldBeNull();
         ruleset.FindResource(new ResourceType("iron")).ShouldBeNull();

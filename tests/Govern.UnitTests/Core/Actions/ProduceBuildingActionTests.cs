@@ -62,7 +62,7 @@ public class ProduceBuildingActionTests
         var builder = new GameStateBuilder().WithCapitals();
         var city = builder.AddCity(P1, 5, 5, progress: 3, producingBuilding: TestRulesets.Campus, buildingSite: (5, 4));
 
-        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new SetProductionCommand(city, TestRulesets.Archer)).ShouldSucceed();
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new SetProductionCommand(city, TestRulesets.Spearman)).ShouldSucceed();
 
         update.State.FindCity(city)!.ProducingBuilding.ShouldBeNull();
         update.State.FindCity(city)!.ProducingBuildingSite.ShouldBeNull();
@@ -87,7 +87,7 @@ public class ProduceBuildingActionTests
     [InlineData(6, 4, 4, 5, false)]
     public void Execute_Harbour_NeedsALakeNextToItsTile(int lakeColumn, int lakeRow, int siteColumn, int siteRow, bool allowed)
     {
-        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Lake, (lakeColumn, lakeRow));
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Lake, (lakeColumn, lakeRow)).WithNodes(P1, "sailing");
         var city = builder.AddCity(P1, 5, 5);
 
         var result = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new ProduceBuildingCommand(city, TestRulesets.Harbour, At(siteColumn, siteRow)));

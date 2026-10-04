@@ -1,8 +1,8 @@
 ---
 title: Game data, building and economy sections (yields, territory, costs, upkeep, bridges, resources, improvements, buildings, trade)
 tags: [game, core, ruleset, json, resource-cost, upkeep, supply, building-health, builders, build-production, territory, tile-yields, city-stock, water, desert, culture, bridges, resources, improvements, farm, mine, lumber-camp, buildings, campus, harbour, army-camp, trade, trader, trade-value, market, demand, validation]
-code: [rulesets/default/v10.json, src/Govern.Core/Rulesets, src/Govern.Core/Economy, src/Govern.Core/Rulesets/EconomyRulesValidator.cs, src/Govern.Core/Rulesets/UpkeepRulesValidator.cs, src/Govern.Core/Rulesets/TradeRulesValidator.cs]
-updated: 2026-10-03
+code: [rulesets/default/v11.json, src/Govern.Core/Rulesets, src/Govern.Core/Economy, src/Govern.Core/Rulesets/EconomyRulesValidator.cs, src/Govern.Core/Rulesets/UpkeepRulesValidator.cs, src/Govern.Core/Rulesets/TradeRulesValidator.cs]
+updated: 2026-10-04
 ---
 
 # Game data: building sections of the ruleset
@@ -34,10 +34,10 @@ updated: 2026-10-03
 
 | Field | Type | Meaning | Default ruleset |
 |---|---|---|---|
-| `cities.yields` | list, may be empty | What every city makes a turn on top of its tiles (the culture that grows territory) | 1 culture |
+| `cities.yields` | list, may be empty | What every city makes a turn on top of its tiles (the science of its science budget, the culture that grows territory) | 1 science, 1 culture |
 | `cities.startingStock` | list, amount 1..1000 | The stock a new city starts with | 5 food, 5 water, 5 wood, 5 stone |
 
-Each city keeps its own stock (`City.Stock`). At the end of its owner's turn it adds the yields of every tile in its territory, `cities.yields` and its buildings' yields. A captured city keeps its stock and territory.
+Each city keeps its own stock (`City.Stock`). At the end of its owner's turn it adds the yields of every tile in its territory, `cities.yields` and its buildings' yields, except `science.resource`, which is a budget per turn and never stored ([science](game-data-science.md)). A captured city keeps its stock and territory.
 
 ## Territory (`territory`)
 
@@ -128,6 +128,7 @@ Unique per city: a city has each building at most once. Each one stands on its o
 | `yields` | list of `{ "resource", "amount" }` | Added to the city's stock every turn; may be empty |
 | `production` | int 0..100 | Added to the city's production per turn (for its own production and the jobs it feeds) |
 | `requiresAdjacentTerrain` | list of terrain ids | The building's tile needs one of them next to it (empty: no need); no repeats |
+| `upgrades` | building id, optional | The building this one upgrades; made by a builder's job, never produced by a city ([science](game-data-science.md#building-upgrades-buildingsupgrades)) |
 
 ```json
 "buildings": [
@@ -139,7 +140,7 @@ Unique per city: a city has each building at most once. Each one stands on its o
 ]
 ```
 
-The trade post (`trade.building`) holds its city's market and lets it produce traders ([trade](#trade-trade)). Later items give the other buildings their own mechanics (faster army production in army camps, ships from harbours), upgrades, pillage and repair ([design roadmap](design-roadmap.md), G10b).
+The trade post (`trade.building`) holds its city's market and lets it produce traders ([trade](#trade-trade)). v11 adds the workshop and four upgrades (barracks, university, market, port), listed in [game data: science](game-data-science.md#building-upgrades-buildingsupgrades); a building a science node lists is locked until the node is owned and enabled. Later items give the other buildings their own mechanics (faster army production in army camps, ships from harbours), pillage and repair ([design roadmap](design-roadmap.md), G10b).
 
 ## Trade (`trade`)
 

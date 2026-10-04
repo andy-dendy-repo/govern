@@ -2,7 +2,7 @@
 title: Game Core engine
 tags: [game, core, engine, trading, trade-route, trader, market, deal, demand, upkeep, resource-cost, supply, building-health, upkeep-priority, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, game-log, events-for, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
-updated: 2026-10-03
+updated: 2026-10-04
 ---
 
 # Game Core engine
@@ -138,6 +138,15 @@ Andrii's model: no money (gold is a resource), cities with a trade post swap res
 - **Engine:** `Engine/TradeRule` walks traders (through `AutoMoveRule.TakeSteps`, stopping next to the post), swaps goods after upkeep at the end of the host owner's turn and moves demand (`Economy/TradeCalculator`: free market, deal check, demand step), and after every command closes routes whose cities changed hands and breaks deals whose trader is gone. A trader on a route refuses move and set destination (`trade.on_route`); a trader is produced only next to a trade post.
 - **View:** own cities' `CityView.Market`/`Demand`, `CityView.TradePost` for cities the viewer may trade with, `UnitView.RouteId` (owner only) and `PlayerView.TradeRoutes` (`TradeRouteView`: the owner's routes with the host's free market while open with the trader at the post; the routes at the viewer's cities without the trader or the home market). `CityForecast` ignores trade (the other side's stock is hidden).
 
+## Science (G11a)
+
+Andrii's model: science is a budget per turn, never stored; owned items take their points every turn and the newest switch off when the cities make too little (ruleset v11, [game data](../game/game-data-science.md), algorithms in [game logic: science](../game/game-logic-science.md)).
+- **Ruleset:** `Rulesets/ScienceRules` (`resource`, `nodes`: `Science/ScienceNode` with points, requires, units, buildings), `UnitDefinition.Replaces`/`UpgradeCost`, `BuildingDefinition.Upgrades`; lookups `Ruleset.FindNode`, `NodeUnlocking`, `ReplacementOf`, `UpgradeOf`, `IsKindOf`, `NodeName`; checked by `ScienceRulesValidator`.
+- **State, optional in the JSON (no schema bump):** `Player.Nodes` (`Science/OwnedNode`: node id and `Disabled`, in unlock order) and `UnitJob.UpgradeTo`.
+- **Commands:** `UnlockNodeCommand` (`unlock_node`), `UpgradeUnitCommand` (`upgrade_unit`), `UpgradeBuildingCommand` (`upgrade_building`, a builder's job); dispatched by `Engine/ScienceRule.Dispatch`. Events: `ScienceNodeChangedEvent` (`science_node_changed`, with a `ScienceNodeChange`; its player only), `UnitUpgradedEvent` (`unit_upgraded`) and `BuildingUpgradedEvent` (`building_upgraded`; the city id only for its owner).
+- **Engine:** `ScienceRule.Income` (the science resource in the player's cities' income), `ScienceRule.Balance` after every command; `Science/ScienceCalculator` (locks, newest of a line, the next production, upgrades, `CheckUnlock`) is shared by the rules and the client. `ConstructionRule` finishes upgrade jobs (the city pays when done; a finished job waits) and `CollectYields` skips science.
+- **View:** `PlayerView.Science` (`ScienceView`: income and nodes), the viewer's own only; previews in `Visibility/SciencePreviewCalculator` (`CheckUnlockNode`, `CheckUpgradeUnit`, `CheckUpgradeBuilding`).
+
 ## Combat (G9)
 
 - **State:** `Unit.Damage` (0 = unhurt; health = `combat.maxHealth` − damage). Stored as damage so games saved before G9 read as unhurt with no schema bump; the JSON leaves it out while it is 0. The view carries `UnitView.Health` for every unit the viewer sees.
@@ -194,6 +203,7 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `bridge.not_adjacent` / `bridge.no_river` / `bridge.exists` / `bridge.impassable` / `bridge.enemy_territory` | Bridge job problems |
 | `city.unknown_building` / `city.building_exists` / `city.building_needs_terrain` / `city.building_not_in_territory` / `city.building_wrong_terrain` / `city.building_site_taken` / `city.building_site_being_improved` | Building production problems |
 | `city.unknown_upkeep_priority` | An upkeep priority Core doesn't know |
+| `science.unknown_node` / `science.node_owned` / `science.needs_prerequisite` / `science.not_enough` / `science.locked` / `science.replaced`, `city.building_is_upgrade`, `upgrade.none` / `upgrade.not_in_territory` / `upgrade.missing_resources` | Science, lock and upgrade problems, in check order in [game logic: science](../game/game-logic-science.md) |
 | `trade.*`, `market.cap_out_of_range` / `market.below_deals` | Trade command problems, in check order in [game logic: trading](../game/game-logic-trade.md#the-trade-commands) |
 
 Exceptions are reserved for programming errors: an invalid `GameSetup`, an unknown command type, or `ViewFor` for a non-participant.
@@ -299,11 +309,12 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - builders, jobs, yields and buildings (`Actions/BuildImprovementActionTests`, `BuildBridgeActionTests`, `ProduceBuildingActionTests`, `Engine/ConstructionRuleTests`);
 - costs and upkeep (`Economy/UpkeepCalculatorTests`, `Engine/UpkeepRuleTests`, `Engine/ProductionCostTests`, `Engine/UpkeepPreviewTests`);
 - trading (`Actions/*Deal*`, `*TradeRoute*` and `SetMarketOrderActionTests`, `Engine/TradeRuleTests`, `Economy/TradeCalculatorTests`, `Visibility/TradeRouteViewTests`, `Visibility/TradePreviewCalculatorTests` for parity, scenarios from `Builders/TradeScenario`);
+- science (`Actions/UnlockNodeActionTests`, `UpgradeUnitActionTests`, `UpgradeBuildingActionTests`, `Engine/ScienceRuleTests`, the science cases of `Rulesets/RulesetTests`; `GameStateBuilder.WithNodes` gives a player nodes);
 - river generation: mirrored, from a source to a mouth, never splitting the passable map (`Map/MapGeneratorTests`);
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v10.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v11.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`

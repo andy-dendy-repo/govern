@@ -1,7 +1,8 @@
 @* The selected city: its name in its owner's colour and, for the player's own city, its resources with what they gain or lose
-   each turn, what it produces, whether its resource cost is paid and how long it takes, then four tabs: Units (the buttons
-   to produce a unit), Buildings (the buildings it has with their health, and a button per building it doesn't have, with
-   its effect, cost and, when it can't have it, why), Economy (its upkeep and upkeep order, marked with a warning when it
+   each turn (science is not stocked, so it is left out), what it produces, whether its resource cost is paid and how long it
+   takes, then four tabs: Units (the buttons to produce a unit; a unit a newer unlocked one replaces is left out, a locked one
+   is disabled), Buildings (the buildings it has with their health, and a button per building it doesn't have in any
+   version, with its effect, cost and, when it can't have it, why; upgrades are made by builders, so they have no button), Economy (its upkeep and upkeep order, marked with a warning when it
    can't pay, and what its next territory tile costs) and Market (what it sells and buys, and its trade routes: CityMarket,
    marked when a proposal waits for an answer). The open tab is kept in GameUiService, so it stays open from city to
    city. Every tab renders on the client, so switching sends nothing and the panel's buttons stay in the page. *@
@@ -27,7 +28,7 @@
     {
         var forecast = Forecast;
         <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" Wrap="FlexWrap.Wrap" class="city-stock" role="group" aria-label="City resources">
-            @foreach (var resource in Ruleset.Resources)
+            @foreach (var resource in Ruleset.Resources.Where(resource => resource.Id != Ruleset.Science.Resource))
             {
                 var (amount, gain) = (YieldCalculator.AmountOf(City.StockList, resource.Id), Net(forecast, resource.Id));
                 @if (amount != 0 || gain != 0)
@@ -56,12 +57,13 @@
             <Tabs>
                 <RadzenTabsItem Text="Units">
                     <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" Wrap="FlexWrap.Wrap" class="city-tab-units">
-                        @foreach (var unit in Ruleset.Units)
+                        @foreach (var unit in Ruleset.Units.Where(unit => ProducingUnit(unit.Id) || ProduceProblem(unit.Id) != RuleViolations.Replaced))
                         {
+                            var locked = ProduceProblem(unit.Id) == RuleViolations.Locked;
                             <RadzenButton Size="ButtonSize.Small"
                                           ButtonStyle="@(ProducingUnit(unit.Id) ? ButtonStyle.Primary : ButtonStyle.Light)"
-                                          Disabled="@(Busy || !CanAct || ProducingUnit(unit.Id) || NeedsTradePost(unit))"
-                                          title="@(NeedsTradePost(unit) ? $"Needs a {Ruleset.BuildingName(Ruleset.Trade.Building)}" : null)"
+                                          Disabled="@(Busy || !CanAct || ProducingUnit(unit.Id) || NeedsTradePost(unit) || locked)"
+                                          title="@(locked ? RuleViolations.Locked.Message : NeedsTradePost(unit) ? $"Needs a {Ruleset.BuildingName(Ruleset.Trade.Building)}" : null)"
                                           Click="@(() => Command.InvokeAsync(new SetProductionCommand(City.Id, unit.Id)))"
                                           class="@($"produce produce-{unit.Id.Id}")">
                                 <span class="produce-name">Build @Ruleset.UnitName(unit.Id)</span>
@@ -92,7 +94,7 @@
                             }
                         </RadzenStack>
                         <RadzenStack Gap="0.25rem">
-                            @foreach (var building in Ruleset.Buildings.Where(building => !City.BuildingList.Contains(building.Id)))
+                            @foreach (var building in Ruleset.Buildings.Where(building => building.Upgrades is null && !HasKindOf(building.Id)))
                             {
                                 var problem = GameEngine.CheckProduceBuilding(Ruleset, View, City.Id, building.Id);
                                 var placing = Ui.Selection.Placing == building.Id;

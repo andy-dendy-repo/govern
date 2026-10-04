@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Govern.Core.Economy;
 using Govern.Core.Map;
+using Govern.Core.Science;
 using Govern.Core.Units;
 
 namespace Govern.Core.Rulesets;
@@ -22,6 +23,11 @@ public sealed class Ruleset
     private readonly FrozenDictionary<ResourceType, ResourceDefinition> _resources;
     private readonly FrozenDictionary<ImprovementType, ImprovementDefinition> _improvements;
     private readonly FrozenDictionary<BuildingType, BuildingDefinition> _buildings;
+    private readonly FrozenDictionary<string, ScienceNode> _nodes;
+    private readonly FrozenDictionary<UnitType, ScienceNode> _unitNodes;
+    private readonly FrozenDictionary<BuildingType, ScienceNode> _buildingNodes;
+    private readonly FrozenDictionary<UnitType, UnitDefinition> _replacements;
+    private readonly FrozenDictionary<BuildingType, BuildingDefinition> _upgrades;
 
     internal Ruleset(RulesetDocument document, string hash)
     {
@@ -39,6 +45,7 @@ public sealed class Ruleset
         Buildings = document.Buildings;
         Combat = document.Combat;
         Trade = document.Trade;
+        Science = document.Science;
         Texts = document.Texts;
         Hash = hash;
         _units = document.Units.ToFrozenDictionary(static unit => unit.Id);
@@ -47,6 +54,11 @@ public sealed class Ruleset
         _resources = document.Resources.ToFrozenDictionary(static resource => resource.Id);
         _improvements = document.Improvements.ToFrozenDictionary(static improvement => improvement.Id);
         _buildings = document.Buildings.ToFrozenDictionary(static building => building.Id);
+        _nodes = document.Science.Nodes.ToFrozenDictionary(static node => node.Id, StringComparer.Ordinal);
+        _unitNodes = document.Science.Nodes.SelectMany(static node => node.Units.Select(unit => (unit, node))).ToFrozenDictionary(static pair => pair.unit, static pair => pair.node);
+        _buildingNodes = document.Science.Nodes.SelectMany(static node => node.Buildings.Select(building => (building, node))).ToFrozenDictionary(static pair => pair.building, static pair => pair.node);
+        _replacements = document.Units.Where(static unit => unit.Replaces is not null).ToFrozenDictionary(static unit => unit.Replaces!.Value);
+        _upgrades = document.Buildings.Where(static building => building.Upgrades is not null).ToFrozenDictionary(static building => building.Upgrades!.Value);
     }
 
     /// <summary>How a game starts.</summary>
@@ -90,6 +102,9 @@ public sealed class Ruleset
 
     /// <summary>Trading: markets, routes and demand levels.</summary>
     public TradeRules Trade { get; }
+
+    /// <summary>The science tree: what counts as science and every node.</summary>
+    public ScienceRules Science { get; }
 
     /// <summary>The resources cities can trade, in the ruleset's order.</summary>
     public IEnumerable<ResourceDefinition> TradableResources => Resources.Where(static resource => resource.IsTradable);
@@ -176,6 +191,48 @@ public sealed class Ruleset
     public BuildingDefinition Building(BuildingType type) =>
         FindBuilding(type) ?? throw new ArgumentException($"The ruleset has no building '{type.Id}'.", nameof(type));
 
+    /// <summary>Looks up a science node that may not exist, such as one sent in a command.</summary>
+    /// <param name="id">The node's id.</param>
+    /// <returns>The node, or <see langword="null"/> when the ruleset has no such node.</returns>
+    public ScienceNode? FindNode(string id) => id is null ? null : _nodes.GetValueOrDefault(id);
+
+    /// <summary>The science node that unlocks a unit.</summary>
+    /// <param name="type">A unit type.</param>
+    /// <returns>The node, or <see langword="null"/> when no node lists the unit (it is always available).</returns>
+    public ScienceNode? NodeUnlocking(UnitType type) => _unitNodes.GetValueOrDefault(type);
+
+    /// <summary>The science node that unlocks a building.</summary>
+    /// <param name="type">A building.</param>
+    /// <returns>The node, or <see langword="null"/> when no node lists the building (it is always available).</returns>
+    public ScienceNode? NodeUnlocking(BuildingType type) => _buildingNodes.GetValueOrDefault(type);
+
+    /// <summary>The next version of a unit: the unit whose <see cref="UnitDefinition.Replaces"/> names it.</summary>
+    /// <param name="type">A unit type.</param>
+    /// <returns>The replacing unit, or <see langword="null"/> when none replaces it.</returns>
+    public UnitDefinition? ReplacementOf(UnitType type) => _replacements.GetValueOrDefault(type);
+
+    /// <summary>The upgrade of a building: the building whose <see cref="BuildingDefinition.Upgrades"/> names it.</summary>
+    /// <param name="type">A building.</param>
+    /// <returns>The upgrade, or <see langword="null"/> when the building has none.</returns>
+    public BuildingDefinition? UpgradeOf(BuildingType type) => _upgrades.GetValueOrDefault(type);
+
+    /// <summary>Whether a building is a kind of another: the same building, or an upgrade of it (directly or through others).</summary>
+    /// <param name="building">A building of this ruleset.</param>
+    /// <param name="basis">The building it may be a kind of.</param>
+    /// <returns><see langword="true"/> when <paramref name="building"/> is <paramref name="basis"/> or one of its upgrades.</returns>
+    public bool IsKindOf(BuildingType building, BuildingType basis)
+    {
+        for (BuildingType? current = building; current is { } type; current = FindBuilding(type)?.Upgrades)
+        {
+            if (type == basis)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>Looks up a resource that may not exist.</summary>
     /// <param name="type">The resource.</param>
     /// <returns>Its definition, or <see langword="null"/> when the ruleset has no such resource.</returns>
@@ -217,6 +274,11 @@ public sealed class Ruleset
     /// <param name="type">A building of this ruleset.</param>
     /// <returns>The text <c>building.{id}.name</c>.</returns>
     public string BuildingName(BuildingType type) => Text($"building.{type.Id}.name");
+
+    /// <summary>The display name of a science node.</summary>
+    /// <param name="id">A node of this ruleset.</param>
+    /// <returns>The text <c>science.{id}.name</c>.</returns>
+    public string NodeName(string id) => Text($"science.{id}.name");
 
     /// <summary>The display name of a unit class.</summary>
     /// <param name="unitClass">A class used by a unit of this ruleset (<see cref="UnitDefinition.Class"/>).</param>

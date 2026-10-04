@@ -43,7 +43,7 @@ public class YieldCalculatorTests
     public void CityIncome_AddsTheCitysOwnYieldsAndItsBuildings()
     {
         YieldCalculator.CityIncome(TestRulesets.Default, [new(TestRulesets.Food, 2)], [TestRulesets.Campus])
-            .ShouldBe([new(TestRulesets.Food, 2), new(TestRulesets.Science, 2), new(TestRulesets.Culture, 1)]);
+            .ShouldBe([new(TestRulesets.Food, 2), new(TestRulesets.Science, 3), new(TestRulesets.Culture, 1)]);
     }
 
     [Fact]
