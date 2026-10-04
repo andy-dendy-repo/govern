@@ -71,7 +71,7 @@ public class ProductionCostTests
         var state = builder.Build();
 
         var same = GameEngine.Execute(TestRulesets.Default, state, P1, new SetProductionCommand(city, TestRulesets.Soldier)).ShouldSucceed();
-        var switched = GameEngine.Execute(TestRulesets.Default, state, P1, new SetProductionCommand(city, TestRulesets.Archer)).ShouldSucceed();
+        var switched = GameEngine.Execute(TestRulesets.Default, state, P1, new SetProductionCommand(city, TestRulesets.Spearman)).ShouldSucceed();
         var building = GameEngine.Execute(TestRulesets.Default, state, P1, new ProduceBuildingCommand(city, TestRulesets.ArmyCamp, CitySite)).ShouldSucceed();
 
         same.State.FindCity(city)!.ProductionPaid.ShouldBeTrue();

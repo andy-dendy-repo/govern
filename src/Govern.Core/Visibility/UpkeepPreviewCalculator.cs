@@ -20,7 +20,8 @@ internal static class UpkeepPreviewCalculator
         }
 
         var income = ViewPreviewCalculator.CityIncome(ruleset, view, cityId);
-        var stock = YieldCalculator.Sum(ruleset, city.StockList.Concat(income));
+        // Science goes to the player's budget, not the stock (as in ConstructionRule.CollectYields).
+        var stock = YieldCalculator.Sum(ruleset, city.StockList.Concat(income.Where(amount => amount.Resource != ruleset.Science.Resource)));
         var upkeep = UpkeepCalculator.Pay(ruleset, stock, city.BuildingList, UnitsOn(ruleset, view, cityId), city.UpkeepPriority);
         var missing = city.ProductionPaid
             ? []

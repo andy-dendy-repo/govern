@@ -112,7 +112,8 @@ public static class VisibilityCalculator
                 .OrderBy(static city => city.Id.Value)
                 .Select(city => CityView.From(city, viewer, SeenTradePost(ruleset, state, city, viewer, visible)))],
             [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status))],
-            TradeRoutes(ruleset, state, viewer));
+            TradeRoutes(ruleset, state, viewer),
+            new ScienceView(ScienceRule.Income(ruleset, state, viewer), player.Nodes));
 
         return view with { Version = Fingerprint(view) };
     }

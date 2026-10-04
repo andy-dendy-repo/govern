@@ -140,14 +140,17 @@ public class UpkeepRuleTests
         var builder = DesertCity(out var city, stock: [new(TestRulesets.Gold, 1)], TestRulesets.Campus);
         builder.WithCity(city, c => c with { BuildingDamage = [new BuildingDamage(TestRulesets.Campus, 100)] });
 
-        var first = EndTurn(builder.Build());
+        var start = builder.Build();
+        var first = EndTurn(start);
         var second = EndTurn(EndTurn(first.State, P2).State);
 
-        var recovered = first.State.FindCity(city)!;
-        YieldCalculator.AmountOf(recovered.StockList, TestRulesets.Science).ShouldBe(0, "at 0 health it gives nothing");
-        recovered.DamageOf(TestRulesets.Campus).ShouldBe(90, "its upkeep was paid, so it recovers");
-        YieldCalculator.AmountOf(second.State.FindCity(city)!.StockList, TestRulesets.Science).ShouldBe(2);
+        // Science is counted per turn from the working buildings (the city's own 1, plus 2 from a working campus).
+        int Science(GameState state) => GameEngine.ViewFor(TestRulesets.Default, state, P1).Science!.Income;
+        Science(start).ShouldBe(2, "the capital and the city make 1 each; at 0 health the campus gives nothing");
+        first.State.FindCity(city)!.DamageOf(TestRulesets.Campus).ShouldBe(90, "its upkeep was paid, so it recovers");
+        Science(first.State).ShouldBe(4);
         second.State.FindCity(city)!.DamageOf(TestRulesets.Campus).ShouldBe(100, "no gold left for its upkeep");
+        Science(second.State).ShouldBe(2);
     }
 
     [Fact]

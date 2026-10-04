@@ -21,4 +21,5 @@ internal sealed record RulesetDocument(
     ImmutableArray<BuildingDefinition> Buildings,
     CombatRules Combat,
     TradeRules Trade,
+    ScienceRules Science,
     ImmutableDictionary<string, string> Texts);

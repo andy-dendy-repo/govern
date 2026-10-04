@@ -287,12 +287,13 @@ public static class GameEngine
         EndTurnCommand => EndTurnRule.Apply(ruleset, state, actor),
         ResignCommand => ResignRule.Apply(state, actor),
         _ => TradeRule.Dispatch(ruleset, state, actor, command)
+            ?? ScienceRule.Dispatch(ruleset, state, actor, command)
             ?? throw new ArgumentOutOfRangeException(nameof(command), command.GetType().Name, "Unknown command."),
     };
 
     private static GameUpdate Complete(Ruleset ruleset, GameUpdate update)
     {
-        var decided = TradeRule.Reconcile(VictoryRule.Apply(ruleset, update));
+        var decided = ScienceRule.Balance(ruleset, TradeRule.Reconcile(VictoryRule.Apply(ruleset, update)));
         var explored = VisibilityCalculator.UpdateExplored(ruleset, decided.State);
         return decided with { State = explored with { Version = explored.Version + 1 } };
     }

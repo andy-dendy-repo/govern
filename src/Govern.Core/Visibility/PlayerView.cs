@@ -36,6 +36,7 @@ namespace Govern.Core.Visibility;
 /// <param name="TradeRoutes">
 /// The trade routes the viewer is a side of (<see cref="TradeRouteView"/>), ordered by id; <see langword="null"/> when none.
 /// </param>
+/// <param name="Science">The viewer's own science per turn and science nodes (<see cref="ScienceView"/>).</param>
 public sealed record PlayerView(
     PlayerId Viewer,
     long Version,
@@ -49,7 +50,8 @@ public sealed record PlayerView(
     ImmutableArray<UnitView> Units,
     ImmutableArray<CityView> Cities,
     ImmutableArray<PlayerSummary> Players,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradeRouteView>? TradeRoutes = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradeRouteView>? TradeRoutes = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ScienceView? Science = null)
 {
     /// <summary>The trade routes the viewer is a side of (empty when none).</summary>
     [JsonIgnore]
