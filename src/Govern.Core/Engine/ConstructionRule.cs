@@ -49,15 +49,7 @@ internal static class ConstructionRule
                 continue;
             }
 
-            var progress = job.Progress + ruleset.Unit(unit.Type).BuildProduction;
-            if (state.Map.TileAt(unit.Position).Territory is { } territory
-                && state.FindCity(territory) is { } city
-                && city.Owner == player
-                && used.Add(city.Id))
-            {
-                progress += CityProduction.PerTurn(ruleset, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth));
-            }
-
+            var progress = job.Progress + ruleset.Unit(unit.Type).BuildProduction + LentProduction(ruleset, state, unit, used);
             state = progress >= cost
                 ? Complete(ruleset, state, unit, job with { Progress = cost }, events)
                 : state.WithUnit(unit with { Job = job with { Progress = progress } });
@@ -65,6 +57,15 @@ internal static class ConstructionRule
 
         return (state, used);
     }
+
+    // The production of the own city whose territory holds the unit's tile, once per city per turn (recorded in `used`).
+    private static int LentProduction(Ruleset ruleset, GameState state, Unit unit, HashSet<CityId> used) =>
+        state.Map.TileAt(unit.Position).Territory is { } territory
+            && state.FindCity(territory) is { } city
+            && city.Owner == unit.Owner
+            && used.Add(city.Id)
+            ? CityProduction.PerTurn(ruleset, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth))
+            : 0;
 
     // Adds each of the player's cities' income (its territory's tiles, its own yields and its working buildings) to its stock.
     public static GameState CollectYields(Ruleset ruleset, GameState state, PlayerId player)

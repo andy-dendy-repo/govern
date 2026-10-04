@@ -1,8 +1,8 @@
 ---
 title: Game rules reference (for players)
-tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, trade-routes, deals, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
-code: [rulesets/default/v9.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
-updated: 2026-10-03
+tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, science, science-tree, unlocks, unit-upgrade, building-upgrade, swordsman, pikeman, crossbowman, knight, workshop, barracks, university, market, port, trade-routes, deals, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
+code: [rulesets/default/v11.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
+updated: 2026-10-04
 ---
 
 # Game rules reference
@@ -86,6 +86,10 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 | Builder | Civilian | — | — | 2 | 2 | 5 | 2 | Build improvements, Build bridges |
 | Scout | Recon | 8 | — | 4 | 4 | 3 | — | — |
 | Trader | Civilian | — | — | 3 | 3 | 6 | — | Trade |
+| Swordsman | Melee | 26 | — | 2 | 2 | 6 | 1 | Attack, Build bridges |
+| Pikeman | Anti-cavalry | 24 | — | 2 | 2 | 6 | — | Attack |
+| Crossbowman | Ranged | 14 | 28 (range 2) | 2 | 2 | 7 | — | Ranged attack |
+| Knight | Cavalry | 28 | — | 3 | 3 | 8 | — | Attack |
 
 - **Class:** what the unit is strong or weak against (see "Class counters").
 - **Strength:** how hard the unit fights in melee and when it is attacked. A unit with no strength (a civilian) can't fight: any attack destroys it.
@@ -99,7 +103,8 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - **Ranged attack:** the unit can shoot an enemy unit within its range (see "Attacking").
 - **Build improvements:** the unit can build an improvement on its tile in your cities' territory, but not on a city (see "Improvements").
 - **Build bridges:** the unit can bridge the river between its tile and a neighbouring one (see "Bridges").
-- **Trade:** the unit opens trade routes and carries their deals (see "Trading"). Only a city with a trade post can produce it.
+- **Trade:** the unit opens trade routes and carries their deals (see "Trading"). Only a city with a trade post (or a market) can produce it.
+- Archers, horsemen, traders and the four units at the bottom of the table need a science item first, and the last four replace older units (see "Science").
 
 ## Moving a unit
 
@@ -172,7 +177,7 @@ Builders and soldiers build things with their own **build production** (under "U
 - To start, select the unit and pick what to build in the action bar. Starting uses up the unit's movement for the turn, and the unit needs movement left to start.
 - At the end of each of your turns, the job gains the unit's build production. **In your city's territory**, the city's production is added too, and that city then doesn't spend it on its own production that turn. A city feeds one job a turn: the oldest job in its territory first.
 - Outside your cities' territory, a unit builds with its own build production only. For now that only matters for bridges.
-- When the progress reaches the cost, the improvement or bridge is finished at once.
+- When the progress reaches the cost, the improvement or bridge is finished at once (a building upgrade then waits for its city to pay, see "Science").
 - Moving the unit, attacking with it or starting another job stops the job, and its progress is lost.
 - A job whose site no longer allows it (the city whose territory it was in was captured, or someone bridged that river first) stops.
 
@@ -193,7 +198,7 @@ Each city owns a set of tiles: its territory. A tile belongs to at most one city
 
 ## City resources
 
-Each city keeps its own resources. At the end of each of your turns, every one of your cities adds to its own stock the yield of every tile in its territory, its own 1 Culture and its buildings' yields, then pays its upkeep (see "Costs and upkeep"). Territory is paid in Culture, and units and buildings in the other resources. The city panel shows a city's resources with what each gains or loses per turn, its upkeep, and what its next tile costs. The top bar shows the total over all your cities.
+Each city keeps its own resources. At the end of each of your turns, every one of your cities adds to its own stock the yield of every tile in its territory, its own 1 Culture and its buildings' yields (but not science, which is never stored; see "Science"), then pays its upkeep (see "Costs and upkeep"). Territory is paid in Culture, and units and buildings in the other resources. The city panel shows a city's resources with what each gains or loses per turn, its upkeep, and what its next tile costs. The top bar shows the total over all your cities.
 
 ## Costs and upkeep
 
@@ -209,11 +214,20 @@ Units and buildings cost resources as well as production, and need resources eve
 | Builder | 2 Food | 1 Food, 1 Water |
 | Scout | 1 Food | 1 Food |
 | Trader | 2 Food | 1 Food |
+| Swordsman | 2 Food, 2 Stone | 1 Food, 1 Water |
+| Pikeman | 2 Wood, 2 Stone | 1 Food, 1 Water |
+| Crossbowman | 3 Wood, 1 Stone | 1 Food, 1 Water |
+| Knight | 3 Food, 2 Water, 2 Stone | 2 Food, 2 Water |
 | Army camp | 4 Stone, 2 Wood | 1 Food |
 | Campus | 4 Stone | 1 Gold |
 | Trade post | 4 Wood | — |
 | Culture centre | 3 Stone | 1 Gold |
 | Harbour | 6 Wood | — |
+| Workshop | 4 Wood, 2 Stone | 1 Wood |
+| Barracks | 4 Stone, 2 Wood | 1 Food, 1 Gold |
+| University | 6 Stone | 2 Gold |
+| Market | 4 Wood, 2 Stone | — |
+| Port | 6 Wood, 2 Stone | — |
 
 - **Resource cost:** paid in full by the city at the end of the turn it starts producing the item; production then adds up until it is done. If the city can't pay yet, the item waits and gains no production; the city panel says what is missing. A city producing the same unit again pays again for each one. Switching to something else before it is done gives the resources back (the production progress is kept, as always). A captured city's paid cost is lost.
 - **Upkeep on your territory:** each city pays, from its own stock, for its buildings and for your units standing in its territory. An item is paid in full or not at all. A city pays its buildings first (in the order of the table) and then its units, the most hurt first; a switch in the city panel makes it pay its units first instead.
@@ -260,10 +274,48 @@ Every building stands on its own tile of the city's territory, which you pick wh
 | Trade post | 8 | 2 Gold | — | — |
 | Culture centre | 8 | 2 Culture | — | — |
 | Harbour | 8 | 2 Food | — | Lake |
+| Workshop | 10 | — | +1 | — |
+| Barracks | 10 | — | +2 | — |
+| University | 10 | 4 Science | — | — |
+| Market | 10 | 4 Gold | — | — |
+| Port | 10 | 4 Food | — | Lake |
 
 - **Yield per turn:** added to the city's resources at the end of every one of your turns, from the turn after the building is finished.
 - **Extra production:** added to the city's production per turn, for its own production and for jobs in its territory.
 - Buildings also cost resources and upkeep (see "Costs and upkeep"). A trade post also lets its city train traders and trade (see "Trading"). Later, army camps will speed up army production and harbours will build ships.
+- The trade post, the harbour and the last five buildings need a science item first. Barracks, University, Market and Port are **upgrades** of the Army camp, Campus, Trade post and Harbour: a city never produces them; a builder upgrades the old building in place (see "Science"). A city with an upgrade counts as having the old building too, so it can't build that again, and a Market trades like a Trade post.
+
+## Science
+
+Science unlocks new units, new buildings and better versions of old ones.
+- **Science per turn:** every city makes 1 Science a turn on its own; a Campus adds 2 and a University 4. Science is never stored: your science per turn is what all your cities make now. The top bar's science counter shows what your items take of it, and opens the science tree.
+- **Unlocking an item** in the science tree costs nothing at once, but the item then takes its science every turn for as long as you have it. You can unlock an item when its science fits in what your other items leave free, and every item it builds on is working. An item can't be dropped.
+- **Locked units and buildings:** a unit or building an item lists can't be produced or upgraded into until you have that item and it is working. Everything no item lists is available from the start.
+- **Too little science:** when your cities make less science than your items take (you lost a city, or a Campus stopped working), your newest items switch off, one by one, until the rest fit. A switched-off item takes no science; its units and buildings can't be started, but those you have keep working. When there is room again, switched-off items switch back on, oldest first, as long as the items they build on are working.
+- **New units replace old ones:** once you can produce a unit that replaces another, your cities no longer offer the old one. A city already producing it finishes it, and a city that finishes a unit goes on with the newest version of it.
+- **Upgrading a unit:** a unit standing in your territory with movement left can be upgraded to the newest version of its line. The city whose territory it stands in pays the upgrade cost; the unit keeps its health and place, and its moves end for the turn.
+- **Upgrading a building:** a builder standing on the building starts the upgrade as a job (see "Building with units"), with its own build production plus its city's, up to the new building's cost. When the job is done, the city pays the new building's resource cost; until it can, the finished job waits. The new building then replaces the old one on its tile, at full health.
+
+| Item | Science per turn | Builds on | Unlocks |
+|---|---|---|---|
+| Archery | 1 | — | Archer |
+| Horseback riding | 1 | — | Horseman |
+| Trade | 1 | — | Trader, Trade post |
+| Sailing | 1 | — | Harbour |
+| Bronze working | 1 | — | Swordsman |
+| Education | 2 | — | University |
+| Iron working | 2 | Bronze working | Pikeman, Barracks |
+| Machinery | 2 | Archery | Crossbowman, Workshop |
+| Stirrups | 2 | Horseback riding | Knight |
+| Currency | 2 | Trade | Market |
+| Shipbuilding | 2 | Sailing | Port |
+
+| New unit | Replaces | Upgrade cost |
+|---|---|---|
+| Swordsman | Soldier | 2 Stone |
+| Pikeman | Spearman | 2 Stone |
+| Crossbowman | Archer | 1 Wood, 1 Stone |
+| Knight | Horseman | 3 Stone |
 
 ## Trading
 
@@ -309,7 +361,7 @@ What each tradable resource is worth before a city's demand level (see "Trading"
 
 ## Resources in the top bar
 
-The top bar counts your resources (food, water, wood, stone, gold, science, culture) over all your cities. You never see your opponent's resources, their improvements, bridges or borders outside your sight, or what their units are building.
+The top bar counts your resources (food, water, wood, stone, gold, culture) over all your cities, and shows your science per turn with what your science items take of it. You never see your opponent's resources, their improvements, bridges or borders outside your sight, or what their units are building.
 
 ## Fog of war
 
@@ -319,6 +371,7 @@ The top bar counts your resources (food, water, wood, stone, gold, science, cult
 - You see enemy units and cities only on tiles you can see right now.
 - You see the health of every enemy unit you can see.
 - You never see an enemy unit's movement left or job, what an enemy city is producing, which buildings it has, or its stock. An enemy unit you watch losing health, or not healing, between turns may still tell you that it moved, or that the land or the city keeping it up is short.
+- You never see your opponent's science or science items. You see their units and buildings as they are, and an upgrade made where you can see it appears in your log.
 - The order in which units and cities are listed, and their ids, reveal nothing about when they were created.
 - Trade routes and deals are seen only by their two sides. The other side of a route sees it once its trader has reached the post: the proposer, the cities and the terms.
 - Your trader standing at the host's post, on an open route, shows you that city's free market (what it still sells or buys, and how much) and its demand levels. Once it leaves, you no longer see them. You never see the deals your opponent has with other cities, nor a market without a route.

@@ -15,7 +15,7 @@ namespace Govern.Core.Engine;
 // SetMarketOrder) open routes and settle deals; this rule runs the parts that happen on their own.
 internal static class TradeRule
 {
-    // The trade commands' share of GameEngine.Dispatch; null for any other command.
+    // The trade commands' share of CommandDispatcher.Dispatch; null for any other command.
     public static CommandResult? Dispatch(Ruleset ruleset, GameState state, PlayerId actor, GameCommand command) => command switch
     {
         SetMarketOrderCommand market => SetMarketOrderRule.Apply(ruleset, state, actor, market),
