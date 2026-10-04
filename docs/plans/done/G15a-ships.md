@@ -7,7 +7,7 @@ updated: 2026-10-04
 
 # Plan: G15a, ships built in harbours
 
-**Status:** done 2026-10-04 in PR #PR (backlog G15, split: this is G15a; the rest is G15b, Deferred). Asked for by the owner: "Lets add naval units that can be produced in harbours, check our plan for naval units".
+**Status:** done 2026-10-04 in PR #60 (backlog G15, split: this is G15a; the rest is G15b, Deferred). Asked for by the owner: "Lets add naval units that can be produced in harbours, check our plan for naval units".
 
 ## Context
 The [G15 design](../../game/design-roadmap.md#g15-ships-and-naval-movement) has ships built by cities with a harbour, sailing water tiles, carrying land units and sailing rivers in state 2 and 3. The harbour and port exist (G10a, G11a: Sailing unlocks the harbour, Shipbuilding the port) but do nothing beyond yields, and the only water terrain is the lake. This first slice makes harbours build warships that sail lakes and fight, without transport or river sailing, so naval play starts small and every rule stays exact in the previews.
