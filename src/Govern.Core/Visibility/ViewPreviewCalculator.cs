@@ -165,7 +165,7 @@ internal static class ViewPreviewCalculator
             return RuleViolations.CityNotFound;
         }
 
-        if (ProduceBuildingRule.Check(ruleset, city, building) is { } cityViolation)
+        if (ProduceBuildingRule.Check(ruleset, view.Science?.NodeList ?? [], city, building) is { } cityViolation)
         {
             return cityViolation;
         }
@@ -179,7 +179,7 @@ internal static class ViewPreviewCalculator
 
     public static ImmutableArray<HexCoord> BuildingSites(Ruleset ruleset, PlayerView view, CityId cityId, BuildingType building)
     {
-        if (CheckTurn(view) is not null || OwnCity(view, cityId) is not { } city || ProduceBuildingRule.Check(ruleset, city, building) is not null)
+        if (CheckTurn(view) is not null || OwnCity(view, cityId) is not { } city || ProduceBuildingRule.Check(ruleset, view.Science?.NodeList ?? [], city, building) is not null)
         {
             return [];
         }
@@ -261,7 +261,7 @@ internal static class ViewPreviewCalculator
         CheckTurn(view) is null ? OwnUnit(ruleset, view, unitId) : null;
 
     // The viewer's own unit as the rules' checks take it. Its movement is always in the view: only enemy movement is hidden.
-    private static Unit? OwnUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
+    internal static Unit? OwnUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
         view.FindOwnUnit(unitId) is { MovementLeft: { } movementLeft } own
             ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft, ruleset.Combat.MaxHealth - own.Health, own.Job, own.Destination, own.RouteId)
             : null;

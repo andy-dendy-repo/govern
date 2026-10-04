@@ -198,4 +198,34 @@ public static class RuleViolations
 
     /// <summary>The city's deals already use more of the order than the new one allows.</summary>
     public static readonly RuleViolation CapBelowDeals = new("market.below_deals", "Your deals already use more than that; cancel one first.");
+
+    /// <summary>The science node does not exist.</summary>
+    public static readonly RuleViolation UnknownNode = new("science.unknown_node", "That science item does not exist.");
+
+    /// <summary>The player already owns the science node.</summary>
+    public static readonly RuleViolation NodeOwned = new("science.node_owned", "You already have this science item.");
+
+    /// <summary>A node the science node requires is not owned, or is disabled.</summary>
+    public static readonly RuleViolation NodeNeedsPrerequisite = new("science.needs_prerequisite", "You need the science items it builds on first.");
+
+    /// <summary>The player's free science per turn doesn't cover the node's points.</summary>
+    public static readonly RuleViolation NotEnoughScience = new("science.not_enough", "You don't have enough free science per turn.");
+
+    /// <summary>The unit or building is unlocked by a science node the player doesn't own, or whose node is disabled.</summary>
+    public static readonly RuleViolation Locked = new("science.locked", "A science item must unlock this first.");
+
+    /// <summary>A newer version of the unit is unlocked, so cities produce that one instead.</summary>
+    public static readonly RuleViolation Replaced = new("science.replaced", "A newer unit replaces this one.");
+
+    /// <summary>The building is an upgrade: a builder upgrades it from the building before it, a city never produces it.</summary>
+    public static readonly RuleViolation BuildingIsUpgrade = new("city.building_is_upgrade", "A builder upgrades the building before it into this one.");
+
+    /// <summary>The unit, or the building on the builder's tile, has no unlocked upgrade.</summary>
+    public static readonly RuleViolation NoUpgrade = new("upgrade.none", "There is no upgrade to make.");
+
+    /// <summary>The unit, or the building, is not on a tile of one of the actor's cities' territory.</summary>
+    public static readonly RuleViolation UpgradeNotInTerritory = new("upgrade.not_in_territory", "Upgrades are made on your cities' territory.");
+
+    /// <summary>The city owning the tile lacks the resources the unit's upgrade costs.</summary>
+    public static readonly RuleViolation UpgradeMissingResources = new("upgrade.missing_resources", "The city owning this tile lacks the resources for the upgrade.");
 }

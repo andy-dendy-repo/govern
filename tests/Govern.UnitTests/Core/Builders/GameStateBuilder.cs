@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Map;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -32,6 +33,7 @@ internal sealed class GameStateBuilder
     private PlayerId _currentPlayer = P1;
     private int _turn = 1;
     private readonly HashSet<PlayerId> _exploredAll = [];
+    private readonly Dictionary<PlayerId, List<OwnedNode>> _nodes = [];
 
     public static HexCoord At(int column, int row) => HexCoord.FromOffset(column, row);
 
@@ -160,6 +162,23 @@ internal sealed class GameStateBuilder
         return this;
     }
 
+    // Gives a player science nodes, enabled, in the order given, e.g. WithNodes(P1, "sailing"). The engine disables the newest
+    // after the first command when their cities don't make enough science for them all.
+    public GameStateBuilder WithNodes(PlayerId player, params string[] nodes) =>
+        WithNodes(player, [.. nodes.Select(static node => new OwnedNode(node))]);
+
+    // Gives a player science nodes as given, e.g. disabled ones.
+    public GameStateBuilder WithNodes(PlayerId player, params OwnedNode[] nodes)
+    {
+        if (!_nodes.TryGetValue(player, out var list))
+        {
+            _nodes[player] = list = [];
+        }
+
+        list.AddRange(nodes);
+        return this;
+    }
+
     // Lets a player know the whole map's terrain and rivers, as if they had explored it all.
     public GameStateBuilder WithMapExplored(PlayerId player)
     {
@@ -181,11 +200,13 @@ internal sealed class GameStateBuilder
         CurrentPlayer = _currentPlayer,
         Status = GameStatus.InProgress,
         Map = BuildMap(),
-        Players = [new Player(P1, PlayerStatus.Active, ExploredBy(P1)), new Player(P2, PlayerStatus.Active, ExploredBy(P2))],
+        Players = [new Player(P1, PlayerStatus.Active, ExploredBy(P1), NodesOf(P1)), new Player(P2, PlayerStatus.Active, ExploredBy(P2), NodesOf(P2))],
         Units = [.. _units],
         Cities = [.. _cities],
         RngState = 42,
     });
+
+    private ImmutableArray<OwnedNode>? NodesOf(PlayerId player) => _nodes.TryGetValue(player, out var nodes) ? [.. nodes] : null;
 
     private ImmutableArray<HexCoord> ExploredBy(PlayerId player) =>
         _exploredAll.Contains(player) ? [.. Enumerable.Range(0, Width * Height).Select(static index => At(index % Width, index / Width))] : [];

@@ -59,6 +59,8 @@ internal static class EventVisibilityCalculator
         UnitCreatedEvent created => (created.Owner, created.Position),
         ImprovementBuiltEvent built => (built.Owner, built.Position),
         TerritoryGrewEvent grew => (grew.Owner, grew.Tile),
+        UnitUpgradedEvent upgraded => (upgraded.Owner, upgraded.Position),
+        BuildingUpgradedEvent upgraded => (upgraded.Owner, upgraded.Position),
         _ => null,
     };
 
@@ -68,6 +70,7 @@ internal static class EventVisibilityCalculator
     {
         UnitCreatedEvent created => created with { CityId = null },
         TerritoryGrewEvent grew => grew with { CityId = null },
+        BuildingUpgradedEvent upgraded => upgraded with { CityId = null },
         _ => gameEvent,
     };
 
@@ -83,6 +86,7 @@ internal static class EventVisibilityCalculator
             UpkeepPrioritySetEvent priority => owners.OfCity(priority.CityId),
             BuildStartedEvent started => owners.OfUnit(started.UnitId),
             UnitStarvedEvent starved => owners.OfUnit(starved.UnitId),
+            ScienceNodeChangedEvent changed => changed.Player,
             _ => null,
         };
 

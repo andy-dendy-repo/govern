@@ -30,7 +30,7 @@ internal static class TradeRule
     // The tile of a city's trade post (the ruleset's trade building standing on its territory); null when it has none. A game
     // saved before buildings had sites has a trade post with no tile, which can't trade.
     public static HexCoord? PostTile(Ruleset ruleset, GameMap map, CityId city) =>
-        map.Tiles.FirstOrDefault(tile => tile.Territory == city && tile.Building == ruleset.Trade.Building)?.Coord;
+        map.Tiles.FirstOrDefault(tile => tile.Territory == city && tile.Building is { } building && ruleset.IsKindOf(building, ruleset.Trade.Building))?.Coord;
 
     // A trader is at a trade post when it stands next to it (or on it: a trader never walks onto it, but may start there).
     public static bool IsAt(HexCoord position, HexCoord post) => position.DistanceTo(post) <= 1;

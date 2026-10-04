@@ -4,6 +4,7 @@ using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 
@@ -54,7 +55,8 @@ internal static class FoundCityRule
         var (allocated, id) = state.AllocateId();
         var name = NormaliseName(command.Name);
         var stock = YieldCalculator.Sum(ruleset, ruleset.Cities.StartingStock);
-        var city = new City(new CityId(id), actor, name, settler.Position, ruleset.Cities.InitialProduction, ProductionProgress: 0, Stock: stock.IsEmpty ? null : stock);
+        var producing = ScienceCalculator.NewestOfLine(ruleset, state.FindPlayer(actor)!.NodeList, ruleset.Cities.InitialProduction);
+        var city = new City(new CityId(id), actor, name, settler.Position, producing, ProductionProgress: 0, Stock: stock.IsEmpty ? null : stock);
         var founded = allocated.WithoutUnit(settler.Id);
         founded = founded with { Cities = founded.Cities.Add(city), Map = TerritoryRule.ClaimAround(ruleset, founded.Map, city) };
 

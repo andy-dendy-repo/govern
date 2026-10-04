@@ -23,6 +23,9 @@ namespace Govern.Core.Engine;
 [JsonDerivedType(typeof(AnswerDealCommand), "answer_deal")]
 [JsonDerivedType(typeof(CancelDealCommand), "cancel_deal")]
 [JsonDerivedType(typeof(CloseTradeRouteCommand), "close_trade_route")]
+[JsonDerivedType(typeof(UnlockNodeCommand), "unlock_node")]
+[JsonDerivedType(typeof(UpgradeUnitCommand), "upgrade_unit")]
+[JsonDerivedType(typeof(UpgradeBuildingCommand), "upgrade_building")]
 [JsonDerivedType(typeof(EndTurnCommand), "end_turn")]
 [JsonDerivedType(typeof(ResignCommand), "resign")]
 public abstract record GameCommand;

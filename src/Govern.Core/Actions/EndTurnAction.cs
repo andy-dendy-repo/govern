@@ -5,6 +5,7 @@ using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 
@@ -97,7 +98,9 @@ internal static class EndTurnRule
         var unit = new Unit(new UnitId(id), city.Owner, city.Producing, tile, MovementLeft: 0);
         events.Add(new UnitCreatedEvent(unit.Id, unit.Owner, unit.Type, unit.Position, city.Id));
 
-        var reset = allocated.WithCity(city with { ProductionProgress = 0, ProductionPaid = false });
+        // The city goes on with the newest version of the unit its owner may produce.
+        var next = ScienceCalculator.NextProduction(ruleset, state.FindPlayer(city.Owner)!.NodeList, city.Producing);
+        var reset = allocated.WithCity(city with { Producing = next, ProductionProgress = 0, ProductionPaid = false });
         return reset with { Units = reset.Units.Add(unit) };
     }
 

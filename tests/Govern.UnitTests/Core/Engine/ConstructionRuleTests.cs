@@ -161,13 +161,12 @@ public class ConstructionRuleTests
 
         var update = EndTurn(builder.Build());
 
-        // 7 plains tiles (2 food, 1 water each), two farms (+2 food each), a mine (+2 stone), the city's own culture, the campus
-        // (2 science) and the harbour (2 food).
+        // 7 plains tiles (2 food, 1 water each), two farms (+2 food each), a mine (+2 stone), the city's own culture and the
+        // harbour (2 food). Science (the city's own and the campus's) is a budget per turn, never stocked.
         update.State.FindCity(own)!.StockList.ShouldBe([
             new ResourceAmount(TestRulesets.Food, 20),
             new ResourceAmount(TestRulesets.Water, 7),
             new ResourceAmount(TestRulesets.Stone, 2),
-            new ResourceAmount(TestRulesets.Science, 2),
             new ResourceAmount(TestRulesets.Culture, 1),
         ]);
         update.State.FindCity(enemy)!.Stock.ShouldBeNull("only the ending player's cities yield");

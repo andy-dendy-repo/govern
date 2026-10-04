@@ -27,6 +27,14 @@ namespace Govern.Core.Units;
 /// Production points the unit puts into its job each turn; at least 1 exactly when it has <see cref="UnitAbility.BuildImprovement"/>
 /// or <see cref="UnitAbility.BuildBridge"/>, otherwise 0.
 /// </param>
+/// <param name="Replaces">
+/// The unit this one is the next version of (same class): once a player may produce this one, the old one leaves their
+/// production lists, and their old units can be upgraded into it. <see langword="null"/> for the first of a line.
+/// </param>
+/// <param name="UpgradeCost">
+/// Resources the city owning the tile pays to upgrade a <paramref name="Replaces"/> unit into this one; set exactly when
+/// <paramref name="Replaces"/> is.
+/// </param>
 public sealed record UnitDefinition(
     UnitType Id,
     string Class,
@@ -38,7 +46,9 @@ public sealed record UnitDefinition(
     ImmutableArray<ResourceAmount> Upkeep,
     int? Strength = null,
     RangedRules? Ranged = null,
-    int BuildProduction = 0)
+    int BuildProduction = 0,
+    UnitType? Replaces = null,
+    ImmutableArray<ResourceAmount>? UpgradeCost = null)
 {
     /// <summary>Whether the unit can found a city (and is consumed doing so).</summary>
     [JsonIgnore]

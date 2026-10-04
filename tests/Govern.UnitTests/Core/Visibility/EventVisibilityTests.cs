@@ -7,6 +7,7 @@ using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Serialization;
+using Govern.Core.Science;
 using Govern.Core.State;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -269,6 +270,9 @@ public class EventVisibilityTests
             new UpkeepPrioritySetEvent(city, UpkeepPriority.UnitsFirst),
             new TradeRouteChangedEvent(new TradeRouteId(996), P1, P1, city, new CityId(995), TradeChange.Accepted),
             new TradeExchangedEvent(new TradeRouteId(996), P1, P1, city, new CityId(995), [new ResourceAmount(TestRulesets.Food, 3)], [new ResourceAmount(TestRulesets.Stone, 1)], false, true),
+            new ScienceNodeChangedEvent(P1, "archery", ScienceNodeChange.Unlocked),
+            new UnitUpgradedEvent(unit, P1, At(2, 1), TestRulesets.Soldier, TestRulesets.Swordsman),
+            new BuildingUpgradedEvent(unit, P1, At(2, 1), TestRulesets.Campus, TestRulesets.University, city),
             new PlayerResignedEvent(P2),
             new PlayerEliminatedEvent(P2),
             new GameWonEvent(P1),
@@ -283,6 +287,7 @@ public class EventVisibilityTests
         UnitAttackedEvent attacked => attacked with { AttackerId = null, From = null },
         UnitCreatedEvent created => created with { CityId = null },
         TerritoryGrewEvent grew => grew with { CityId = null },
+        BuildingUpgradedEvent upgraded => upgraded with { CityId = null },
         _ => gameEvent,
     };
 
