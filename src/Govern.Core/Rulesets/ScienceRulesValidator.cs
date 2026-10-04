@@ -44,6 +44,9 @@ internal static class ScienceRulesValidator
         RulesetValidator.CheckIds(nodes.Select(static node => node.Id), "$.science.nodes", problems, required: false);
         var listed = new HashSet<string>(StringComparer.Ordinal);
         var unlocked = new HashSet<string>(StringComparer.Ordinal);
+        var known = document.Units.Select(static unit => $"unit:{unit.Id.Id}")
+            .Concat(document.Buildings.Select(static building => $"building:{building.Id.Id}"))
+            .ToHashSet(StringComparer.Ordinal);
         for (var index = 0; index < nodes.Length; index++)
         {
             var node = nodes[index];
@@ -54,8 +57,8 @@ internal static class ScienceRulesValidator
                 problems.Add(new($"{path}.requires", $"'{required}' must be a node listed before this one."));
             }
 
-            CheckUnlocks(node.Units.Select(static unit => unit.Id), document.Units.Select(static unit => unit.Id.Id), "unit", $"{path}.units", unlocked, problems);
-            CheckUnlocks(node.Buildings.Select(static building => building.Id), document.Buildings.Select(static building => building.Id.Id), "building", $"{path}.buildings", unlocked, problems);
+            CheckUnlocks(node.Units.Select(static unit => $"unit:{unit.Id}"), $"{path}.units", known, unlocked, problems);
+            CheckUnlocks(node.Buildings.Select(static building => $"building:{building.Id}"), $"{path}.buildings", known, unlocked, problems);
             if (!document.Texts.ContainsKey($"science.{node.Id}.name"))
             {
                 problems.Add(new("$.texts", $"The text 'science.{node.Id}.name' is missing."));
@@ -72,23 +75,18 @@ internal static class ScienceRulesValidator
         }
     }
 
-    // Each unit or building exists and is unlocked by one node at most (its key in `unlocked` is "kind:id").
-    private static void CheckUnlocks(
-        IEnumerable<string> ids,
-        IEnumerable<string> known,
-        string kind,
-        string path,
-        HashSet<string> unlocked,
-        List<RulesetProblem> problems)
+    // Each unit or building exists and is unlocked by one node at most; keys are "kind:id" (unit:soldier, building:campus).
+    private static void CheckUnlocks(IEnumerable<string> keys, string path, HashSet<string> known, HashSet<string> unlocked, List<RulesetProblem> problems)
     {
-        var existing = known.ToHashSet(StringComparer.Ordinal);
-        foreach (var id in ids)
+        foreach (var key in keys)
         {
-            if (!existing.Contains(id))
+            var separator = key.IndexOf(':', StringComparison.Ordinal);
+            var (kind, id) = (key[..separator], key[(separator + 1)..]);
+            if (!known.Contains(key))
             {
                 problems.Add(new(path, $"The {kind} '{id}' does not exist."));
             }
-            else if (!unlocked.Add($"{kind}:{id}"))
+            else if (!unlocked.Add(key))
             {
                 problems.Add(new(path, $"The {kind} '{id}' is unlocked by another node too."));
             }
@@ -125,17 +123,21 @@ internal static class ScienceRulesValidator
                 problems.Add(new($"{path}.replaces", $"'{old.Id}' is replaced by another unit too."));
             }
 
-            if (unit.UpgradeCost is not { } cost)
-            {
-                problems.Add(new($"{path}.upgradeCost", "A unit that replaces another needs an upgrade cost (it may be empty)."));
-            }
-            else
-            {
-                EconomyRulesValidator.CheckYields(cost, [.. document.Resources.Select(static resource => resource.Id.Id)], $"{path}.upgradeCost", problems, EconomyRulesValidator.MaxStock);
-            }
+            CheckUpgradeCost(document, unit, $"{path}.upgradeCost", problems);
         }
 
         CheckNoCycle(document.Units.Select(static unit => (unit.Id.Id, unit.Replaces?.Id)), "$.units", "replaces", problems);
+    }
+
+    private static void CheckUpgradeCost(RulesetDocument document, UnitDefinition unit, string path, List<RulesetProblem> problems)
+    {
+        if (unit.UpgradeCost is not { } cost)
+        {
+            problems.Add(new(path, "A unit that replaces another needs an upgrade cost (it may be empty)."));
+            return;
+        }
+
+        EconomyRulesValidator.CheckYields(cost, [.. document.Resources.Select(static resource => resource.Id.Id)], path, problems, EconomyRulesValidator.MaxStock);
     }
 
     private static void CheckBuildingUpgrades(RulesetDocument document, List<RulesetProblem> problems)
