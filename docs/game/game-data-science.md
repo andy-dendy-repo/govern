@@ -35,21 +35,21 @@ Science is a budget per turn, never a stock: a player's science per turn is the 
 }
 ```
 
-The default tree (v11):
+The default tree (v12; v11 had the same nodes without the ships):
 
 | Node | Points | Requires | Unlocks |
 |---|---|---|---|
 | `archery` | 1 | — | archer |
 | `horseback_riding` | 1 | — | horseman |
 | `trade` | 1 | — | trader, trade_post |
-| `sailing` | 1 | — | harbour |
+| `sailing` | 1 | — | galley (v12), harbour |
 | `bronze_working` | 1 | — | swordsman |
 | `education` | 2 | — | university |
 | `iron_working` | 2 | bronze_working | pikeman, barracks |
 | `machinery` | 2 | archery | crossbowman, workshop |
 | `stirrups` | 2 | horseback_riding | knight |
 | `currency` | 2 | trade | market |
-| `shipbuilding` | 2 | sailing | port |
+| `shipbuilding` | 2 | sailing | bireme (v12), port |
 
 ## Unit lines (`units[].replaces`, `units[].upgradeCost`)
 

@@ -38,7 +38,7 @@ public static class BoardBenchBuilder
             .ToDictionary(index => HexCoord.FromOffset(index % size, index / size), index => TerrainAt(ruleset, index % size, index / size));
         var passable = terrains.Where(pair => ruleset.Terrain(pair.Value).IsPassable).Select(static pair => pair.Key).ToHashSet();
         var cities = Cities(passable, size);
-        var units = revealed ? Army(ruleset, passable, cities, size) : Opening(ruleset, passable, size);
+        var units = revealed ? Army(ruleset, terrains, cities, size) : Opening(ruleset, passable, size);
         var visible = revealed ? null : units.SelectMany(static unit => unit.Position.WithinRadius(Sight)).ToHashSet();
         var tiles = terrains.Keys
             .OrderBy(static coord => coord.Row)
@@ -52,7 +52,7 @@ public static class BoardBenchBuilder
     }
 
     /// <summary>
-    /// The next view: each of the viewer's units steps one tile east when that tile is passable and free, as a turn of moves
+    /// The next view: each of the viewer's units steps one tile east when it may stand there (land, or water for a ship) and the tile is free, as a turn of moves
     /// would. Tiles and cities stay as they are.
     /// </summary>
     /// <param name="ruleset">The ruleset.</param>
@@ -67,7 +67,7 @@ public static class BoardBenchBuilder
         {
             var east = HexCoord.FromOffset(unit.Position.Column + 1, unit.Position.Row);
             if (unit.Owner != view.Viewer || !view.Contains(east) || taken.Contains(east)
-                || view.TileAt(east).Terrain is not { } terrain || !ruleset.Terrain(terrain).IsPassable)
+                || view.TileAt(east).Terrain is not { } terrain || !ruleset.Terrain(terrain).AllowsDomain(ruleset.Unit(unit.Type).Domain))
             {
                 return unit;
             }
@@ -98,18 +98,20 @@ public static class BoardBenchBuilder
                 new CityId(index + 1), OwnerAt(coord, size), $"Bench {index + 1}", coord, Producing: null, ProductionProgress: null)),
     ];
 
-    // A unit on every few passable tiles outside the cities, of every type, a third of them hurt.
-    private static ImmutableArray<UnitView> Army(Ruleset ruleset, HashSet<HexCoord> passable, ImmutableArray<CityView> cities, int size)
+    // A unit on every few tiles outside the cities, of every type, a third of them hurt: land units on passable land, ships on
+    // water.
+    private static ImmutableArray<UnitView> Army(Ruleset ruleset, Dictionary<HexCoord, TerrainType> terrains, ImmutableArray<CityView> cities, int size)
     {
         var occupied = cities.Select(static city => city.Position).ToHashSet();
-        return
-        [
-            .. passable
-                .Where(coord => coord.Column % 4 == 1 && coord.Row % 3 == 1 && !occupied.Contains(coord))
-                .OrderBy(static coord => coord.Row)
-                .ThenBy(static coord => coord.Column)
-                .Select((coord, index) => Unit(ruleset, index, coord, OwnerAt(coord, size), hurt: index % 3 == 0)),
-        ];
+        var byDomain = ruleset.Units.GroupBy(static unit => unit.Domain).ToDictionary(static group => group.Key, static group => group.Select(static unit => unit.Id).ToList());
+        var spots = terrains
+            .Where(pair => pair.Key.Column % 4 == 1 && pair.Key.Row % 3 == 1 && !occupied.Contains(pair.Key))
+            .Select(pair => (Coord: pair.Key, Types: byDomain.FirstOrDefault(domain => ruleset.Terrain(pair.Value).AllowsDomain(domain.Key)).Value))
+            .Where(static spot => spot.Types is not null)
+            .OrderBy(static spot => spot.Coord.Row)
+            .ThenBy(static spot => spot.Coord.Column)
+            .ToList();
+        return [.. spots.Select((spot, index) => Unit(index, spot.Types[index % spot.Types.Count], spot.Coord, OwnerAt(spot.Coord, size), index % 3 == 0 ? ruleset.Combat.MaxHealth / 2 : ruleset.Combat.MaxHealth))];
     }
 
     // Three of the viewer's units on the passable tiles nearest a spot in the west, as at the start of a game.
@@ -123,17 +125,12 @@ public static class BoardBenchBuilder
                 .ThenBy(static coord => coord.Row)
                 .ThenBy(static coord => coord.Column)
                 .Take(3)
-                .Select((coord, index) => Unit(ruleset, index, coord, You, hurt: false)),
+                .Select((coord, index) => Unit(index, ruleset.Units[index % ruleset.Units.Length].Id, coord, You, ruleset.Combat.MaxHealth)),
         ];
     }
 
-    private static UnitView Unit(Ruleset ruleset, int index, HexCoord coord, PlayerId owner, bool hurt) => new(
-        new UnitId(index + 1),
-        owner,
-        ruleset.Units[index % ruleset.Units.Length].Id,
-        coord,
-        owner == You ? 1 : null,
-        hurt ? ruleset.Combat.MaxHealth / 2 : ruleset.Combat.MaxHealth);
+    private static UnitView Unit(int index, UnitType type, HexCoord coord, PlayerId owner, int health) =>
+        new(new UnitId(index + 1), owner, type, coord, owner == You ? 1 : null, health);
 
     // A tile as the viewer sees it: in sight (with rivers, territory, improvement and building), remembered, or unknown.
     private static TileView Tile(BenchMap map, HexCoord coord, TerrainType terrain)

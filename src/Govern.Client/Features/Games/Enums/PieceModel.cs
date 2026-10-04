@@ -30,6 +30,12 @@ public enum PieceModel
     /// <summary>A figure carrying a pack of goods.</summary>
     Trader,
 
+    /// <summary>A rowed ship with a sail in seat colour.</summary>
+    Galley,
+
+    /// <summary>A ship with two rows of oars and an archer on deck.</summary>
+    Bireme,
+
     /// <summary>A cluster of houses round a tower.</summary>
     City,
 }

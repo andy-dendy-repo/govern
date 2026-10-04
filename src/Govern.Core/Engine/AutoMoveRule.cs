@@ -31,7 +31,7 @@ internal static class AutoMoveRule
         var visible = VisibilityCalculator.VisibleTiles(ruleset, state, unit.Owner);
         var known = owner.Explored.ToHashSet();
         known.UnionWith(visible);
-        var knowledge = new Knowledge(ruleset, state, unit.Owner, known, visible, allowOccupiedTarget ? target : null);
+        var knowledge = new Knowledge(ruleset, state, unit.Owner, ruleset.Unit(unit.Type).Domain, known, visible, allowOccupiedTarget ? target : null);
         return PathFinder.Find(unit.Position, target, ruleset.Unit(unit.Type).Movement, knowledge.StepCost);
     }
 
@@ -122,13 +122,13 @@ internal static class AutoMoveRule
     }
 
     // What the owner knows of the map: the tiles they explored or see, and those they see now.
-    private sealed record Knowledge(Ruleset Ruleset, GameState State, PlayerId Owner, HashSet<HexCoord> Known, IReadOnlySet<HexCoord> Visible, HexCoord? OccupiedTargetAllowed)
+    private sealed record Knowledge(Ruleset Ruleset, GameState State, PlayerId Owner, UnitDomain Domain, HashSet<HexCoord> Known, IReadOnlySet<HexCoord> Visible, HexCoord? OccupiedTargetAllowed)
     {
-        // A step as the owner knows it: onto a known passable tile, not onto a unit or enemy city they see; a river counts where
+        // A step as the owner knows it: onto a known tile of the unit's domain, not onto a unit or enemy city they see; a river counts where
         // they know of it, and a bridge only where they see it.
         public int? StepCost(HexCoord from, HexCoord to)
         {
-            if (!Known.Contains(to) || !State.Map.IsPassable(Ruleset, to))
+            if (!Known.Contains(to))
             {
                 return null;
             }
@@ -142,7 +142,7 @@ internal static class AutoMoveRule
                 && !(Visible.Contains(edge.Owner) && State.Map.BridgeBetween(from, to))
                     ? State.Map.RiverBetween(from, to)
                     : null;
-            return ReachabilityCalculator.StepCost(Ruleset, State.Map.TileAt(to).Terrain, river);
+            return ReachabilityCalculator.StepCost(Ruleset, Domain, State.Map.TileAt(to).Terrain, river);
         }
     }
 }

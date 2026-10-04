@@ -35,6 +35,14 @@ namespace Govern.Core.Units;
 /// Resources the city owning the tile pays to upgrade a <paramref name="Replaces"/> unit into this one; set exactly when
 /// <paramref name="Replaces"/> is.
 /// </param>
+/// <param name="Domain">
+/// Where the unit moves: <see cref="UnitDomain.Land"/> (the default) on passable land, <see cref="UnitDomain.Naval"/> on water.
+/// Melee attacks only reach units of the same domain.
+/// </param>
+/// <param name="RequiresBuilding">
+/// The building (or one of its upgrades) a city needs to produce the unit, or <see langword="null"/> when any city may. A naval
+/// unit appears on water next to that building's tile and heals faster next to it.
+/// </param>
 public sealed record UnitDefinition(
     UnitType Id,
     string Class,
@@ -48,8 +56,14 @@ public sealed record UnitDefinition(
     RangedRules? Ranged = null,
     int BuildProduction = 0,
     UnitType? Replaces = null,
-    ImmutableArray<ResourceAmount>? UpgradeCost = null)
+    ImmutableArray<ResourceAmount>? UpgradeCost = null,
+    UnitDomain Domain = UnitDomain.Land,
+    BuildingType? RequiresBuilding = null)
 {
+    /// <summary>Whether the unit sails water instead of walking on land.</summary>
+    [JsonIgnore]
+    public bool IsNaval => Domain == UnitDomain.Naval;
+
     /// <summary>Whether the unit can found a city (and is consumed doing so).</summary>
     [JsonIgnore]
     public bool CanFoundCity => Abilities.Contains(UnitAbility.FoundCity);

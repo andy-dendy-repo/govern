@@ -197,6 +197,15 @@ public class RulesetTests
         ["units replace each other"] = json => json["units"]![1]!["replaces"] = "swordsman",
         ["building upgrades itself"] = json => json["buildings"]![6]!["upgrades"] = "barracks",
         ["two buildings upgrade one"] = json => json["buildings"]![8]!["upgrades"] = "campus",
+        ["passable water"] = json => json["terrains"]![4]!["isPassable"] = true,
+        ["unknown production building"] = json => json["units"]![12]!["requiresBuilding"] = "dock",
+        ["ship without its building"] = json => json["units"]![12]!.AsObject().Remove("requiresBuilding"),
+        ["ship launched from an inland building"] = json => json["units"]![12]!["requiresBuilding"] = "campus",
+        ["ship that founds cities"] = json => json["units"]![12]!["abilities"]!.AsArray().Add("found_city"),
+        ["ship without water"] = json => json["terrains"]![4]!["isWater"] = false,
+        ["starting ship"] = json => json["setup"]!["startingUnits"]!.AsArray().Add("galley"),
+        ["first production needs a building"] = json => json["cities"]!["initialProduction"] = "galley",
+        ["ship sees less than it sails"] = json => json["units"]![12]!["sight"] = 2,
         ["trade building is an upgrade"] = json => json["trade"]!["building"] = "market",
     };
 
@@ -380,6 +389,15 @@ public class RulesetTests
         { "units replace each other", "$.units" },
         { "building upgrades itself", "$.buildings[6].upgrades" },
         { "two buildings upgrade one", "$.buildings[8].upgrades" },
+        { "passable water", "$.terrains[4].isWater" },
+        { "unknown production building", "$.units[12].requiresBuilding" },
+        { "ship without its building", "$.units[12].requiresBuilding" },
+        { "ship launched from an inland building", "$.units[12].requiresBuilding" },
+        { "ship that founds cities", "$.units[12].abilities" },
+        { "ship without water", "$.units[12].domain" },
+        { "starting ship", "$.setup.startingUnits[2]" },
+        { "first production needs a building", "$.cities.initialProduction" },
+        { "ship sees less than it sails", "$.units[12].sight" },
         { "trade building is an upgrade", "$.trade.building" },
     };
 
@@ -393,7 +411,7 @@ public class RulesetTests
         var ruleset = result.Ruleset;
         ruleset.Setup.Players.ShouldBe(2);
         ruleset.Setup.StartingUnits.ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
-        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder, TestRulesets.Scout, TestRulesets.Trader, TestRulesets.Swordsman, TestRulesets.Pikeman, TestRulesets.Crossbowman, TestRulesets.Knight]);
+        ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder, TestRulesets.Scout, TestRulesets.Trader, TestRulesets.Swordsman, TestRulesets.Pikeman, TestRulesets.Crossbowman, TestRulesets.Knight, TestRulesets.Galley, TestRulesets.Bireme]);
         ruleset.ReplacementOf(TestRulesets.Soldier)!.Id.ShouldBe(TestRulesets.Swordsman);
         ruleset.ReplacementOf(TestRulesets.Archer)!.Id.ShouldBe(TestRulesets.Crossbowman);
         ruleset.ReplacementOf(TestRulesets.Swordsman).ShouldBeNull();

@@ -130,15 +130,41 @@ internal static class EndTurnRule
         return site is { } coord ? done with { Map = done.Map.WithTile(done.Map.TileAt(coord) with { Building = building }) } : done;
     }
 
-    // The city tile when free, otherwise the first free neighbour a unit could stand on; null when surrounded.
+    // The city tile when free, otherwise the first free neighbour a unit could stand on; null when surrounded. A ship is
+    // launched instead on the first free water tile next to its building (the harbour, or an upgrade of it) in the city's territory.
     private static HexCoord? SpawnTile(Ruleset ruleset, GameState state, City city)
     {
+        var definition = ruleset.Unit(city.Producing);
+        if (definition.IsNaval)
+        {
+            return LaunchTile(ruleset, state, city, definition);
+        }
+
         foreach (var coord in city.Position.Neighbors().Prepend(city.Position))
         {
             var ownCityOrNone = state.CityAt(coord) is not { } other || other.Owner == city.Owner;
             if (state.Map.IsPassable(ruleset, coord) && state.UnitAt(coord) is null && ownCityOrNone)
             {
                 return coord;
+            }
+        }
+
+        return null;
+    }
+
+    // Row-major over the map, then the neighbours in their fixed order, so the tile never depends on anything but the state.
+    private static HexCoord? LaunchTile(Ruleset ruleset, GameState state, City city, UnitDefinition ship)
+    {
+        var docks = state.Map.Tiles.Where(tile => tile.Territory == city.Id
+            && tile.Building is { } building && ship.RequiresBuilding is { } needed && ruleset.IsKindOf(building, needed));
+        foreach (var dock in docks)
+        {
+            foreach (var coord in dock.Coord.Neighbors())
+            {
+                if (state.Map.Contains(coord) && ruleset.Terrain(state.Map.TileAt(coord).Terrain).AllowsDomain(ship.Domain) && state.UnitAt(coord) is null)
+                {
+                    return coord;
+                }
             }
         }
 
