@@ -155,7 +155,7 @@ export class Board3D {
             this.world.remove(this.overlay);
             disposeLayer(this.overlay);
         }
-        this.overlay = buildOverlay(this.overlayData, palette);
+        this.overlay = buildOverlay(this.overlayData, palette, this.scene);
         if (this.overlay) {
             this.world.add(this.overlay);
         }
