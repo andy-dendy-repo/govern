@@ -25,11 +25,13 @@ const builders = { rivers: buildRivers, features: buildFeatures, borders: buildB
 function layerKeys(scene) {
     const tiles = new Map(scene.tiles.map(tile => [`${tile.q},${tile.r}`, tile]));
     const under = (scene.features ?? []).map(feature => tiles.get(`${feature.q},${feature.r}`));
+    // Rivers and borders lie on the ground's slopes (ground.js), which follow the tiles, so they are built again with them.
+    const ground = JSON.stringify(scene.tiles);
     return {
-        terrain: JSON.stringify([scene.tiles, scene.features]),
-        rivers: JSON.stringify([scene.rivers, scene.bridges]),
+        terrain: ground + JSON.stringify(scene.features),
+        rivers: JSON.stringify([scene.rivers, scene.bridges]) + ground,
         features: JSON.stringify([scene.features, under]),
-        borders: JSON.stringify(scene.borders),
+        borders: JSON.stringify(scene.borders) + ground,
         pieces: JSON.stringify(scene.pieces),
     };
 }
@@ -155,7 +157,7 @@ export class Board3D {
             this.world.remove(this.overlay);
             disposeLayer(this.overlay);
         }
-        this.overlay = buildOverlay(this.overlayData, palette);
+        this.overlay = buildOverlay(this.overlayData, palette, this.scene);
         if (this.overlay) {
             this.world.add(this.overlay);
         }
