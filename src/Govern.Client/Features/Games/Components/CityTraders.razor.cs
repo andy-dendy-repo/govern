@@ -61,8 +61,8 @@ public partial class CityTraders
         null => "Free: no deal.",
         { Status: TradeDealStatus.Proposed } => $"Offered to {Host(deal)}: {Terms(deal, home: true)}. Waiting for their answer.",
         { Status: TradeDealStatus.Countered } => $"{Host(deal)} offers instead: {Terms(deal, home: true)}.",
+        { Paused: true } => $"Paused, no known way to {Host(deal)}: {Terms(deal, home: true)}.",
         { Status: TradeDealStatus.Travelling } => $"On its way to {Host(deal)}; the deal starts when it arrives: {Terms(deal, home: true)}.",
-        { Paused: true } => $"Paused, no way to {Host(deal)}: {Terms(deal, home: true)}.",
         _ => $"Active with {Host(deal)}: {Terms(deal, home: true)}.",
     };
 

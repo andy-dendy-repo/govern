@@ -41,7 +41,7 @@ public static class TradePreviewCalculator
         return OwnCity(view, cityId)?.DemandList ?? Partner(view, cityId)?.DemandList ?? [];
     }
 
-    /// <summary>The cities a trader from <paramref name="homeId"/> can send a deal to: the viewer's other cities with a trade post, then their trade partners.</summary>
+    /// <summary>The cities a trader from <paramref name="homeId"/> can send a deal to: the viewer's other cities with a trade post, then the trade partners whose post they have seen.</summary>
     /// <param name="view">The viewer's current view.</param>
     /// <param name="homeId">The trader's home city.</param>
     /// <returns>Each target's id, name and owner, own cities first, each group by id.</returns>
@@ -51,7 +51,7 @@ public static class TradePreviewCalculator
         var own = view.Cities
             .Where(city => city.Owner == view.Viewer && city.Id != homeId && city.TradePost is not null)
             .Select(static city => (city.Id, city.Name, city.Owner));
-        var partners = view.TradePartnerList.Where(partner => partner.Id != homeId).Select(static partner => (partner.Id, partner.Name, partner.Owner));
+        var partners = view.TradePartnerList.Where(partner => partner.Id != homeId && partner.TradePost is not null).Select(static partner => (partner.Id, partner.Name, partner.Owner));
         return [.. own, .. partners];
     }
 
@@ -81,7 +81,7 @@ public static class TradePreviewCalculator
         }
 
         var homeId = view.FindOwnUnit(traderId)!.HomeCity!.Value;
-        if (hostId == homeId || (OwnCity(view, hostId) is not { TradePost: not null } && Partner(view, hostId) is null))
+        if (hostId == homeId || (OwnCity(view, hostId) is not { TradePost: not null } && Partner(view, hostId) is not { TradePost: not null }))
         {
             return RuleViolations.NoTradePartner;
         }

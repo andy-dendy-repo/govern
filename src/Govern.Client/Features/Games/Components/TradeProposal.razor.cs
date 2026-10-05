@@ -97,13 +97,17 @@ public partial class TradeProposal
     protected override void OnParametersSet()
     {
         // A counter-offer starts from the offer on the table, once per offer.
-        if (Initial is { } initial && !ReferenceEquals(initial, _seeded))
+        // Each new view brings new objects, so the offer is compared by value: a refresh keeps the player's edits.
+        if (Initial is { } initial && !SameTerms(initial, _seeded))
         {
             _seeded = initial;
             (_give, _giveAmount) = initial.Gives.FirstOrDefault() is { } give ? ((ResourceType?)give.Resource, give.Amount) : (null, 1);
             (_take, _takeAmount) = initial.Receives.FirstOrDefault() is { } take ? ((ResourceType?)take.Resource, take.Amount) : (null, 1);
         }
     }
+
+    private static bool SameTerms(TradeTerms terms, TradeTerms? other) =>
+        other is not null && terms.Gives.SequenceEqual(other.Gives) && terms.Receives.SequenceEqual(other.Receives);
 
     private string TargetName(string name, PlayerId owner) => owner == View.Viewer ? name : $"{name} (Seat {Seats.Number(View, owner)})";
 

@@ -66,10 +66,12 @@ public static class BoardClickResolver
 
     // What a click does with the selected own unit: an enemy it can hit shows the forecast (the attack is the forecast's button);
     // a click on a tile it can also enter (a lone enemy trader, which blocks nothing) moves there once the forecast shows. Any
-    // other tile it can reach is a move, an undefended enemy city it can reach is captured; null when the click does neither.
+    // other tile it can reach is a move, unless another of the player's units stands there (traders share tiles), which the
+    // click selects instead; an undefended enemy city it can reach is captured; null when the click does none of these.
     private static BoardClick? Act(Ruleset ruleset, PlayerView view, BoardSelection selection, UnitId unitId, HexCoord coord)
     {
-        var reachable = GameEngine.ReachableTiles(ruleset, view, unitId).Contains(coord);
+        var ownUnitThere = view.UnitsAt(coord).Any(unit => unit.Owner == view.Viewer && unit.Id != unitId);
+        var reachable = !ownUnitThere && GameEngine.ReachableTiles(ruleset, view, unitId).Contains(coord);
         var attackable = GameEngine.AttackTargets(ruleset, view, unitId).Contains(coord);
         if (attackable && view.DefenderAt(ruleset, coord) is not null && !(reachable && selection.Target == coord))
         {

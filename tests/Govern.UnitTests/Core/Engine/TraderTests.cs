@@ -86,4 +86,22 @@ public class TraderTests
         update.State.FindUnit(trader)!.Damage.ShouldBe(0);
         (update.State.FindUnit(defender)?.Damage ?? TestRulesets.Default.Combat.MaxHealth).ShouldBeGreaterThan(0);
     }
+
+    [Fact]
+    public void Attack_TwoLoneEnemyTraders_HitsTheLowerIdAsThePreviewSays()
+    {
+        // The state lists the higher id first, so neither list order can decide.
+        var builder = new GameStateBuilder().WithCapitals();
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 2);
+        var built = builder.Build();
+        Unit[] traders = [new(new UnitId(902), P2, TestRulesets.Trader, At(4, 2), 0), new(new UnitId(901), P2, TestRulesets.Trader, At(4, 2), 0)];
+        var state = built with { Units = [.. built.Units, .. traders] };
+
+        var update = Execute(state, P1, new AttackCommand(attacker, At(4, 2)));
+        var previewed = GameEngine.ViewFor(TestRulesets.Default, state, P1).DefenderAt(TestRulesets.Default, At(4, 2));
+
+        previewed!.Id.ShouldBe(new UnitId(901));
+        update.State.FindUnit(new UnitId(902))!.Damage.ShouldBe(0);
+        (update.State.FindUnit(new UnitId(901))?.Damage ?? TestRulesets.Default.Combat.MaxHealth).ShouldBeGreaterThan(0);
+    }
 }

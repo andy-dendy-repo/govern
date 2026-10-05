@@ -122,6 +122,18 @@ public class BoardClickResolverTests
     }
 
     [Fact]
+    public void Resolve_SelectedUnitAndAnOwnTraderInReach_SelectsTheTraderInsteadOfMoving()
+    {
+        var view = Create([Soldier(2, You, At(3, 2)), Unit(5, You, TraderType, At(4, 2))]);
+
+        var fromSoldier = BoardClickResolver.Resolve(Ruleset, view, BoardSelection.Of(new UnitId(2)), At(4, 2));
+        var fromTrader = BoardClickResolver.Resolve(Ruleset, view, BoardSelection.Of(new UnitId(5)), At(3, 2));
+
+        fromSoldier.ShouldBe(new BoardClick(BoardSelection.Of(new UnitId(5)), null));
+        fromTrader.ShouldBe(new BoardClick(BoardSelection.Of(new UnitId(2)), null));
+    }
+
+    [Fact]
     public void Resolve_SelectedSoldierAndALoneEnemyTrader_ShowsTheForecastThenMovesOntoIt()
     {
         var view = Create([Soldier(2, You, At(3, 2)), Unit(6, Opponent, TraderType, At(4, 2))]);

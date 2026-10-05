@@ -234,12 +234,13 @@ internal static class TradeRule
         return new GameUpdate(state, events.ToImmutable());
     }
 
-    // Ends a deal (cancelled by either side): it is gone, and its trader, if alive, walks home to its own trade post.
+    // Ends a deal (cancelled by either side): it is gone, and its trader, if alive and on its way or shuttling, walks home to its
+    // own trade post; a trader whose offer was still on the table keeps whatever order its owner gave it.
     public static GameState EndDeal(Ruleset ruleset, GameState state, TradeDeal deal, TradeChange change, ImmutableArray<GameEvent>.Builder events)
     {
         events.Add(Changed(deal, change));
         var ended = state.WithoutDeal(deal.Id);
-        if (ended.FindUnit(deal.Trader) is not { } trader)
+        if (!deal.IsAgreed || ended.FindUnit(deal.Trader) is not { } trader)
         {
             return ended;
         }

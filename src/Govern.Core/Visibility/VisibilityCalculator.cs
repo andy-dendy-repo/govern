@@ -141,14 +141,14 @@ public static class VisibilityCalculator
         return EventVisibilityCalculator.EventsFor(ruleset, before, update, viewer);
     }
 
-    // The player's known trade posts plus the other players' cities whose trade post they see now, ids in the order seen (new
-    // ones by id); null while there are none.
+    // The player's known trade posts plus the other players' cities whose trade post and city tile they both see now (a post
+    // seen alone doesn't say which city owns it), ids in the order seen (new ones by id); null while there are none.
     private static ImmutableArray<CityId>? KnownPosts(Ruleset ruleset, GameState state, Player player, IReadOnlySet<HexCoord> visible)
     {
         var known = player.KnownPostList;
         var seen = state.Cities
             .Where(city => city.Owner != player.Id && !known.Contains(city.Id))
-            .Where(city => TradeRule.PostTile(ruleset, state.Map, city.Id) is { } post && visible.Contains(post))
+            .Where(city => visible.Contains(city.Position) && TradeRule.PostTile(ruleset, state.Map, city.Id) is { } post && visible.Contains(post))
             .OrderBy(static city => city.Id.Value)
             .Select(static city => city.Id)
             .ToList();
@@ -170,29 +170,31 @@ public static class VisibilityCalculator
         return deals.IsEmpty ? null : deals;
     }
 
-    // Other players' cities whose trade post the viewer has seen and that still have one, ordered by id; each market has what
-    // its agreed deals the viewer is not a side of use taken off (the client takes off the viewer's own); null when none.
+    // Other players' cities with a trade post the viewer may trade with, ordered by id: those whose post they have seen
+    // (Player.KnownPosts, with the post's tile), and the other side of each deal they are a side of (without it, unless seen:
+    // an offer from an unseen city tells its name, not where it is). Each market has what its agreed deals the viewer is not a
+    // side of use taken off (the client takes off the viewer's own); null when none.
     private static ImmutableArray<TradePartnerView>? TradePartners(Ruleset ruleset, GameState state, Player viewer)
     {
-        var viewersDeals = state.TradeDealList
-            .Where(deal => deal.Owner == viewer.Id || deal.HostOwner == viewer.Id)
-            .Select(static deal => deal.Id)
-            .ToHashSet();
-        var partners = viewer.KnownPostList
+        var viewersDeals = state.TradeDealList.Where(deal => deal.Owner == viewer.Id || deal.HostOwner == viewer.Id).ToList();
+        var dealIds = viewersDeals.Select(static deal => deal.Id).ToHashSet();
+        var known = viewer.KnownPostList.ToHashSet();
+        var partners = known
+            .Concat(viewersDeals.Select(deal => deal.Owner == viewer.Id ? deal.Host : deal.Home))
+            .Distinct()
             .Select(state.FindCity)
             .OfType<City>()
-            .Where(city => city.Owner != viewer.Id)
-            .Select(city => (City: city, Post: TradeRule.PostTile(ruleset, state.Map, city.Id)))
-            .Where(static entry => entry.Post is not null)
-            .OrderBy(static entry => entry.City.Id.Value)
-            .Select(entry => PartnerOf(state, entry.City, entry.Post!.Value, viewersDeals))
+            .Where(city => city.Owner != viewer.Id && TradeRule.PostTile(ruleset, state.Map, city.Id) is not null)
+            .OrderBy(static city => city.Id.Value)
+            .Select(city => PartnerOf(ruleset, state, city, known.Contains(city.Id), dealIds))
             .ToImmutableArray();
         return partners.IsEmpty ? null : partners;
     }
 
-    private static TradePartnerView PartnerOf(GameState state, City city, HexCoord post, IReadOnlySet<TradeDealId> viewersDeals)
+    private static TradePartnerView PartnerOf(Ruleset ruleset, GameState state, City city, bool seen, IReadOnlySet<TradeDealId> viewersDeals)
     {
         var market = TradeRule.FreeMarket(state, city, viewersDeals);
+        var post = seen ? TradeRule.PostTile(ruleset, state.Map, city.Id) : null;
         return new TradePartnerView(city.Id, city.Owner, city.Name, post, market.IsEmpty ? null : market, city.DemandList.IsEmpty ? null : city.DemandList);
     }
 

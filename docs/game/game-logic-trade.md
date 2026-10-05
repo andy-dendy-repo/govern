@@ -23,20 +23,20 @@ updated: 2026-10-05
 | Agreed | Travelling or active. Only agreed deals use market caps; an offer on the table uses none |
 | Committed | What a city's agreed deals use of an order's cap, as their home or their host |
 | Free market | A city's orders with the committed amounts taken off each cap |
-| Known post | An enemy city whose trade post the player has seen (it was on a visible tile once) or that sent them a deal: a city they may send deals to |
+| Known post | An enemy city whose city tile and trade post the player have seen at the same time (a post seen alone doesn't say whose it is): a city they may send deals to |
 
 ## The trade commands
 
 Each command is checked in order; the first failing check is the answer (codes in brackets). A deal the actor is not a side of is always `trade.deal_not_found`.
 
 1. **Set a market order** (city, resource, side or none, cap): the city is the actor's (`city.not_found`); the resource is tradable (`trade.not_tradable`); with a side, the cap is 1..[`trade.maxCap`] (`market.cap_out_of_range`); for each side, what the city's agreed deals commit is at most the new cap on that side, 0 for the other side (`market.below_deals`). The orders are kept in [`resources`] order.
-2. **Propose a deal** (trader, host, gives, receives): the trader is the actor's (`unit.not_found`), has `trade` (`trade.cannot_trade`) and carries no deal (`trade.trader_has_deal`); its home city is the actor's (`trade.no_home`) with a trade post (`trade.no_trade_post`); the host is another city with a trade post that is the actor's own or a known post (`trade.no_partner`; a city they never learned of reads the same as none). The terms ([deal check](#the-deal-check)) must fit both free markets now. The deal is stored with a random id (amounts summed per resource, in [`resources`] order) as proposed (`trade_deal_changed`: proposed), and the host's owner learns of the home city's post (a known post for them). When the actor also owns the host, it is accepted at once (step 3's accept). The trader can be anywhere.
+2. **Propose a deal** (trader, host, gives, receives): the trader is the actor's (`unit.not_found`), has `trade` (`trade.cannot_trade`) and carries no deal (`trade.trader_has_deal`); its home city is the actor's (`trade.no_home`) with a trade post (`trade.no_trade_post`); the host is another city with a trade post that is the actor's own or a known post (`trade.no_partner`; a city they never learned of reads the same as none). The terms ([deal check](#the-deal-check)) must fit both free markets now. The deal is stored with a random id (amounts summed per resource, in [`resources`] order) as proposed (`trade_deal_changed`: proposed). When the actor also owns the host, it is accepted at once (step 3's accept). The trader can be anywhere.
 3. **Answer a deal** (deal, accept, decline or counter; terms with a counter; deals to cancel with an accept): the actor is a side of it (`trade.deal_not_found`) and the offer waits for them (`trade.no_proposal`): the host's owner answers a proposed deal, the trader's owner a countered one.
    - **Decline:** the deal goes (declined); the trader is free.
    - **Counter:** the new terms must fit both free markets ([deal check](#the-deal-check)); the deal keeps its id, takes the new terms and goes back to the other side: proposed becomes countered and countered becomes proposed (countered).
    - **Accept:** first each listed deal is cancelled (a deal listed twice counts once); each must be agreed, not this one, and have the answering city (the host for a proposal, the home city for a counter-offer) as its home or host (`trade.cannot_cancel`). Then the terms must fit both free markets. The deal becomes travelling (accepted): the trader drops any job or order, carries the deal and sets off for the host's post, [walking](#the-traders-walk) at once when its owner accepted, otherwise at the start of its owner's next turn.
    - Any other answer is `trade.unknown_answer`.
-4. **Cancel a deal** (deal): either side, in any status (`trade.deal_not_found`). The deal goes (cancelled) and the trader, if alive, walks home to its own city's trade post, free for a new deal.
+4. **Cancel a deal** (deal): either side, in any status (`trade.deal_not_found`). The deal goes (cancelled). A trader whose deal was agreed walks home to its own city's trade post, free for a new deal; one whose offer was still on the table keeps its orders.
 
 A trader carrying a deal (travelling or active) takes no other order: move, set destination, explore and upgrade answer `trade.on_deal`. A unit with `trade` can be produced only by a city that has [`trade.building`] (`trade.no_trade_post`) and fewer than [`trade.tradersPerCity`] traders (`trade.too_many_traders`); a finished trader waits in production while the city has them all, and is born with that city as its home.
 
@@ -54,8 +54,8 @@ A trader carrying a deal (travelling or active) takes no other order: move, set 
 A unit type with `trade` shares tiles:
 1. A trader's step ignores units and cities: it walks through any unit and any city, its owner's or not, and may stop on any of them, including a trade post with a unit on it. Terrain, rivers and its domain still apply ([moves](game-logic.md#move-a-unit)).
 2. A trader never blocks: any unit may enter a tile where only traders stand, and a city can spawn a unit there. A tile's **holder** is its one unit that doesn't share tiles.
-3. **Attack:** the defender on a tile is its holder; with none, another player's trader there, unless the tile is a city, which is captured as if empty (traders don't defend). A lone trader is attacked like any unit.
-4. On the board units on one tile stand side by side, and clicks on the tile select them in turn (own units and the holder first), then the player's city there. A click on a lone enemy trader the selected unit can both reach and attack shows the forecast first; a second click walks onto it.
+3. **Attack:** the defender on a tile is its holder; with none, another player's trader there (the lowest id, so neither list order decides nor leaks), unless the tile is a city, which is captured as if empty (traders don't defend). A lone trader is attacked like any unit.
+4. On the board units on one tile stand side by side, and clicks on the tile select them in turn (own units and the holder first), then the player's city there. A click on a tile with another of the player's units selects it rather than moving the selected unit there. A click on a lone enemy trader the selected unit can both reach and attack shows the forecast first; a second click walks onto it.
 
 ## The trader's walk
 
@@ -90,7 +90,7 @@ Games saved with G17 routes load with their routes dropped (the `tradeRoutes` an
 
 - Both sides see each deal they are a side of, in every status: the two cities by name, the owners, the terms and the status. The trader's id and whether the deal is paused are the trader's owner's only.
 - A trader's home city is its owner's only.
-- For each known post that still has a trade post, the player sees a **trade partner**: the city's name and owner, its post, its demand levels, and its free market less the agreed deals the player is not a side of (the client takes off the player's own, so the preview equals the rules). Accepted leaks: a partner's free market tells the player roughly what its other deals use, and a rising demand level can show the city is short of upkeep in that resource; the partner stays known out of sight, so its market keeps updating.
+- For each known post that still has a trade post, and for the other city of each of their deals, the player sees a **trade partner**: the city's name and owner, its post (for a known post only: an offer from an unseen city tells where it is no more than its name does), its demand levels, and its free market less the agreed deals the player is not a side of (the client takes off the player's own, so the preview equals the rules). Accepted leaks: a partner's free market tells the player roughly what its other deals use, and a rising demand level can show the city is short of upkeep in that resource; the partner stays known out of sight, so its market keeps updating.
 - A city's own market and demand levels are its owner's only. An enemy city's trade post is shown on the board while its tile and the city are visible.
 - `trade_deal_changed` and `trade_exchanged` events reach the two sides of the deal only. `trade_exchanged` says which side was short, so each side learns when the other couldn't pay its part (accepted: the swap visibly didn't happen). Traders are ordinary units on the board.
 

@@ -17,8 +17,8 @@ namespace Govern.Core.State;
 /// so games saved before the science tree read as having none.
 /// </param>
 /// <param name="KnownPosts">
-/// Other players' cities whose trade post the player has seen or that sent them a deal (G17b), in the order they became known:
-/// the cities they can send deals to without seeing them now. <see langword="null"/> while there are none.
+/// Other players' cities whose trade post the player has seen together with the city (G17b), in the order they were seen: the
+/// cities they can send deals to without seeing them now. <see langword="null"/> while there are none.
 /// </param>
 public sealed record Player(
     PlayerId Id,
