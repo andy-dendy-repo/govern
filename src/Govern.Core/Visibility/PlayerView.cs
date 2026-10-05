@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 using Govern.Core.Map;
+using Govern.Core.Rulesets;
 using Govern.Core.State;
 using Govern.Core.Units;
 
@@ -33,10 +34,13 @@ namespace Govern.Core.Visibility;
 /// The viewer's cities and the enemy cities on visible tiles, ordered by id; enemy production is hidden (<see cref="CityView"/>).
 /// </param>
 /// <param name="Players">Participants in turn order.</param>
-/// <param name="TradeRoutes">
-/// The trade routes the viewer is a side of (<see cref="TradeRouteView"/>), ordered by id; <see langword="null"/> when none.
+/// <param name="TradeDeals">
+/// The trade deals the viewer is a side of (<see cref="TradeDealView"/>), ordered by id; <see langword="null"/> when none.
 /// </param>
 /// <param name="Science">The viewer's own science per turn and science nodes (<see cref="ScienceView"/>).</param>
+/// <param name="TradePartners">
+/// Other players' cities the viewer can send deals to (<see cref="TradePartnerView"/>), ordered by id; <see langword="null"/> when none.
+/// </param>
 public sealed record PlayerView(
     PlayerId Viewer,
     long Version,
@@ -50,12 +54,17 @@ public sealed record PlayerView(
     ImmutableArray<UnitView> Units,
     ImmutableArray<CityView> Cities,
     ImmutableArray<PlayerSummary> Players,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradeRouteView>? TradeRoutes = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ScienceView? Science = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradeDealView>? TradeDeals = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ScienceView? Science = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradePartnerView>? TradePartners = null)
 {
-    /// <summary>The trade routes the viewer is a side of (empty when none).</summary>
+    /// <summary>The trade deals the viewer is a side of (empty when none).</summary>
     [JsonIgnore]
-    public ImmutableArray<TradeRouteView> TradeRouteList => TradeRoutes ?? [];
+    public ImmutableArray<TradeDealView> TradeDealList => TradeDeals ?? [];
+
+    /// <summary>Other players' cities the viewer can send deals to (empty when none).</summary>
+    [JsonIgnore]
+    public ImmutableArray<TradePartnerView> TradePartnerList => TradePartners ?? [];
 
     /// <summary>The position of the tile at an index of <see cref="Tiles"/>.</summary>
     /// <param name="index">A tile index, 0 to <c>Width * Height - 1</c>.</param>
@@ -120,10 +129,33 @@ public sealed record PlayerView(
     public IEnumerable<RiverType> RiversAround(HexCoord coord) =>
         coord.Neighbors().Select(neighbor => RiverBetween(coord, neighbor)).OfType<RiverType>();
 
-    /// <summary>Returns the unit on a tile, if the viewer sees one there.</summary>
+    /// <summary>
+    /// Returns the unit holding a tile, if the viewer sees one there: the one unit on it that doesn't share tiles (traders do,
+    /// see <see cref="Units.UnitDefinition.SharesTiles"/>).
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="coord">The tile.</param>
     /// <returns>The unit, or <see langword="null"/>.</returns>
-    public UnitView? UnitAt(HexCoord coord) => Units.FirstOrDefault(unit => unit.Position == coord);
+    public UnitView? HolderAt(Ruleset ruleset, HexCoord coord)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        return Units.FirstOrDefault(unit => unit.Position == coord && !ruleset.Unit(unit.Type).SharesTiles);
+    }
+
+    /// <summary>
+    /// Returns the unit an attack by the viewer on a tile would hit, as the rules pick it: the unit holding the tile, or with
+    /// none another player's trader there, unless the tile is a city (an undefended city is captured).
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="coord">The tile.</param>
+    /// <returns>The unit, or <see langword="null"/> when an attack would hit no unit.</returns>
+    public UnitView? DefenderAt(Ruleset ruleset, HexCoord coord) =>
+        Actions.AttackRule.DefenderAt(ruleset, UnitsAt(coord), CityAt(coord) is not null, Viewer);
+
+    /// <summary>Returns every unit the viewer sees on a tile: its holder, if any, and the traders sharing it.</summary>
+    /// <param name="coord">The tile.</param>
+    /// <returns>The units, ordered by id (empty when none).</returns>
+    public IEnumerable<UnitView> UnitsAt(HexCoord coord) => Units.Where(unit => unit.Position == coord);
 
     /// <summary>Returns the city on a tile, if the viewer sees one there.</summary>
     /// <param name="coord">The tile.</param>

@@ -9,7 +9,7 @@ using static Govern.ClientTests.Support.TestViews;
 
 namespace Govern.ClientTests.Features.Games.Components;
 
-/// <summary>Trading on the game screen (G17): the Market tab, answering and making proposals, and the trader's orders.</summary>
+/// <summary>Trading on the game screen (G17, G17b): the Market tab, the city's traders and their deals, answering offers, and the trader's orders.</summary>
 public class GameTableTradeTests : ClientTestContext
 {
     private static readonly CityView Home = City(7, You, At(2, 2), "Oakhaven") with
@@ -73,82 +73,105 @@ public class GameTableTradeTests : ClientTestContext
     }
 
     [Fact]
-    public void Proposal_OverTheCap_IsAcceptedAfterTickingTheOlderDealToCancel()
+    public void HostedOffer_OverTheCap_IsAcceptedAfterTickingTheOlderDealToCancel()
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
         var host = Home with { Market = [new MarketOrder(Food, MarketSide.Buy, 6), new MarketOrder(Stone, MarketSide.Sell, 4)] };
-        var older = new TradeRouteView(new TradeRouteId(20), You, new CityId(8), "Pinecrest", host.Id, host.Name, You, Opened: true,
-            Deal: new TradeDeal([new ResourceAmount(Food, 3)], [new ResourceAmount(Stone, 4)], Accepted: true, AcceptedTurn: 2));
-        var offer = new TradeRouteView(new TradeRouteId(21), Opponent, Enemy.Id, Enemy.Name, host.Id, host.Name, You, Opened: true,
-            Deal: new TradeDeal([new ResourceAmount(Food, 2)], [new ResourceAmount(Stone, 1)]));
-        var cut = RenderTable(Create(cities: [host, City(8, You, At(6, 6), "Pinecrest")]) with { TradeRoutes = [older, offer] });
+        var older = new TradeDealView(new TradeDealId(20), You, new CityId(8), "Pinecrest", host.Id, host.Name, You,
+            Terms([(Food, 3)], [(Stone, 4)]), TradeDealStatus.Active);
+        var offer = new TradeDealView(new TradeDealId(21), Opponent, Enemy.Id, Enemy.Name, host.Id, host.Name, You,
+            Terms([(Food, 2)], [(Stone, 1)]), TradeDealStatus.Proposed);
+        var cut = RenderTable(Create(cities: [host, City(8, You, At(6, 6), "Pinecrest")]) with { TradeDeals = [older, offer], TradePartners = [Partner()] });
         _board.Click(At(2, 2));
 
-        var route = cut.Find(".trade-route-21");
-        route.QuerySelector(".trade-route-title")!.TextContent.ShouldBe("From Rivertown (Seat 2)");
-        route.QuerySelector(".trade-route-status")!.TextContent.ShouldBe("Proposed: gives 1 stone, gets 2 food a turn.");
-        route.QuerySelector("button.accept-deal")!.HasAttribute("disabled").ShouldBeTrue();
-        route.QuerySelector(".accept-reason")!.TextContent.ShouldBe("The host city's market doesn't sell or buy that much.");
-        cut.Find(".trade-route-21 .cancel-to-make-room input").Change(true);
-        cut.Find(".trade-route-21 button.accept-deal").Click();
+        var hosted = cut.Find(".hosted-deal-21");
+        hosted.QuerySelector(".hosted-status")!.TextContent.ShouldBe("Rivertown (Seat 2) offers: you give 1 stone, get 2 food a turn.");
+        hosted.QuerySelector("button.accept-deal")!.HasAttribute("disabled").ShouldBeTrue();
+        hosted.QuerySelector(".accept-reason")!.TextContent.ShouldBe("The host city's market doesn't sell or buy that much.");
+        cut.Find(".hosted-deal-21 .cancel-to-make-room input").Change(true);
+        cut.Find(".hosted-deal-21 button.accept-deal").Click();
 
         cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
-            .ShouldBe("""{"type":"answer_deal","routeId":{"value":21},"accept":true,"cancelRoutes":[{"value":20}]}"""));
+            .ShouldBe("""{"type":"answer_deal","dealId":{"value":21},"answer":"accept","cancelDeals":[{"value":20}]}"""));
         cut.Find(".city-tabs [role=tab] .rz-tabview-icon").TextContent.ShouldBe("notifications");
     }
 
     [Fact]
-    public void Proposal_FromTheHomeCity_ShowsTheHostsValuesAndSendsTheDeal()
+    public void FreeTrader_SuggestsADealToAKnownPartnerAndSendsIt()
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
-        var route = new TradeRouteView(new TradeRouteId(22), You, Home.Id, Home.Name, Enemy.Id, Enemy.Name, Opponent, Opened: true,
-            Trader: new UnitId(5), HostPost: At(7, 2), HostMarket: [new MarketOrder(Food, MarketSide.Buy, 6), new MarketOrder(Stone, MarketSide.Sell, 4)],
-            HostDemand: [new ResourceDemand(Stone, 150)]);
-        var trader = Unit(5, You, TraderType, At(6, 2)) with { RouteId = route.Id };
-        var cut = RenderTable(Create([trader], [Home, Enemy]) with { TradeRoutes = [route] });
+        var trader = Unit(5, You, TraderType, At(2, 3)) with { HomeCity = Home.Id };
+        var partner = Partner() with { Market = [new MarketOrder(Food, MarketSide.Buy, 6), new MarketOrder(Stone, MarketSide.Sell, 4)], Demand = [new ResourceDemand(Stone, 150)] };
+        var cut = RenderTable(Create([trader], [Home]) with { TradePartners = [partner] });
         _board.Click(At(2, 2));
 
-        cut.Find(".trade-route-22 .trade-route-status").TextContent.ShouldBe("The trader waits at the trade post for your proposal.");
-        cut.Find(".proposal-value").TextContent.ShouldBe("Rivertown values your offer at 1 against 3 asked.");
+        cut.Find(".city-trader-5 .trader-status").TextContent.ShouldBe("Free: no deal.");
+        cut.Find(".city-trader-5 button.suggest-deal").Click();
+        cut.Find(".city-trader-5 .proposal-city-9").Click();
+        cut.Find(".proposal-value").TextContent.ShouldBe("Rivertown values what it gets at 1 against 3 it gives.");
         cut.Find("button.proposal-fair").Click();
-        cut.Find(".proposal-value").TextContent.ShouldBe("Rivertown values your offer at 3 against 3 asked.");
+        cut.Find(".proposal-value").TextContent.ShouldBe("Rivertown values what it gets at 3 against 3 it gives.");
         cut.Find("button.propose-deal").Click();
 
         cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString().ShouldBe(
-            """{"type":"propose_deal","routeId":{"value":22},"gives":[{"resource":"food","amount":3}],"receives":[{"resource":"stone","amount":1}]}"""));
+            """{"type":"propose_deal","traderId":{"value":5},"hostId":{"value":9},"gives":[{"resource":"food","amount":3}],"receives":[{"resource":"stone","amount":1}]}"""));
     }
 
     [Fact]
-    public void Trader_Selected_OpensARouteToThePickedCity()
+    public void CounterOffer_ToTheOwnersTrader_CanBeAcceptedOrDeclined()
     {
         Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started()));
-        var cut = RenderTable(Create([Unit(5, You, TraderType, At(2, 3))], [Home, Enemy]));
-        _board.Click(At(2, 3));
+        var deal = new TradeDealView(new TradeDealId(22), You, Home.Id, Home.Name, Enemy.Id, Enemy.Name, Opponent,
+            Terms([(Food, 4)], [(Stone, 1)]), TradeDealStatus.Countered, Trader: new UnitId(5));
+        var trader = Unit(5, You, TraderType, At(2, 3)) with { HomeCity = Home.Id };
+        var partner = Partner() with { Market = [new MarketOrder(Food, MarketSide.Buy, 6), new MarketOrder(Stone, MarketSide.Sell, 4)] };
+        var cut = RenderTable(Create([trader], [Home]) with { TradeDeals = [deal], TradePartners = [partner] });
+        _board.Click(At(2, 2));
 
-        cut.Find(".trader-pick-from .trader-city-7").GetAttribute("aria-pressed").ShouldBe("true");
-        cut.Find(".trader-open-reason").TextContent.ShouldBe("Pick the city to trade with: one with a trade post you can see.");
-        cut.Find(".trader-pick-to .trader-city-9").Click();
-        cut.FindAll(".trader-open-reason").ShouldBeEmpty();
-        cut.Find("button.trader-open-route").Click();
+        cut.Find(".city-trader-5 .trader-status").TextContent.ShouldBe("Rivertown (Seat 2) offers instead: you give 4 food, get 1 stone a turn.");
+        cut.Find(".city-trader-5 button.accept-deal").HasAttribute("disabled").ShouldBeFalse();
+        cut.Find(".city-trader-5 button.decline-deal").Click();
 
-        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString()
-            .ShouldBe("""{"type":"open_trade_route","traderId":{"value":5},"homeId":{"value":7},"hostId":{"value":9}}"""));
+        cut.WaitForAssertion(() => Command(0)["command"]!.ToJsonString().ShouldBe("""{"type":"answer_deal","dealId":{"value":22},"answer":"decline"}"""));
     }
 
     [Fact]
-    public void Trader_OnARoute_CanOnlyCloseIt()
+    public void Trader_Selected_SaysItsHomeAndOpensItsMarket()
     {
-        var route = new TradeRouteView(new TradeRouteId(22), You, Home.Id, Home.Name, Enemy.Id, Enemy.Name, Opponent, Trader: new UnitId(5), HostPost: At(7, 2));
-        var trader = Unit(5, You, TraderType, At(4, 2)) with { RouteId = route.Id, Destination = At(7, 2) };
-        var cut = RenderTable(Create([trader], [Home, Enemy]) with { TradeRoutes = [route] });
+        var trader = Unit(5, You, TraderType, At(2, 3)) with { HomeCity = Home.Id };
+        var cut = RenderTable(Create([trader], [Home]));
+        _board.Click(At(2, 3));
+
+        cut.Find(".trader-deal").TextContent.ShouldBe("From Oakhaven, free for a deal.");
+        cut.Find("button.trader-open-market").TextContent.ShouldContain("Make a deal");
+        cut.Find("button.trader-open-market").Click();
+
+        cut.Find(".city-traders .city-trader-5").ShouldNotBeNull();
+        cut.Find(".hud-selection").ClassList.ShouldContain("hud-selection-city");
+    }
+
+    [Fact]
+    public void Trader_OnADeal_TakesNoOtherOrder()
+    {
+        var deal = new TradeDealView(new TradeDealId(22), You, Home.Id, Home.Name, Enemy.Id, Enemy.Name, Opponent,
+            Terms([(Food, 3)], [(Stone, 1)]), TradeDealStatus.Active, Trader: new UnitId(5));
+        var trader = Unit(5, You, TraderType, At(4, 2)) with { HomeCity = Home.Id, DealId = deal.Id, Destination = At(7, 2) };
+        var cut = RenderTable(Create([trader], [Home, Enemy]) with { TradeDeals = [deal] });
 
         _board.Click(At(4, 2));
 
-        cut.Find(".trader-route").TextContent.Trim().ShouldBe("On the route from Oakhaven to Rivertown; make deals in Oakhaven's Market tab.");
+        cut.Find(".trader-deal").TextContent.ShouldBe("From Oakhaven, trading with Rivertown.");
         cut.FindAll("button.go-to").ShouldBeEmpty();
         cut.FindAll("button.stop-order").ShouldBeEmpty();
-        cut.Find("button.trader-close-route").ShouldNotBeNull();
+        cut.Find("button.trader-open-market").TextContent.ShouldContain("Open market");
+        cut.Find(".hud-selection").ClassList.ShouldNotContain("hud-selection-city");
     }
+
+    private static TradePartnerView Partner() =>
+        new(Enemy.Id, Opponent, Enemy.Name, At(7, 2), [new MarketOrder(Food, MarketSide.Sell, 6), new MarketOrder(Stone, MarketSide.Buy, 4)], null);
+
+    private static TradeTerms Terms((ResourceType Resource, int Amount)[] gives, (ResourceType Resource, int Amount)[] receives) =>
+        new([.. gives.Select(static part => new ResourceAmount(part.Resource, part.Amount))], [.. receives.Select(static part => new ResourceAmount(part.Resource, part.Amount))]);
 
     private IRenderedComponent<GameTable> RenderTable(PlayerView view) =>
         Render<GameTable>(parameters => parameters.Add(static table => table.Game, TestGames.Started(view: view)));

@@ -24,9 +24,9 @@ internal static class ExplorePreviewCalculator
             return RuleViolations.UnitNotFound;
         }
 
-        if (unit.RouteId is not null)
+        if (unit.DealId is not null)
         {
-            return RuleViolations.OnTradeRoute;
+            return RuleViolations.OnTradeDeal;
         }
 
         if (unit.Job is not null)

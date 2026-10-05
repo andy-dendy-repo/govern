@@ -26,7 +26,7 @@
             <RadzenButton Disabled="@(Busy || !MyTurn)" ButtonStyle="ButtonStyle.Secondary" Icon="cancel" Text="Cancel job"
                           Click="@(() => Command.InvokeAsync(new CancelJobCommand(unit.Id)))" class="cancel-job"/>
         }
-        else if (unit.RouteId is null)
+        else if (unit.DealId is null)
         {
             <RadzenButton Disabled="@(Busy || !MyTurn)" ButtonStyle="@(Ui.Selection.Destination ? ButtonStyle.Primary : ButtonStyle.Secondary)"
                           Click="@(() => Ui.ToggleDestination(Ruleset, View))" aria-pressed="@(Ui.Selection.Destination ? "true" : "false")"
@@ -38,12 +38,12 @@
                               Click="@(() => Command.InvokeAsync(new ExploreCommand(unit.Id)))" title="@exploreProblem?.Message" class="explore"/>
             }
         }
-        @if ((unit.Destination is not null || unit.Exploring) && unit.RouteId is null)
+        @if ((unit.Destination is not null || unit.Exploring) && unit.DealId is null)
         {
             <RadzenButton Disabled="@(Busy || !MyTurn)" ButtonStyle="ButtonStyle.Secondary" Icon="block" Text="Stop"
                           Click="@(() => Command.InvokeAsync(new SetDestinationCommand(unit.Id, null)))" class="stop-order"/>
         }
-        @if (ScienceCalculator.UnitUpgrade(Ruleset, Nodes, unit.Type) is { } upgrade && unit.RouteId is null)
+        @if (ScienceCalculator.UnitUpgrade(Ruleset, Nodes, unit.Type) is { } upgrade && unit.DealId is null)
         {
             var problem = SciencePreviewCalculator.CheckUpgradeUnit(Ruleset, View, unit.Id);
             <RadzenButton Disabled="@(Busy || problem is not null)" ButtonStyle="ButtonStyle.Secondary"
@@ -102,7 +102,7 @@
         }
         @if (definition.CanTrade)
         {
-            <TraderOrders @key="unit.Id" View="@View" Ruleset="@Ruleset" Unit="@unit" Busy="@Busy" Command="@Command"/>
+            <TraderOrders @key="unit.Id" View="@View" Ruleset="@Ruleset" Unit="@unit" Busy="@Busy"/>
         }
         @if (definition.CanBuildBridges)
         {
@@ -138,7 +138,7 @@
 
     private string Hint(UnitView unit, UnitDefinition definition) => (Ui.Selection.Bridge, unit.Job) switch
     {
-        _ when unit.RouteId is not null => "The trader walks its route on its own between the two trade posts.",
+        _ when unit.DealId is not null => "The trader walks its route on its own between the two trade posts.",
         _ when Ui.Selection.Destination => "Click any tile you have explored to send the unit there; it walks on at the start of each turn. Esc cancels.",
         (true, _) => "Click a marked tile across the river to build a bridge to it. Esc cancels.",
         (_, { Improvement: { } improvement }) => $"Building a {Ruleset.ImprovementName(improvement)}. Cancel the job to move the unit.",

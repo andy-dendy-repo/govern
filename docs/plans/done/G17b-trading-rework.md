@@ -1,13 +1,13 @@
 ---
 title: "Plan G17b: trading rework (trader deals, counter-offers, no routes, free-walking traders)"
-tags: [plan, active, game, trading, trade, trader, deal, counter-offer, market, ruleset-v13]
+tags: [plan, done, game, trading, trade, trader, deal, counter-offer, market, ruleset-v13]
 code: [src/Govern.Core/Engine/TradeRule.cs, src/Govern.Core/Economy, src/Govern.Core/Actions, src/Govern.Core/Engine/AutoMoveRule.cs, src/Govern.Client/Features/Games/Components/CityMarket.razor, rulesets/default/v13.json]
 updated: 2026-10-05
 ---
 
 # Plan: G17b trading rework
 
-*Draft 1, 2026-10-05, from Andrii's request ("the trading system is a bit confusing"). Waiting for his go. Builds on [G17](../done/G17-trading.md).*
+*Done 2026-10-05 (PR #PRNUM). Draft 1, 2026-10-05, from Andrii's request ("the trading system is a bit confusing"). Approved the same day ("yes"), with one addition: two or more units on one tile stand side by side on the board. Builds on [G17](G17-trading.md).*
 
 ## Context
 

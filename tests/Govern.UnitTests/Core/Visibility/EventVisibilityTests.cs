@@ -218,7 +218,7 @@ public class EventVisibilityTests
     }
 
     [Fact]
-    public void EventsFor_TradeEvents_ReachOnlyTheTwoSidesOfTheRoute()
+    public void EventsFor_TradeEvents_ReachOnlyTheTwoSidesOfTheDeal()
     {
         var builder = new GameStateBuilder().WithCapitals();
         var home = builder.AddCity(P1, 1, 1);
@@ -226,10 +226,10 @@ public class EventVisibilityTests
         var host = state.Cities.First(city => city.Owner == P2).Id;
         GameEvent[] events =
         [
-            new TradeRouteChangedEvent(new TradeRouteId(996), P1, P2, home, host, TradeChange.Proposed),
-            new TradeExchangedEvent(new TradeRouteId(996), P1, P2, home, host, [new ResourceAmount(TestRulesets.Food, 3)], [new ResourceAmount(TestRulesets.Stone, 1)], false, false),
+            new TradeDealChangedEvent(new TradeDealId(996), P1, P2, home, host, TradeChange.Proposed),
+            new TradeExchangedEvent(new TradeDealId(996), P1, P2, home, host, [new ResourceAmount(TestRulesets.Food, 3)], [new ResourceAmount(TestRulesets.Stone, 1)], false, false),
         ];
-        var own = new TradeRouteChangedEvent(new TradeRouteId(997), P1, P1, home, home, TradeChange.Opened);
+        var own = new TradeDealChangedEvent(new TradeDealId(997), P1, P1, home, home, TradeChange.Proposed);
 
         VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [.. events]), P1).ShouldBe(events);
         VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [.. events]), P2).ShouldBe(events);
@@ -268,8 +268,8 @@ public class EventVisibilityTests
             new UnitStarvedEvent(unit, 90),
             new BuildingDamagedEvent(city, TestRulesets.ArmyCamp, 90),
             new UpkeepPrioritySetEvent(city, UpkeepPriority.UnitsFirst),
-            new TradeRouteChangedEvent(new TradeRouteId(996), P1, P1, city, new CityId(995), TradeChange.Accepted),
-            new TradeExchangedEvent(new TradeRouteId(996), P1, P1, city, new CityId(995), [new ResourceAmount(TestRulesets.Food, 3)], [new ResourceAmount(TestRulesets.Stone, 1)], false, true),
+            new TradeDealChangedEvent(new TradeDealId(996), P1, P1, city, new CityId(995), TradeChange.Accepted),
+            new TradeExchangedEvent(new TradeDealId(996), P1, P1, city, new CityId(995), [new ResourceAmount(TestRulesets.Food, 3)], [new ResourceAmount(TestRulesets.Stone, 1)], false, true),
             new ScienceNodeChangedEvent(P1, "archery", ScienceNodeChange.Unlocked),
             new UnitUpgradedEvent(unit, P1, At(2, 1), TestRulesets.Soldier, TestRulesets.Swordsman),
             new BuildingUpgradedEvent(unit, P1, At(2, 1), TestRulesets.Campus, TestRulesets.University, city),

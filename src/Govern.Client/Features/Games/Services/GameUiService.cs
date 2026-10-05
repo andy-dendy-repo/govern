@@ -1,6 +1,7 @@
 using Govern.Client.Features.Games.Helpers;
 using Govern.Client.Features.Games.Lenses;
 using Govern.Client.Features.Games.Models;
+using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
@@ -27,10 +28,13 @@ public sealed class GameUiService
     public IMapLens? ActiveLens { get; private set; }
 
     /// <summary>
-    /// The index of the open tab of the player's city panel (0 Units, 1 Buildings, 2 Economy). It stays open when another city
+    /// The index of the open tab of the player's city panel (0 Units, 1 Buildings, 2 Economy, 3 Market). It stays open when another city
     /// is selected, so the player can go through their cities on the same tab.
     /// </summary>
     public int CityTab { get; set; }
+
+    /// <summary>The index of the city panel's Market tab (Units, Buildings, Economy, Market).</summary>
+    public const int MarketTab = 3;
 
     /// <summary>Whether the game log drawer is open (closed until the player opens it with the top bar's Log button).</summary>
     public bool LogOpen { get; private set; }
@@ -84,6 +88,16 @@ public sealed class GameUiService
                 ? BoardSelection.Of(city.Id)
                 : BoardSelection.None;
         Select(ruleset, view, selection);
+    }
+
+    /// <summary>Selects one of the player's cities with its Market tab open (a trader's "Make a deal").</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="view">The view on screen.</param>
+    /// <param name="city">The city.</param>
+    public void OpenMarket(Ruleset ruleset, PlayerView view, CityId city)
+    {
+        CityTab = MarketTab;
+        Select(ruleset, view, BoardSelection.Of(city));
     }
 
     /// <summary>Keeps the state valid for a new view: drops a selection that is no longer in it and recomputes the highlights.</summary>

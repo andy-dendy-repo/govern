@@ -1,0 +1,53 @@
+@* The trade deals of the player's own city, in its Market tab (G17b). First the city's traders (the ones it trained), each
+   with its deal and what can be done with it: a free trader gets Suggest deal (the TradeProposal form, to any other trading
+   city the player knows); an offer waiting for the other side can be withdrawn; a counter-offer can be accepted, declined
+   or countered again; an agreed deal says where the trader is going and can be cancelled. Then the deals other cities'
+   traders bring here: an offer waiting for this city is accepted (ticking agreed deals to cancel when the market has no
+   room; Accept says why it can't), declined or countered, and an agreed one can be cancelled. *@
+@using Govern.Core.Actions
+@using Govern.Core.Economy
+@using Govern.Core.Visibility
+
+<RadzenStack Gap="0.5rem" class="city-traders">
+    <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.H4" class="rz-m-0">Traders (@Traders.Count of @Ruleset.Trade.TradersPerCity)</RadzenText>
+    @if (Traders.Count == 0)
+    {
+        <RadzenText TextStyle="TextStyle.Caption" class="no-traders rz-m-0">None. Train a @Ruleset.UnitName(TraderType) in the Units tab to make deals.</RadzenText>
+    }
+    @foreach (var trader in Traders)
+    {
+        var deal = DealOf(trader);
+        <RadzenStack Gap="0.25rem" class="@($"city-trader city-trader-{trader.Id.Value}")">
+            <RadzenText TextStyle="TextStyle.Body2" class="trader-status rz-m-0">@TraderStatus(deal)</RadzenText>
+            @if (deal is null)
+            {
+                @if (_suggesting == trader.Id)
+                {
+                    <TradeProposal @key="trader.Id" View="@View" Ruleset="@Ruleset" Home="@City.Id" Busy="@Busy" CanAct="@CanAct"
+                                   Check="@((host, terms) => TradePreviewCalculator.CheckProposeDeal(Ruleset, View, trader.Id, host, terms))"
+                                   Send="@(offer => ProposeAsync(trader.Id, offer.Host, offer.Terms))"/>
+                }
+                else
+                {
+                    <RadzenButton Size="ButtonSize.ExtraSmall" Text="Suggest deal" Icon="handshake" Disabled="@(Busy || !CanAct)"
+                                  Click="@(() => _suggesting = trader.Id)" class="suggest-deal"/>
+                }
+            }
+            else
+            {
+                <DealAnswers View="@View" Ruleset="@Ruleset" Deal="@deal" City="@City.Id" Busy="@Busy" CanAct="@CanAct" Command="@Command"/>
+            }
+        </RadzenStack>
+    }
+    @if (Hosted.Count > 0)
+    {
+        <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.H4" class="rz-m-0">Deals with other cities' traders</RadzenText>
+        @foreach (var deal in Hosted)
+        {
+            <RadzenStack Gap="0.25rem" class="@($"hosted-deal hosted-deal-{deal.Id.Value}")">
+                <RadzenText TextStyle="TextStyle.Body2" class="hosted-status rz-m-0">@HostedStatus(deal)</RadzenText>
+                <DealAnswers View="@View" Ruleset="@Ruleset" Deal="@deal" City="@City.Id" Busy="@Busy" CanAct="@CanAct" Command="@Command"/>
+            </RadzenStack>
+        }
+    }
+</RadzenStack>

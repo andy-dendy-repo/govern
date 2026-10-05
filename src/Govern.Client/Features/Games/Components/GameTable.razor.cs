@@ -72,7 +72,7 @@ public partial class GameTable : IAsyncDisposable
     private PlayerView View => Game.View ?? throw new InvalidOperationException("The game table needs a started game with a view.");
 
     // The tile the attack forecast stays beside: the pending target, while the selected unit can fight it.
-    private HexCoord? ForecastAt => _ui.Selection is { Unit: { } unit, Target: { } target } && View.UnitAt(target) is not null
+    private HexCoord? ForecastAt => _ui.Selection is { Unit: { } unit, Target: { } target } && View.DefenderAt(Ruleset, target) is not null
         && GameEngine.CombatForecast(Ruleset, View, unit, target) is not null
             ? target
             : null;

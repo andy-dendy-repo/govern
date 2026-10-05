@@ -51,9 +51,9 @@ internal static class UpgradeUnitRule
     // The stock is null when the tile isn't in one of the actor's cities' territory.
     public static RuleViolation? Check(Ruleset ruleset, ImmutableArray<OwnedNode> nodes, Unit unit, ImmutableArray<ResourceAmount>? stock)
     {
-        if (unit.RouteId is not null)
+        if (unit.DealId is not null)
         {
-            return RuleViolations.OnTradeRoute;
+            return RuleViolations.OnTradeDeal;
         }
 
         if (ScienceCalculator.UnitUpgrade(ruleset, nodes, unit.Type) is not { } upgrade)

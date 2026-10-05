@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using Govern.Core.Actions;
+using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Engine;
-using Govern.Core.Map;
 using Govern.Core.State;
 using Govern.Core.Units;
 using Govern.Core.Visibility;
@@ -16,26 +16,31 @@ namespace Govern.UnitTests.Core.Visibility;
 public class TradePreviewCalculatorTests
 {
     [Fact]
-    public void CheckOpenTradeRoute_EveryUnitAndCityPair_MatchesExecute()
+    public void CheckProposeDeal_EveryTraderHostAndTerms_MatchesExecute()
     {
+        // An own city without a post, an own city with one, and an enemy city whose post P1 never saw.
         var scenario = new TradeScenario();
         scenario.Builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        scenario.Builder.AddUnit(P1, TestRulesets.Trader, 2, 3);
         scenario.Builder.AddCity(P1, 2, 7, stock: Plenty, paid: true);
+        var ownPost = scenario.Builder.AddCity(P1, 5, 8, stock: Plenty, paid: true, buildings: TestRulesets.TradePost);
         var hidden = scenario.Builder.AddCity(P2, 10, 7, stock: Plenty, paid: true, buildings: TestRulesets.TradePost);
-        scenario.Builder.WithBuilding(TestRulesets.TradePost, (10, 6));
-        var sent = Execute(scenario.Builder.Build(), P1, new OpenTradeRouteCommand(scenario.Trader, scenario.Home, scenario.Host)).State;
+        scenario.Builder.WithBuilding(TestRulesets.TradePost, (10, 6)).WithBuilding(TestRulesets.TradePost, (5, 9))
+            .WithCity(ownPost, static city => city with { Market = [Order(TestRulesets.Food, MarketSide.Buy, 2), Order(TestRulesets.Stone, MarketSide.Sell, 1)] });
+        var (proposed, _) = scenario.Proposed();
+        var p2Turn = Execute(proposed, P1, new EndTurnCommand()).State;
 
-        foreach (var state in new[] { scenario.Builder.Build(), sent })
+        foreach (var (state, actor) in new[] { (scenario.Builder.Build(), P1), (proposed, P1), (p2Turn, P2) })
         {
-            var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
+            var view = GameEngine.ViewFor(TestRulesets.Default, state, actor);
             foreach (var unit in state.Units.Select(static unit => unit.Id).Append(new UnitId(999)))
             {
-                foreach (var home in state.Cities.Select(static city => city.Id))
+                foreach (var host in state.Cities.Select(static city => city.Id).Append(new CityId(999)))
                 {
-                    foreach (var host in state.Cities.Select(static city => city.Id))
+                    foreach (var (gives, receives) in Terms())
                     {
-                        TradePreviewCalculator.CheckOpenTradeRoute(TestRulesets.Default, view, unit, home, host)
-                            .ShouldBe(Violation(state, P1, new OpenTradeRouteCommand(unit, home, host)), $"{unit} {home} {host}");
+                        TradePreviewCalculator.CheckProposeDeal(TestRulesets.Default, view, unit, host, new TradeTerms(gives, receives))
+                            .ShouldBe(Violation(state, actor, new ProposeDealCommand(unit, host, gives, receives)), $"{unit} {host}");
                     }
                 }
             }
@@ -45,57 +50,54 @@ public class TradePreviewCalculatorTests
     }
 
     [Fact]
-    public void CheckProposeDeal_ManyTerms_MatchExecute()
+    public void CheckAnswerDeal_AcceptWithAndWithoutCancellingAndCounters_MatchExecute()
     {
         var scenario = new TradeScenario();
-        var sent = Execute(scenario.Builder.Build(), P1, new OpenTradeRouteCommand(scenario.Trader, scenario.Home, scenario.Host)).State;
-        var (opened, route) = scenario.Opened();
-        var (proposed, _) = scenario.Proposed();
-        var p2Turn = Execute(proposed, P1, new EndTurnCommand()).State;
-
-        foreach (var (state, actor) in new[] { (sent, P1), (opened, P1), (proposed, P1), (p2Turn, P2) })
-        {
-            var view = GameEngine.ViewFor(TestRulesets.Default, state, actor);
-            foreach (var (gives, receives) in Terms())
-            {
-                foreach (var id in new[] { state.TradeRouteList.Single().Id, new TradeRouteId(4242) })
-                {
-                    TradePreviewCalculator.CheckProposeDeal(TestRulesets.Default, view, id, gives, receives)
-                        .ShouldBe(Violation(state, actor, new ProposeDealCommand(id, gives, receives)));
-                }
-            }
-        }
-
-        route.ShouldBe(opened.TradeRouteList.Single().Id);
-    }
-
-    [Fact]
-    public void CheckAcceptDeal_WithAndWithoutCancelling_MatchesExecute()
-    {
-        var scenario = new TradeScenario();
-        var p2Trader = scenario.Builder.AddUnit(P2, TestRulesets.Trader, 8, 3);
         var p2Home = scenario.Builder.AddCity(P2, 8, 7, stock: Plenty, paid: true, buildings: TestRulesets.TradePost);
+        var p2Trader = scenario.Builder.AddUnit(P2, TestRulesets.Trader, 8, 7, homeCity: p2Home);
         scenario.Builder.WithBuilding(TestRulesets.TradePost, (8, 6))
             .WithCity(p2Home, static city => city with { Market = [Order(TestRulesets.Gold, MarketSide.Sell, 5), Order(TestRulesets.Stone, MarketSide.Buy, 4)] })
             .WithCity(scenario.Host, static city => city with { Market = [Order(TestRulesets.Food, MarketSide.Buy, 6), Order(TestRulesets.Gold, MarketSide.Buy, 5), Order(TestRulesets.Stone, MarketSide.Sell, 4)] });
-        var (proposed, route) = scenario.Proposed();
+        var (proposed, deal) = scenario.Proposed();
         var p2Turn = Execute(proposed, P1, new EndTurnCommand()).State;
-        var sent = Execute(p2Turn, P2, new OpenTradeRouteCommand(p2Trader, p2Home, scenario.Host));
-        var own = sent.State.TradeRouteList.Single(other => other.Owner == P2).Id;
-        var withOwnDeal = Execute(sent.State, P2, new ProposeDealCommand(own, Amounts((TestRulesets.Gold, 2)), Amounts((TestRulesets.Stone, 4)))).State;
+        var withOwnDeal = Execute(p2Turn, P2, new ProposeDealCommand(p2Trader, scenario.Host, Amounts((TestRulesets.Gold, 2)), Amounts((TestRulesets.Stone, 4)))).State;
+        var own = withOwnDeal.TradeDealList.Single(other => other.Owner == P2).Id;
+        var countered = Execute(p2Turn, P2, new AnswerDealCommand(deal, DealAnswer.Counter, Amounts((TestRulesets.Food, 4)), Amounts((TestRulesets.Stone, 1)))).State;
+        var p1Answers = Execute(countered, P2, new EndTurnCommand()).State;
 
-        foreach (var (state, actor) in new[] { (proposed, P1), (p2Turn, P2), (withOwnDeal, P2) })
+        foreach (var (state, actor) in new[] { (proposed, P1), (p2Turn, P2), (withOwnDeal, P2), (p1Answers, P1) })
         {
             var view = GameEngine.ViewFor(TestRulesets.Default, state, actor);
-            foreach (var cancel in new ImmutableArray<TradeRouteId>[] { [], [own], [route], [new TradeRouteId(4242)] })
+            foreach (var id in new[] { deal, own, new TradeDealId(4242) })
             {
-                foreach (var id in new[] { route, own, new TradeRouteId(4242) })
+                foreach (var cancel in new ImmutableArray<TradeDealId>[] { [], [own], [deal], [new TradeDealId(4242)] })
                 {
-                    TradePreviewCalculator.CheckAcceptDeal(TestRulesets.Default, view, id, cancel)
-                        .ShouldBe(Violation(state, actor, new AnswerDealCommand(id, Accept: true, cancel)), $"{id} {cancel.Length}");
+                    TradePreviewCalculator.CheckAnswerDeal(TestRulesets.Default, view, id, null, cancel)
+                        .ShouldBe(Violation(state, actor, new AnswerDealCommand(id, DealAnswer.Accept, CancelDeals: cancel)), $"{id} {cancel.Length}");
+                }
+
+                foreach (var (gives, receives) in Terms())
+                {
+                    TradePreviewCalculator.CheckAnswerDeal(TestRulesets.Default, view, id, new TradeTerms(gives, receives), [])
+                        .ShouldBe(Violation(state, actor, new AnswerDealCommand(id, DealAnswer.Counter, gives, receives)), $"{id} counter");
                 }
             }
         }
+    }
+
+    [Fact]
+    public void FreeMarket_OwnAndPartnerCities_MatchTheRules()
+    {
+        // P1's agreed deal takes 3 Food and 1 Stone from both markets; the view works that out from the viewer's own deals.
+        var scenario = new TradeScenario();
+        var (accepted, _) = scenario.Accepted();
+        var p1Turn = Execute(accepted, P2, new EndTurnCommand()).State;
+
+        var view = GameEngine.ViewFor(TestRulesets.Default, p1Turn, P1);
+
+        TradePreviewCalculator.FreeMarket(view, scenario.Home).ShouldBe([Order(TestRulesets.Food, MarketSide.Sell, 3), Order(TestRulesets.Stone, MarketSide.Buy, 3)]);
+        TradePreviewCalculator.FreeMarket(view, scenario.Host).ShouldBe([Order(TestRulesets.Food, MarketSide.Buy, 3), Order(TestRulesets.Stone, MarketSide.Sell, 3)]);
+        TradePreviewCalculator.Targets(view, scenario.Home).ShouldBe([(scenario.Host, p1Turn.FindCity(scenario.Host)!.Name, P2)]);
     }
 
     private static IEnumerable<(ImmutableArray<ResourceAmount> Gives, ImmutableArray<ResourceAmount> Receives)> Terms()

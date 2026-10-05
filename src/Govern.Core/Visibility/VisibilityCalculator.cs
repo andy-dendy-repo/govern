@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Govern.Core.Cities;
+using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Events;
 using Govern.Core.Map;
@@ -64,13 +65,14 @@ public static class VisibilityCalculator
             }
 
             var known = player.Explored.ToHashSet();
-            var discovered = VisibleTiles(ruleset, state, player.Id)
+            var visible = VisibleTiles(ruleset, state, player.Id);
+            var discovered = visible
                 .Concat(TerritoryRing(state, player.Id))
                 .Distinct()
                 .Where(coord => !known.Contains(coord))
                 .OrderBy(static coord => coord.Row)
                 .ThenBy(static coord => coord.Column);
-            return player with { Explored = [.. player.Explored, .. discovered] };
+            return player with { Explored = [.. player.Explored, .. discovered], KnownPosts = KnownPosts(ruleset, state, player, visible) };
         });
 
         return state with { Players = [.. players] };
@@ -112,8 +114,9 @@ public static class VisibilityCalculator
                 .OrderBy(static city => city.Id.Value)
                 .Select(city => CityView.From(city, viewer, SeenTradePost(ruleset, state, city, viewer, visible)))],
             [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status))],
-            TradeRoutes(ruleset, state, viewer),
-            new ScienceView(ScienceRule.Income(ruleset, state, viewer), player.Nodes));
+            TradeDeals(state, viewer),
+            new ScienceView(ScienceRule.Income(ruleset, state, viewer), player.Nodes),
+            TradePartners(ruleset, state, player));
 
         return view with { Version = Fingerprint(view) };
     }
@@ -138,19 +141,59 @@ public static class VisibilityCalculator
         return EventVisibilityCalculator.EventsFor(ruleset, before, update, viewer);
     }
 
+    // The player's known trade posts plus the other players' cities whose trade post they see now, ids in the order seen (new
+    // ones by id); null while there are none.
+    private static ImmutableArray<CityId>? KnownPosts(Ruleset ruleset, GameState state, Player player, IReadOnlySet<HexCoord> visible)
+    {
+        var known = player.KnownPostList;
+        var seen = state.Cities
+            .Where(city => city.Owner != player.Id && !known.Contains(city.Id))
+            .Where(city => TradeRule.PostTile(ruleset, state.Map, city.Id) is { } post && visible.Contains(post))
+            .OrderBy(static city => city.Id.Value)
+            .Select(static city => city.Id)
+            .ToList();
+        return seen.Count == 0 ? player.KnownPosts : [.. known, .. seen];
+    }
+
     // A city's trade post tile when the viewer may see it: always their own, an enemy's while its tile is in sight.
     private static HexCoord? SeenTradePost(Ruleset ruleset, GameState state, City city, PlayerId viewer, IReadOnlySet<HexCoord> visible) =>
         TradeRule.PostTile(ruleset, state.Map, city.Id) is { } post && (city.Owner == viewer || visible.Contains(post)) ? post : null;
 
-    // The routes the viewer is a side of, ordered by (random) id; null when there are none.
-    private static ImmutableArray<TradeRouteView>? TradeRoutes(Ruleset ruleset, GameState state, PlayerId viewer)
+    // The deals the viewer is a side of, ordered by (random) id; null when there are none.
+    private static ImmutableArray<TradeDealView>? TradeDeals(GameState state, PlayerId viewer)
     {
-        var routes = state.TradeRouteList
-            .Select(route => TradeRouteView.From(ruleset, state, route, viewer))
-            .OfType<TradeRouteView>()
-            .OrderBy(static route => route.Id.Value)
+        var deals = state.TradeDealList
+            .Select(deal => TradeDealView.From(state, deal, viewer))
+            .OfType<TradeDealView>()
+            .OrderBy(static deal => deal.Id.Value)
             .ToImmutableArray();
-        return routes.IsEmpty ? null : routes;
+        return deals.IsEmpty ? null : deals;
+    }
+
+    // Other players' cities whose trade post the viewer has seen and that still have one, ordered by id; each market has what
+    // its agreed deals the viewer is not a side of use taken off (the client takes off the viewer's own); null when none.
+    private static ImmutableArray<TradePartnerView>? TradePartners(Ruleset ruleset, GameState state, Player viewer)
+    {
+        var viewersDeals = state.TradeDealList
+            .Where(deal => deal.Owner == viewer.Id || deal.HostOwner == viewer.Id)
+            .Select(static deal => deal.Id)
+            .ToHashSet();
+        var partners = viewer.KnownPostList
+            .Select(state.FindCity)
+            .OfType<City>()
+            .Where(city => city.Owner != viewer.Id)
+            .Select(city => (City: city, Post: TradeRule.PostTile(ruleset, state.Map, city.Id)))
+            .Where(static entry => entry.Post is not null)
+            .OrderBy(static entry => entry.City.Id.Value)
+            .Select(entry => PartnerOf(state, entry.City, entry.Post!.Value, viewersDeals))
+            .ToImmutableArray();
+        return partners.IsEmpty ? null : partners;
+    }
+
+    private static TradePartnerView PartnerOf(GameState state, City city, HexCoord post, IReadOnlySet<TradeDealId> viewersDeals)
+    {
+        var market = TradeRule.FreeMarket(state, city, viewersDeals);
+        return new TradePartnerView(city.Id, city.Owner, city.Name, post, market.IsEmpty ? null : market, city.DemandList.IsEmpty ? null : city.DemandList);
     }
 
     // The first 8 bytes of the view's SHA-256 (non-negative). It depends only on what the viewer sees, so changes hidden from

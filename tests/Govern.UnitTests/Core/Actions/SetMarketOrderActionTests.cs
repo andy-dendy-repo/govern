@@ -64,10 +64,11 @@ public class SetMarketOrderActionTests
     }
 
     [Fact]
-    public void Execute_CapBelowWhatAProposalUses_IsRejectedUntilTheDealEnds()
+    public void Execute_CapBelowWhatAnAgreedDealUses_IsRejectedUntilTheDealEnds()
     {
         var scenario = new TradeScenario();
-        var (state, route) = scenario.Proposed();
+        var (accepted, route) = scenario.Accepted();
+        var state = Execute(accepted, P2, new EndTurnCommand()).State;
 
         var below = GameEngine.Execute(TestRulesets.Default, state, P1, new SetMarketOrderCommand(scenario.Home, TestRulesets.Food, MarketSide.Sell, 2));
         var flipped = GameEngine.Execute(TestRulesets.Default, state, P1, new SetMarketOrderCommand(scenario.Home, TestRulesets.Food, MarketSide.Buy, 6));

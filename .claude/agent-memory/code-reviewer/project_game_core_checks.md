@@ -97,7 +97,7 @@ Checks worth repeating:
 - **Moves made inside the opponent's command** (turn-start auto walks in PassTurn) let the opponent tell automated moves from manual ones and predict the next walk; the docs' accepted-leak list and player rules must say so.
 - Enum names in docs: GameSerializer/ApiJson use camelCase (`enemySighted`), not snake_case.
 
-G17 trading review (2026-10-03, claude/project-thread-u8gkn1: markets, traders, routes, deals, v10). Found:
+G17 trading review (2026-10-03, claude/project-thread-u8gkn1: markets, traders, routes, deals, v10). G17b (2026-10-05, v13) removed routes: `TradeRoute*`, `on_route` and the route-opened filters below are history; deals now belong to traders (`TradeDeal`, `TradeDealView`, `TradePartnerView`), traders share tiles (`HolderAt`, `DefenderAt`). Found:
 - **Null elements in command arrays:** GameSerializer accepts `[null]` inside `ImmutableArray<ResourceAmount>` (RespectRequiredConstructorParameters doesn't cover elements; verified with a scratch probe), so `ProposeDeal.Gives=[null]` NREs in `TradeCalculator.CheckDeal` -> 500. Any new command with an array of reference-type records needs a null-element check (or struct elements).
 - **Events for routes the host never saw:** `TradeRouteChangedEvent` is filtered by Owner/HostOwner only, so Closed on a not-yet-opened route reaches the host (reveals the route and its hidden home city id). Filter host-side events on "opened" like `TradeRouteView.From`.
 - `TradeRouteView.HostMarket/HostDemand` are live state, not "learned at the post": they keep updating while the trader is dead/away (demand includes unpaid upkeep, so it shows host starvation).

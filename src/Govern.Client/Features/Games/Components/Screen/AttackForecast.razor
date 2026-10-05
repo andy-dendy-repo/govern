@@ -6,7 +6,7 @@
 @using Govern.Core.Rulesets
 @using Govern.Core.Visibility
 
-@if (Ui.Selection is { Unit: { } unitId, Target: { } target } && View.FindOwnUnit(unitId) is { } unit && View.UnitAt(target) is { } defender
+@if (Ui.Selection is { Unit: { } unitId, Target: { } target } && View.FindOwnUnit(unitId) is { } unit && View.DefenderAt(Ruleset, target) is { } defender
      && GameEngine.CombatForecast(Ruleset, View, unitId, target) is { } forecast)
 {
     <div class="hud-card forecast-card">

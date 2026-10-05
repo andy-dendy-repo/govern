@@ -11,7 +11,7 @@ namespace Govern.UnitTests.Core.Builders;
 
 /// <summary>
 /// A trading scenario on row 2: P1's home city at (2, 2) with its trade post at (3, 2), and a host city at (8, 2) (P2's, or P1's
-/// own) with its trade post at (7, 2). P1's trader stands on the home city; with an enemy host, P1's scout at (8, 4) watches the
+/// own) with its trade post at (7, 2). P1's trader, at home there, stands on the home city; with an enemy host, P1's scout at (8, 4) watches the
 /// host and its post. Both cities have plenty of every resource and have paid for their production, and their markets match:
 /// home sells up to 6 Food and buys up to 4 Stone, the host buys up to 6 Food and sells up to 4 Stone.
 /// </summary>
@@ -29,7 +29,7 @@ internal sealed class TradeScenario
         Home = Builder.AddCity(P1, 2, 2, stock: Plenty, paid: true, buildings: TestRulesets.TradePost);
         Host = Builder.AddCity(host, 8, 2, stock: Plenty, paid: true, buildings: TestRulesets.TradePost);
         Builder.WithBuilding(TestRulesets.TradePost, (3, 2)).WithBuilding(TestRulesets.TradePost, (7, 2));
-        Trader = Builder.AddUnit(P1, TestRulesets.Trader, 2, 2);
+        Trader = Builder.AddUnit(P1, TestRulesets.Trader, 2, 2, homeCity: Home);
         if (host == P2)
         {
             Builder.AddUnit(P1, TestRulesets.Scout, 8, 4);
@@ -62,29 +62,34 @@ internal sealed class TradeScenario
     public static GameUpdate Execute(GameState state, PlayerId actor, GameCommand command) =>
         GameEngine.Execute(TestRulesets.Default, state, actor, command).ShouldSucceed();
 
+    public static GameState ChangeUnit(GameState state, UnitId id, Func<Unit, Unit> change) =>
+        state with { Units = [.. state.Units.Select(unit => unit.Id == id ? change(unit) : unit)] };
+
     public static GameState EndRound(GameState state) =>
         Execute(Execute(state, P1, new EndTurnCommand()).State, P2, new EndTurnCommand()).State;
 
-    // P1's turn of round 2, the trader next to the host's post and the route open.
-    public (GameState State, TradeRouteId Route) Opened()
+    // P1's turn of round 1 with P1's offer of 3 Food for 1 Stone waiting for the host (accepted at once when P1 hosts it too,
+    // and the trader sets off).
+    public (GameState State, TradeDealId Deal) Proposed()
     {
-        var sent = Execute(Builder.Build(), P1, new OpenTradeRouteCommand(Trader, Home, Host)).State;
-        var state = EndRound(sent);
-        return (state, state.TradeRouteList.ShouldHaveSingleItem().Id);
+        var update = Execute(Builder.Build(), P1, new ProposeDealCommand(Trader, Host, Amounts((TestRulesets.Food, 3)), Amounts((TestRulesets.Stone, 1))));
+        return (update.State, update.State.TradeDealList.ShouldHaveSingleItem().Id);
     }
 
-    // As Opened, with P1's proposal of 3 Food for 1 Stone waiting (accepted at once when P1 hosts it too).
-    public (GameState State, TradeRouteId Route) Proposed()
+    // P2's turn of round 1 with the deal accepted by P2; the trader, still on its home city, sets off on P1's next turn.
+    public (GameState State, TradeDealId Deal) Accepted()
     {
-        var (state, route) = Opened();
-        return (Execute(state, P1, new ProposeDealCommand(route, Amounts((TestRulesets.Food, 3)), Amounts((TestRulesets.Stone, 1)))).State, route);
-    }
-
-    // P2's turn of round 2 with the deal of 3 Food for 1 Stone accepted (P2 hosts it).
-    public (GameState State, TradeRouteId Route) Accepted()
-    {
-        var (state, route) = Proposed();
+        var (state, deal) = Proposed();
         var p2Turn = Execute(state, P1, new EndTurnCommand()).State;
-        return (Execute(p2Turn, P2, new AnswerDealCommand(route, Accept: true)).State, route);
+        return (Execute(p2Turn, P2, new AnswerDealCommand(deal, DealAnswer.Accept)).State, deal);
+    }
+
+    // P2's turn of round 3: the trader reached the host's post at the start of P1's turn, so the deal is active and swaps at the
+    // end of this turn; the trader is on its way back to the home post.
+    public (GameState State, TradeDealId Deal) Active()
+    {
+        var (state, deal) = Accepted();
+        var round3 = EndRound(Execute(state, P2, new EndTurnCommand()).State);
+        return (Execute(round3, P1, new EndTurnCommand()).State, deal);
     }
 }

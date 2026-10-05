@@ -18,7 +18,7 @@ internal static class ViewPreviewCalculator
 {
     public static ImmutableArray<HexCoord> ReachableTiles(Ruleset ruleset, PlayerView view, UnitId unitId)
     {
-        if (ActingUnit(ruleset, view, unitId) is not { MovementLeft: > 0, RouteId: null, Job: null } unit)
+        if (ActingUnit(ruleset, view, unitId) is not { MovementLeft: > 0, DealId: null, Job: null } unit)
         {
             return [];
         }
@@ -30,7 +30,8 @@ internal static class ViewPreviewCalculator
 
     public static DestinationPreview? DestinationPath(Ruleset ruleset, PlayerView view, UnitId unitId, HexCoord target)
     {
-        if (ActingUnit(ruleset, view, unitId) is not { RouteId: null, Job: null } unit || !view.Contains(target) || target == unit.Position || view.UnitAt(target) is not null)
+        if (ActingUnit(ruleset, view, unitId) is not { DealId: null, Job: null } unit || !view.Contains(target) || target == unit.Position
+            || !ruleset.Unit(unit.Type).SharesTiles && view.HolderAt(ruleset, target) is not null)
         {
             return null;
         }
@@ -58,7 +59,7 @@ internal static class ViewPreviewCalculator
     {
         if (ActingUnit(ruleset, view, unitId) is not { } unit
             || TargetOf(ruleset, view, unit.Position, target) is var targetInfo && AttackRule.Check(ruleset, unit, target, targetInfo) is not null
-            || view.UnitAt(target) is not { } defender)
+            || AttackRule.DefenderAt(ruleset, view.UnitsAt(target), view.CityAt(target) is not null, unit.Owner) is not { } defender)
         {
             return null;
         }
@@ -71,8 +72,9 @@ internal static class ViewPreviewCalculator
 
     private static AttackTarget TargetOf(Ruleset ruleset, PlayerView view, HexCoord attacker, HexCoord target)
     {
-        var defender = view.Contains(target) ? view.UnitAt(target) : null;
-        var owner = defender?.Owner ?? (view.Contains(target) ? view.CityAt(target)?.Owner : null);
+        var city = view.Contains(target) ? view.CityAt(target) : null;
+        var defender = view.Contains(target) ? AttackRule.DefenderAt(ruleset, view.UnitsAt(target), city is not null, view.Viewer) : null;
+        var owner = defender?.Owner ?? city?.Owner;
         var domain = defender is null ? UnitDomain.Land : ruleset.Unit(defender.Type).Domain;
         return new AttackTarget(view.Contains(target), owner, defender is not null, view.CrossedRiverBetween(attacker, target), domain);
     }
@@ -209,7 +211,7 @@ internal static class ViewPreviewCalculator
             return BuildingSite.Outside;
         }
 
-        var improving = view.UnitAt(coord) is { Job.Improvement: not null } unit && unit.Owner == city.Owner;
+        var improving = view.UnitsAt(coord).Any(unit => unit is { Job.Improvement: not null } && unit.Owner == city.Owner);
         var neighbors = coord.Neighbors().Where(view.Contains).Select(neighbor => view.TileAt(neighbor).Terrain).OfType<TerrainType>();
         return new BuildingSite(
             tile.TerritoryCity == city.Id && coord != city.Position,
@@ -237,23 +239,28 @@ internal static class ViewPreviewCalculator
 
     // Only visible tiles can be entered. That loses nothing, because a unit's sight is at least its movement (checked by
     // RulesetValidator), so every tile it could reach is visible and shows every unit and city on it. Both ends of a step are
-    // then visible, so the view knows the river between them.
+    // then visible, so the view knows the river between them. A trader minds only the ground and the river.
     private static int? StepCost(Ruleset ruleset, PlayerView view, Unit unit, HexCoord from, HexCoord to) =>
         view.Contains(to)
         && view.TileAt(to) is { Visibility: TileVisibility.Visible, Terrain: { } terrain }
-        && view.UnitAt(to) is null
-        && (view.CityAt(to) is not { } city || city.Owner == unit.Owner)
+        && IsFree(ruleset, view, unit, to)
             ? ReachabilityCalculator.StepCost(ruleset, ruleset.Unit(unit.Type).Domain, terrain, view.CrossedRiverBetween(from, to))
             : null;
 
-    // A step as the viewer knows it, for a walk to a destination: onto any explored tile of the unit's domain, not onto a unit or enemy city
-    // they see. The view shows rivers on explored tiles and bridges only on visible ones, as AutoMoveRule plans on the state.
+    // A step as the viewer knows it, for a walk to a destination: onto any explored tile of the unit's domain, not onto a unit holding
+    // a tile or an enemy city they see (a trader minds neither). The view shows rivers on explored tiles and bridges only on visible
+    // ones, as AutoMoveRule plans on the state.
     internal static int? KnownStepCost(Ruleset ruleset, PlayerView view, Unit unit, HexCoord from, HexCoord to) =>
         view.Contains(to)
         && view.TileAt(to) is { Terrain: { } terrain } tile
-        && (tile.Visibility != TileVisibility.Visible || (view.UnitAt(to) is null && (view.CityAt(to) is not { } city || city.Owner == unit.Owner)))
+        && (tile.Visibility != TileVisibility.Visible || IsFree(ruleset, view, unit, to))
             ? ReachabilityCalculator.StepCost(ruleset, ruleset.Unit(unit.Type).Domain, terrain, view.CrossedRiverBetween(from, to))
             : null;
+
+    // No unit the viewer sees holds the tile and it is no enemy city, or the unit is a trader (it shares tiles).
+    private static bool IsFree(Ruleset ruleset, PlayerView view, Unit unit, HexCoord to) =>
+        ruleset.Unit(unit.Type).SharesTiles
+        || (view.HolderAt(ruleset, to) is null && (view.CityAt(to) is not { } city || city.Owner == unit.Owner));
 
     // The viewer's unit when they may act with it now; otherwise null.
     internal static Unit? ActingUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
@@ -262,7 +269,7 @@ internal static class ViewPreviewCalculator
     // The viewer's own unit as the rules' checks take it. Its movement is always in the view: only enemy movement is hidden.
     internal static Unit? OwnUnit(Ruleset ruleset, PlayerView view, UnitId unitId) =>
         view.FindOwnUnit(unitId) is { MovementLeft: { } movementLeft } own
-            ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft, ruleset.Combat.MaxHealth - own.Health, own.Job, own.Destination, own.RouteId, own.Exploring)
+            ? new Unit(own.Id, own.Owner, own.Type, own.Position, movementLeft, ruleset.Combat.MaxHealth - own.Health, own.Job, own.Destination, own.DealId, own.Exploring, own.HomeCity)
             : null;
 
     internal static RuleViolation? CheckTurn(PlayerView view) => CommandGuardRule.CheckTurn(

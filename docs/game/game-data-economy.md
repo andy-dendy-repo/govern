@@ -2,7 +2,7 @@
 title: Game data, building and economy sections (yields, territory, costs, upkeep, bridges, resources, improvements, buildings, trade)
 tags: [game, core, ruleset, json, resource-cost, upkeep, supply, building-health, builders, build-production, territory, tile-yields, city-stock, water, desert, culture, bridges, resources, improvements, farm, mine, lumber-camp, buildings, campus, harbour, army-camp, trade, trader, trade-value, market, demand, validation]
 code: [rulesets/default/v11.json, src/Govern.Core/Rulesets, src/Govern.Core/Economy, src/Govern.Core/Rulesets/EconomyRulesValidator.cs, src/Govern.Core/Rulesets/UpkeepRulesValidator.cs, src/Govern.Core/Rulesets/TradeRulesValidator.cs]
-updated: 2026-10-04
+updated: 2026-10-05
 ---
 
 # Game data: building sections of the ruleset
@@ -144,12 +144,12 @@ The trade post (`trade.building`) holds its city's market and lets it produce tr
 
 ## Trade (`trade`)
 
-*Decided 2026-10-03 (G17, the owner's model; not a Civ copy).* How cities swap resources: markets, traders, routes and deals. The algorithms are in [game logic: trading](game-logic-trade.md) and the player's view in the [rules reference](rules.md#trading).
+*Decided 2026-10-03 (G17, the owner's model; not a Civ copy).* How cities swap resources: markets, traders and deals (G17b, 2026-10-05, replaced routes with one deal per trader). The algorithms are in [game logic: trading](game-logic-trade.md) and the player's view in the [rules reference](rules.md#trading).
 
 | Field | Type | Meaning | Default |
 |---|---|---|---|
 | `building` | building id | The building that holds a city's market and lets it produce units with the `trade` ability; a city trades only with it on a tile | `trade_post` |
-| `routesPerCity` | int 1..10 | Routes a city may have opened (open or on the way); it can host any number | 2 |
+| `tradersPerCity` | int 1..10 | Traders a city may have (those that call it home, G17b); a finished trader waits while the city has them all; it can host any number of deals | 2 |
 | `maxCap` | int 1..100 | The largest cap of a market order, and the largest amount of a resource in a deal | 20 |
 | `demandStepPercent` | int 1..100 | The most a demand level moves in a turn, in percent of itself | 20 |
 | `demandSmoothing` | int 1..1000 | Added to need + offer in the demand step, so small markets move slowly | 5 |
@@ -157,7 +157,7 @@ The trade post (`trade.building`) holds its city's market and lets it produce tr
 | `maxDemandPercent` | int 100..1000 | The highest demand level | 400 |
 
 ```json
-"trade": { "building": "trade_post", "routesPerCity": 2, "maxCap": 20, "demandStepPercent": 20, "demandSmoothing": 5, "minDemandPercent": 25, "maxDemandPercent": 400 }
+"trade": { "building": "trade_post", "tradersPerCity": 2, "maxCap": 20, "demandStepPercent": 20, "demandSmoothing": 5, "minDemandPercent": 25, "maxDemandPercent": 400 }
 ```
 
 - A resource is tradable when its `tradeValue` is at least 1: food, wood, stone and gold. Water, science and culture are not.
@@ -177,5 +177,5 @@ The trade post (`trade.building`) holds its city's market and lets it produce tr
 - Resource costs: amounts 1..1000, each resource once, and never `territory.growthResource` (territory growth spends it just before production pays, so the city panel could not tell for sure whether production can begin). Upkeep: amounts 1..100, each resource once.
 - `upkeep`: `supplyRadius` 0..3, `shortageDamage` 1..`combat.maxHealth` − 1, `buildingHealth` 1..1000, `buildingRecovery` 1..`buildingHealth`.
 - **Fog invariant:** a unit with upkeep has `sight` ≥ `upkeep.supplyRadius` + 1, so it sees every tile that supplies it and the rivers on their edges, and the supply preview is exact.
-- Trade (`TradeRulesValidator`): `tradeValue` 0..100 and 0 for `territory.growthResource` (trade happens just before territory growth, so the city panel's price of the next tile stays exact); at least one tradable resource; a unit with the `trade` ability has no other ability (a trader on a route takes no other order); `trade.building` exists; the ranges in [the table](#trade-trade).
+- Trade (`TradeRulesValidator`): `tradeValue` 0..100 and 0 for `territory.growthResource` (trade happens just before territory growth, so the city panel's price of the next tile stays exact); at least one tradable resource; a unit with the `trade` ability has no other ability (a trader carrying a deal takes no other order); `trade.building` exists; the ranges in [the table](#trade-trade).
 - The name texts of every resource, improvement and building exist.
