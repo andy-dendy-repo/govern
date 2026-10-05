@@ -7,7 +7,7 @@ updated: 2026-10-05
 
 # Plan: G17b trading rework
 
-*Done 2026-10-05 (PR #PRNUM). Draft 1, 2026-10-05, from Andrii's request ("the trading system is a bit confusing"). Approved the same day ("yes"), with one addition: two or more units on one tile stand side by side on the board. Builds on [G17](G17-trading.md).*
+*Done 2026-10-05 (PR #64). Draft 1, 2026-10-05, from Andrii's request ("the trading system is a bit confusing"). Approved the same day ("yes"), with one addition: two or more units on one tile stand side by side on the board. Builds on [G17](G17-trading.md).*
 
 ## Context
 
