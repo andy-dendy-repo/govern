@@ -12,6 +12,10 @@ namespace Govern.Core.Economy;
 /// <param name="ResourceCost">Resources the city pays in full when it begins producing it (may be empty).</param>
 /// <param name="Upkeep">Resources its city pays each turn to keep it working (may be empty).</param>
 /// <param name="Yields">What it adds to its city's stock at the end of each of their turns.</param>
+/// <param name="Storage">
+/// The room it adds to its city's storage (<see cref="Rulesets.CityRules.Storage"/>) while it works (may be empty); an upgrade
+/// replaces the building it upgrades, so it lists its own full amounts.
+/// </param>
 /// <param name="Production">Extra production points per turn for its city (0 for none).</param>
 /// <param name="RequiresAdjacentTerrain">
 /// Terrains of which at least one must be next to the building's tile for it to be produced there; empty when it can stand anywhere.
@@ -26,6 +30,7 @@ public sealed record BuildingDefinition(
     ImmutableArray<ResourceAmount> ResourceCost,
     ImmutableArray<ResourceAmount> Upkeep,
     ImmutableArray<ResourceAmount> Yields,
+    ImmutableArray<ResourceAmount> Storage,
     int Production,
     ImmutableArray<TerrainType> RequiresAdjacentTerrain,
     BuildingType? Upgrades = null);

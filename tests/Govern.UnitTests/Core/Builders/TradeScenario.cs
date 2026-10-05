@@ -19,7 +19,7 @@ internal sealed class TradeScenario
 {
     public static readonly ImmutableArray<ResourceAmount> Plenty =
     [
-        new(TestRulesets.Food, 30), new(TestRulesets.Water, 30), new(TestRulesets.Wood, 30), new(TestRulesets.Stone, 30), new(TestRulesets.Gold, 30),
+        new(TestRulesets.Food, 20), new(TestRulesets.Water, 20), new(TestRulesets.Wood, 20), new(TestRulesets.Stone, 20), new(TestRulesets.Gold, 20),
     ];
 
     public TradeScenario(PlayerId? hostOwner = null)

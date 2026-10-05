@@ -483,9 +483,20 @@
     gap: var(--gv-space-1);
 }
 
-.city-resource-gain {
+.city-resource-gain,
+.city-resource-cap {
     font-size: 0.8em;
     opacity: 0.75;
+}
+
+/* A resource at its storage cap, or one that loses what won't fit at the end of the turn. */
+.city-resource-full .cost-amount,
+.city-resource-lost {
+    font-weight: 600;
+}
+
+.city-resource-lost {
+    font-size: 0.8em;
 }
 
 .produce .cost-label {

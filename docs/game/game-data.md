@@ -7,7 +7,7 @@ updated: 2026-10-05
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v13.json`](../../rulesets/default/v13.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8, F12 suggested city names instead of the name template in v9, G17 the trader, trade values and the `trade` section in v10, G11a the `science` section, unit lines and building upgrades in v11, G15a water terrain (`isWater`), unit `domain` and `requiresBuilding`, and the galley and bireme in v12, G17b `trade.tradersPerCity` in place of `routesPerCity` in v13; [`v1.json`](../../rulesets/default/v1.json) to [`v12.json`](../../rulesets/default/v12.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v14.json`](../../rulesets/default/v14.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8, F12 suggested city names instead of the name template in v9, G17 the trader, trade values and the `trade` section in v10, G11a the `science` section, unit lines and building upgrades in v11, G15a water terrain (`isWater`), unit `domain` and `requiresBuilding`, and the galley and bireme in v12, G17b `trade.tradersPerCity` in place of `routesPerCity` in v13, G8c storage caps (`cities.storage`, `buildings[].storage`) in v14; [`v1.json`](../../rulesets/default/v1.json) to [`v13.json`](../../rulesets/default/v13.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -311,6 +311,7 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 | `captureResetsProduction` | true | A captured city's progress goes back to 0 |
 | `yields` | 1 culture | What every city makes a turn on top of its tiles ([building sections](game-data-economy.md)) |
 | `startingStock` | 5 food, water, wood and stone | The stock a new city starts with |
+| `storage` | food 30, water 30, wood 20, stone 20, gold 20, culture 40 | How much of each stocked resource a city holds before its buildings add room; what is over is lost at the end of every turn ([building sections](game-data-economy.md#city-storage-citiesstorage-buildingsstorage)) |
 
 ```json
 "cities": {
@@ -321,7 +322,8 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
   "suggestedNames": ["city.name.ambermoor", "city.name.brightwater", "city.name.cindervale"],
   "captureResetsProduction": true,
   "yields": [{ "resource": "science", "amount": 1 }, { "resource": "culture", "amount": 1 }],
-  "startingStock": [{ "resource": "food", "amount": 5 }, { "resource": "water", "amount": 5 }, { "resource": "wood", "amount": 5 }, { "resource": "stone", "amount": 5 }]
+  "startingStock": [{ "resource": "food", "amount": 5 }, { "resource": "water", "amount": 5 }, { "resource": "wood", "amount": 5 }, { "resource": "stone", "amount": 5 }],
+  "storage": [{ "resource": "food", "amount": 30 }, { "resource": "water", "amount": 30 }, { "resource": "wood", "amount": 20 }, { "resource": "stone", "amount": 20 }, { "resource": "gold", "amount": 20 }, { "resource": "culture", "amount": 40 }]
 }
 ```
 

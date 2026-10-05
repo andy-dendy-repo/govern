@@ -121,3 +121,10 @@ F20 review (2026-10-04, PR #61 claude/builder-lock-camera-map-polish-y5nkz6: Exp
 Checks worth repeating:
 - **Re-planning inside one command uses mid-walk sight that UpdateExplored never records** (Explored is updated once per Execute, from the final positions). Any new multi-leg walk should either update Explored per leg or plan once.
 - Global window key handlers in board JS: check macOS Cmd-held keyup loss, focus scope (dialogs, dropdown typeahead) and the per-frame hover raycast they trigger on the full ground mesh.
+
+G8c review (2026-10-05, city storage caps, `EndTurnRule.Store` after Produce, `CityForecast.Storage/Lost/Sources`, v14). No critical. Found:
+- **Forecast caps miss state changes inside End turn:** Store runs after Produce, so a building finished this turn (every v14 building adds storage) raises the real caps while `CityForecast.Lost` uses the pre-turn list; upgrades finished in `ConstructionRule.AdvanceJobs` (paid before income, caps change) aren't in it either. For any end-of-turn quantity, list every step that runs before it in `EndTurnRule.Apply` and ask which ones the preview skips.
+- `Lost` subtracts the item's cost even when the city feeds a job (Produce skipped), while CityPanel's Net/PerTurn already handle `FeedsAJob` -> same-row inconsistency.
+- Validator doesn't tie resource costs (unit/building/upgrade, unit upgrades paid mid-turn from a stock <= cap) to the caps; a future ruleset can soft-lock items/upgrades.
+- Removing a placeholder mesh (unit base disc) makes pieces invisible until/if figures load.
+Verified OK, don't re-derive: Grow happens before the cut, so effective tile budget = culture cap + that turn's income; cutting the opponent's cities in the actor's turn reveals nothing new (only trade deliveries can push them over); costs never use the growth resource, so cost-before-growth order in the preview is equivalent.

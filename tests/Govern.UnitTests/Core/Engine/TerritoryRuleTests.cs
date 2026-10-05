@@ -119,13 +119,13 @@ public class TerritoryRuleTests
     public void EndTurn_EveryTileWithinTheMaximumRadiusOwned_ClaimsNothingAndKeepsTheCulture()
     {
         var builder = new GameStateBuilder().WithCapitals();
-        var city = builder.AddCity(P1, 5, 5, stock: [new ResourceAmount(TestRulesets.Culture, 50)]);
+        var city = builder.AddCity(P1, 5, 5, stock: [new ResourceAmount(TestRulesets.Culture, 30)]);
         builder.WithTerritory(city, [.. At(5, 5).WithinRadius(3).Select(static coord => (coord.Column, coord.Row))]);
 
         var update = EndTurn(builder.Build());
 
         update.Events.OfType<TerritoryGrewEvent>().ShouldBeEmpty();
-        YieldCalculator.AmountOf(update.State.FindCity(city)!.StockList, TestRulesets.Culture).ShouldBe(51);
+        YieldCalculator.AmountOf(update.State.FindCity(city)!.StockList, TestRulesets.Culture).ShouldBe(31);
     }
 
     [Fact]
@@ -193,8 +193,9 @@ public class TerritoryRuleTests
         var view = GameEngine.ViewFor(TestRulesets.Default, state, P1);
 
         view.TileAt(At(2, 5)).Visibility.ShouldBe(TileVisibility.Explored, "next to the territory, known but not in sight");
-        GameEngine.CityIncome(TestRulesets.Default, view, city).Where(static amount => amount.Resource != TestRulesets.Science)
-            .ShouldBe(EndTurn(state).State.FindCity(city)!.StockList);
+        var income = GameEngine.CityIncome(TestRulesets.Default, view, city).Where(static amount => amount.Resource != TestRulesets.Science);
+        CityStorage.Cut(TestRulesets.Default, income, CityStorage.Caps(TestRulesets.Default, []))
+            .ShouldBe(EndTurn(state).State.FindCity(city)!.StockList, "the stock is then cut to the city's storage caps");
     }
 
     private static GameUpdate EndTurn(GameState state, PlayerId? player = null) =>
