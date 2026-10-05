@@ -8,7 +8,7 @@ namespace Govern.ArchitectureTests;
 
 /// <summary>
 /// The player-facing rules reference (<c>docs/game/rules.md</c>) documents the ruleset the game is played with: every terrain,
-/// river kind, unit, improvement, building and tradable resource has one row with the ruleset's numbers, every class counter has one row, and the "Game numbers" table matches the
+/// river kind, unit, improvement, building, stored resource (its storage cap) and tradable resource has one row with the ruleset's numbers, every class counter has one row, and the "Game numbers" table matches the
 /// setup, map, city, combat, upkeep and trade sections.
 /// </summary>
 public class RulesReferenceTests
@@ -114,12 +114,23 @@ public class RulesReferenceTests
                 building.Cost,
                 Yields(building.Yields),
                 building.Production == 0 ? "—" : $"+{building.Production}",
+                building.Storage.IsEmpty ? "—" : string.Join(", ", building.Storage.Select(static amount => $"+{amount.Amount} {Ruleset.ResourceName(amount.Resource)}")),
                 building.RequiresAdjacentTerrain.IsEmpty
                     ? "—"
                     : string.Join(" or ", building.RequiresAdjacentTerrain.Select(static terrain => Ruleset.TerrainName(terrain)))))
             .ToList();
 
         Table("City buildings").ShouldBe(expected, ignoreOrder: true, Because);
+    }
+
+    [Fact]
+    public void StorageTable_MatchesTheRuleset()
+    {
+        var expected = Ruleset.Cities.Storage
+            .Select(static cap => Row(Ruleset.ResourceName(cap.Resource), cap.Amount))
+            .ToList();
+
+        Table("City storage").ShouldBe(expected, ignoreOrder: true, Because);
     }
 
     [Fact]

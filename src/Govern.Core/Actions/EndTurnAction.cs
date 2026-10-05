@@ -21,7 +21,7 @@ public sealed record EndTurnCommand : GameCommand;
 /// Ends the actor's turn: their units' jobs advance (see <see cref="ConstructionRule"/>), their cities add their income to their
 /// stock, pay upkeep (see <see cref="UpkeepRule"/>: unsupplied units and buildings lose health, supplied units that rested heal),
 /// swap the goods of the accepted deals they host and move their demand levels (see <see cref="TradeRule"/>), grow their territory (see <see cref="TerritoryRule"/>) and produce (except a city whose production a job used; an item begins
-/// once its resource cost is paid), then the next active player moves with full movement, and their units with a destination walk
+/// once its resource cost is paid); then every city's stock is cut to its storage caps (see <see cref="CityStorage"/>), and the next active player moves with full movement, and their units with a destination walk
 /// on (see <see cref="AutoMoveRule"/>).
 /// </summary>
 internal static class EndTurnRule
@@ -39,8 +39,19 @@ internal static class EndTurnRule
             .Select(static city => city.Id)
             .Aggregate(grown, (current, cityId) => Produce(ruleset, current, current.FindCity(cityId)!, events));
 
-        return new GameUpdate(PassTurn(ruleset, produced, events), events.ToImmutable());
+        return new GameUpdate(PassTurn(ruleset, Store(ruleset, produced), events), events.ToImmutable());
     }
+
+    // Cuts every city's stock to its storage caps, once this turn's income has paid its upkeep and costs. Every city, not only
+    // the actor's: the deals the actor's cities host deliver goods to the other side too.
+    private static GameState Store(Ruleset ruleset, GameState state) => state with
+    {
+        Cities = [.. state.Cities.Select(city =>
+        {
+            var stock = CityStorage.Cut(ruleset, city.StockList, CityStorage.Caps(ruleset, city.WorkingBuildings(ruleset.Upkeep.BuildingHealth)));
+            return stock.SequenceEqual(city.StockList) ? city : city with { Stock = stock.IsEmpty ? null : stock };
+        })],
+    };
 
     // Hands the turn to the next active player in turn order; the round number increases when it wraps around. Their units get
     // full movement, and those with a destination walk on at once, so the player sees where they got to before acting.

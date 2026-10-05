@@ -28,8 +28,23 @@ internal static class UpkeepPreviewCalculator
             : UpkeepCalculator.Missing(ruleset, upkeep.Stock, CityProduction.ResourceCost(ruleset, city.ProducingBuilding, producing));
         var damage = UpkeepCalculator.DamageAfter(ruleset, city.BuildingList, city.DamageOf, upkeep.UnpaidBuildings);
         var working = city.BuildingList.Where(building => !damage.Any(entry => entry.Building == building && entry.Damage >= ruleset.Upkeep.BuildingHealth));
-        var perTurn = missing.IsEmpty ? CityProduction.PerTurn(ruleset, working) : 0;
-        return new CityForecast(income, upkeep, missing, perTurn);
+        var sources = CityProduction.Sources(ruleset, working);
+        var perTurn = missing.IsEmpty ? sources.Sum(static source => source.Amount) : 0;
+        var caps = CityStorage.Caps(ruleset, working);
+        var kept = city.ProductionPaid || !missing.IsEmpty
+            ? upkeep.Stock
+            : UpkeepCalculator.Subtract(ruleset, upkeep.Stock, CityProduction.ResourceCost(ruleset, city.ProducingBuilding, producing));
+        return new CityForecast(income, upkeep, missing, perTurn, caps, CityStorage.Excess(ruleset, AfterGrowth(ruleset, city, kept), caps), missing.IsEmpty ? sources : []);
+    }
+
+    // The stock once the city has bought its next tile when it can pay for it (TerritoryRule.Grow). Whether a tile is left to
+    // claim isn't checked: the preview assumes one is, so a city with none may lose a little more culture than it shows.
+    private static ImmutableArray<ResourceAmount> AfterGrowth(Ruleset ruleset, CityView city, ImmutableArray<ResourceAmount> stock)
+    {
+        var price = ruleset.Territory.NextTileCost(city.TilesGained);
+        return YieldCalculator.AmountOf(stock, ruleset.Territory.GrowthResource) >= price
+            ? YieldCalculator.Sum(ruleset, stock.Append(new ResourceAmount(ruleset.Territory.GrowthResource, -price)))
+            : stock;
     }
 
     public static UnitSupply? UnitSupply(Ruleset ruleset, PlayerView view, UnitId unitId)

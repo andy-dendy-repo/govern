@@ -242,9 +242,10 @@ Run at the end of the owner's turn (see [End turn](#end-turn)), for the owner's 
    3. Otherwise add the production to its progress, capped at the unit's [`units.*.productionCost`].
    4. If the progress has reached the cost, find a spawn tile: the city's tile if free, otherwise the first free neighbour (in fixed direction order) that is passable and has no unit holding it and no enemy city (a trader is born on the city's tile, as it shares tiles). A naval unit is launched instead: the tiles of the city's territory holding its [`units.*.requiresBuilding`] (or an upgrade of it), in row-major order, then each one's neighbours in fixed direction order; the first water tile [`terrains.*.isWater`] with no unit.
    5. If a spawn tile exists, create the unit there with a new random id and **0 movement**, and reset the progress to 0; the next unit is unpaid, and the city goes on with the newest version of that unit it may produce ([science](game-logic-science.md#production-under-locks)). If none exists (the city is surrounded), the progress stays full and the unit appears in a later turn.
-8. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
-9. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
-10. **Walk on:** every unit of the new current player with a destination, or exploring, walks on (see [Set a destination](#set-a-destination-auto-moves); a trader on a route walks its route instead, see [trading](game-logic-trade.md#the-traders-walk)), so the player sees where it got to before acting.
+8. **Storage:** every city, of every player (the actor's hosted deals deliver to the other side too), cuts its stock to its storage caps: [`cities.storage`] plus the [`buildings.*.storage`] of each of its working buildings, per resource. What is over a cap is lost. Science has no cap (it is never stored). This comes last, so the turn's income can pay upkeep, costs and a tile first.
+9. **Pass the turn** to the next active player in seat order, skipping players who are no longer active. If it wraps past the last seat, the round increases by 1.
+10. **Reset movement:** every unit of the new current player gets its full [`units.*.movement`].
+11. **Walk on:** every unit of the new current player with a destination, or exploring, walks on (see [Set a destination](#set-a-destination-auto-moves); a trader on a route walks its route instead, see [trading](game-logic-trade.md#the-traders-walk)), so the player sees where it got to before acting.
 
 ### Costs and upkeep
 

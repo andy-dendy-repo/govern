@@ -1,6 +1,6 @@
 // Units and cities: one small low-poly model per PieceModel (Features/Games/Enums/PieceModel). Units are characters baked from
-// the CC0 KayKit Adventurers pack (wwwroot/models/units, made by tools/unit-models) standing on a base in seat colour; the
-// horse and the city are built from simple shapes. Enemy pieces are a little darker. Each part remembers its tile, so clicking
+// the CC0 KayKit Adventurers pack (wwwroot/models/units, made by tools/unit-models) standing on the ground, their seat colour on
+// their clothes; the horse and the city are built from simple shapes. Enemy pieces are a little darker. Each part remembers its tile, so clicking
 // a piece clicks its tile. Built from a BoardScene's pieces; a unit that animates is built on its own (an actor) so it can move.
 import {
     BoxGeometry, BufferAttribute, BufferGeometry, ConeGeometry, CylinderGeometry, Group, MeshLambertMaterial,
@@ -23,7 +23,7 @@ const solid = new MeshLambertMaterial({ flatShading: true });
 const painted = new MeshLambertMaterial({ flatShading: true, vertexColors: true });
 
 // The baked characters, by file name, each split into its own colours (`name`) and its seat parts (`name:seat`); filled once
-// by loadFigures, and empty until then (units then show only their base).
+// by loadFigures, and empty until then (units then don't show, except the horse and the trader's pack).
 const FIGURES = ['soldier', 'spearman', 'archer', 'builder', 'settler', 'scout', 'rider'];
 const figures = new Map();
 let loading = null;
@@ -34,11 +34,8 @@ const PIECE_SCALE = 1.6;
 // How tall a standing character is in the model space below.
 const FIGURE_HEIGHT = 0.5;
 
-// A character from its baked file standing on a base in seat colour.
-const standing = (c, name) => [
-    ['disc', 0, 0, 0, 0.4, 0.03, 0.4, c.base],
-    ...character(c, name, 0, 0.03, 0),
-];
+// A character from its baked file standing on the ground (no base: the seat colour is on its clothes).
+const standing = (c, name) => [...character(c, name, 0, 0, 0)];
 
 // The two parts of a baked character: its own colours and its seat parts.
 const character = (c, name, x, y, z) => [
@@ -85,9 +82,8 @@ const models = {
         ['archer:seat', -0.17, 0.08, 0, 0.26, 0.26, 0.26, c.seat],
     ],
     horseman: c => [
-        ['disc', 0, 0, 0, 0.5, 0.03, 0.5, c.base],
         ...turned(Math.PI / 2, [
-            ...[[-0.06, -0.17], [0.06, -0.17], [-0.06, 0.16], [0.06, 0.16]].map(([x, z]) => ['post', x, 0.03, z, 0.045, 0.23, 0.045, c.horse]),
+            ...[[-0.06, -0.17], [0.06, -0.17], [-0.06, 0.16], [0.06, 0.16]].map(([x, z]) => ['post', x, 0, z, 0.045, 0.26, 0.045, c.horse]),
             ['body', 0, 0.24, 0, 0.19, 0.15, 0.46, c.horse],
             ['box', 0, 0.24, -0.01, 0.16, 0.14, 0.48, c.horse],
             ['box', 0, 0.32, 0.23, 0.085, 0.24, 0.1, c.horse],
@@ -115,7 +111,6 @@ function colours(piece, palette) {
     return {
         seat, wall,
         tint: palette.token('--gv-board3d-figure').multiplyScalar(piece.own ? 1 : 0.8),
-        base: seat.clone().multiplyScalar(0.75),
         ground: wall.clone().multiplyScalar(0.8),
         horse: palette.token('--gv-board3d-horse'),
         mane: palette.token('--gv-board3d-horse').multiplyScalar(0.55),
@@ -217,7 +212,7 @@ export function bannerAnchor(piece) {
 }
 
 // Loads the baked characters (true when any arrived); a board rebuilds its pieces when they do. A file that fails to load
-// leaves its units showing only their base, and the next board tries it again.
+// leaves its units without their figures, and the next board tries it again.
 export function loadFigures() {
     loading ??= Promise.allSettled(FIGURES.filter(name => !figures.has(name)).map(async name => {
         const response = await fetch(new URL(`../../models/units/${name}.json`, import.meta.url));

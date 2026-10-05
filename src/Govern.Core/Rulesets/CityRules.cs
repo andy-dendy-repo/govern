@@ -17,6 +17,10 @@ namespace Govern.Core.Rulesets;
 /// <param name="CaptureResetsProduction">Whether a captured city's production progress goes back to 0.</param>
 /// <param name="Yields">What a city gives every turn on top of its tiles and buildings (may be empty).</param>
 /// <param name="StartingStock">The resources a new city starts with (may be empty).</param>
+/// <param name="Storage">
+/// How much of each stocked resource a city can hold before its buildings add room (<see cref="BuildingDefinition.Storage"/>):
+/// one entry for every resource but the science one. What doesn't fit is lost at the end of every turn.
+/// </param>
 public sealed record CityRules(
     int Sight,
     int MinimumSpacing,
@@ -25,4 +29,5 @@ public sealed record CityRules(
     ImmutableArray<string> SuggestedNames,
     bool CaptureResetsProduction,
     ImmutableArray<ResourceAmount> Yields,
-    ImmutableArray<ResourceAmount> StartingStock);
+    ImmutableArray<ResourceAmount> StartingStock,
+    ImmutableArray<ResourceAmount> Storage);

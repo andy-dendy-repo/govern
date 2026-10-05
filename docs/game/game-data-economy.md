@@ -39,6 +39,17 @@ updated: 2026-10-05
 
 Each city keeps its own stock (`City.Stock`). At the end of its owner's turn it adds the yields of every tile in its territory, `cities.yields` and its buildings' yields, except `science.resource`, which is a budget per turn and never stored ([science](game-data-science.md)). A captured city keeps its stock and territory.
 
+## City storage (`cities.storage`, `buildings[].storage`)
+
+*Decided 2026-10-05 (G8c, the owner's request: a city can't collect resources forever).*
+
+| Field | Type | Meaning | Default ruleset |
+|---|---|---|---|
+| `cities.storage` | list, amount 1..1000 | Every city's storage cap per resource; every resource but `science.resource` needs one | food 30, water 30, wood 20, stone 20, gold 20, culture 40 |
+| `buildings[].storage` | list, amount 1..1000, may be empty | Added to its city's caps while the building works (not at 0 health). An upgrade replaces its building, so it lists its own full amounts | see [Buildings](#buildings-buildings) |
+
+At the very end of every End turn (after production, and for every player's cities, since hosted deals deliver to both sides), each city's stock is cut to its caps (`CityStorage`); the rest is lost. `cities.startingStock` must fit in `cities.storage`. Culture is capped too, which limits territory growth: a city can only afford tiles whose price fits its culture cap.
+
 ## Territory (`territory`)
 
 | Field | Type | Meaning | Default |
@@ -126,17 +137,18 @@ Unique per city: a city has each building at most once. Each one stands on its o
 | `resourceCost` | list of `{ "resource", "amount" }` | Resources paid when production begins ([costs and upkeep](#resource-costs-and-upkeep-resourcecost-upkeep-upkeep-section)) |
 | `upkeep` | list of `{ "resource", "amount" }` | Resources the city pays every turn to keep it |
 | `yields` | list of `{ "resource", "amount" }` | Added to the city's stock every turn; may be empty |
+| `storage` | list of `{ "resource", "amount" }` | Added to the city's storage caps while it works; may be empty ([city storage](#city-storage-citiesstorage-buildingsstorage)) |
 | `production` | int 0..100 | Added to the city's production per turn (for its own production and the jobs it feeds) |
 | `requiresAdjacentTerrain` | list of terrain ids | The building's tile needs one of them next to it (empty: no need); no repeats |
 | `upgrades` | building id, optional | The building this one upgrades; made by a builder's job, never produced by a city ([science](game-data-science.md#building-upgrades-buildingsupgrades)) |
 
 ```json
 "buildings": [
-  { "id": "army_camp", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 4 }, { "resource": "wood", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }], "yields": [], "production": 1, "requiresAdjacentTerrain": [] },
-  { "id": "campus", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 4 }], "upkeep": [{ "resource": "gold", "amount": 1 }], "yields": [{ "resource": "science", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
-  { "id": "trade_post", "cost": 8, "resourceCost": [{ "resource": "wood", "amount": 4 }], "upkeep": [], "yields": [{ "resource": "gold", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
-  { "id": "culture_centre", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 3 }], "upkeep": [{ "resource": "gold", "amount": 1 }], "yields": [{ "resource": "culture", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": [] },
-  { "id": "harbour", "cost": 8, "resourceCost": [{ "resource": "wood", "amount": 6 }], "upkeep": [], "yields": [{ "resource": "food", "amount": 2 }], "production": 0, "requiresAdjacentTerrain": ["lake"] }
+  { "id": "army_camp", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 4 }, { "resource": "wood", "amount": 2 }], "upkeep": [{ "resource": "food", "amount": 1 }], "yields": [], "storage": [{ "resource": "food", "amount": 10 }, { "resource": "water", "amount": 10 }], "production": 1, "requiresAdjacentTerrain": [] },
+  { "id": "campus", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 4 }], "upkeep": [{ "resource": "gold", "amount": 1 }], "yields": [{ "resource": "science", "amount": 2 }], "storage": [{ "resource": "gold", "amount": 10 }], "production": 0, "requiresAdjacentTerrain": [] },
+  { "id": "trade_post", "cost": 8, "resourceCost": [{ "resource": "wood", "amount": 4 }], "upkeep": [], "yields": [{ "resource": "gold", "amount": 2 }], "storage": [{ "resource": "food", "amount": 10 }, { "resource": "wood", "amount": 10 }, { "resource": "stone", "amount": 10 }, { "resource": "gold", "amount": 10 }], "production": 0, "requiresAdjacentTerrain": [] },
+  { "id": "culture_centre", "cost": 8, "resourceCost": [{ "resource": "stone", "amount": 3 }], "upkeep": [{ "resource": "gold", "amount": 1 }], "yields": [{ "resource": "culture", "amount": 2 }], "storage": [{ "resource": "culture", "amount": 40 }], "production": 0, "requiresAdjacentTerrain": [] },
+  { "id": "harbour", "cost": 8, "resourceCost": [{ "resource": "wood", "amount": 6 }], "upkeep": [], "yields": [{ "resource": "food", "amount": 2 }], "storage": [{ "resource": "food", "amount": 10 }, { "resource": "water", "amount": 10 }], "production": 0, "requiresAdjacentTerrain": ["lake"] }
 ]
 ```
 
@@ -172,6 +184,7 @@ The trade post (`trade.building`) holds its city's market and lets it produce tr
 - Every resource and terrain reference resolves; improvement terrains are passable.
 - `buildProduction` ≥ 1 exactly for units with `build_improvement` or `build_bridge`.
 - Terrain, river and `cities.yields` amounts 1..100 per resource, each resource once; `cities.startingStock` amounts 1..1000.
+- Storage: `cities.storage` and `buildings[].storage` amounts 1..1000, each resource once; every resource but `science.resource` has a `cities.storage` cap (science is never in either list); each `cities.startingStock` amount is at most its cap.
 - `territory`: `initialRadius` 0..10, `maxRadius` `initialRadius`..10, `tileCost` 1..1000, `tileCostIncrease` 0..1000, `growthResource` exists, and `cities.minimumSpacing` > 2 × `initialRadius`, so two new cities never claim the same tile.
 - No sight invariant for bridges any more: a unit sees enemy territory on the tiles it sees, and the bridge check only looks at the two tiles beside the edge, which the unit always sees.
 - Resource costs: amounts 1..1000, each resource once, and never `territory.growthResource` (territory growth spends it just before production pays, so the city panel could not tell for sure whether production can begin). Upkeep: amounts 1..100, each resource once.

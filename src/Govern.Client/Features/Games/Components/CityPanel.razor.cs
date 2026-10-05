@@ -77,6 +77,51 @@ public partial class CityPanel
             - YieldCalculator.AmountOf(forecast.Upkeep.Paid, resource)
             - (PaysThisTurn(forecast) ? YieldCalculator.AmountOf(ResourceCost, resource) : 0);
 
+    // How much of a resource the city can hold (int.MaxValue for one it doesn't stock); the caps after this turn's upkeep.
+    private int CapOf(CityForecast? forecast, ResourceType resource) =>
+        CityStorage.CapOf(forecast?.Storage ?? CityStorage.Caps(Ruleset, City.WorkingBuildings(Ruleset.Upkeep.BuildingHealth)), resource);
+
+    // What of a resource won't fit in the city's storage at the end of the turn. A city feeding a job doesn't pay its item's
+    // cost, so it may lose a little more than shown.
+    private static int LostOf(CityForecast? forecast, ResourceType resource) =>
+        forecast is null ? 0 : YieldCalculator.AmountOf(forecast.Lost, resource);
+
+    private string StorageTitle(ResourceType resource, int amount, int cap, int lost)
+    {
+        var name = Ruleset.ResourceName(resource);
+        var held = cap == int.MaxValue ? $"{amount} {name}" : $"{amount} of {cap} {name} the city can hold";
+        return lost > 0 ? $"{held}; {lost} won't fit at the end of the turn and is lost" : held;
+    }
+
+    // Where the city's production per turn comes from: its own, then each working building that adds some.
+    private string SourcesText
+    {
+        get
+        {
+            var sources = CityProduction.Sources(Ruleset, City.WorkingBuildings(Ruleset.Upkeep.BuildingHealth));
+            var parts = sources.Select(source => $"{(source.Building is { } building ? Ruleset.BuildingName(building) : "city")} {source.Amount}");
+            return $"Production {sources.Sum(static source => source.Amount)} a turn: {string.Join(", ", parts)}";
+        }
+    }
+
+    // The job this city's production goes to this turn instead of its own item.
+    private string LentText
+    {
+        get
+        {
+            var fed = JobFundingResolver.FeedingCities(Ruleset, View).FirstOrDefault(entry => entry.Value.Id == City.Id).Key;
+            var unit = View.Units.FirstOrDefault(unit => unit.Id == fed);
+            var job = unit?.Job switch
+            {
+                { Improvement: { } improvement } => $"the {Ruleset.UnitName(unit.Type)}'s {Ruleset.ImprovementName(improvement)}",
+                { UpgradeTo: { } building } => $"the {Ruleset.UnitName(unit.Type)}'s {Ruleset.BuildingName(building)} upgrade",
+                { BridgeTo: not null } => $"the {Ruleset.UnitName(unit.Type)}'s bridge",
+                _ => "a unit building on its land",
+            };
+            return $"This turn the city's production goes to {job}, not to its own item.";
+        }
+    }
+
     // Whether the resource cost of what the city produces is paid, will be paid at the end of the turn, or what is missing.
     private string? CostText(CityForecast? forecast)
     {
@@ -143,7 +188,8 @@ public partial class CityPanel
     // A unit button is pressed only while no building replaces the unit in production.
     private bool ProducingUnit(UnitType type) => City.ProducingBuilding is null && City.Producing == type;
 
-    // What a building gives: its yields each turn, any extra production, and the terrain it needs next to its tile.
+    // What a building gives: its yields each turn, any extra production, the storage it adds, and the terrain it needs next to
+    // its tile.
     private string Effect(BuildingDefinition building)
     {
         var parts = building.Yields.Select(amount => $"+{amount.Amount} {Ruleset.ResourceName(amount.Resource)}").ToList();
@@ -152,7 +198,14 @@ public partial class CityPanel
             parts.Add($"+{building.Production} production");
         }
 
-        var effect = $"{string.Join(", ", parts)} a turn";
+        var effect = parts.Count > 0 ? $"{string.Join(", ", parts)} a turn" : null;
+        if (!building.Storage.IsEmpty)
+        {
+            var storage = $"holds {string.Join(", ", building.Storage.Select(amount => $"+{amount.Amount} {Ruleset.ResourceName(amount.Resource)}"))}";
+            effect = effect is null ? storage : $"{effect}; {storage}";
+        }
+
+        effect ??= "No effect";
         return building.RequiresAdjacentTerrain.IsEmpty
             ? effect
             : $"{effect}; needs {string.Join(" or ", building.RequiresAdjacentTerrain.Select(Ruleset.TerrainName))} next to its tile";
