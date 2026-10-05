@@ -1,7 +1,7 @@
 ---
 title: Game rules reference (for players)
 tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, ships, naval, galley, bireme, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, science, science-tree, unlocks, unit-upgrade, building-upgrade, swordsman, pikeman, crossbowman, knight, workshop, barracks, university, market, port, deals, counter-offers, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
-code: [rulesets/default/v13.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
+code: [rulesets/default/v14.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
 updated: 2026-10-05
 ---
 
@@ -181,7 +181,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 
 - Each city produces one unit type at a time. You can change it at any time during your turn; progress is kept.
 - A unit or building also costs resources, which the city pays in full when it starts producing it; until it can pay, it waits (see "Costs and upkeep").
-- When you end your turn, each of your cities adds its production per turn (under "Game numbers") to its progress. When the progress reaches the unit's production cost, the unit appears on the city's tile, or on the first free neighbouring tile a unit can stand on if the city's tile is taken, with 0 movement. Progress then starts again from 0.
+- When you end your turn, each of your cities adds its production per turn to its progress: its own production (under "Game numbers") plus the extra production of its working buildings (see "City buildings"). The city panel shows where it comes from and what it goes to: the item, or a unit's job on the city's land that takes it this turn (see "Building with units"). When the progress reaches the unit's production cost, the unit appears on the city's tile, or on the first free neighbouring tile a unit can stand on if the city's tile is taken, with 0 movement. Progress then starts again from 0.
 - If every tile around the city is taken, the finished unit waits and appears in a later turn.
 - A ship appears instead on the first free lake tile next to the city's harbour (or port); if they are all taken, it waits the same way.
 - Cities see as far as the city sight under "Game numbers", plus the sight bonus of their tile.
@@ -223,7 +223,25 @@ Each city owns a set of tiles: its territory. A tile belongs to at most one city
 
 ## City resources
 
-Each city keeps its own resources. At the end of each of your turns, every one of your cities adds to its own stock the yield of every tile in its territory, its own 1 Culture and its buildings' yields (but not science, which is never stored; see "Science"), then pays its upkeep (see "Costs and upkeep"). Territory is paid in Culture, and units and buildings in the other resources. The city panel shows a city's resources with what each gains or loses per turn, its upkeep, and what its next tile costs. The top bar shows the total over all your cities.
+Each city keeps its own resources. At the end of each of your turns, every one of your cities adds to its own stock the yield of every tile in its territory, its own 1 Culture and its buildings' yields (but not science, which is never stored; see "Science"), then pays its upkeep (see "Costs and upkeep"). Territory is paid in Culture, and units and buildings in the other resources. The city panel shows a city's resources against its storage, with what each gains or loses per turn, its upkeep, and what its next tile costs. The top bar shows the total over all your cities.
+
+## City storage
+
+A city can't hoard forever: it holds at most its **storage cap** of each resource. Every city has the caps below, and each of its working buildings adds more (the "Storage" column under "City buildings"; an upgrade replaces the old building, so a Market adds its own amounts, not a Trade post's as well; a building at 0 health adds nothing).
+
+| Resource | Storage cap |
+|---|---|
+| Food | 30 |
+| Water | 30 |
+| Wood | 20 |
+| Stone | 20 |
+| Gold | 20 |
+| Culture | 40 |
+
+- A city may go over its caps during a turn, so this turn's income can still pay its upkeep, its next item's cost and a new tile. At the very end of every turn (yours and your opponent's, since trade delivers goods in either) whatever is over a cap is **lost**.
+- Science has no cap: it is never stored (see "Science").
+- Culture pays for territory, and a tile costs more the more a city has gained: without a Culture centre a city can afford tiles up to a price of 40.
+- The city panel shows each resource as amount / cap, marked in bold when it is full, with how much won't fit at the end of the turn.
 
 ## Costs and upkeep
 
@@ -294,21 +312,22 @@ Every building stands on its own tile of the city's territory, which you pick wh
 - A city whose free tiles are all taken can't order a building until its territory grows.
 - You see a building on its tile while you can see the tile. When a city is captured its buildings stay on their tiles, and a building it was still producing is dropped.
 
-| Building | Cost | Yield per turn | Extra production | Needs next to its tile |
-|---|---|---|---|---|
-| Army camp | 8 | — | +1 | — |
-| Campus | 8 | 2 Science | — | — |
-| Trade post | 8 | 2 Gold | — | — |
-| Culture centre | 8 | 2 Culture | — | — |
-| Harbour | 8 | 2 Food | — | Lake |
-| Workshop | 10 | — | +1 | — |
-| Barracks | 10 | — | +2 | — |
-| University | 10 | 4 Science | — | — |
-| Market | 10 | 4 Gold | — | — |
-| Port | 10 | 4 Food | — | Lake |
+| Building | Cost | Yield per turn | Extra production | Storage | Needs next to its tile |
+|---|---|---|---|---|---|
+| Army camp | 8 | — | +1 | +10 Food, +10 Water | — |
+| Campus | 8 | 2 Science | — | +10 Gold | — |
+| Trade post | 8 | 2 Gold | — | +10 Food, +10 Wood, +10 Stone, +10 Gold | — |
+| Culture centre | 8 | 2 Culture | — | +40 Culture | — |
+| Harbour | 8 | 2 Food | — | +10 Food, +10 Water | Lake |
+| Workshop | 10 | — | +1 | +20 Wood, +20 Stone | — |
+| Barracks | 10 | — | +2 | +20 Food, +20 Water | — |
+| University | 10 | 4 Science | — | +20 Gold | — |
+| Market | 10 | 4 Gold | — | +20 Food, +20 Wood, +20 Stone, +20 Gold | — |
+| Port | 10 | 4 Food | — | +20 Food, +20 Water | Lake |
 
 - **Yield per turn:** added to the city's resources at the end of every one of your turns, from the turn after the building is finished.
 - **Extra production:** added to the city's production per turn, for its own production and for jobs in its territory.
+- **Storage:** added to the city's storage caps while the building works (see "City storage").
 - Buildings also cost resources and upkeep (see "Costs and upkeep"). A trade post also lets its city train traders and trade (see "Trading"). A harbour (or port) lets its city build ships (see "Ships"). Later, army camps will speed up army production.
 - The trade post, the harbour and the last five buildings need a science item first. Barracks, University, Market and Port are **upgrades** of the Army camp, Campus, Trade post and Harbour: a city never produces them; a builder upgrades the old building in place (see "Science"). A city with an upgrade counts as having the old building too, so it can't build that again, and a Market trades like a Trade post.
 
@@ -444,4 +463,4 @@ The top bar counts your resources (food, water, wood, stone, gold, culture) over
 
 ## Maintaining this page
 
-For maintainers: every change to the game's rules updates this page in the same PR. The tables under "Terrain types", "Rivers", "Unit types", "Improvements", "City buildings", "Costs and upkeep", "Trade values", "Class counters" and "Game numbers" are checked against the default ruleset by `RulesReferenceTests` (`tests/Govern.ArchitectureTests`). The first column is the name from the ruleset's `texts`, or the row label listed in the test; a ruleset terrain, river, unit, improvement, building or counter without its row, or a new ability without its label in the test, fails it.
+For maintainers: every change to the game's rules updates this page in the same PR. The tables under "Terrain types", "Rivers", "Unit types", "Improvements", "City storage", "City buildings", "Costs and upkeep", "Trade values", "Class counters" and "Game numbers" are checked against the default ruleset by `RulesReferenceTests` (`tests/Govern.ArchitectureTests`). The first column is the name from the ruleset's `texts`, or the row label listed in the test; a ruleset terrain, river, unit, improvement, building or counter without its row, or a new ability without its label in the test, fails it.

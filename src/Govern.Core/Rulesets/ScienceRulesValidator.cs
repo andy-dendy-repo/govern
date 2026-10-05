@@ -29,8 +29,9 @@ internal static class ScienceRulesValidator
         }
 
         var used = document.Units.SelectMany(static unit => unit.ResourceCost.Concat(unit.Upkeep).Concat(unit.UpgradeCost ?? []))
-            .Concat(document.Buildings.SelectMany(static building => building.ResourceCost.Concat(building.Upkeep)))
+            .Concat(document.Buildings.SelectMany(static building => building.ResourceCost.Concat(building.Upkeep).Concat(building.Storage)))
             .Concat(document.Cities.StartingStock)
+            .Concat(document.Cities.Storage)
             .Any(amount => amount.Resource == science);
         if (definition.IsTradable || used || document.Territory.GrowthResource == science)
         {

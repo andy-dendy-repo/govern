@@ -208,6 +208,11 @@ public class RulesetTests
         ["first production needs a building"] = json => json["cities"]!["initialProduction"] = "galley",
         ["ship sees less than it sails"] = json => json["units"]![12]!["sight"] = 2,
         ["trade building is an upgrade"] = json => json["trade"]!["building"] = "market",
+        ["resource without a storage cap"] = json => json["cities"]!["storage"]!.AsArray().RemoveAt(0),
+        ["starting stock over its storage cap"] = json => json["cities"]!["storage"]![1]!["amount"] = 3,
+        ["storage of an unknown resource"] = json => json["buildings"]![0]!["storage"]![0]!["resource"] = "iron",
+        ["building storage too large"] = json => json["buildings"]![0]!["storage"]![0]!["amount"] = 1001,
+        ["science in storage"] = json => json["cities"]!["storage"]!.AsArray().Add(JsonNode.Parse("""{ "resource": "science", "amount": 5 }""")),
     };
 
     public static TheoryData<string, string> InvalidDocuments => new()
@@ -401,7 +406,26 @@ public class RulesetTests
         { "first production needs a building", "$.cities.initialProduction" },
         { "ship sees less than it sails", "$.units[12].sight" },
         { "trade building is an upgrade", "$.trade.building" },
+        { "resource without a storage cap", "$.cities.storage" },
+        { "starting stock over its storage cap", "$.cities.startingStock[1].amount" },
+        { "storage of an unknown resource", "$.buildings[0].storage[0].resource" },
+        { "building storage too large", "$.buildings[0].storage[0].amount" },
+        { "science in storage", "$.science.resource" },
     };
+
+    [Fact]
+    public void Parse_DefaultRuleset_GivesEveryStockedResourceAStorageCap()
+    {
+        var ruleset = TestRulesets.Default;
+
+        ruleset.Cities.Storage.ShouldBe(
+        [
+            new ResourceAmount(TestRulesets.Food, 30), new ResourceAmount(TestRulesets.Water, 30), new ResourceAmount(TestRulesets.Wood, 20),
+            new ResourceAmount(TestRulesets.Stone, 20), new ResourceAmount(TestRulesets.Gold, 20), new ResourceAmount(TestRulesets.Culture, 40),
+        ]);
+        ruleset.Building(TestRulesets.Workshop).Storage.ShouldBe([new ResourceAmount(TestRulesets.Wood, 20), new ResourceAmount(TestRulesets.Stone, 20)]);
+        ruleset.Buildings.ShouldAllBe(building => !building.Storage.IsEmpty);
+    }
 
     [Fact]
     public void Parse_DefaultRuleset_IsValidAndHoldsTodaysGame()

@@ -18,7 +18,25 @@ public static class CityProduction
     {
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(buildings);
-        return ruleset.Cities.ProductionPerTurn + buildings.Sum(building => ruleset.Building(building).Production);
+        return Sources(ruleset, buildings).Sum(static source => source.Amount);
+    }
+
+    /// <summary>Where a city's production per turn comes from.</summary>
+    /// <param name="ruleset">The game's ruleset.</param>
+    /// <param name="buildings">The city's working buildings (<see cref="City.WorkingBuildings"/>).</param>
+    /// <returns>
+    /// The city's own <see cref="CityRules.ProductionPerTurn"/> first, then each building that adds production, in the order given.
+    /// </returns>
+    public static ImmutableArray<ProductionSource> Sources(Ruleset ruleset, IEnumerable<BuildingType> buildings)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        ArgumentNullException.ThrowIfNull(buildings);
+        return
+        [
+            new ProductionSource(null, ruleset.Cities.ProductionPerTurn),
+            .. buildings.Where(building => ruleset.Building(building).Production > 0)
+                .Select(building => new ProductionSource(building, ruleset.Building(building).Production)),
+        ];
     }
 
     /// <summary>The resources a city pays when it begins producing an item.</summary>

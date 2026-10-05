@@ -3,14 +3,14 @@ using Govern.Core.Rulesets;
 namespace Govern.Application.Games.Services;
 
 /// <summary>
-/// The ruleset every game is played with: <c>rulesets/default/v13.json</c>, embedded in this assembly and parsed once. A
+/// The ruleset every game is played with: <c>rulesets/default/v14.json</c>, embedded in this assembly and parsed once. A
 /// singleton; an invalid file stops the first request that needs it, so a broken ruleset never reaches a game.
 /// </summary>
 /// <remarks>Temporary: stored rulesets, with each game pinned to its own version, replace it.</remarks>
 public sealed class DefaultRulesetService
 {
     /// <summary>The embedded resource name of the default ruleset.</summary>
-    public const string ResourceName = "Govern.Rulesets.default.v13.json";
+    public const string ResourceName = "Govern.Rulesets.default.v14.json";
 
     private readonly Lazy<Ruleset> _ruleset = new(Load);
 
