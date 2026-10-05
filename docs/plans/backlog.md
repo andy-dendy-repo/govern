@@ -2,7 +2,7 @@
 title: Backlog (all open work, prioritised)
 tags: [plan, backlog, priorities, roadmap, deferred, game, ui, ruleset, content]
 code: [docs/plans, docs/game/design-roadmap.md]
-updated: 2026-10-04
+updated: 2026-10-05
 ---
 
 # Backlog
@@ -24,7 +24,9 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 ## Now
 
-Empty: G11a is done (see Recently done). The owner said the culture tree (G11b) goes next.
+| # | Id | Item | Area | Size | Status |
+|---|---|---|---|---|---|
+| 1 | G17b | Trading rework: the deal belongs to a trader (no routes); a trader sends a deal from home, the target accepts, declines or counters (counters go back and forth), the trader walks to the target's post once accepted and the deal starts on arrival, then it shuttles by the fastest way; traders never block or are blocked; Market tab lists the city's traders and their deals; wider city panel | game | L | planned: [plan](active/G17b-trading-rework.md), waiting for the owner's go |
 
 ### Content slice C1: G2, G4, G9
 
