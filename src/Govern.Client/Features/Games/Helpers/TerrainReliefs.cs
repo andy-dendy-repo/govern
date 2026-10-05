@@ -17,8 +17,8 @@ public static class TerrainReliefs
     /// <summary>The relief of an unexplored tile: flat, under the mist.</summary>
     public static readonly TileRelief Unexplored = new(0.02, TileShape.Flat);
 
-    /// <summary>The height of the water over a <see cref="TileShape.Water"/> tile (<c>WATER_LEVEL</c> in <c>terrain.js</c>).</summary>
-    public const double WaterLevel = 0.1;
+    /// <summary>The height of the water over a <see cref="TileShape.Water"/> tile (<c>WATER_LEVEL</c> in <c>ground.js</c>), just under the lowest land, so shores run down to it.</summary>
+    public const double WaterLevel = 0.07;
 
     private static readonly Dictionary<string, TileRelief> ById = new(StringComparer.Ordinal)
     {
