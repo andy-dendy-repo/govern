@@ -6,6 +6,7 @@ using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Map;
+using Govern.Core.Rulesets;
 using Govern.Core.Units;
 
 namespace Govern.Core.State;
@@ -54,15 +55,16 @@ public sealed record GameState
     public required ImmutableArray<City> Cities { get; init; }
 
     /// <summary>
-    /// Every trade route (G17), in the order they were opened; <see langword="null"/> while there are none (games saved before
-    /// trading read as having none, so no schema change).
+    /// Every trade deal (G17b), in the order they were proposed; <see langword="null"/> while there are none. Games saved before
+    /// trading read as having none, and games saved with G17's trade routes drop them (the old <c>tradeRoutes</c> member is
+    /// skipped), so no schema change.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public ImmutableArray<TradeRoute>? TradeRoutes { get; init; }
+    public ImmutableArray<TradeDeal>? TradeDeals { get; init; }
 
-    /// <summary>Every trade route (empty when there are none).</summary>
+    /// <summary>Every trade deal (empty when there are none).</summary>
     [JsonIgnore]
-    public ImmutableArray<TradeRoute> TradeRouteList => TradeRoutes ?? [];
+    public ImmutableArray<TradeDeal> TradeDealList => TradeDeals ?? [];
 
     /// <summary>
     /// State of the <see cref="DeterministicRandom"/> generator. It also draws unit and city ids, so an id tells an opponent
@@ -75,10 +77,23 @@ public sealed record GameState
     /// <returns>The unit, or <see langword="null"/> when it does not exist (any more).</returns>
     public Unit? FindUnit(UnitId id) => Units.FirstOrDefault(unit => unit.Id == id);
 
-    /// <summary>Returns the unit standing on a tile.</summary>
+    /// <summary>
+    /// Returns the unit holding a tile: the one unit on it that doesn't share tiles (traders do, see
+    /// <see cref="UnitDefinition.SharesTiles"/>).
+    /// </summary>
+    /// <param name="ruleset">The game's ruleset.</param>
     /// <param name="coord">The tile.</param>
-    /// <returns>The unit, or <see langword="null"/> when the tile is empty.</returns>
-    public Unit? UnitAt(HexCoord coord) => Units.FirstOrDefault(unit => unit.Position == coord);
+    /// <returns>The unit, or <see langword="null"/> when no such unit stands there (traders may).</returns>
+    public Unit? HolderAt(Ruleset ruleset, HexCoord coord)
+    {
+        ArgumentNullException.ThrowIfNull(ruleset);
+        return Units.FirstOrDefault(unit => unit.Position == coord && !ruleset.Unit(unit.Type).SharesTiles);
+    }
+
+    /// <summary>Returns every unit standing on a tile: its holder, if any, and the traders sharing it.</summary>
+    /// <param name="coord">The tile.</param>
+    /// <returns>The units, in the state's order (empty when none).</returns>
+    public IEnumerable<Unit> UnitsAt(HexCoord coord) => Units.Where(unit => unit.Position == coord);
 
     /// <summary>Returns the city with the given id.</summary>
     /// <param name="id">City id.</param>
@@ -104,19 +119,19 @@ public sealed record GameState
     internal GameState WithCity(City city) =>
         this with { Cities = Cities.Replace(FindCity(city.Id) ?? throw new InvalidOperationException($"City {city.Id.Value} does not exist."), city) };
 
-    /// <summary>Returns a trade route.</summary>
-    /// <param name="id">Route id.</param>
-    /// <returns>The route, or <see langword="null"/> when it does not exist (any more).</returns>
-    public TradeRoute? FindRoute(TradeRouteId id) => TradeRouteList.FirstOrDefault(route => route.Id == id);
+    /// <summary>Returns a trade deal.</summary>
+    /// <param name="id">Deal id.</param>
+    /// <returns>The deal, or <see langword="null"/> when it does not exist (any more).</returns>
+    public TradeDeal? FindDeal(TradeDealId id) => TradeDealList.FirstOrDefault(deal => deal.Id == id);
 
-    internal GameState WithRoute(TradeRoute route) => FindRoute(route.Id) is { } old
-        ? this with { TradeRoutes = TradeRouteList.Replace(old, route) }
-        : this with { TradeRoutes = TradeRouteList.Add(route) };
+    internal GameState WithDeal(TradeDeal deal) => FindDeal(deal.Id) is { } old
+        ? this with { TradeDeals = TradeDealList.Replace(old, deal) }
+        : this with { TradeDeals = TradeDealList.Add(deal) };
 
-    internal GameState WithoutRoute(TradeRouteId id)
+    internal GameState WithoutDeal(TradeDealId id)
     {
-        var routes = TradeRouteList.RemoveAll(route => route.Id == id);
-        return this with { TradeRoutes = routes.IsEmpty ? null : routes };
+        var deals = TradeDealList.RemoveAll(deal => deal.Id == id);
+        return this with { TradeDeals = deals.IsEmpty ? null : deals };
     }
 
     internal GameState WithPlayer(Player player) =>
@@ -148,7 +163,7 @@ public sealed record GameState
     }
 
     private bool IsIdInUse(int id) =>
-        Units.Any(unit => unit.Id.Value == id) || Cities.Any(city => city.Id.Value == id) || TradeRouteList.Any(route => route.Id.Value == id);
+        Units.Any(unit => unit.Id.Value == id) || Cities.Any(city => city.Id.Value == id) || TradeDealList.Any(deal => deal.Id.Value == id);
 
     private static InvalidOperationException MissingUnit(UnitId id) => new($"Unit {id.Value} does not exist.");
 }

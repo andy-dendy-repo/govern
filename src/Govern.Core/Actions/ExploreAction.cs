@@ -28,9 +28,9 @@ internal static class ExploreRule
             return error;
         }
 
-        if (unit.RouteId is not null)
+        if (unit.DealId is not null)
         {
-            return RuleViolations.OnTradeRoute;
+            return RuleViolations.OnTradeDeal;
         }
 
         if (unit.Job is not null)

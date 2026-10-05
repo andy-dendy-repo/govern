@@ -2,7 +2,7 @@
 title: Game design roadmap (future mechanics)
 tags: [game, design, roadmap, maps, map-pool, game, design, ui, rules, trading, traders, terrain, resources, rivers, seasons, cities, territory, governors, units, combat, builders, buildings, science, culture, tech-tree]
 code: [src/Govern.Core, src/Govern.Client/Features/Games]
-updated: 2026-10-04
+updated: 2026-10-05
 ---
 
 # Game design roadmap
@@ -28,7 +28,7 @@ Items are numbered **G1–G18** so they don't clash with the follow-up numbers. 
 | G13 | [Colonies founded by governors (settlers removed)](#g13-colonies-founded-by-governors-settlers-removed) | G12 | M |
 | G14 | [Seasons](#g14-seasons) | G5, G6 | M |
 | G15 | [Ships and naval movement](#g15-ships-and-naval-movement) | G4, G6, G9, G10 | L |
-| G17 | [Trading: markets, traders, routes and deals](#g17-trading-markets-traders-routes-and-deals) *(done)* | G7, G8a, G10a, F19 | L |
+| G17 | [Trading: markets, traders, routes and deals](#g17-trading-markets-traders-routes-and-deals) *(done; reworked by G17b: no routes, one deal per trader)* | G7, G8a, G10a, F19 | L |
 | G18 | [Predefined maps](#g18-predefined-maps) *(done: the pool and The Basin)* | G4, G6 | M |
 
 **Suggested order** (design dependencies; the [backlog](../plans/backlog.md) decides the actual order): G1 and G2 first, because every later item adds UI and rules. Then G3 as the foundation for the data. Then the map (G4 → G5 → G6), cities (G7 → G8), units (G9), builders (G10), ships (G15, which need harbours from G10), the trees (G11), civilizations and governors (G12 → G13), and seasons last (G14), since they modify almost everything before them.
@@ -130,7 +130,7 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 - **Decide:**
   - Does a resource deplete? Proposal: renewable resources (wood, food, fish) regrow, and mined ones (coal, oil, metals, uranium) have reserves that run out slowly.
   - Is it visible before a tech reveals it? Proposal: strategic resources are hidden until their tech (G11); the view filters them per player.
-  - Is there trade? *Answered by [G17](#g17-trading-markets-traders-routes-and-deals) (2026-10-03):* cities swap resources through traders and trade routes, with no diplomacy needed.
+  - Is there trade? *Answered by [G17](#g17-trading-markets-traders-routes-and-deals) (2026-10-03):* cities swap resources through traders carrying deals (trade routes until G17b), with no diplomacy needed.
 
 ## G6. Rivers and bridges
 
@@ -289,7 +289,8 @@ The decided approaches, the component catalog and how each mechanic adds its UI 
 - **Owner's request (2026-10-03):** each city chooses what it sells and buys, each with a cap; other players produce traders and choose the city to trade with; rates follow need and proposition, like real life; players can offer better deals to compete.
 - **Owner's model (his corrections the same day), not Civ 6:** there is no money (gold is a resource); water can't be traded; a host accepts a better proposal and cancels an older deal to make room; a trader walks to the other city's trade post to open a route, then keeps the deal active by walking back and forth, getting goods swapped every turn; killing it breaks the deal.
 - **What was built:** a market per city with a trade post (sell or buy up to a cap per tradable resource), demand levels per resource moved by need and offer, the trader (from a trade post), routes (2 per city), proposals, accept with cancel-to-make-room, decline, cancel and close, the exchange at the end of the host owner's turn, paused routes, broken deals on the trader's death and ended routes on capture.
-- **Later ideas (not agreed):** neutral merchants, more routes from upgraded trade posts (the G10 chain trading post → bazaar → market), trading science or culture, cargo carried per trip, a trade route lens, demand history.
+- **G17b rework (owner's request 2026-10-05, [plan](../plans/done/G17b-trading-rework.md)), ruleset v13:** routes are gone. A city has traders (at most `tradersPerCity`, each with that city as its home); each trader sends one deal to a target city, which accepts, declines or counters it, and counters go back and forth until one side accepts or declines. Once accepted the trader walks to the host's trade post, the deal becomes active on arrival, and the trader then shuttles between the two posts by the fastest way. The Market tab lists the city's traders with their deals (suggest, withdraw, cancel, answer) and the deals other cities' traders bring; the city panel is wider. Traders never block and are never blocked by units or cities, and units sharing a tile stand side by side on the board. Enemy cities the player has seen with their trade post stay trade partners out of sight.
+- **Later ideas (not agreed):** neutral merchants, more traders from upgraded trade posts (the G10 chain trading post → bazaar → market), trading science or culture, cargo carried per trip, a trade lens, demand history.
 ## G18. Predefined maps
 
 - **Status:** the pool and its first map are done 2026-10-03, PR #55 ([plan](../plans/done/G18-predefined-maps.md), [maps](maps.md)). Hand-made maps in `maps/<key>.json`, validated against the ruleset (mirrored tiles and rivers, connected, spawn candidates in the left half); the lobby picks Random from the pool (default), a named map, or Generated. First map: The Basin, 32 × 20 (home valleys, ridges with hill passes, a central lake splitting the front into two flanks).

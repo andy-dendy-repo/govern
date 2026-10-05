@@ -6,11 +6,11 @@ using Govern.Core.State;
 namespace Govern.Core.Events;
 
 /// <summary>
-/// A trade route's deal swapped goods at the end of the host owner's turn (G17), or swapped nothing because a side didn't have
-/// its part. Only the route's owner and the host city's owner receive it.
+/// A trade deal swapped goods at the end of the host owner's turn (G17b), or swapped nothing because a side didn't have
+/// its part. Only the deal's two sides receive it.
 /// </summary>
-/// <param name="RouteId">The route.</param>
-/// <param name="Owner">The route's owner (the home city's owner).</param>
+/// <param name="DealId">The deal.</param>
+/// <param name="Owner">The trader's owner (the home city's owner).</param>
 /// <param name="HostOwner">The host city's owner.</param>
 /// <param name="Home">The home city.</param>
 /// <param name="Host">The host city.</param>
@@ -19,7 +19,7 @@ namespace Govern.Core.Events;
 /// <param name="HomeShort">Whether the home city lacked its part, so nothing was swapped.</param>
 /// <param name="HostShort">Whether the host city lacked its part, so nothing was swapped.</param>
 public sealed record TradeExchangedEvent(
-    TradeRouteId RouteId,
+    TradeDealId DealId,
     PlayerId Owner,
     PlayerId HostOwner,
     CityId Home,

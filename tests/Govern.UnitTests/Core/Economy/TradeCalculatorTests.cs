@@ -30,17 +30,17 @@ public class TradeCalculatorTests
     }
 
     [Fact]
-    public void Committed_ProposalsCountForTheirHomeCityOnly()
+    public void Committed_AgreedDealsCountForBothCities()
     {
-        var (home, host) = (new CityId(1), new CityId(2));
-        var proposal = new TradeDeal(Amounts((TestRulesets.Food, 3)), Amounts((TestRulesets.Stone, 1)));
-        (CityId, CityId, TradeDeal?)[] routes = [(home, host, proposal), (home, host, proposal with { Accepted = true })];
+        var (home, host, other) = (new CityId(1), new CityId(2), new CityId(3));
+        var terms = new TradeTerms(Amounts((TestRulesets.Food, 3)), Amounts((TestRulesets.Stone, 1)));
+        (CityId, CityId, TradeTerms)[] deals = [(home, host, terms), (home, other, terms)];
 
-        TradeCalculator.Committed(routes, home, TestRulesets.Food, MarketSide.Sell).ShouldBe(6);
-        TradeCalculator.Committed(routes, home, TestRulesets.Stone, MarketSide.Buy).ShouldBe(2);
-        TradeCalculator.Committed(routes, host, TestRulesets.Food, MarketSide.Buy).ShouldBe(3);
-        TradeCalculator.Committed(routes, host, TestRulesets.Stone, MarketSide.Sell).ShouldBe(1);
-        TradeCalculator.FreeMarket([Order(TestRulesets.Stone, MarketSide.Sell, 4)], routes, host).ShouldBe([Order(TestRulesets.Stone, MarketSide.Sell, 3)]);
+        TradeCalculator.Committed(deals, home, TestRulesets.Food, MarketSide.Sell).ShouldBe(6);
+        TradeCalculator.Committed(deals, home, TestRulesets.Stone, MarketSide.Buy).ShouldBe(2);
+        TradeCalculator.Committed(deals, host, TestRulesets.Food, MarketSide.Buy).ShouldBe(3);
+        TradeCalculator.Committed(deals, host, TestRulesets.Stone, MarketSide.Sell).ShouldBe(1);
+        TradeCalculator.FreeMarket([Order(TestRulesets.Stone, MarketSide.Sell, 4)], deals, host).ShouldBe([Order(TestRulesets.Stone, MarketSide.Sell, 3)]);
     }
 
     [Fact]

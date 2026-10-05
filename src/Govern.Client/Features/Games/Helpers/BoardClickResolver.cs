@@ -29,8 +29,9 @@ public static class BoardClickResolver
     /// click only stops choosing.
     /// While the selected city places a building, a click on a marked tile orders the building there and any other click only
     /// stops placing.
-    /// Otherwise the new selection: the unit on
-    /// the tile (clicking a selected unit again selects the player's city under it), else the city on the tile, else nothing.
+    /// Otherwise the new selection: a unit on
+    /// the tile (clicking again selects the next unit sharing it, then the player's city under them), else the city on the tile,
+    /// else nothing.
     /// </returns>
     public static BoardClick Resolve(Ruleset ruleset, PlayerView view, BoardSelection selection, HexCoord coord)
     {
@@ -43,31 +44,53 @@ public static class BoardClickResolver
             return picked;
         }
 
-        if (selection.Unit is { } unitId && view.FindOwnUnit(unitId) is not null)
+        if (selection.Unit is { } unitId && view.FindOwnUnit(unitId) is not null && Act(ruleset, view, selection, unitId, coord) is { } acted)
         {
-            if (GameEngine.ReachableTiles(ruleset, view, unitId).Contains(coord))
-            {
-                return new BoardClick(selection with { Target = null }, new MoveUnitCommand(unitId, coord));
-            }
-
-            if (GameEngine.AttackTargets(ruleset, view, unitId).Contains(coord))
-            {
-                return view.UnitAt(coord) is null
-                    ? new BoardClick(selection with { Target = null }, new AttackCommand(unitId, coord))
-                    : new BoardClick(selection with { Target = coord }, null);
-            }
+            return acted;
         }
 
-        var unit = view.UnitAt(coord);
+        var units = UnitsOn(ruleset, view, coord);
         var city = view.CityAt(coord);
-        if (unit is not null)
+        if (units.Count > 0)
         {
-            var toCity = selection.Unit == unit.Id && city is not null && city.Owner == view.Viewer;
-            return new BoardClick(toCity ? BoardSelection.Of(city!.Id) : BoardSelection.Of(unit.Id), null);
+            // Units sharing a tile (a trader with others) are selected in turn; after the last comes the player's city there.
+            var index = selection.Unit is { } selected ? units.FindIndex(unit => unit.Id == selected) : -1;
+            var next = index + 1 < units.Count ? BoardSelection.Of(units[index + 1].Id)
+                : city is not null && city.Owner == view.Viewer ? BoardSelection.Of(city.Id)
+                : BoardSelection.Of(units[0].Id);
+            return new BoardClick(next, null);
         }
 
         return new BoardClick(city is null ? BoardSelection.None : BoardSelection.Of(city.Id), null);
     }
+
+    // What a click does with the selected own unit: an enemy it can hit shows the forecast (the attack is the forecast's button);
+    // a click on a tile it can also enter (a lone enemy trader, which blocks nothing) moves there once the forecast shows. Any
+    // other tile it can reach is a move, unless another of the player's units stands there (traders share tiles), which the
+    // click selects instead; an undefended enemy city it can reach is captured; null when the click does none of these.
+    private static BoardClick? Act(Ruleset ruleset, PlayerView view, BoardSelection selection, UnitId unitId, HexCoord coord)
+    {
+        var ownUnitThere = view.UnitsAt(coord).Any(unit => unit.Owner == view.Viewer && unit.Id != unitId);
+        var reachable = !ownUnitThere && GameEngine.ReachableTiles(ruleset, view, unitId).Contains(coord);
+        var attackable = GameEngine.AttackTargets(ruleset, view, unitId).Contains(coord);
+        if (attackable && view.DefenderAt(ruleset, coord) is not null && !(reachable && selection.Target == coord))
+        {
+            return new BoardClick(selection with { Target = coord }, null);
+        }
+
+        if (reachable)
+        {
+            return new BoardClick(selection with { Target = null }, new MoveUnitCommand(unitId, coord));
+        }
+
+        return attackable ? new BoardClick(selection with { Target = null }, new AttackCommand(unitId, coord)) : null;
+    }
+
+    // The units on a tile in the order clicks select them: the player's own first, the unit holding the tile before traders.
+    private static List<UnitView> UnitsOn(Ruleset ruleset, PlayerView view, HexCoord coord) => [.. view.UnitsAt(coord)
+        .OrderBy(unit => unit.Owner == view.Viewer ? 0 : 1)
+        .ThenBy(unit => ruleset.Unit(unit.Type).SharesTiles ? 1 : 0)
+        .ThenBy(static unit => unit.Id.Value)];
 
     // A click while choosing a tile (bridge mode, a destination, or a city placing a building) ends the choice, and on a marked tile sends the
     // command; null when no tile is being chosen.

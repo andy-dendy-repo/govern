@@ -97,12 +97,19 @@ Checks worth repeating:
 - **Moves made inside the opponent's command** (turn-start auto walks in PassTurn) let the opponent tell automated moves from manual ones and predict the next walk; the docs' accepted-leak list and player rules must say so.
 - Enum names in docs: GameSerializer/ApiJson use camelCase (`enemySighted`), not snake_case.
 
-G17 trading review (2026-10-03, claude/project-thread-u8gkn1: markets, traders, routes, deals, v10). Found:
+G17 trading review (2026-10-03, claude/project-thread-u8gkn1: markets, traders, routes, deals, v10). G17b (2026-10-05, v13) removed routes: `TradeRoute*`, `on_route` and the route-opened filters below are history; deals now belong to traders (`TradeDeal`, `TradeDealView`, `TradePartnerView`), traders share tiles (`HolderAt`, `DefenderAt`). Found:
 - **Null elements in command arrays:** GameSerializer accepts `[null]` inside `ImmutableArray<ResourceAmount>` (RespectRequiredConstructorParameters doesn't cover elements; verified with a scratch probe), so `ProposeDeal.Gives=[null]` NREs in `TradeCalculator.CheckDeal` -> 500. Any new command with an array of reference-type records needs a null-element check (or struct elements).
 - **Events for routes the host never saw:** `TradeRouteChangedEvent` is filtered by Owner/HostOwner only, so Closed on a not-yet-opened route reaches the host (reveals the route and its hidden home city id). Filter host-side events on "opened" like `TradeRouteView.From`.
 - `TradeRouteView.HostMarket/HostDemand` are live state, not "learned at the post": they keep updating while the trader is dead/away (demand includes unpaid upkeep, so it shows host starvation).
 - Units with `trade` + another ability aren't refused with `trade.on_route` by Attack/FoundCity/BuildImprovement/BuildBridge; only Move/SetDestination check. Ask for a guard or a validator rule.
 Verified OK, don't re-derive: Open/Propose/Accept previews match the engine (hosted unopened routes carry no deal; proposals commit only the home city); route ids come from AllocateId (hashed); Exchange order (AcceptedTurn, id) deterministic; buildings are never removed, so PostTile is stable until capture (which closes the route).
+
+G17b review (2026-10-05, claude/project-thread-yjy44b). Found:
+- **Order of a tile's units differs between state and view:** `GameState.UnitsAt` is insertion order, `PlayerView.Units` is id order, so a generic "first match" over shared tiles (`AttackRule.DefenderAt`) picks different traders in rule vs preview and leaks creation order. Any rule picking one of several units on a tile must sort by id.
+- **Partner/known-object view fields leak position:** `TradePartnerView.TradePost` for a city learned only through an offer (`Introduce`) gives an unseen enemy post's coordinate; partners also tie an enemy territory tile to its city (the view otherwise never says which enemy city a tile belongs to). Check every "known X" list for fields the viewer never saw.
+- Cancelling an offer (not agreed) through `EndDeal` overwrites the trader's own orders (sends it home), and the host can trigger it.
+- Ruleset mutation tests keyed on a renamed field still pass via the strict parser's unmapped-member error at the same path; check the mutation sets the new key.
+Verified OK, don't re-derive: deal state machine (Proposed<->Countered, answerer checks, DealNotFound for non-sides), propose/answer previews match Execute (partner market = free market less non-viewer deals, client subtracts its own), KnownPosts/Reconcile ordering deterministic, old saves skip `tradeRoutes`/`routeId` (GameSerializer has no Disallow), CSS phone media query still overrides the wider city panel.
 
 G18 review (2026-10-03, claude/project-thread-69iq1k: PredefinedMap, MapChoice, MapPoolService, maps/basin.json). No critical. Found:
 - **Public spawn candidates shrink the opponent's start to n known tiles** (basin n=3; the validator allows n=1, which reveals it exactly). Docs claimed only "your own start doesn't tell you which". Ask for a minimum candidate count and an accepted-leak line whenever spawn options come from public data.

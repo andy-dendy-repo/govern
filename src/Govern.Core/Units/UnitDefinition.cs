@@ -84,9 +84,16 @@ public sealed record UnitDefinition(
     [JsonIgnore]
     public bool CanBuildBridges => Abilities.Contains(UnitAbility.BuildBridge);
 
-    /// <summary>Whether the unit can open trade routes and carry their deals.</summary>
+    /// <summary>Whether the unit can carry trade deals.</summary>
     [JsonIgnore]
     public bool CanTrade => Abilities.Contains(UnitAbility.Trade);
+
+    /// <summary>
+    /// Whether the unit shares tiles (G17b): a trader walks through units and cities, stands on any tile with other units, and
+    /// never blocks a unit; it can be attacked only where no unit holding the tile stands.
+    /// </summary>
+    [JsonIgnore]
+    public bool SharesTiles => CanTrade;
 
     /// <summary>The farthest tile the unit can attack: its ranged range, 1 for melee, 0 when it can't attack.</summary>
     [JsonIgnore]

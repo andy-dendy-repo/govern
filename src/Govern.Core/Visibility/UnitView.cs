@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
@@ -21,8 +22,9 @@ namespace Govern.Core.Visibility;
 /// <param name="Health">Health left, from 1 to <see cref="CombatRules.MaxHealth"/>.</param>
 /// <param name="Job">What the unit is building; only for the viewer's own units (an enemy's would show its plans).</param>
 /// <param name="Destination">Where the unit is walking on its own; only for the viewer's own units.</param>
-/// <param name="RouteId">The trade route the unit serves, if it is a trader on one; only for the viewer's own units.</param>
+/// <param name="DealId">The agreed trade deal the unit serves, if it is a trader on one; only for the viewer's own units.</param>
 /// <param name="Exploring">Whether the unit explores on its own; only for the viewer's own units.</param>
+/// <param name="HomeCity">A trader's home city; only for the viewer's own units.</param>
 public sealed record UnitView(
     UnitId Id,
     PlayerId Owner,
@@ -32,10 +34,11 @@ public sealed record UnitView(
     int Health,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] UnitJob? Job = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? Destination = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TradeRouteId? RouteId = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Exploring = false)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TradeDealId? DealId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Exploring = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CityId? HomeCity = null) : IUnitOnMap
 {
-    /// <summary>Projects a unit for a viewer, hiding the movement, job, destination, route and exploring of units the viewer doesn't own.</summary>
+    /// <summary>Projects a unit for a viewer, hiding the movement, job, destination, deal, exploring and home of units the viewer doesn't own.</summary>
     /// <param name="ruleset">The game's ruleset (for the unit's health).</param>
     /// <param name="unit">The unit.</param>
     /// <param name="viewer">The player the view is for.</param>
@@ -45,6 +48,6 @@ public sealed record UnitView(
         ArgumentNullException.ThrowIfNull(unit);
 
         var own = unit.Owner == viewer;
-        return new UnitView(unit.Id, unit.Owner, unit.Type, unit.Position, own ? unit.MovementLeft : null, unit.Health(ruleset), own ? unit.Job : null, own ? unit.Destination : null, own ? unit.RouteId : null, own && unit.Exploring);
+        return new UnitView(unit.Id, unit.Owner, unit.Type, unit.Position, own ? unit.MovementLeft : null, unit.Health(ruleset), own ? unit.Job : null, own ? unit.Destination : null, own ? unit.DealId : null, own && unit.Exploring, own ? unit.HomeCity : null);
     }
 }

@@ -1,16 +1,36 @@
-@* The proposal form of a route the player's city opened (G17), in that city's Market tab: one resource the city gives and one it
-   asks for, each picked from its own sell and buy lists, with amounts. It shows how the host city values both sides (from its
-   demand levels, learned by the trader at its post) and can make the offer fair. Propose is disabled with the reason while the
-   rules forbid the deal (the same check the server runs). *@
-@using Govern.Core.Actions
+@* The terms form of a trade deal (G17b), in a city's Market tab: one resource the home city gives and one it asks for each
+   turn, each picked from that city's free sell and buy lists, with amounts. Without a fixed host it first asks which city the
+   deal goes to (the player's other trading cities and their trade partners). It shows how the host values both sides (from
+   its demand levels) and can make the offer fair. The send button is disabled with the reason while the rules forbid the
+   terms (Check, the same check the server runs). Used for a trader's new deal (Propose) and for a counter-offer (Counter). *@
 @using Govern.Core.Economy
 @using Govern.Core.Visibility
 
 <RadzenStack Gap="0.25rem" class="trade-proposal">
+    @if (FixedHost is null)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem" Wrap="FlexWrap.Wrap"
+                     role="group" aria-label="Trade with" class="proposal-target">
+            <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="rz-m-0">To</RadzenText>
+            @foreach (var (id, name, owner) in Targets)
+            {
+                var active = Host == id;
+                <RadzenButton Size="ButtonSize.ExtraSmall" ButtonStyle="@(active ? ButtonStyle.Primary : ButtonStyle.Light)"
+                              Disabled="@(Busy || !CanAct)" aria-pressed="@(active ? "true" : "false")" Text="@TargetName(name, owner)"
+                              Click="@(() => _host = id)" class="@($"proposal-city proposal-city-{id.Value}")"/>
+            }
+            @if (Targets.Length == 0)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="no-trade-partner rz-m-0">
+                    No city to trade with yet: build a @Ruleset.BuildingName(Ruleset.Trade.Building) in another city, or find one of the opponent's.
+                </RadzenText>
+            }
+        </RadzenStack>
+    }
     @foreach (var (side, label, picked, amount) in Rows)
     {
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap"
-                     class="@($"proposal-{label.ToLowerInvariant()}")" role="group" aria-label="@label">
+                     class="@($"proposal-{(side == MarketSide.Sell ? "give" : "ask")}")" role="group" aria-label="@label">
             <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="rz-m-0">@label</RadzenText>
             <RadzenNumeric TValue="int" Value="@amount" Min="1" Max="@Ruleset.Trade.MaxCap" Disabled="@(Busy || !CanAct)"
                            Change="@(value => SetAmount(side, value))" aria-label="@($"{label} amount")" class="proposal-amount"/>
@@ -36,11 +56,11 @@
     }
     @{ var problem = Problem; }
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
-        <RadzenButton Size="ButtonSize.Small" Text="Propose" Icon="send" Disabled="@(Busy || !CanAct || problem is not null)"
-                      Click="@(() => Command.InvokeAsync(new ProposeDealCommand(Route.Id, Gives, Receives)))" class="propose-deal"/>
+        <RadzenButton Size="ButtonSize.Small" Text="@SendText" Icon="send" Disabled="@(Busy || !CanAct || problem is not null)"
+                      Click="@SendAsync" class="propose-deal"/>
         @if (problem is not null)
         {
-            <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="proposal-reason rz-m-0">@problem.Message</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="proposal-reason rz-m-0">@problem</RadzenText>
         }
     </RadzenStack>
 </RadzenStack>

@@ -3,8 +3,8 @@
    takes, then four tabs: Units (the buttons to produce a unit; a unit a newer unlocked one replaces is left out, a locked one
    is disabled), Buildings (the buildings it has with their health, and a button per building it doesn't have in any
    version, with its effect, cost and, when it can't have it, why; upgrades are made by builders, so they have no button), Economy (its upkeep and upkeep order, marked with a warning when it
-   can't pay, and what its next territory tile costs) and Market (what it sells and buys, and its trade routes: CityMarket,
-   marked when a proposal waits for an answer). The open tab is kept in GameUiService, so it stays open from city to
+   can't pay, and what its next territory tile costs) and Market (what it sells and buys, its traders with their deals and
+   the deals it hosts: CityMarket, marked when an offer waits for an answer). The open tab is kept in GameUiService, so it stays open from city to
    city. Every tab renders on the client, so switching sends nothing and the panel's buttons stay in the page. *@
 @using Govern.Core.Cities
 @using Govern.Core.Actions
@@ -61,10 +61,11 @@
                         {
                             var locked = ProduceProblem(unit.Id) == RuleViolations.Locked;
                             var missing = MissingBuilding(unit);
+                            var full = TradersFull(unit);
                             <RadzenButton Size="ButtonSize.Small"
                                           ButtonStyle="@(ProducingUnit(unit.Id) ? ButtonStyle.Primary : ButtonStyle.Light)"
-                                          Disabled="@(Busy || !CanAct || ProducingUnit(unit.Id) || missing is not null || locked)"
-                                          title="@(locked ? RuleViolations.Locked.Message : missing is { } building ? $"Needs a {Ruleset.BuildingName(building)}" : null)"
+                                          Disabled="@(Busy || !CanAct || ProducingUnit(unit.Id) || missing is not null || locked || full)"
+                                          title="@(locked ? RuleViolations.Locked.Message : missing is { } building ? $"Needs a {Ruleset.BuildingName(building)}" : full ? RuleViolations.TooManyTraders.Message : null)"
                                           Click="@(() => Command.InvokeAsync(new SetProductionCommand(City.Id, unit.Id)))"
                                           class="@($"produce produce-{unit.Id.Id}")">
                                 <span class="produce-name">Build @Ruleset.UnitName(unit.Id)</span>

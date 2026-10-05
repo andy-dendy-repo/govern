@@ -66,8 +66,8 @@ public partial class CityPanel
     private static bool HasShortage(CityForecast? forecast) =>
         forecast is { Upkeep: var upkeep } && (!upkeep.UnpaidBuildings.IsEmpty || !upkeep.UnpaidUnits.IsEmpty);
 
-    // Whether a proposal waits at this city for the player's answer (the Market tab is marked).
-    private bool HasProposal => View.TradeRouteList.Any(route => route.Host == City.Id && route.HostOwner == View.Viewer && route.Deal is { Accepted: false });
+    // Whether an offer waits at this city for the player's answer (the Market tab is marked).
+    private bool HasProposal => View.TradeDealList.Any(deal => deal.Answerer == View.Viewer && deal.AnsweringCity == City.Id);
 
     // What a resource gains (or loses) at the end of the turn: the city's income less the upkeep it pays and any resource
     // cost it pays to begin its item.
@@ -129,6 +129,10 @@ public partial class CityPanel
         { RequiresBuilding: { } needed } when !HasKindOf(needed) => needed,
         _ => null,
     };
+
+    // Whether the unit trades and the city already has as many traders as it may (the engine's check).
+    private bool TradersFull(UnitDefinition unit) => unit.CanTrade
+        && View.Units.Count(other => other.Owner == View.Viewer && other.HomeCity == City.Id && Ruleset.Unit(other.Type).CanTrade) >= Ruleset.Trade.TradersPerCity;
 
     // Whether the city has a building or one of its upgrades.
     private bool HasKindOf(BuildingType building) => City.BuildingList.Any(built => Ruleset.IsKindOf(built, building));

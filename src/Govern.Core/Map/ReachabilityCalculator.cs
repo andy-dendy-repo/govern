@@ -5,7 +5,8 @@ using Govern.Core.Units;
 namespace Govern.Core.Map;
 
 /// <summary>
-/// Dijkstra over the hex grid, bounded by the unit's remaining movement. Units never pass through other units or enemy cities.
+/// Dijkstra over the hex grid, bounded by the unit's remaining movement. Units never pass through units holding a tile or enemy
+/// cities; traders (<see cref="UnitDefinition.SharesTiles"/>) pass through both, and nothing is blocked by a trader.
 /// A step costs the entered tile's movement cost plus the crossing cost of a river on the edge between the two tiles, and a
 /// river that can't be crossed blocks the step. A bridged edge is crossed as if it had no river. Land units walk passable land
 /// and naval units sail water (rivers don't stop them), so a ship never enters a city.
@@ -16,13 +17,16 @@ internal static class ReachabilityCalculator
         Compute(unit, (from, to) => StepCost(ruleset, state, unit, from, to));
 
     // The cost of the unit's step between neighbours on the full state; null when it can't take it (not its domain's ground, a
-    // unit there, an enemy city, or a river it can't cross).
-    public static int? StepCost(Ruleset ruleset, GameState state, Unit unit, HexCoord from, HexCoord to) =>
-        state.Map.Contains(to)
-        && state.UnitAt(to) is null
-        && (state.CityAt(to) is not { } city || city.Owner == unit.Owner)
-            ? StepCost(ruleset, ruleset.Unit(unit.Type).Domain, state.Map.TileAt(to).Terrain, state.Map.CrossedRiverBetween(from, to))
+    // unit holding the tile, an enemy city, or a river it can't cross; a trader minds only the ground and the river).
+    public static int? StepCost(Ruleset ruleset, GameState state, Unit unit, HexCoord from, HexCoord to)
+    {
+        var definition = ruleset.Unit(unit.Type);
+        var free = definition.SharesTiles
+            || (state.HolderAt(ruleset, to) is null && (state.CityAt(to) is not { } city || city.Owner == unit.Owner));
+        return state.Map.Contains(to) && free
+            ? StepCost(ruleset, definition.Domain, state.Map.TileAt(to).Terrain, state.Map.CrossedRiverBetween(from, to))
             : null;
+    }
 
     // The cost for a unit of the domain of stepping onto a tile with the given terrain over an edge with the given river; null
     // when the terrain isn't the domain's ground or the river can't be crossed (a ship ignores rivers). Shared with the view

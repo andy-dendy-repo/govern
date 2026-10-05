@@ -72,7 +72,7 @@ public class EndTurnActionTests
         created.CityId.ShouldBe(city);
         created.Position.ShouldBe(At(2, 2));
         created.Owner.ShouldBe(P1);
-        var unit = update.State.UnitAt(At(2, 2)).ShouldNotBeNull();
+        var unit = update.State.UnitsAt(At(2, 2)).ShouldHaveSingleItem();
         unit.Id.ShouldBe(created.UnitId);
         unit.Type.ShouldBe(created.UnitType);
         unit.MovementLeft.ShouldBe(0);
