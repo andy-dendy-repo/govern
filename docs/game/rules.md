@@ -240,7 +240,7 @@ A city can't hoard forever: it holds at most its **storage cap** of each resourc
 
 - A city may go over its caps during a turn, so this turn's income can still pay its upkeep, its next item's cost and a new tile. At the very end of every turn (yours and your opponent's, since trade delivers goods in either) whatever is over a cap is **lost**.
 - Science has no cap: it is never stored (see "Science").
-- Culture pays for territory, and a tile costs more the more a city has gained: without a Culture centre a city can afford tiles up to a price of 40.
+- Culture pays for territory, and a tile costs more the more a city has gained. A city buys its tile before the cut, so it can afford tiles up to its Culture cap plus that turn's Culture: without a Culture centre that is a price of 41, so a city stops at 26 of its 37 tiles; a Culture centre raises the cap enough for every tile.
 - The city panel shows each resource as amount / cap, marked in bold when it is full, with how much won't fit at the end of the turn.
 
 ## Costs and upkeep

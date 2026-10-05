@@ -81,10 +81,15 @@ public partial class CityPanel
     private int CapOf(CityForecast? forecast, ResourceType resource) =>
         CityStorage.CapOf(forecast?.Storage ?? CityStorage.Caps(Ruleset, City.WorkingBuildings(Ruleset.Upkeep.BuildingHealth)), resource);
 
-    // What of a resource won't fit in the city's storage at the end of the turn. A city feeding a job doesn't pay its item's
-    // cost, so it may lose a little more than shown.
-    private static int LostOf(CityForecast? forecast, ResourceType resource) =>
-        forecast is null ? 0 : YieldCalculator.AmountOf(forecast.Lost, resource);
+    // What of a resource won't fit in the city's storage at the end of the turn. The forecast assumes the city pays its item's
+    // cost; a city feeding a job doesn't, so then it is the stock plus its net gain over the cap (an item's cost never uses the
+    // growth resource, whose loss also depends on the tile it buys, so that one always comes from the forecast).
+    private int LostOf(CityForecast? forecast, ResourceType resource, int amount, int gain, int cap) => forecast switch
+    {
+        null => 0,
+        _ when FeedsAJob && resource != Ruleset.Territory.GrowthResource && cap != int.MaxValue => Math.Max(0, amount + gain - cap),
+        _ => YieldCalculator.AmountOf(forecast.Lost, resource),
+    };
 
     private string StorageTitle(ResourceType resource, int amount, int cap, int lost)
     {

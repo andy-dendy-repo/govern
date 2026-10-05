@@ -13,7 +13,8 @@ namespace Govern.Core.Actions;
 
 /// <summary>
 /// Ends the actor's turn: their resting units heal, their units' building jobs advance, their cities yield resources and
-/// produce, and the next active player moves (their units with a destination walk on first).
+/// produce, every city's stock is cut to its storage caps, and the next active player moves (their units with a destination walk
+/// on first).
 /// </summary>
 public sealed record EndTurnCommand : GameCommand;
 

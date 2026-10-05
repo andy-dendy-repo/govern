@@ -126,6 +126,23 @@ public class StorageRuleTests
     }
 
     [Fact]
+    public void CityForecast_BuildingFinishedThisTurn_CountsItsStorage()
+    {
+        var builder = new GameStateBuilder().WithCapitals().WithTerrain(TestRulesets.Desert, UpkeepRuleTests.Around(5, 5, 1));
+        var city = builder.AddCity(
+            P1, 5, 5, producingBuilding: TestRulesets.Workshop, progress: 9, stock: [new(TestRulesets.Wood, 30)], paid: true, buildingSite: (6, 5));
+        var state = builder.Build();
+
+        var forecast = GameEngine.CityForecast(TestRulesets.Default, GameEngine.ViewFor(TestRulesets.Default, state, P1), city).ShouldNotBeNull();
+        var after = EndTurn(state).State.FindCity(city)!;
+
+        after.Has(TestRulesets.Workshop).ShouldBeTrue();
+        CityStorage.CapOf(forecast.Storage, TestRulesets.Wood).ShouldBe(40, "the finished workshop holds 20 more wood");
+        forecast.Lost.ShouldBeEmpty();
+        YieldCalculator.AmountOf(after.StockList, TestRulesets.Wood).ShouldBe(30);
+    }
+
+    [Fact]
     public void Sources_CityWithProductionBuildings_ListsTheCityThenEachBuilding()
     {
         var sources = CityProduction.Sources(TestRulesets.Default, [TestRulesets.Campus, TestRulesets.Workshop, TestRulesets.Barracks]);

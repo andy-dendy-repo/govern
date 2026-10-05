@@ -123,7 +123,8 @@ internal static class EconomyRulesValidator
         }
     }
 
-    // Every stocked resource (all but science, a per-turn budget) has a default storage cap, and a new city's stock fits in it.
+    // Every stocked resource (all but science, a per-turn budget) has a default storage cap, and a new city's stock and every
+    // resource cost fit in it.
     private static void CheckStorage(RulesetDocument document, HashSet<string> resources, List<RulesetProblem> problems)
     {
         var storage = document.Cities.Storage;
@@ -133,12 +134,28 @@ internal static class EconomyRulesValidator
             problems.Add(new("$.cities.storage", $"'{resource.Id.Id}' needs a storage cap."));
         }
 
-        var stock = document.Cities.StartingStock;
-        for (var index = 0; index < stock.Length; index++)
+        CheckFits(document.Cities.StartingStock, storage, "$.cities.startingStock", problems);
+
+        // Upgrades are paid from a stock already cut to the caps, so every cost must fit in an empty city's storage.
+        for (var index = 0; index < document.Units.Length; index++)
         {
-            if (storage.FirstOrDefault(cap => cap.Resource == stock[index].Resource) is { } cap && stock[index].Amount > cap.Amount)
+            CheckFits(document.Units[index].ResourceCost, storage, $"$.units[{index}].resourceCost", problems);
+            CheckFits(document.Units[index].UpgradeCost ?? [], storage, $"$.units[{index}].upgradeCost", problems);
+        }
+
+        for (var index = 0; index < document.Buildings.Length; index++)
+        {
+            CheckFits(document.Buildings[index].ResourceCost, storage, $"$.buildings[{index}].resourceCost", problems);
+        }
+    }
+
+    private static void CheckFits(ImmutableArray<ResourceAmount> amounts, ImmutableArray<ResourceAmount> storage, string path, List<RulesetProblem> problems)
+    {
+        for (var index = 0; index < amounts.Length; index++)
+        {
+            if (storage.FirstOrDefault(cap => cap.Resource == amounts[index].Resource) is { } cap && amounts[index].Amount > cap.Amount)
             {
-                problems.Add(new($"$.cities.startingStock[{index}].amount", $"Must be at most the storage cap of '{cap.Resource.Id}' ({cap.Amount})."));
+                problems.Add(new($"{path}[{index}].amount", $"Must be at most the storage cap of '{cap.Resource.Id}' ({cap.Amount})."));
             }
         }
     }
