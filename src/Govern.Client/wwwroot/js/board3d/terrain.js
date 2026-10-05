@@ -11,6 +11,7 @@ import {
     Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Quaternion, Vector3,
 } from '../../lib/three/three.module.js';
 import { corners, groundOf, hash, PLATEAU, tileLevel, WATER_LEVEL } from './ground.js';
+import { massif, snowfield } from './mountains.js';
 
 export { hash };
 
@@ -43,8 +44,6 @@ const PATCH_FINE = 0.32;
 const foliage = new ConeGeometry(0.2, 0.5, 6).translate(0, 0.25, 0);
 const trunk = new CylinderGeometry(0.04, 0.05, 0.14, 5).translate(0, 0.07, 0);
 const hump = new IcosahedronGeometry(0.32, 0);
-const peak = new ConeGeometry(0.42, 1, 5).translate(0, 0.5, 0);
-const cap = new ConeGeometry(0.16, 0.38, 5).translate(0, 0.19, 0);
 const crown = new IcosahedronGeometry(0.21, 0).translate(0, 0.18, 0);
 const rock = new IcosahedronGeometry(0.09, 0).translate(0, 0.04, 0);
 const tuft = new ConeGeometry(0.035, 0.13, 4).translate(0, 0.065, 0);
@@ -278,8 +277,8 @@ class MeshBuilder {
 }
 
 // Many copies of one shape, each with its own place, scale, turn and colour.
-function instanced(geometry, items) {
-    const mesh = new InstancedMesh(geometry, decoration, Math.max(items.length, 1));
+function instanced(geometry, items, material = decoration) {
+    const mesh = new InstancedMesh(geometry, material, Math.max(items.length, 1));
     mesh.count = items.length;
     const matrix = new Matrix4();
     const turn = new Quaternion();
@@ -353,15 +352,19 @@ function stones(tile, top, palette, out, count, salt) {
     });
 }
 
+// How tall a tree stands for its width (its shapes squashed to this share of their height).
+const TREE_HEIGHT = 0.8;
+
 // A tree standing on (x, z): a cone of needles, or a round broadleaf crown on a taller trunk.
 function tree(tile, x, z, top, scale, broadleaf, leaves, wood, out, k) {
     const shade = leaves.clone().multiplyScalar(0.85 + hash(tile.q, tile.r, 40 + k) * 0.25);
+    const tall = scale * TREE_HEIGHT;
     if (broadleaf) {
-        out.trunks.push({ x, y: top, z, sx: scale, sy: scale * 1.5, sz: scale, colour: wood });
-        out.crowns.push({ x, y: top + 0.14 * scale, z, sx: scale, sy: scale * 0.9, sz: scale, turn: k, colour: shade.offsetHSL(0.02, 0, 0.03) });
+        out.trunks.push({ x, y: top, z, sx: scale, sy: tall * 1.5, sz: scale, colour: wood });
+        out.crowns.push({ x, y: top + 0.14 * tall, z, sx: scale, sy: tall * 0.9, sz: scale, turn: k, colour: shade.offsetHSL(0.02, 0, 0.03) });
     } else {
-        out.trunks.push({ x, y: top, z, sx: scale, sy: scale, sz: scale, colour: wood });
-        out.trees.push({ x, y: top + 0.12 * scale, z, sx: scale, sy: scale, sz: scale, turn: k, colour: shade });
+        out.trunks.push({ x, y: top, z, sx: scale, sy: tall, sz: scale, colour: wood });
+        out.trees.push({ x, y: top + 0.12 * tall, z, sx: scale, sy: tall, sz: scale, turn: k, colour: shade });
     }
 }
 
@@ -392,19 +395,20 @@ const decorators = {
                 stones(tile, top, palette, out, 2, 600);
         }
     },
-    // Forest: conifers, broadleaf or mixed woods, three to five trees.
+    // Forest: conifers, broadleaf or mixed woods, a dense stand of eight to eleven trees: a few round the middle and a wider ring.
     trees(tile, top, palette, out) {
         const leaves = palette.terrain(tile);
         const wood = palette.faded('--gv-board3d-trunk', tile);
         const kind = variant(tile, 3);
-        const count = 3 + Math.floor(hash(tile.q, tile.r, 81) * 3);
-        for (let k = 0; k < count; k++) {
-            const [x, z] = k === 0 ? [tile.x, tile.z] : scatter(tile, k - 1, count - 1, 0.55, 700);
+        const inner = 3;
+        const outer = 5 + Math.floor(hash(tile.q, tile.r, 81) * 4);
+        for (let k = 0; k < inner + outer; k++) {
+            const [x, z] = k < inner ? scatter(tile, k, inner, 0.3, 700) : scatter(tile, k - inner, outer, 0.68, 720);
             if (!clear(out, tile, x, z)) {
                 continue;
             }
             const broadleaf = kind === 1 || (kind === 2 && k % 2 === 1);
-            tree(tile, x, z, top, 0.8 + hash(tile.q, tile.r, 30 + k) * 0.45, broadleaf, leaves, wood, out, k);
+            tree(tile, x, z, top, 0.62 + hash(tile.q, tile.r, 90 + k) * 0.28, broadleaf, leaves, wood, out, k);
         }
         grass(tile, top, palette, out, 2, 310);
     },
@@ -433,22 +437,25 @@ const decorators = {
         }
         grass(tile, top, palette, out, 2, 320);
     },
-    // Mountains: a peak with a lower one, a range of three, or one great peak among boulders.
+    // Mountains: a massif with a lower one, a range of three, or one great massif among boulders (mountains.js). Each is turned
+    // and stretched its own way; the lowest stay bare of snow.
     peaks(tile, top, palette, out) {
         const rock = palette.terrain(tile);
         const snow = palette.faded('--gv-board3d-snow', tile);
         const kind = variant(tile, 3);
-        const peaks = kind === 0 ? [[tile.x - 0.08, tile.z - 0.05, 1], [...spot(tile, 1, 0.45), 0.6]]
+        const peaks = kind === 0 ? [[tile.x - 0.08, tile.z - 0.05, 1], [...spot(tile, 1, 0.38), 0.6]]
             : kind === 1 ? [[...spot(tile, 0, 0.35), 0.75], [...spot(tile, 1, 0.4), 0.6], [...spot(tile, 2, 0.35), 0.85]]
-                : [[tile.x, tile.z, 1.2]];
+                : [[tile.x, tile.z, 1.15]];
         peaks.filter(([x, z]) => clear(out, tile, x, z)).forEach(([x, z, s], k) => {
-            const height = s * (0.9 + hash(tile.q, tile.r, 60 + k) * 0.3);
-            out.peaks.push({ x, y: top - 0.05, z, sx: s, sy: height, sz: s, turn: k, colour: rock });
-            out.caps.push({ x, y: top - 0.05 + height * 0.62, z, sx: s, sy: height, sz: s, turn: k, colour: snow });
+            const height = s * (0.8 + hash(tile.q, tile.r, 60 + k) * 0.3);
+            const stretch = 0.85 + hash(tile.q, tile.r, 64 + k) * 0.3;
+            const place = { x, y: top - 0.04, z, sx: s * stretch, sy: height, sz: s / stretch, turn: hash(tile.q, tile.r, 68 + k) * Math.PI * 2 };
+            out.peaks.push({ ...place, colour: rock });
+            if (height > 0.62) {
+                out.caps.push({ ...place, colour: snow });
+            }
         });
-        if (kind === 2) {
-            stones(tile, top, palette, out, 3, 620);
-        }
+        stones(tile, top, palette, out, kind === 2 ? 4 : 2, 620);
     },
     // Desert: dunes, some with a cactus or stones.
     dunes(tile, top, palette, out) {
@@ -623,12 +630,12 @@ export function buildTerrain(scene, palette) {
         group.add(fog);
     }
     const shapes = [
-        [foliage, out.trees], [crown, out.crowns], [trunk, out.trunks], [hump, out.hills], [peak, out.peaks], [cap, out.caps],
+        [foliage, out.trees], [crown, out.crowns], [trunk, out.trunks], [hump, out.hills], [massif, out.peaks, solid], [snowfield, out.caps, solid],
         [rock, out.rocks], [tuft, out.tufts], [flower, out.flowers], [cactus, out.cacti], [pad, out.pads], [reed, out.reeds],
     ];
-    for (const [geometry, items] of shapes) {
+    for (const [geometry, items, material] of shapes) {
         if (items.length) {
-            group.add(instanced(geometry, items));
+            group.add(instanced(geometry, items, material));
         }
     }
     return { group, pick };
@@ -637,7 +644,7 @@ export function buildTerrain(scene, palette) {
 // Frees the shared shapes and materials when a board goes away. Three.js keeps a reference to the renderer in every shape
 // and material it drew, so keeping them would keep the old renderer alive; the next board simply uploads them again.
 export function disposeShared() {
-    for (const resource of [foliage, crown, trunk, hump, peak, cap, rock, tuft, flower, cactus, pad, reed, solid, decoration, water, mist]) {
+    for (const resource of [foliage, crown, trunk, hump, massif, snowfield, rock, tuft, flower, cactus, pad, reed, solid, decoration, water, mist]) {
         resource.dispose();
     }
 }
