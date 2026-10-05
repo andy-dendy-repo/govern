@@ -231,7 +231,7 @@ public sealed partial class GameBoard
 
     // A click on a tile acts when it selects a unit or city there, or is a move, attack, bridge or building target.
     private bool Acts(PlayerView view, HexCoord tile) =>
-        view.UnitAt(tile) is not null || view.CityAt(tile) is not null
+        view.UnitsAt(tile).Any() || view.CityAt(tile) is not null
         || Highlights.Reachable.Contains(tile) || Highlights.Attackable.Contains(tile)
         || Highlights.Bridgeable.Contains(tile) || Highlights.Placeable.Contains(tile);
 

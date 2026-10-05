@@ -1,8 +1,8 @@
 ---
 title: Game rules reference (for players)
-tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, ships, naval, galley, bireme, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, science, science-tree, unlocks, unit-upgrade, building-upgrade, swordsman, pikeman, crossbowman, knight, workshop, barracks, university, market, port, trade-routes, deals, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
-code: [rulesets/default/v12.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
-updated: 2026-10-04
+tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, ships, naval, galley, bireme, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, science, science-tree, unlocks, unit-upgrade, building-upgrade, swordsman, pikeman, crossbowman, knight, workshop, barracks, university, market, port, deals, counter-offers, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
+code: [rulesets/default/v13.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
+updated: 2026-10-05
 ---
 
 # Game rules reference
@@ -106,7 +106,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - **Ranged attack:** the unit can shoot an enemy unit within its range (see "Attacking").
 - **Build improvements:** the unit can build an improvement on its tile in your cities' territory, but not on a city (see "Improvements").
 - **Build bridges:** the unit can bridge the river between its tile and a neighbouring one (see "Bridges").
-- **Trade:** the unit opens trade routes and carries their deals (see "Trading"). Only a city with a trade post (or a market) can produce it.
+- **Trade:** the unit carries one deal at a time between its home city and another city, and shares tiles with every other unit (see "Trading"). Only a city with a trade post (or a market) can produce it.
 - Archers, horsemen, traders, the swordsman, pikeman, crossbowman and knight, and the two ships need a science item first; the swordsman, pikeman, crossbowman and knight replace older units (see "Science").
 - **The galley and the bireme are ships:** they sail lakes instead of walking, only a city with a harbour (or a port) builds them, and they follow their own rules (see "Ships").
 
@@ -116,7 +116,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - A step can't cost more than the movement left: a unit with 1 movement left can't enter forest or hills, or cross a river, that turn.
 - A unit can't enter a tile with another unit on it, an enemy city, or impassable terrain, and it can't cross a deep river. It can enter your own cities.
 - Ships move the other way round: only on lakes, never onto land or into a city (see "Ships").
-- Only one unit can stand on a tile.
+- Only one unit can stand on a tile, except traders: a trader never blocks and is never blocked. It walks through any unit and any city, yours or your opponent's, and any unit can enter a tile where only traders stand. Units sharing a tile stand side by side on the board; clicking the tile selects them in turn.
 - A tile blocked by an enemy unit you can't see is simply unreachable; the game doesn't tell you why, so it reveals nothing about the hidden unit.
 
 ## Sending a unit to a destination
@@ -141,7 +141,8 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 - **Attack (melee):** an enemy unit or city on a neighbouring tile. Both units fight and both take damage (see "Combat"). Melee only reaches the same ground: a land unit can't attack a ship, and a ship can't attack a land unit or a city.
 - **Ranged attack:** an enemy unit up to the unit's range away, on land or on a lake. Only the target takes damage: it can't hit back. A ranged unit can't attack a city with no unit on it.
 - **Attacking a city with no unit on it** (melee only, and not across a deep river) captures the city. The attacker moves into it with 0 movement, the city becomes yours, and its production progress resets when "Capturing a city resets its production" is Yes under "Game numbers".
-- A city with a unit on it is defended: fight the unit first.
+- A city with a unit on it is defended: fight the unit first. Traders don't defend a city.
+- **A trader alone on a tile** can be attacked like any unit. Where it shares a tile, the attack hits the other unit. Clicking a lone enemy trader shows the forecast first; click the tile again to walk onto it instead.
 - Before you attack a unit, the game shows the forecast: both units' strength in this fight, what changes it, and how much damage each side can take. Click the forecast's Attack button to attack, or Cancel (Esc). The damage always lands within the forecast.
 
 ## Combat
@@ -356,23 +357,23 @@ Cities swap resources with each other, yours or your opponent's. There is no mon
 - At the end of your turn each of your cities with a trade post moves each level towards the bigger side, by at most the "Demand change per turn" under "Game numbers", and keeps it between the "Lowest demand" and the "Highest demand". A market whose caps are all taken keeps its levels.
 - A resource's **value** in a city is its trade value times its demand level. The **fair rate** between two resources is the ratio of their values: a city short of stone may give 4 Food for 1 Stone, a quarry town only 1. The Market tab shows the rates.
 
-**Opening a route.** Select a trader and pick **Open route**: the city it trades for (yours, with a trade post) and a city at the other end (yours, or an enemy city whose trade post you can see right now).
-- The trader walks to the other city's trade post on its own, the way "Go to" does, but it doesn't stop when it sees an enemy. When it stands next to the post, the route is open. A trader never steps onto a trade post: it stops next to it.
-- A city can have at most the "Trade routes per city" under "Game numbers" it opened (open or on the way). It can be the other end of any number of routes.
-- A trader on a route can't be moved or given other orders. **Close route** frees it where it stands and ends the route.
+**Traders.** A city with a trade post trains traders. Each trader belongs to the city that trained it, its **home city**, which can have at most the "Traders per city" under "Game numbers"; a finished trader waits in production while its city has them all. A trader whose home city is lost moves to your nearest city, one with a trade post first.
 
-**Deals.** At the other city's post, the trader's owner proposes a deal: "we give these resources, you give those, every turn" (for example 3 Food for 1 Stone).
-- What your city gives must be on its sell list and on the other city's buy list, and what it gets the other way round, all within the caps the two cities have left. Each side gives at least one resource.
+**Making a deal.** In the home city's Market tab, each of its traders is listed with its deal, if it has one. A free trader has **Suggest deal**: pick the other city (one of your cities with a trade post, or an enemy city you have seen with its trade post) and the terms, "we give these resources, you give those, every turn" (for example 3 Food for 1 Stone). The tab shows how the other city values both sides from its demand levels, and can make the offer fair.
+- What your city gives must be on its sell list and on the other city's buy list, and what it gets the other way round, within the caps both cities have left. Each side gives at least one resource.
+- The trader can be anywhere when it sends the offer. An offer on the table takes nothing from the caps yet; both markets are checked again when it is accepted.
 - A deal between two of your own cities is accepted at once: it is how you move goods between your cities.
-- A deal to your opponent waits for them. On their turn they see the proposal in the city's Market tab next to their current deals, and **accept** or **decline** it. If accepting would go over a cap, they can tick older deals at that city to cancel first, so a better offer can push out a worse one.
-- A declined trader stays at the post and can propose again.
+- A deal to your opponent waits for them. On their turn they see it in their city's Market tab and **accept**, **decline** or **counter** it with other terms. A counter-offer comes back to you: accept, decline or counter again, as often as you both like. If accepting would go over a cap, the side accepting can tick agreed deals of that city to cancel first, so a better offer can push out a worse one.
+- Either side can withdraw an offer. A declined or withdrawn trader is free for a new deal and keeps any order you gave it.
 
-**An active deal.** Once accepted, the trader walks back and forth between the two posts on its own.
-- At the end of the other city's owner's turn, the city that opened the route gives its part and the other city its part. Older deals go first. If either city doesn't have its whole part that turn, nothing is swapped that turn, and both owners see why in the game log.
-- If the trader's way is blocked, the deal pauses (nothing is swapped) until it can walk again.
-- **If the trader is killed, the deal breaks.** The route stays: a new trader sent along it can propose again, and the other side has to accept again.
-- Either side can cancel a deal on its own turn. The trader walks back to the other city's post and waits for a new proposal.
-- When either city changes hands, its routes and deals end, and their traders are freed where they stand.
+**Carrying the deal.** Once both sides agree, the trader sets off for the other city's trade post on its own, by the cheapest way you know, through units and cities, and without stopping for enemies. It sets off at once when you accepted on your turn, otherwise at the start of your next turn.
+- The deal becomes **active** when the trader reaches the other city's post. From then on it walks back and forth between the two trade posts by the fastest way.
+- A trader carrying a deal can't be moved or given other orders. Cancel the deal to free it.
+- At the end of the other city's owner's turn, an active deal swaps: your city gives its part and the other city its part. Older deals go first. If either city doesn't have its whole part that turn, nothing is swapped that turn, and both owners see why in the game log.
+- If no known way leads to the post the trader is heading for, the deal pauses (nothing is swapped) until there is one.
+- **If the trader is killed, the deal is gone.** Train a new trader and make a new deal.
+- Either side can cancel a deal at any time on its own turn. The trader walks home to its own city's trade post and is free for a new deal.
+- When either city changes hands, its deals end, and their traders are freed.
 
 ## Trade values
 
@@ -399,9 +400,9 @@ The top bar counts your resources (food, water, wood, stone, gold, culture) over
 - You never see an enemy unit's movement left or job, what an enemy city is producing, which buildings it has, or its stock. An enemy unit you watch losing health, or not healing, between turns may still tell you that it moved, or that the land or the city keeping it up is short.
 - You never see your opponent's science or science items. You see their units and buildings as they are, and an upgrade made where you can see it appears in your log.
 - The order in which units and cities are listed, and their ids, reveal nothing about when they were created.
-- Trade routes and deals are seen only by their two sides. The other side of a route sees it once its trader has reached the post: the proposer, the cities and the terms.
-- Your trader standing at the host's post, on an open route, shows you that city's free market (what it still sells or buys, and how much) and its demand levels. Once it leaves, you no longer see them. You never see the deals your opponent has with other cities, nor a market without a route.
-- You see the trade post of an enemy city while you can see its tile and the city, so you can open a route to it.
+- Deals are seen only by their two sides: the cities, the terms and where the deal stands. Only the trader's owner sees which trader carries it and whether it is paused.
+- Once you have seen an enemy city together with its trade post, you can trade with that city even out of sight: you see its free market (what it still sells or buys, and how much) and its demand levels. A city that sends you a deal shows you its name, market and demand levels while the deal lasts, but not where it is: you can answer its offers, but to send it deals of your own you must first see it. You never see the deals your opponent has with other cities, only what they leave free.
+- You see the trade post of an enemy city while you can see its tile and the city.
 - Your game log lists only what you could see happen: an enemy move appears for the part of its path you saw, an attack from the fog shows the attacker's type but not where it stood, and what happens out of your sight leaves no trace in it.
 
 ## Game numbers
@@ -435,7 +436,7 @@ The top bar counts your resources (food, water, wood, stone, gold, culture) over
 | Full health of a building | 100 |
 | Health a building regains per paid turn | 10 |
 | Building that holds a market | Trade post |
-| Trade routes per city | 2 |
+| Traders per city | 2 |
 | Largest market cap | 20 |
 | Demand change per turn | 20% |
 | Lowest demand | 25% |

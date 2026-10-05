@@ -1,42 +1,14 @@
-@* The trader's actions in the action bar (G17). A free trader picks the city it trades for (the player's cities with a trade
-   post, the nearest first) and the city at the other end (any other city whose trade post the player sees), then Open route
-   sends it walking there; the button says why it can't while the rules forbid it (the same check the server runs). A trader
-   on a route says which, and Close route frees it. Deals are made in the home city's Market tab. *@
-@using Govern.Core.Actions
-@using Govern.Core.Cities
-@using Govern.Core.Visibility
+@* The trader's line in the action bar (G17b). Deals are made in the trader's home city's Market tab, so this says which city
+   that is and how its deal stands, and Make a deal opens that tab. A trader with no home city (its owner lost every city)
+   says so. *@
 
-@if (Unit.RouteId is { } routeId)
+@if (Home is { } home)
 {
-    var route = View.TradeRouteList.FirstOrDefault(known => known.Id == routeId);
-    <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="trader-route rz-m-0">
-        @(route is null ? "On a trade route." : $"On the route from {route.HomeName} to {route.HostName}; make deals in {route.HomeName}'s Market tab.")
-    </RadzenText>
-    <RadzenButton Disabled="@(Busy || !MyTurn)" ButtonStyle="ButtonStyle.Secondary" Icon="link_off" Text="Close route"
-                  Click="@(() => Command.InvokeAsync(new CloseTradeRouteCommand(routeId)))" class="trader-close-route"/>
+    <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="trader-deal rz-m-0">@Status(home)</RadzenText>
+    <RadzenButton Disabled="@Busy" ButtonStyle="ButtonStyle.Secondary" Icon="storefront" Text="@(Deal is null ? "Make a deal" : "Open market")"
+                  Click="@(() => Ui.OpenMarket(Ruleset, View, home.Id))" class="trader-open-market"/>
 }
 else
 {
-    var home = Home;
-    @foreach (var (label, cities, picked, pick) in Pickers(home))
-    {
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem" Wrap="FlexWrap.Wrap"
-                     role="group" aria-label="@label" class="@($"trader-pick trader-pick-{label.ToLowerInvariant()}")">
-            <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="rz-m-0">@label</RadzenText>
-            @foreach (var city in cities)
-            {
-                var active = picked == city.Id;
-                <RadzenButton Size="ButtonSize.ExtraSmall" ButtonStyle="@(active ? ButtonStyle.Primary : ButtonStyle.Light)"
-                              aria-pressed="@(active ? "true" : "false")" Text="@city.Name" Click="@(() => pick(city.Id))"
-                              class="@($"trader-city trader-city-{city.Id.Value}")"/>
-            }
-        </RadzenStack>
-    }
-    var problem = Problem(home);
-    <RadzenButton Disabled="@(Busy || !MyTurn || problem is not null)" ButtonStyle="ButtonStyle.Secondary" Icon="storefront" Text="Open route"
-                  Click="@(() => Command.InvokeAsync(new OpenTradeRouteCommand(Unit.Id, home!.Value, Host!.Value)))" class="trader-open-route"/>
-    @if (problem is not null)
-    {
-        <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="trader-open-reason rz-m-0">@problem</RadzenText>
-    }
+    <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="trader-deal rz-m-0">This trader has no home city to trade from.</RadzenText>
 }

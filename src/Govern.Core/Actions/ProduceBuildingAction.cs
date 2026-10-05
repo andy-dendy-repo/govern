@@ -104,7 +104,7 @@ internal static class ProduceBuildingRule
         }
 
         var tile = state.Map.TileAt(coord);
-        var improving = state.UnitAt(coord) is { Job.Improvement: not null } unit && unit.Owner == city.Owner;
+        var improving = state.UnitsAt(coord).Any(unit => unit is { Job.Improvement: not null } && unit.Owner == city.Owner);
         var neighbors = coord.Neighbors().Where(state.Map.Contains).Select(neighbor => state.Map.TileAt(neighbor).Terrain);
         return new BuildingSite(
             tile.Territory == city.Id && coord != city.Position,

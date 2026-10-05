@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Components;
 namespace Govern.Client.Features.Games.Components;
 
 /// <summary>
-/// The market of the player's own city (G17): what it sells and buys of each tradable resource, up to which cap, and what each
+/// The market of the player's own city (G17, G17b): what it sells and buys of each tradable resource, up to which cap, and what each
 /// is worth there; changes are drafted here and sent one resource at a time (<see cref="SetMarketOrderCommand"/>).
 /// </summary>
 public partial class CityMarket
@@ -79,7 +79,7 @@ public partial class CityMarket
         await Command.InvokeAsync(new SetMarketOrderCommand(City.Id, resource, side, side is null ? 0 : cap));
     }
 
-    // How much of the stored cap the city's deals (and its own proposals) use.
+    // How much of the stored cap the city's agreed deals use.
     private string UsedText(ResourceType resource)
     {
         if (Stored(resource) is not { } order)
@@ -87,7 +87,7 @@ public partial class CityMarket
             return string.Empty;
         }
 
-        var deals = View.TradeRouteList.Select(static route => (route.Home, route.Host, route.Deal));
+        var deals = View.TradeDealList.Where(static deal => deal.IsAgreed).Select(static deal => (deal.Home, deal.Host, deal.Terms));
         var used = TradeCalculator.Committed(deals, City.Id, resource, order.Side);
         return $"{used} of {order.Cap} used";
     }

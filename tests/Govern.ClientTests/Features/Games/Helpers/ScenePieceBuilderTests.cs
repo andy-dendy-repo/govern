@@ -54,4 +54,16 @@ public class ScenePieceBuilderTests
 
         (ghost.Q, ghost.R, ghost.Model, ghost.Seat, ghost.Own, ghost.Icon, ghost.Unit).ShouldBe((At(4, 4).Q, At(4, 4).R, "archer", 2, false, "unit-archer", (int?)null));
     }
+
+    [Fact]
+    public void Pieces_UnitsSharingATile_StandSideBySide()
+    {
+        var pieces = ScenePieceBuilder.Pieces(Create([Soldier(2, You, At(3, 3)), Unit(4, You, TraderType, At(3, 3))]), 100);
+
+        var (x, z) = BoardSceneBuilder.Center(At(3, 3));
+        pieces.Select(static piece => piece.Z).ShouldAllBe(pieceZ => pieceZ == z);
+        pieces[0].X.ShouldBeLessThan(x);
+        pieces[1].X.ShouldBeGreaterThan(x);
+        (pieces[0].X + pieces[1].X).ShouldBe(2 * x, 1e-9);
+    }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Events;
@@ -8,42 +9,74 @@ using Govern.Core.State;
 namespace Govern.Core.Actions;
 
 /// <summary>
-/// Answers a proposal at one of the actor's cities (G17): accept it, cancelling older deals of that city's market first when
-/// its caps have no room (a better offer replaces an older one), or decline it.
+/// Answers the offer on a trade deal that waits for the actor (G17b): the host city's owner answers a proposal, the trader's
+/// owner a counter-offer. Accepting can first cancel agreed deals of the answering city to make room in its market; countering
+/// puts other terms back to the other side, who answers in turn.
 /// </summary>
-/// <param name="RouteId">A route hosted by one of the actor's cities, carrying a proposal.</param>
-/// <param name="Accept">Accept (<see langword="true"/>) or decline.</param>
-/// <param name="CancelRoutes">
-/// Routes whose accepted deals to cancel before accepting: deals hosted by the same city, or deals the actor opened from it.
-/// </param>
-public sealed record AnswerDealCommand(TradeRouteId RouteId, bool Accept, ImmutableArray<TradeRouteId>? CancelRoutes = null) : GameCommand;
+/// <param name="DealId">The deal whose offer waits for the actor.</param>
+/// <param name="Answer">Accept, decline or counter.</param>
+/// <param name="Gives">With a counter: what the home city would give each turn instead.</param>
+/// <param name="Receives">With a counter: what the host city would give back each turn instead.</param>
+/// <param name="CancelDeals">With an accept: agreed deals of the answering city to cancel first (it is their home or host).</param>
+public sealed record AnswerDealCommand(
+    TradeDealId DealId,
+    DealAnswer Answer,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<ResourceAmount>? Gives = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<ResourceAmount>? Receives = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradeDealId>? CancelDeals = null) : GameCommand;
 
-/// <summary>Accepts or declines a proposal (see <see cref="AnswerDealCommand"/>); the whole answer is rejected if the deal still doesn't fit.</summary>
+/// <summary>Accepts, declines or counters an offer (see <see cref="AnswerDealCommand"/>); the whole answer is rejected if the terms don't fit.</summary>
 internal static class AnswerDealRule
 {
     public static CommandResult Apply(Ruleset ruleset, GameState state, PlayerId actor, AnswerDealCommand command)
     {
-        if (state.FindRoute(command.RouteId) is not { } route || route.HostOwner != actor || state.FindCity(route.Host)?.Owner != actor)
+        if (state.FindDeal(command.DealId) is not { } deal || (deal.Owner != actor && deal.HostOwner != actor))
         {
-            return RuleViolations.RouteNotFound;
+            return RuleViolations.DealNotFound;
         }
 
-        if (route.Deal is not { Accepted: false } deal)
+        if (deal.Answerer != actor)
         {
             return RuleViolations.NoProposal;
         }
 
         var events = ImmutableArray.CreateBuilder<GameEvent>();
-        if (!command.Accept)
+        switch (command.Answer)
         {
-            events.Add(new TradeRouteChangedEvent(route.Id, route.Owner, route.HostOwner, route.Home, route.Host, TradeChange.Declined));
-            return new GameUpdate(state.WithRoute(route with { Deal = null }), events.ToImmutable());
+            case DealAnswer.Decline:
+                events.Add(TradeRule.Changed(deal, TradeChange.Declined));
+                return new GameUpdate(state.WithoutDeal(deal.Id), events.ToImmutable());
+            case DealAnswer.Counter:
+                return Counter(ruleset, state, deal, command, events);
+            case DealAnswer.Accept:
+                return Accept(ruleset, state, deal, command.CancelDeals ?? [], events);
+            default:
+                return RuleViolations.UnknownAnswer;
+        }
+    }
+
+    // Other terms go back to the other side; they must fit both free markets now.
+    private static CommandResult Counter(Ruleset ruleset, GameState state, TradeDeal deal, AnswerDealCommand command, ImmutableArray<GameEvent>.Builder events)
+    {
+        var terms = TradeRule.Terms(ruleset, command.Gives ?? [], command.Receives ?? []);
+        if (TradeRule.CheckTerms(ruleset, state, (deal.Home, deal.Host), terms) is { } violation)
+        {
+            return violation;
         }
 
-        foreach (var cancelId in (command.CancelRoutes ?? []).Distinct())
+        var status = deal.Status == TradeDealStatus.Proposed ? TradeDealStatus.Countered : TradeDealStatus.Proposed;
+        var countered = deal with { Terms = terms, Status = status };
+        events.Add(TradeRule.Changed(countered, TradeChange.Countered));
+        return new GameUpdate(state.WithDeal(countered), events.ToImmutable());
+    }
+
+    // The actor is the deal's answerer (checked by Apply).
+    private static CommandResult Accept(Ruleset ruleset, GameState state, TradeDeal deal, ImmutableArray<TradeDealId> cancelIds, ImmutableArray<GameEvent>.Builder events)
+    {
+        var city = deal.AnsweringCity!.Value;
+        foreach (var cancelId in cancelIds.Distinct())
         {
-            if (state.FindRoute(cancelId) is not { IsActive: true } cancelled || cancelled.Id == route.Id
-                || cancelled.Host != route.Host && !(cancelled.Home == route.Host && cancelled.Owner == actor))
+            if (state.FindDeal(cancelId) is not { IsAgreed: true } cancelled || cancelled.Id == deal.Id || (cancelled.Home != city && cancelled.Host != city))
             {
                 return RuleViolations.CannotCancelDeal;
             }
@@ -51,15 +84,11 @@ internal static class AnswerDealRule
             state = TradeRule.EndDeal(ruleset, state, cancelled, TradeChange.Cancelled, events);
         }
 
-        // Only the host's side is checked here: the home city's caps already hold the proposal (see SetMarketOrderRule).
-        var homeSide = deal.Gives.Select(static amount => new MarketOrder(amount.Resource, MarketSide.Sell, amount.Amount))
-            .Concat(deal.Receives.Select(static amount => new MarketOrder(amount.Resource, MarketSide.Buy, amount.Amount)));
-        var host = state.FindCity(route.Host)!;
-        if (TradeCalculator.CheckDeal(ruleset, homeSide, TradeRule.FreeMarket(state, host, route.Id), deal.Gives, deal.Receives) is { } problem)
+        if (TradeRule.CheckTerms(ruleset, state, (deal.Home, deal.Host), deal.Terms) is { } violation)
         {
-            return ProposeDealRule.Violation(problem);
+            return violation;
         }
 
-        return new GameUpdate(TradeRule.Accept(ruleset, state, state.FindRoute(route.Id)!, events), events.ToImmutable());
+        return new GameUpdate(TradeRule.Accept(ruleset, state, deal.Answerer!.Value, deal, events), events.ToImmutable());
     }
 }

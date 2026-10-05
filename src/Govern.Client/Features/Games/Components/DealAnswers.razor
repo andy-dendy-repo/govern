@@ -1,0 +1,47 @@
+@* What the player can do with one trade deal (G17b), shown under it in a city's Market tab. An offer waiting for the
+   player's answer: Accept (ticking agreed deals of the answering city to cancel when its market has no room; Accept says
+   why it can't), Decline, or Counter (the TradeProposal form, starting from the offer). An offer waiting for the other side:
+   Withdraw. An agreed deal: Cancel deal. *@
+@using Govern.Core.Actions
+@using Govern.Core.Economy
+@using Govern.Core.Visibility
+
+<RadzenStack Gap="0.25rem" class="deal-answers">
+    @if (Deal.Answerer == View.Viewer)
+    {
+        @foreach (var other in Cancellable)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.25rem" class="cancel-to-make-room">
+                <RadzenCheckBox TValue="bool" Value="@_cancel.Contains(other.Id)" Change="@(on => Toggle(other, on))"
+                                Name="@($"cancel-{Deal.Id.Value}-{other.Id.Value}")" Disabled="@(Busy || !CanAct)"/>
+                <RadzenLabel Text="@($"Cancel the deal with {Partner(other)} to make room")" Component="@($"cancel-{Deal.Id.Value}-{other.Id.Value}")"/>
+            </RadzenStack>
+        }
+        var problem = TradePreviewCalculator.CheckAnswerDeal(Ruleset, View, Deal.Id, null, CancelList);
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+            <RadzenButton Size="ButtonSize.Small" Text="Accept" Icon="handshake" Disabled="@(Busy || !CanAct || problem is not null)"
+                          Click="@(() => Command.InvokeAsync(new AnswerDealCommand(Deal.Id, DealAnswer.Accept, CancelDeals: CancelList)))" class="accept-deal"/>
+            <RadzenButton Size="ButtonSize.Small" Text="Decline" ButtonStyle="ButtonStyle.Light" Disabled="@(Busy || !CanAct)"
+                          Click="@(() => Command.InvokeAsync(new AnswerDealCommand(Deal.Id, DealAnswer.Decline)))" class="decline-deal"/>
+            <RadzenButton Size="ButtonSize.Small" Text="Counter" ButtonStyle="@(_countering ? ButtonStyle.Primary : ButtonStyle.Light)"
+                          Disabled="@(Busy || !CanAct)" aria-pressed="@(_countering ? "true" : "false")"
+                          Click="@(() => _countering = !_countering)" class="counter-deal"/>
+            @if (problem is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" TagName="TagName.Span" class="accept-reason rz-m-0">@problem.Message</RadzenText>
+            }
+        </RadzenStack>
+        @if (_countering)
+        {
+            <TradeProposal @key="Deal.Id" View="@View" Ruleset="@Ruleset" Home="@Deal.Home" FixedHost="@Deal.Host" Initial="@Deal.Terms"
+                           AsHost="@(Deal.HostOwner == View.Viewer && Deal.Host == City)" SendText="Counter" Busy="@Busy" CanAct="@CanAct"
+                           Check="@((_, terms) => TradePreviewCalculator.CheckAnswerDeal(Ruleset, View, Deal.Id, terms, []))"
+                           Send="@(offer => CounterAsync(offer.Terms))"/>
+        }
+    }
+    else
+    {
+        <RadzenButton Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Text="@(Deal.IsAgreed ? "Cancel deal" : "Withdraw offer")"
+                      Disabled="@(Busy || !CanAct)" Click="@(() => Command.InvokeAsync(new CancelDealCommand(Deal.Id)))" class="cancel-deal"/>
+    }
+</RadzenStack>

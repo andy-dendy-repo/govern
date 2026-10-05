@@ -2,7 +2,7 @@
 title: Backlog (all open work, prioritised)
 tags: [plan, backlog, priorities, roadmap, deferred, game, ui, ruleset, content]
 code: [docs/plans, docs/game/design-roadmap.md]
-updated: 2026-10-04
+updated: 2026-10-05
 ---
 
 # Backlog
@@ -24,7 +24,9 @@ Ids never change and are never reused: `F` for follow-ups, `G` for game design r
 
 ## Now
 
-Empty: G11a is done (see Recently done). The owner said the culture tree (G11b) goes next.
+| # | Id | Item | Area | Size | Status |
+|---|---|---|---|---|---|
+| | | Nothing picked yet: the owner chooses from Next | | | |
 
 ### Content slice C1: G2, G4, G9
 
@@ -74,6 +76,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| G17b | Trading rework: no routes; each city has traders (2 per city, ruleset v13), each trader sends one deal from its home city, the target accepts, declines or counters (counters go back and forth), the trader walks to the host's post once accepted and the deal starts on arrival, then shuttles between the posts by the fastest way; traders never block and are never blocked; units on one tile stand side by side; the Market tab lists the city's traders and their deals; wider city panel ([rules](../game/rules.md#trading)) | 2026-10-05, PR #64 | [G17b](done/G17b-trading-rework.md) |
 | F20 | Auto-explore: Explore sends a unit, turn after turn, to the nearest land its owner never saw until nothing known is left or it sights an enemy. Shipped with the builder lock (a unit with a job can't move until Cancel job), WASD camera panning, richer tiles and rivers, and an asymmetric Basin ([rules](../game/rules.md#exploring)) | 2026-10-04, PR #61 | [F20](done/F20-auto-explore.md) |
 | G15a | Ships, part a: the galley (melee, Sailing) and the bireme (ranged, Shipbuilding), produced only by a city with a harbour or port and launched on the lake next to it; ships sail water only, melee reaches only the same ground (ranged crosses the shore both ways), ships heal next to their harbour (ruleset v12, [rules](../game/rules.md#ships)) | 2026-10-04, PR #60 | [G15a](done/G15a-ships.md) |
 | G11a | Science tree: science is a budget per turn (1 a city, campus 2, university 4), never stored; unlocking an item takes its science every turn, prerequisites too, and the newest items switch off when the cities make too little; 11 items lock the archer, horseman, trader, trade post and harbour and unlock four units that replace older ones (swordsman, pikeman, crossbowman, knight; old units upgrade in own territory), the workshop, and four building upgrades a builder makes in place (barracks, university, market, port); the science counter and full-screen tree (ruleset v11, [rules](../game/rules.md#science)) | 2026-10-04, PR #59 | [G11a](done/G11a-science-tree.md) |

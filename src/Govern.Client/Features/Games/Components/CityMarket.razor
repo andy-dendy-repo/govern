@@ -1,14 +1,14 @@
-@* The Market tab of the player's own city (G17): per tradable resource what the city sells or buys and its cap (picked here and
-   sent with Set), how much of the cap its deals use, its demand level and what one unit is worth here against the first
-   tradable resource (the fair rate). Under them, the city's trade routes (CityTradeRoutes). A city without a trade post says it
-   needs one. *@
+@* The Market tab of the player's own city (G17, G17b): per tradable resource what the city sells or buys and its cap (picked
+   here and sent with Set), how much of the cap its agreed deals use, its demand level and what one unit is worth here against
+   the first tradable resource (the fair rate). Under them, the city's traders and the deals it hosts (CityTraders). A city
+   without a trade post says it needs one. *@
 @using Govern.Core.Economy
 
 <RadzenStack Gap="0.5rem" class="city-market">
     @if (City.TradePost is null)
     {
         <RadzenText TextStyle="TextStyle.Caption" class="market-needs-post rz-m-0">
-            Build a @Ruleset.BuildingName(Ruleset.Trade.Building) to trade: it holds the city's market, trains traders and hosts trade routes.
+            Build a @Ruleset.BuildingName(Ruleset.Trade.Building) to trade: it holds the city's market, trains traders and hosts other cities' deals.
         </RadzenText>
     }
     else
@@ -40,5 +40,8 @@
             </RadzenStack>
         }
     }
-    <CityTradeRoutes View="@View" City="@City" Ruleset="@Ruleset" Busy="@Busy" CanAct="@CanAct" Command="@Command"/>
+    @if (City.TradePost is not null)
+    {
+        <CityTraders View="@View" City="@City" Ruleset="@Ruleset" Busy="@Busy" CanAct="@CanAct" Command="@Command"/>
+    }
 </RadzenStack>

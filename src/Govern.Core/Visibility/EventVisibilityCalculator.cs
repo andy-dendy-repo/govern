@@ -38,8 +38,8 @@ internal static class EventVisibilityCalculator
         TurnEndedEvent or PlayerResignedEvent or PlayerEliminatedEvent or GameWonEvent => gameEvent,
         UnitMovedEvent moved => Moved(moved, viewer, seen),
         UnitOrderEndedEvent ended => ended.Owner == viewer ? ended : null,
-        // A trade route concerns its two sides only; neither learns anything about the other's other routes.
-        TradeRouteChangedEvent changed => changed.Owner == viewer || changed.HostOwner == viewer && !changed.Unopened ? changed : null,
+        // A trade deal concerns its two sides only; neither learns anything about the other's other deals.
+        TradeDealChangedEvent changed => changed.Owner == viewer || changed.HostOwner == viewer ? changed : null,
         TradeExchangedEvent exchanged => exchanged.Owner == viewer || exchanged.HostOwner == viewer ? exchanged : null,
         UnitAttackedEvent attacked => Attacked(attacked, viewer, seen),
         CityCapturedEvent captured => captured.PreviousOwner == viewer || captured.NewOwner == viewer || seen.Contains(captured.Position)

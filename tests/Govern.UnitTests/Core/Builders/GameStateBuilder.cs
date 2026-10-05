@@ -46,11 +46,12 @@ internal sealed class GameStateBuilder
         int damage = 0,
         UnitJob? job = null,
         (int Column, int Row)? destination = null,
-        bool exploring = false)
+        bool exploring = false,
+        CityId? homeCity = null)
     {
         var id = new UnitId(_nextId++);
         var target = destination is var (targetColumn, targetRow) ? At(targetColumn, targetRow) : (HexCoord?)null;
-        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? TestRulesets.Default.Unit(type).Movement, damage, job, target, Exploring: exploring));
+        _units.Add(new Unit(id, owner, type, At(column, row), movementLeft ?? TestRulesets.Default.Unit(type).Movement, damage, job, target, Exploring: exploring, HomeCity: homeCity));
         return id;
     }
 

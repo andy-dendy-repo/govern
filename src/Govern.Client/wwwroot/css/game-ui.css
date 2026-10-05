@@ -83,6 +83,11 @@
     justify-content: flex-end;
 }
 
+/* A city's panel (its tabs, the Market tab's deals) needs more room than a unit's card. */
+.hud-selection-city {
+    width: min(34rem, calc(100% - 2 * var(--gv-hud-gap)));
+}
+
 .hud-log {
     top: calc(var(--gv-hud-top) + 3.25rem);
     right: var(--gv-hud-gap);

@@ -89,13 +89,15 @@ internal static class EndTurnRule
 
         var cost = ruleset.Unit(city.Producing).ProductionCost;
         var progress = Math.Min(city.ProductionProgress + perTurn, cost);
-        if (progress < cost || SpawnTile(ruleset, state, city) is not { } tile)
+        // A finished trader waits while its city already has as many traders as it may.
+        var traderWaits = ruleset.Unit(city.Producing).CanTrade && TradeRule.TradersOf(ruleset, state, city.Id) >= ruleset.Trade.TradersPerCity;
+        if (progress < cost || traderWaits || SpawnTile(ruleset, state, city) is not { } tile)
         {
             return state.WithCity(city with { ProductionProgress = progress });
         }
 
         var (allocated, id) = state.AllocateId();
-        var unit = new Unit(new UnitId(id), city.Owner, city.Producing, tile, MovementLeft: 0);
+        var unit = new Unit(new UnitId(id), city.Owner, city.Producing, tile, MovementLeft: 0, HomeCity: ruleset.Unit(city.Producing).CanTrade ? city.Id : null);
         events.Add(new UnitCreatedEvent(unit.Id, unit.Owner, unit.Type, unit.Position, city.Id));
 
         // The city goes on with the newest version of the unit its owner may produce.
@@ -130,7 +132,8 @@ internal static class EndTurnRule
         return site is { } coord ? done with { Map = done.Map.WithTile(done.Map.TileAt(coord) with { Building = building }) } : done;
     }
 
-    // The city tile when free, otherwise the first free neighbour a unit could stand on; null when surrounded. A ship is
+    // The city tile when free, otherwise the first free neighbour a unit could stand on; null when surrounded (a trader shares
+    // tiles, so it always appears on the city tile). A ship is
     // launched instead on the first free water tile next to its building (the harbour, or an upgrade of it) in the city's territory.
     private static HexCoord? SpawnTile(Ruleset ruleset, GameState state, City city)
     {
@@ -143,7 +146,7 @@ internal static class EndTurnRule
         foreach (var coord in city.Position.Neighbors().Prepend(city.Position))
         {
             var ownCityOrNone = state.CityAt(coord) is not { } other || other.Owner == city.Owner;
-            if (state.Map.IsPassable(ruleset, coord) && state.UnitAt(coord) is null && ownCityOrNone)
+            if (state.Map.IsPassable(ruleset, coord) && (definition.SharesTiles || state.HolderAt(ruleset, coord) is null) && ownCityOrNone)
             {
                 return coord;
             }
@@ -161,7 +164,7 @@ internal static class EndTurnRule
         {
             foreach (var coord in dock.Coord.Neighbors())
             {
-                if (state.Map.Contains(coord) && ruleset.Terrain(state.Map.TileAt(coord).Terrain).AllowsDomain(ship.Domain) && state.UnitAt(coord) is null)
+                if (state.Map.Contains(coord) && ruleset.Terrain(state.Map.TileAt(coord).Terrain).AllowsDomain(ship.Domain) && state.HolderAt(ruleset, coord) is null)
                 {
                     return coord;
                 }

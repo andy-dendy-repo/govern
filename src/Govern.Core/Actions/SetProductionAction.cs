@@ -46,6 +46,12 @@ internal static class SetProductionRule
             return RuleViolations.NoTradePost;
         }
 
+        // A city has at most trade.tradersPerCity traders (those that call it home).
+        if (unit.CanTrade && TradeRule.TradersOf(ruleset, state, city.Id) >= ruleset.Trade.TradersPerCity)
+        {
+            return RuleViolations.TooManyTraders;
+        }
+
         // A ship is built only where it can be launched: a city with a harbour (or one of its upgrades).
         if (unit.RequiresBuilding is { } needed && !city.BuildingList.Any(building => ruleset.IsKindOf(building, needed)))
         {
