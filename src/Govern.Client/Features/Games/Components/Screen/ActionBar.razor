@@ -2,8 +2,8 @@
    with the reason when the rules forbid it. A new ability adds its button here. Moves and attacks are board clicks; Go to
    turns on destination mode, where a click on any explored tile sends the unit walking there on its own, and Explore sends it to
    unexplored land turn after turn (Stop cancels either order); a unit with a job can't move, so a misclick never stops a build:
-   Cancel job is the way to free it; Build bridge turns on bridge mode, where a click on a marked neighbour starts the bridge; a trader gets its route
-   orders (TraderOrders) and, while on a route, takes no other order. A unit with a newer unlocked version gets Upgrade to
+   Cancel job is the way to free it; Build bridge turns on bridge mode, where a click on a marked neighbour starts the bridge; a trader gets its deal
+   line (TraderOrders) and, while it carries a deal, takes no other order. A unit with a newer unlocked version gets Upgrade to
    (paid by the city owning its tile), and a builder on a building with an unlocked upgrade gets Upgrade the building (a job). *@
 @using Govern.Core.Economy
 @using Govern.Client.Features.Games.Services
@@ -138,7 +138,7 @@
 
     private string Hint(UnitView unit, UnitDefinition definition) => (Ui.Selection.Bridge, unit.Job) switch
     {
-        _ when unit.DealId is not null => "The trader walks its route on its own between the two trade posts.",
+        _ when unit.DealId is not null => "The trader carries its deal on its own: to the other city's trade post, then back and forth between the two.",
         _ when Ui.Selection.Destination => "Click any tile you have explored to send the unit there; it walks on at the start of each turn. Esc cancels.",
         (true, _) => "Click a marked tile across the river to build a bridge to it. Esc cancels.",
         (_, { Improvement: { } improvement }) => $"Building a {Ruleset.ImprovementName(improvement)}. Cancel the job to move the unit.",

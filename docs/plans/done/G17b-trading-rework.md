@@ -51,7 +51,7 @@ G17 trading works through routes: a trader walks to another city's trade post to
   - `Components/CityMarket.razor` (orders as today, then Traders and Incoming sections); `CityTraders` replaces `CityTradeRoutes`; `TradeProposal` is reused for suggest and counter, with a target city picker;
   - `Screen/TraderOrders`: Open route removed (a trader's deal is managed in its city's Market tab; the trader's card links there);
   - board: several pieces on a tile (a trader drawn beside the unit it shares a tile with);
-  - `wwwroot/css/game-ui.css`: the selection panel holding the city panel widens from 24rem to 32rem on wide screens (phones unchanged);
+  - `wwwroot/css/game-ui.css`: the selection panel holding the city panel widens from 24rem to 34rem on wide screens (phones unchanged);
   - `Helpers/TradeLogFormatter.cs`.
 
 ## Steps
@@ -96,3 +96,12 @@ G17 trading works through routes: a trader walks to another city's trade post to
 
 - Traders sharing tiles touches every place that assumes one unit per tile (17 `UnitAt` callers, the board). This is the largest part of the work.
 - Making markets of seen cities public widens what the opponent learns (G17 already leaked the free market to a route's owner).
+- Stored game logs from G17 games hold `trade_route_changed` events and the `opened`/`closed` changes, which no longer deserialize. Accepted: there is no production deploy; clear dev logs if one fails to load.
+
+## Review follow-ups (code review, 2026-10-05)
+
+- Attack targets among traders on one tile are picked by id, so the rule and the preview agree and creation order doesn't leak.
+- A known post needs the city tile seen with its post; a city known only from a deal is a partner for answering (market, demand) without its post tile, and can't be sent new deals until seen.
+- Cancelling or withdrawing an offer leaves the trader's orders alone; only an agreed deal sends it home.
+- A click on a tile with another own unit selects it instead of moving onto it; a paused travelling deal reads as paused; the counter form keeps edits across view refreshes.
+- Left as they are: a city keeps a trader in production at the limit (it waits, with the reason on the Units tab); rehoming may put a city over the limit (no new trader is made there until it is under); free traders can scout through enemy units (a deliberate consequence of sharing tiles).

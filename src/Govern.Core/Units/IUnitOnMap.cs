@@ -9,6 +9,9 @@ namespace Govern.Core.Units;
 /// </summary>
 public interface IUnitOnMap
 {
+    /// <summary>The unit's id; ties between units on one tile are broken by it, so the order of a list never decides.</summary>
+    UnitId Id { get; }
+
     /// <summary>The unit's owner.</summary>
     PlayerId Owner { get; }
 

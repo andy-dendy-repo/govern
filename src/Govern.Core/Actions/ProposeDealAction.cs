@@ -40,14 +40,7 @@ internal static class ProposeDealRule
         var events = ImmutableArray.CreateBuilder<GameEvent>();
         events.Add(TradeRule.Changed(deal, TradeChange.Proposed));
         var next = allocated.WithDeal(deal);
-        return new GameUpdate(host.Owner == actor ? TradeRule.Accept(ruleset, next, actor, deal, events) : Introduce(next, host.Owner, deal.Home), events.ToImmutable());
-    }
-
-    // The offer tells the host's owner of the home city's trade post: from then on they can read its market and send deals there.
-    private static GameState Introduce(GameState state, PlayerId hostOwner, CityId home)
-    {
-        var player = state.FindPlayer(hostOwner)!;
-        return player.KnownPostList.Contains(home) ? state : state.WithPlayer(player with { KnownPosts = [.. player.KnownPostList, home] });
+        return new GameUpdate(host.Owner == actor ? TradeRule.Accept(ruleset, next, actor, deal, events) : next, events.ToImmutable());
     }
 
     private static RuleViolation? Check(Ruleset ruleset, GameState state, PlayerId actor, ProposeDealCommand command)

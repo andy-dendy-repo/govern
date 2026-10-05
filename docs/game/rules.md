@@ -359,12 +359,12 @@ Cities swap resources with each other, yours or your opponent's. There is no mon
 
 **Traders.** A city with a trade post trains traders. Each trader belongs to the city that trained it, its **home city**, which can have at most the "Traders per city" under "Game numbers"; a finished trader waits in production while its city has them all. A trader whose home city is lost moves to your nearest city, one with a trade post first.
 
-**Making a deal.** In the home city's Market tab, each of its traders is listed with its deal, if it has one. A free trader has **Suggest deal**: pick the other city (one of your cities with a trade post, or an enemy city whose trade post you have seen) and the terms, "we give these resources, you give those, every turn" (for example 3 Food for 1 Stone). The tab shows how the other city values both sides from its demand levels, and can make the offer fair.
+**Making a deal.** In the home city's Market tab, each of its traders is listed with its deal, if it has one. A free trader has **Suggest deal**: pick the other city (one of your cities with a trade post, or an enemy city you have seen with its trade post) and the terms, "we give these resources, you give those, every turn" (for example 3 Food for 1 Stone). The tab shows how the other city values both sides from its demand levels, and can make the offer fair.
 - What your city gives must be on its sell list and on the other city's buy list, and what it gets the other way round, within the caps both cities have left. Each side gives at least one resource.
 - The trader can be anywhere when it sends the offer. An offer on the table takes nothing from the caps yet; both markets are checked again when it is accepted.
 - A deal between two of your own cities is accepted at once: it is how you move goods between your cities.
 - A deal to your opponent waits for them. On their turn they see it in their city's Market tab and **accept**, **decline** or **counter** it with other terms. A counter-offer comes back to you: accept, decline or counter again, as often as you both like. If accepting would go over a cap, the side accepting can tick agreed deals of that city to cancel first, so a better offer can push out a worse one.
-- Either side can withdraw an offer. A declined or withdrawn trader is free for a new deal.
+- Either side can withdraw an offer. A declined or withdrawn trader is free for a new deal and keeps any order you gave it.
 
 **Carrying the deal.** Once both sides agree, the trader sets off for the other city's trade post on its own, by the cheapest way you know, through units and cities, and without stopping for enemies. It sets off at once when you accepted on your turn, otherwise at the start of your next turn.
 - The deal becomes **active** when the trader reaches the other city's post. From then on it walks back and forth between the two trade posts by the fastest way.
@@ -401,7 +401,7 @@ The top bar counts your resources (food, water, wood, stone, gold, culture) over
 - You never see your opponent's science or science items. You see their units and buildings as they are, and an upgrade made where you can see it appears in your log.
 - The order in which units and cities are listed, and their ids, reveal nothing about when they were created.
 - Deals are seen only by their two sides: the cities, the terms and where the deal stands. Only the trader's owner sees which trader carries it and whether it is paused.
-- Once you have seen an enemy city's trade post (or it sent you a deal), you can trade with that city even out of sight: you see its free market (what it still sells or buys, and how much) and its demand levels. You never see the deals your opponent has with other cities, only what they leave free.
+- Once you have seen an enemy city together with its trade post, you can trade with that city even out of sight: you see its free market (what it still sells or buys, and how much) and its demand levels. A city that sends you a deal shows you its name, market and demand levels while the deal lasts, but not where it is: you can answer its offers, but to send it deals of your own you must first see it. You never see the deals your opponent has with other cities, only what they leave free.
 - You see the trade post of an enemy city while you can see its tile and the city.
 - Your game log lists only what you could see happen: an enemy move appears for the part of its path you saw, an attack from the fog shows the attacker's type but not where it stood, and what happens out of your sight leaves no trace in it.
 

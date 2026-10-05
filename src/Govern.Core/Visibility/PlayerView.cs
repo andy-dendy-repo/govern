@@ -39,7 +39,8 @@ namespace Govern.Core.Visibility;
 /// </param>
 /// <param name="Science">The viewer's own science per turn and science nodes (<see cref="ScienceView"/>).</param>
 /// <param name="TradePartners">
-/// Other players' cities the viewer can send deals to (<see cref="TradePartnerView"/>), ordered by id; <see langword="null"/> when none.
+/// Other players' cities the viewer trades with (<see cref="TradePartnerView"/>): those whose trade post they have seen, and the
+/// other side of their deals; ordered by id, <see langword="null"/> when none.
 /// </param>
 public sealed record PlayerView(
     PlayerId Viewer,
@@ -62,7 +63,7 @@ public sealed record PlayerView(
     [JsonIgnore]
     public ImmutableArray<TradeDealView> TradeDealList => TradeDeals ?? [];
 
-    /// <summary>Other players' cities the viewer can send deals to (empty when none).</summary>
+    /// <summary>Other players' cities the viewer trades with (empty when none).</summary>
     [JsonIgnore]
     public ImmutableArray<TradePartnerView> TradePartnerList => TradePartners ?? [];
 

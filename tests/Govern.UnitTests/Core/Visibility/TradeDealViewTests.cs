@@ -60,6 +60,35 @@ public class TradeDealViewTests
     }
 
     [Fact]
+    public void ViewFor_OfferFromAnUnseenCity_ShowsItsMarketButNotWhereItIs()
+    {
+        var scenario = new TradeScenario();
+        var (state, _) = scenario.Proposed();
+
+        var partner = GameEngine.ViewFor(TestRulesets.Default, state, P2).TradePartnerList.ShouldHaveSingleItem();
+
+        (partner.Id, partner.TradePost).ShouldBe((scenario.Home, null));
+        partner.MarketList.ShouldBe([Order(TestRulesets.Food, MarketSide.Sell, 6), Order(TestRulesets.Stone, MarketSide.Buy, 4)]);
+        state.FindPlayer(P2)!.KnownPostList.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ViewFor_PostSeenWithoutItsCity_IsNoPartner()
+    {
+        // The host's post stands at (6, 2), in sight of P1's soldier at (4, 2) (sight 2); the city at (8, 2) is not.
+        var builder = new GameStateBuilder().WithMapExplored(P1);
+        builder.AddCity(P1, 1, 7);
+        var host = builder.AddCity(P2, 8, 2, buildings: TestRulesets.TradePost);
+        builder.WithTerritory(host, (6, 2), (7, 2)).WithBuilding(TestRulesets.TradePost, (6, 2));
+        builder.AddUnit(P1, TestRulesets.Soldier, 4, 2);
+
+        var state = builder.Build();
+
+        state.FindPlayer(P1)!.KnownPostList.ShouldBeEmpty();
+        GameEngine.ViewFor(TestRulesets.Default, state, P1).TradePartners.ShouldBeNull();
+    }
+
+    [Fact]
     public void ViewFor_PartnerOutOfSight_StaysAPartner()
     {
         var scenario = new TradeScenario();

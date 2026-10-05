@@ -39,6 +39,19 @@ public class CancelDealActionTests
     }
 
     [Fact]
+    public void Execute_HostDeclinesOrWithdrawsAnOffer_LeavesTheTradersOrdersAlone()
+    {
+        var scenario = new TradeScenario();
+        var (proposed, deal) = scenario.Proposed();
+        var sent = Execute(proposed, P1, new SetDestinationCommand(scenario.Trader, At(2, 9))).State;
+        var p2Turn = Execute(sent, P1, new EndTurnCommand()).State;
+
+        var update = Execute(p2Turn, P2, new CancelDealCommand(deal));
+
+        update.State.FindUnit(scenario.Trader)!.Destination.ShouldBe(At(2, 9));
+    }
+
+    [Fact]
     public void Execute_UnknownOrForeignDeal_IsNotFound()
     {
         var scenario = new TradeScenario();

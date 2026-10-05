@@ -87,7 +87,8 @@ internal static class AttackRule
     public static TUnit? DefenderAt<TUnit>(Ruleset ruleset, IEnumerable<TUnit> unitsOnTile, bool isCity, PlayerId attackerOwner)
         where TUnit : class, IUnitOnMap
     {
-        var units = unitsOnTile.ToList();
+        // By id: the state keeps units in creation order and the view by id, and neither order may decide (nor leak).
+        var units = unitsOnTile.OrderBy(static unit => unit.Id.Value).ToList();
         return units.FirstOrDefault(unit => !ruleset.Unit(unit.Type).SharesTiles)
             ?? (isCity ? null : units.FirstOrDefault(unit => unit.Owner != attackerOwner));
     }
