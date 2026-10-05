@@ -219,7 +219,7 @@ public class GameTableBuildTests : ClientTestContext
 
         _board.Click(At(2, 2));
 
-        cut.Find(".lent-production").TextContent.ShouldContain("goes to a unit building on its land");
+        cut.Find(".lent-production").TextContent.ShouldBe("This turn the city's production goes to the Builder's Farm, not to its own item.");
         cut.Find(".city-panel .progress-turns").TextContent.ShouldBe("Never at this rate");
     }
 

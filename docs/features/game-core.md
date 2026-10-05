@@ -129,6 +129,14 @@ Andrii's model: everything a city makes costs resources once and upkeep every tu
 - **View:** `CityView.ProductionPaid`, `UpkeepPriority` and `BuildingDamage` for own cities only. Previews (`Visibility/UpkeepPreviewCalculator`): `GameEngine.CityForecast` (`CityForecast`: income, the `UpkeepResult`, what is missing to begin and the production per turn after upkeep, both assuming the city doesn't feed a job) and `GameEngine.UnitSupply` (`UnitSupply`: the paying city or the land's shortfall). `Engine/UpkeepPreviewTests` checks both against `Execute`.
 - Algorithms: [game logic](../game/game-logic.md#costs-and-upkeep).
 
+## City storage and production sources (G8c)
+
+Andrii's request (2026-10-05): a city can't collect resources forever (ruleset v14, [game data](../game/game-data-economy.md#city-storage-citiesstorage-buildingsstorage), [rules](../game/rules.md#city-storage)).
+- **Ruleset:** `CityRules.Storage` (a cap per stocked resource, every resource but science) and `BuildingDefinition.Storage` (added while the building works; an upgrade lists its own full amounts), checked by `EconomyRulesValidator` (and `ScienceRulesValidator`: science is never stored).
+- **Calculator:** `Cities/CityStorage` (public, used by the client): `Caps` (defaults plus working buildings), `Cut`, `Excess`, `CapOf`. `Cities/CityProduction.Sources` lists where the production per turn comes from (`ProductionSource`: the city's own, then each building with production); `PerTurn` is their sum.
+- **End turn:** the last economy step (`EndTurnRule.Store`) cuts every city's stock, of both players, to its caps after production; no event, no state change beyond the stock.
+- **View:** nothing new in `PlayerView`: caps follow from the ruleset and the city's buildings. `CityForecast.Storage`, `Lost` (what won't fit after upkeep, the item's cost and the next tile when the city holds its price; trade is ignored) and `Sources`. `Engine/StorageRuleTests` checks them against `Execute`.
+
 ## Trading (G17, G17b)
 
 Andrii's model: no money (gold is a resource); cities with a trade post train traders, each trader carries one deal from its home city to another city's trade post, the two sides negotiate it (accept, decline, counter), and once agreed the trader walks to the host's post, where the deal becomes active, then shuttles between the two posts (ruleset v13, [game data](../game/game-data-economy.md#trade-trade), algorithms in [game logic: trading](../game/game-logic-trade.md)). G17b (2026-10-05) replaced G17's trade routes.
@@ -318,7 +326,7 @@ The client only holds a `PlayerView`, never the `GameState`, so the engine answe
 - JSON round-trips, including a view without tile coordinates;
 - a replay determinism check.
 
-`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v13.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` (and a trader's `homeCity`) and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
+`Builders/GameStateBuilder` places units and cities on a 12×10 map for scenario tests. `Builders/TestRulesets` loads the real `rulesets/default/v14.json` (copied next to the tests) and builds variants of it (`TestRulesets.With(json => …)`); `GameStateBuilder.WithTerrain` puts forest, hills, mountains or lake on chosen tiles, `WithRiver` a river on chosen edges, and `WithImprovement`/`WithBridge`/`WithBuilding` an improvement, a bridge or a finished building on a tile; `AddUnit` takes a `UnitJob` (and a trader's `homeCity`) and `AddCity` a building in production (with its `buildingSite`), a stock, tiles gained, whether the item is paid, and built buildings (`WithCity` changes a city afterwards); every city claims its `initialRadius` at build (the first city added wins), and `WithTerritory` sets owners by hand.
 
 Architecture tests keep Core pure:
 - `LayerDependencyTests.Core_DependsOnlyOnBaseClassLibrary`

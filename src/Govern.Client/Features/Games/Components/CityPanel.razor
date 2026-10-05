@@ -1,5 +1,6 @@
-@* The selected city: its name in its owner's colour and, for the player's own city, its resources with what they gain or lose
-   each turn (science is not stocked, so it is left out), what it produces, whether its resource cost is paid and how long it
+@* The selected city: its name in its owner's colour and, for the player's own city, its resources against their storage caps
+   with what they gain or lose each turn and what won't fit (science is not stocked, so it is left out), what it produces, where
+   its production comes from and, when a unit's job takes it, which job, whether its resource cost is paid and how long it
    takes, then four tabs: Units (the buttons to produce a unit; a unit a newer unlocked one replaces is left out, a locked one
    is disabled), Buildings (the buildings it has with their health, and a button per building it doesn't have in any
    version, with its effect, cost and, when it can't have it, why; upgrades are made by builders, so they have no button), Economy (its upkeep and upkeep order, marked with a warning when it
@@ -31,16 +32,28 @@
             @foreach (var resource in Ruleset.Resources.Where(resource => resource.Id != Ruleset.Science.Resource))
             {
                 var (amount, gain) = (YieldCalculator.AmountOf(City.StockList, resource.Id), Net(forecast, resource.Id));
+                var cap = CapOf(forecast, resource.Id);
+                var lost = LostOf(forecast, resource.Id, amount, gain, cap);
                 @if (amount != 0 || gain != 0)
                 {
-                    <span class="@($"city-resource city-resource-{resource.Id.Id}")">
+                    <span class="@($"city-resource city-resource-{resource.Id.Id}{(amount >= cap || lost > 0 ? " city-resource-full" : "")}")"
+                          title="@StorageTitle(resource.Id, amount, cap, lost)">
                         <CostLabel Amount="@amount" Icon="@Icons.Resource(resource.Id)" Label="@Ruleset.ResourceName(resource.Id)"/>
+                        @if (cap != int.MaxValue)
+                        {
+                            <span class="city-resource-cap">/@cap</span>
+                        }
                         <span class="city-resource-gain">@Gain(gain)</span>
+                        @if (lost > 0)
+                        {
+                            <span class="city-resource-lost">@lost lost</span>
+                        }
                     </span>
                 }
             }
         </RadzenStack>
         <RadzenText TextStyle="TextStyle.Body2" class="production">@ProductionText</RadzenText>
+        <RadzenText TextStyle="TextStyle.Caption" class="production-sources rz-m-0">@SourcesText</RadzenText>
         @if (CostText(forecast) is { } costText)
         {
             <RadzenText TextStyle="TextStyle.Caption" class="production-cost rz-m-0">@costText</RadzenText>
@@ -50,7 +63,7 @@
             <ProgressBar Value="@(City.ProductionProgress ?? 0)" Max="@cost" PerTurn="@PerTurn(forecast)" Label="Production"/>
             @if (FeedsAJob)
             {
-                <RadzenText TextStyle="TextStyle.Caption" class="lent-production rz-m-0">This turn the city's production goes to a unit building on its land.</RadzenText>
+                <RadzenText TextStyle="TextStyle.Caption" class="lent-production rz-m-0">@LentText</RadzenText>
             }
         }
         <RadzenTabs @bind-SelectedIndex="@Ui.CityTab" RenderMode="TabRenderMode.Client" class="city-tabs">

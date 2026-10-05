@@ -14,8 +14,23 @@ namespace Govern.Core.Visibility;
 /// The production its item gains: that of its buildings still working after the upkeep, or 0 while the item can't begin.
 /// Like <paramref name="MissingToBegin"/>, it assumes the city's production doesn't go to a job.
 /// </param>
+/// <param name="Storage">
+/// Its storage caps when the stock is cut (<see cref="Cities.CityStorage.Caps"/>): the buildings still working after the upkeep,
+/// plus the building its production finishes this turn. Like <paramref name="MissingToBegin"/> it assumes the city's production
+/// doesn't go to a job, and it ignores a builder's upgrade finished this turn.
+/// </param>
+/// <param name="Lost">
+/// What won't fit in <paramref name="Storage"/> once it has paid its upkeep, its item's cost and its next tile (when it holds its
+/// price), and is lost; empty when all fits. Like <paramref name="MissingToBegin"/> it assumes the city's production doesn't go
+/// to a job (then the item's cost stays in the stock, which the client adds back), ignores trade, and assumes a tile is left to
+/// claim.
+/// </param>
+/// <param name="Sources">Where <paramref name="ProductionPerTurn"/> comes from, when the item can begin (<see cref="Cities.CityProduction.Sources"/>).</param>
 public sealed record CityForecast(
     ImmutableArray<ResourceAmount> Income,
     UpkeepResult Upkeep,
     ImmutableArray<ResourceAmount> MissingToBegin,
-    int ProductionPerTurn);
+    int ProductionPerTurn,
+    ImmutableArray<ResourceAmount> Storage,
+    ImmutableArray<ResourceAmount> Lost,
+    ImmutableArray<Cities.ProductionSource> Sources);

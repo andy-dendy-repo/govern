@@ -63,6 +63,7 @@ internal static class EconomyRulesValidator
             RulesetValidator.InRange(building.Cost, 1, MaxCost, $"{path}.cost", problems);
             RulesetValidator.InRange(building.Production, 0, MaxYield, $"{path}.production", problems);
             CheckYields(building.Yields, resources, $"{path}.yields", problems);
+            CheckYields(building.Storage, resources, $"{path}.storage", problems, MaxStock);
             CheckTerrains(building.RequiresAdjacentTerrain, terrains, $"{path}.requiresAdjacentTerrain", problems);
         }
     }
@@ -103,6 +104,7 @@ internal static class EconomyRulesValidator
         var cities = document.Cities;
         CheckYields(cities.Yields, resources, "$.cities.yields", problems);
         CheckYields(cities.StartingStock, resources, "$.cities.startingStock", problems, MaxStock);
+        CheckStorage(document, resources, problems);
 
         var territory = document.Territory;
         RulesetValidator.InRange(territory.InitialRadius, 0, MaxRadius, "$.territory.initialRadius", problems);
@@ -118,6 +120,43 @@ internal static class EconomyRulesValidator
         if (cities.MinimumSpacing <= 2 * territory.InitialRadius)
         {
             problems.Add(new("$.territory.initialRadius", $"Must be less than half of cities.minimumSpacing ({cities.MinimumSpacing}), so two new cities' territories never overlap."));
+        }
+    }
+
+    // Every stocked resource (all but science, a per-turn budget) has a default storage cap, and a new city's stock and every
+    // resource cost fit in it.
+    private static void CheckStorage(RulesetDocument document, HashSet<string> resources, List<RulesetProblem> problems)
+    {
+        var storage = document.Cities.Storage;
+        CheckYields(storage, resources, "$.cities.storage", problems, MaxStock);
+        foreach (var resource in document.Resources.Where(resource => resource.Id != document.Science.Resource && storage.All(cap => cap.Resource != resource.Id)))
+        {
+            problems.Add(new("$.cities.storage", $"'{resource.Id.Id}' needs a storage cap."));
+        }
+
+        CheckFits(document.Cities.StartingStock, storage, "$.cities.startingStock", problems);
+
+        // Upgrades are paid from a stock already cut to the caps, so every cost must fit in an empty city's storage.
+        for (var index = 0; index < document.Units.Length; index++)
+        {
+            CheckFits(document.Units[index].ResourceCost, storage, $"$.units[{index}].resourceCost", problems);
+            CheckFits(document.Units[index].UpgradeCost ?? [], storage, $"$.units[{index}].upgradeCost", problems);
+        }
+
+        for (var index = 0; index < document.Buildings.Length; index++)
+        {
+            CheckFits(document.Buildings[index].ResourceCost, storage, $"$.buildings[{index}].resourceCost", problems);
+        }
+    }
+
+    private static void CheckFits(ImmutableArray<ResourceAmount> amounts, ImmutableArray<ResourceAmount> storage, string path, List<RulesetProblem> problems)
+    {
+        for (var index = 0; index < amounts.Length; index++)
+        {
+            if (storage.FirstOrDefault(cap => cap.Resource == amounts[index].Resource) is { } cap && amounts[index].Amount > cap.Amount)
+            {
+                problems.Add(new($"{path}[{index}].amount", $"Must be at most the storage cap of '{cap.Resource.Id}' ({cap.Amount})."));
+            }
         }
     }
 
