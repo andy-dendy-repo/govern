@@ -9,7 +9,8 @@
 
 // The share of a tile's radius its level plateau covers; the band outside it is the slope.
 export const PLATEAU = 0.65;
-// The water's height over a lake (TerrainReliefs.WaterLevel), under the surface of every land terrain.
+// The water's height over a lake (TerrainReliefs.WaterLevel), under every land terrain's relief height (a plateau's jitter
+// may still take a low one a little under it, out of the water's reach).
 export const WATER_LEVEL = 0.07;
 // How far under the water a rim shared with a lake lies.
 export const SHORE_DEPTH = 0.05;
@@ -43,13 +44,19 @@ export function surface(tile) {
 
 class Ground {
     constructor(tiles) {
-        this.tiles = new Map(tiles.map(tile => [`${tile.q},${tile.r}`, tile]));
+        this.tiles = new Map(tiles.map(tile => [key(tile.q, tile.r), tile]));
         // Each tile's six neighbours (undefined off the board), found once.
         this.neighbours = new Map(tiles.map(tile => [tile, STEPS.map(([dq, dr]) => this.tile(tile.q + dq, tile.r + dr))]));
+        // Each tile's rim, worked out once: the heights of its six corners and six edge middles, and whether it touches water.
+        this.rims = new Map(tiles.map(tile => [tile, {
+            corners: [0, 1, 2, 3, 4, 5].map(k => rimHeight(this.around(tile, k))),
+            edges: [0, 1, 2, 3, 4, 5].map(k => rimHeight(this.beside(tile, k))),
+            wet: tile.shape === 'water' || [0, 1, 2, 3, 4, 5].some(k => this.joined(tile, k) && this.neighbour(tile, k).shape === 'water'),
+        }]));
     }
 
     tile(q, r) {
-        return this.tiles.get(`${q},${r}`);
+        return this.tiles.get(key(q, r));
     }
 
     // The tile across edge k, or undefined off the board.
@@ -78,16 +85,16 @@ class Ground {
     }
 
     cornerHeight(tile, k) {
-        return rimHeight(this.around(tile, k));
+        return this.rims.get(tile).corners[k];
     }
 
     edgeHeight(tile, k) {
-        return rimHeight(this.beside(tile, k));
+        return this.rims.get(tile).edges[k];
     }
 
     // Whether a tile is a lake or touches one: the ground there may lie under the water.
     wet(tile) {
-        return tile.shape === 'water' || [0, 1, 2, 3, 4, 5].some(k => this.joined(tile, k) && this.neighbour(tile, k).shape === 'water');
+        return this.rims.get(tile).wet;
     }
 
     // The tile whose area holds a point (the nearest centre).
@@ -104,8 +111,8 @@ class Ground {
         return this.tile(rq, rr);
     }
 
-    // The height of the ground under a point, from the plateau out along the slope to the rim (`top` is the plateau's height,
-    // by default the tile's own, jitter included). Off the board, `fallback`.
+    // The height of the ground under a point, exactly as the terrain mesh draws it (`top` is the plateau's height, by default
+    // the tile's own, jitter included; the facets' small dip is left out). Off the board, `fallback`.
     heightAt(x, z, top, fallback = 0) {
         const tile = this.tileAt(x, z);
         if (!tile) {
@@ -113,32 +120,59 @@ class Ground {
         }
         const level = top ?? tileLevel(tile);
         const [dx, dz] = [x - tile.x, z - tile.z];
-        const distance = Math.hypot(dx, dz);
-        if (distance < 1e-6) {
-            return level;
-        }
-        // The edge the point faces (edge k is centred on 60k degrees) and how far out it is, as a share of the way to the rim.
+        // The edge the point faces (edge k is centred on 60k degrees), which side of its middle, and how far out it is.
         const degrees = (Math.atan2(dz, dx) * 180 / Math.PI + 360) % 360;
         const k = Math.round(degrees / 60) % 6;
-        const off = degrees - 60 * k > 180 ? degrees - 60 * k - 360 : degrees - 60 * k;
-        const share = distance * Math.cos(off * Math.PI / 180) / (SQRT3 / 2);
-        if (share <= PLATEAU) {
+        const off = ((degrees - 60 * k + 540) % 360) - 180;
+        if (Math.hypot(dx, dz) * Math.cos(off * Math.PI / 180) <= PLATEAU * SQRT3 / 2) {
             return level;
         }
-        const along = Math.max(-1, Math.min(1, off / 30));
-        const middle = this.edgeHeight(tile, k);
-        const end = along < 0 ? this.cornerHeight(tile, k) : this.cornerHeight(tile, (k + 1) % 6);
-        const rim = middle + (end - middle) * Math.abs(along);
-        const t = Math.min(1, (share - PLATEAU) / (1 - PLATEAU));
-        return level + (rim - level) * t;
+        // The slope's two triangles on that side, as terrain.js cuts them: corner side (plateau corner, plateau middle, rim
+        // middle | plateau corner, rim middle, rim corner), or the other (plateau middle, plateau corner, rim corner | plateau
+        // middle, rim corner, rim middle).
+        const rim = this.rims.get(tile);
+        const next = (k + 1) % 6;
+        const [c, m] = off < 0 ? [corners[k], middleOf(k)] : [corners[next], middleOf(k)];
+        const corner = { x: c[0], z: c[1], y: rim.corners[off < 0 ? k : next] };
+        const middle = { x: m[0], z: m[1], y: rim.edges[k] };
+        const flatCorner = { x: c[0] * PLATEAU, z: c[1] * PLATEAU, y: level };
+        const flatMiddle = { x: m[0] * PLATEAU, z: m[1] * PLATEAU, y: level };
+        const point = { x: dx, z: dz };
+        const first = off < 0 ? [flatCorner, flatMiddle, middle] : [flatMiddle, flatCorner, corner];
+        const second = off < 0 ? [flatCorner, middle, corner] : [flatMiddle, corner, middle];
+        const inFirst = barycentric(point, first);
+        return inFirst.every(weight => weight >= -1e-9) ? blend(inFirst, first) : blend(barycentric(point, second), second);
     }
 
-    // Where things lie at (x, z): the ground, or the water over a lake (a tint or a border floats on it).
+    // Where things lie at (x, z): the ground, or the water over a lake (a tint, a border or a river floats on it).
     surfaceAt(x, z, fallback = 0) {
         const height = this.heightAt(x, z, undefined, fallback);
         const tile = this.tileAt(x, z);
         return tile && this.wet(tile) ? Math.max(height, WATER_LEVEL) : height;
     }
+}
+
+// A number per axial coordinate (maps are at most a few dozen tiles across), quicker to look up than text.
+function key(q, r) {
+    return (q + 1024) * 4096 + r + 1024;
+}
+
+// The middle of edge k of a hex of radius 1 around the origin.
+function middleOf(k) {
+    const [a, b] = [corners[k], corners[(k + 1) % 6]];
+    return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+}
+
+// The weights of a point between a triangle's three corners (all ≥ 0 inside it).
+function barycentric(p, [a, b, c]) {
+    const det = (b.z - c.z) * (a.x - c.x) + (c.x - b.x) * (a.z - c.z);
+    const wa = ((b.z - c.z) * (p.x - c.x) + (c.x - b.x) * (p.z - c.z)) / det;
+    const wb = ((c.z - a.z) * (p.x - c.x) + (a.x - c.x) * (p.z - c.z)) / det;
+    return [wa, wb, 1 - wa - wb];
+}
+
+function blend(weights, points) {
+    return weights[0] * points[0].y + weights[1] * points[1].y + weights[2] * points[2].y;
 }
 
 // The height where tiles meet: the lowest of their surfaces, or under the water when one of them is a lake.
@@ -154,8 +188,7 @@ export function hash(q, r, salt) {
     return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-// How far a tile's plateau may sit above or below its relief's height, so the ground isn't perfectly level. Rivers and borders
-// are lifted just above it (rivers.js, overlays.js) so they never flicker.
+// How far a tile's plateau may sit above or below its relief's height, so the ground isn't perfectly level.
 export const TOP_JITTER = 0.02;
 
 // The height of a tile's plateau: its relief's height, varied a little per tile.

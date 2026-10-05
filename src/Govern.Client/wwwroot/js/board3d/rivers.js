@@ -1,17 +1,18 @@
 // Rivers and bridges: each river edge is a gently winding ribbon of water over a slightly wider band of bank, darker at its
 // sides than in its middle, with a few light ripples on visible rivers, and round ends so a river's edges join at the corners;
-// each bridged edge gets a plank deck with rails, sloping between the two tiles. Built from a BoardScene's rivers and bridges.
+// each bridged edge gets a plank deck with rails, sloping between the two tiles. The water and its bank are draped over the
+// ground's slopes (ground.js): a river runs down where the land does. Built from a BoardScene's rivers and bridges.
 import {
     BoxGeometry, BufferGeometry, CircleGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshLambertMaterial,
     MeshStandardMaterial, Quaternion, Vector3,
 } from '../../lib/three/three.module.js';
 import { instances } from './shapes.js';
-import { hash, TOP_JITTER } from './terrain.js';
+import { groundOf, hash } from './ground.js';
 
-// The water sits just above the highest a tile top can vary (terrain.js), so it never flickers against the ground; the bank just
-// under it, and the ripples on it, are kept apart from it by polygon offsets.
-const RIVER_LIFT = TOP_JITTER + 0.002;
-const BANK_LIFT = TOP_JITTER + 0.001;
+// The water lies just over the ground it is draped on, so it never flickers against it; the bank just under it, and the
+// ripples on it, are kept apart from it by polygon offsets.
+const RIVER_LIFT = 0.008;
+const BANK_LIFT = 0.006;
 const BANK = 0.035;
 // Pieces per edge, how far an edge's middle may wind off the straight line (at most this share of its width), how much wider it
 // gets there, and how dark the water is at its sides.
@@ -70,10 +71,18 @@ function course(river) {
     });
 }
 
-// A ribbon along the points at height y, `extra` wider on each side, coloured `middle` along its centre and `side` at its edges.
-function ribbon(points, y, extra, middle, side, positions, colours) {
-    const at = (point, sign) => [point.x + point.nx * (point.half + extra) * sign, y, point.z + point.nz * (point.half + extra) * sign];
-    const centre = point => [point.x, y, point.z];
+// A ribbon along the points, `lift` over the ground (`height(x, z)`), `extra` wider on each side, coloured `middle` along its
+// centre and `side` at its edges.
+function ribbon(points, height, lift, extra, middle, side, positions, colours) {
+    const lay = (x, z) => [x, height(x, z) + lift, z];
+    // Each point's centre and its two sides, laid on the ground once.
+    const laid = new Map(points.map(point => [point, {
+        centre: lay(point.x, point.z),
+        1: lay(point.x + point.nx * (point.half + extra), point.z + point.nz * (point.half + extra)),
+        [-1]: lay(point.x - point.nx * (point.half + extra), point.z - point.nz * (point.half + extra)),
+    }]));
+    const at = (point, sign) => laid.get(point)[sign];
+    const centre = point => laid.get(point).centre;
     const push = (vertices, shades) => {
         positions.push(...vertices.flat());
         for (const shade of shades) {
@@ -99,7 +108,16 @@ function mesh(positions, colours, material) {
     return built;
 }
 
-function buildWater(rivers, palette) {
+// The height of a round end: the highest ground under its rim, so no part of the disc sinks into a slope.
+function endHeight(height, x, z, radius) {
+    let top = height(x, z);
+    for (let k = 0; k < 6; k++) {
+        top = Math.max(top, height(x + Math.cos(k * Math.PI / 3) * radius, z + Math.sin(k * Math.PI / 3) * radius));
+    }
+    return top;
+}
+
+function buildWater(rivers, palette, ground) {
     const water = { positions: [], colours: [] };
     const shore = { positions: [], colours: [] };
     const joints = [];
@@ -110,11 +128,14 @@ function buildWater(rivers, palette) {
         const sides = colour.clone().multiplyScalar(SIDE_SHADE);
         const land = palette.faded('--gv-board3d-riverbank', river);
         const points = course(river);
-        ribbon(points, river.height + RIVER_LIFT, 0, colour, sides, water.positions, water.colours);
-        ribbon(points, river.height + BANK_LIFT, BANK, land, land, shore.positions, shore.colours);
+        // Next to the mist, the river keeps to its own known side's height rather than dropping onto the unexplored ground.
+        const height = (x, z) => (ground.tileAt(x, z)?.terrain ? ground.surfaceAt(x, z, river.height) : river.height);
+        ribbon(points, height, RIVER_LIFT, 0, colour, sides, water.positions, water.colours);
+        ribbon(points, height, BANK_LIFT, BANK, land, land, shore.positions, shore.colours);
         for (const [x, z] of [[river.x1, river.z1], [river.x2, river.z2]]) {
-            joints.push({ x, y: river.height + RIVER_LIFT, z, sx: river.width, sy: 1, sz: river.width, colour });
-            shoreJoints.push({ x, y: river.height + BANK_LIFT, z, sx: river.width + BANK * 2, sy: 1, sz: river.width + BANK * 2, colour: land });
+            const y = endHeight(height, x, z, river.width / 2 + BANK);
+            joints.push({ x, y: y + RIVER_LIFT, z, sx: river.width, sy: 1, sz: river.width, colour });
+            shoreJoints.push({ x, y: y + BANK_LIFT, z, sx: river.width + BANK * 2, sy: 1, sz: river.width + BANK * 2, colour: land });
         }
         if (river.visibility === 'visible') {
             const light = colour.clone().offsetHSL(0, -0.1, 0.22);
@@ -123,7 +144,8 @@ function buildWater(rivers, palette) {
                 const point = points[2 + k * 4];
                 const shift = (hash(Math.round(point.x * 8), Math.round(point.z * 8), 9 + k) - 0.5) * point.half;
                 ripples.push({
-                    x: point.x + point.nx * shift, y: river.height + RIVER_LIFT, z: point.z + point.nz * shift,
+                    x: point.x + point.nx * shift, y: height(point.x + point.nx * shift, point.z + point.nz * shift) + RIVER_LIFT * 1.5,
+                    z: point.z + point.nz * shift,
                     sx: river.width * 0.9, sy: 1, sz: river.width * 0.12, turn, colour: light,
                 });
             }
@@ -168,7 +190,7 @@ function buildBridges(bridges, palette) {
 export function buildRivers(scene, palette) {
     const group = new Group();
     if (scene.rivers?.length) {
-        group.add(...buildWater(scene.rivers, palette));
+        group.add(...buildWater(scene.rivers, palette, groundOf(scene)));
     }
     if (scene.bridges?.length) {
         group.add(buildBridges(scene.bridges, palette));
