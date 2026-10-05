@@ -1,17 +1,18 @@
 // The board's ground: one continuous, flat-shaded landscape (ground.js gives its shape: a level plateau per tile that slopes to
 // meet its neighbours, with no seams between explored tiles). Each tile's top is cut into small facets; its colour runs into its
 // neighbours' at the rim, where the tiles around a point share one blended colour, and leans in soft patches that run on across
-// the map, so terrains fade into each other instead of ending at a hex line. Water lies over lake tiles, plus and the low-poly dressing of each tile shape (clear
-// of the tile's improvement or building): trees, hills, peaks, dunes, grass, flowers, stones, reeds and so on. Each shape comes in
+// the map, so terrains fade into each other instead of ending at a hex line. Water lies over lake tiles and runs a little onto
+// their shores. Each tile carries the low-poly dressing of its shape (clear of its improvement or building, set on the slope
+// under it): trees, hills, peaks, dunes, grass, flowers, stones, reeds and so on. Each shape comes in
 // a few variants (conifers or broadleaf, a meadow or flowers…), picked per tile, so neighbours of one terrain don't look the same.
 // A mist covers unexplored tiles and thins out towards the known land. Built from a BoardScene (Features/Games/Models/BoardScene).
 import {
-    BufferGeometry, ConeGeometry, CylinderGeometry, Float32BufferAttribute, Group, IcosahedronGeometry, InstancedMesh, Matrix4,
+    BufferAttribute, BufferGeometry, ConeGeometry, CylinderGeometry, Float32BufferAttribute, Group, IcosahedronGeometry, InstancedMesh, Matrix4,
     Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Quaternion, Vector3,
 } from '../../lib/three/three.module.js';
-import { corners, groundOf, hash, PLATEAU, tileLevel, TOP_JITTER, WATER_LEVEL } from './ground.js';
+import { corners, groundOf, hash, PLATEAU, tileLevel, WATER_LEVEL } from './ground.js';
 
-export { hash, TOP_JITTER };
+export { hash };
 
 // Tiles meet edge to edge; the board stands on a ground at y = 0, which shows only at the map's edge and under the mist.
 const TILE_RADIUS = 1;
@@ -107,6 +108,10 @@ export function tileSurface(tile) {
 
 // The colour of the ground at (x, z), shared by the tiles that meet there: each one's colour leaned towards its accent by the
 // patches (world-space, so the same at that point for every tile), averaged, then lit or shaded by the slow shade.
+function snap(value) {
+    return Math.round(value * 4096) / 4096;
+}
+
 // Plain numbers ({ r, g, b }) rather than THREE.Color: a big map has a few hundred thousand of these.
 function groundColour(x, z, looks) {
     const lean = patch(x, z);
@@ -120,21 +125,44 @@ function groundColour(x, z, looks) {
     return { r: r * scale, g: g * scale, b: b * scale };
 }
 
+// Writes triangles straight into typed arrays that double when full: a big map has a few hundred thousand.
 class MeshBuilder {
     constructor() {
-        this.positions = [];
-        this.colours = [];
-        this.faceTile = [];
+        this.count = 0;
+        this.positions = new Float32Array(9 * 1024);
+        this.colours = new Float32Array(9 * 1024);
+        this.faceTile = new Int32Array(1024);
     }
 
     // A triangle in one colour, or with a colour per corner (`colour` an array of three).
     triangle(a, b, c, colour, tile) {
-        this.positions.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
-        for (let i = 0; i < 3; i++) {
-            const corner = Array.isArray(colour) ? colour[i] : colour;
-            this.colours.push(corner.r, corner.g, corner.b);
+        if (this.count === this.faceTile.length) {
+            this.grow();
         }
-        this.faceTile.push(tile);
+        const at = this.count * 9;
+        const p = this.positions;
+        p[at] = a[0]; p[at + 1] = a[1]; p[at + 2] = a[2];
+        p[at + 3] = b[0]; p[at + 4] = b[1]; p[at + 5] = b[2];
+        p[at + 6] = c[0]; p[at + 7] = c[1]; p[at + 8] = c[2];
+        const many = Array.isArray(colour);
+        for (let i = 0; i < 3; i++) {
+            const corner = many ? colour[i] : colour;
+            this.colours[at + i * 3] = corner.r;
+            this.colours[at + i * 3 + 1] = corner.g;
+            this.colours[at + i * 3 + 2] = corner.b;
+        }
+        this.faceTile[this.count++] = tile;
+    }
+
+    grow() {
+        const bigger = (array, Type) => {
+            const next = new Type(array.length * 2);
+            next.set(array);
+            return next;
+        };
+        this.positions = bigger(this.positions, Float32Array);
+        this.colours = bigger(this.colours, Float32Array);
+        this.faceTile = bigger(this.faceTile, Int32Array);
     }
 
     // A tile's piece of the landscape: a plateau at its level cut into facets (the inner ring dips a little, so the light picks
@@ -145,6 +173,11 @@ class MeshBuilder {
         const [x, z] = [tile.x, tile.z];
         const level = tileLevel(tile);
         const own = [look(tile)];
+        if (!tile.terrain) {
+            // Unexplored: a plain flat hex under the mist; its explored neighbours wall their side down to the base.
+            this.hexTop(x, z, level, TILE_RADIUS, groundColour(x, z, own), index);
+            return;
+        }
         const at = (px, pz, y, looks = own) => ({ position: [px, y, pz], colour: groundColour(px, pz, looks) });
         const ring = share => corners.map(([cx, cz]) => [x + cx * share * TILE_RADIUS, z + cz * share * TILE_RADIUS]);
         const middles = points => points.map(([ax, az], k) => [(ax + points[(k + 1) % 6][0]) / 2, (az + points[(k + 1) % 6][1]) / 2]);
@@ -153,9 +186,14 @@ class MeshBuilder {
         const plateau = ring(PLATEAU);
         const flat = plateau.map(([px, pz]) => at(px, pz, level));
         const flatMiddle = middles(plateau).map(([px, pz]) => at(px, pz, level));
-        const rimPoints = ring(1);
-        // A rim point is shared by two or three tiles: its colour is worked out once (`shared`, keyed by place).
+        // Rim points are snapped to a fine grid, so the tiles sharing one write exactly the same vertex (no hairline cracks).
+        const rimPoints = ring(1).map(([px, pz]) => [snap(px), snap(pz)]);
+        // A rim point shared by two or three explored tiles has one colour, worked out once (`shared`, keyed by place); a point
+        // only one tile takes part in (along the mist or the map's edge) is that tile's own.
         const rimAt = (px, pz, y, tiles) => {
+            if (tiles.length < 2) {
+                return at(px, pz, y);
+            }
             const key = Math.round(px * 8) * 65536 + Math.round(pz * 8);
             let colour = shared.get(key);
             if (!colour) {
@@ -198,7 +236,7 @@ class MeshBuilder {
 
     // The water's run past edge k of a hex at height y, onto the land's slope that dips under it: a strip whose outer line
     // wanders out between SHORE_MIN and SHORE_MAX (world-space noise, so it runs on smoothly round a corner into the next edge),
-    // which gives the lake a shoreline of its own instead of a hex line. At an end shared with another lake the strip closes
+    // which gives the lake a wavy shoreline of its own instead of a hex line. At an end shared with another lake the strip closes
     // to the corner (`reach`), so no water lies there twice.
     skirt(x, z, y, k, reach, colour, tile) {
         const [ax, az] = corners[k];
@@ -230,11 +268,11 @@ class MeshBuilder {
 
     build(material) {
         const geometry = new BufferGeometry();
-        geometry.setAttribute('position', new Float32BufferAttribute(this.positions, 3));
-        geometry.setAttribute('color', new Float32BufferAttribute(this.colours, 3));
+        geometry.setAttribute('position', new BufferAttribute(this.positions.slice(0, this.count * 9), 3));
+        geometry.setAttribute('color', new BufferAttribute(this.colours.slice(0, this.count * 9), 3));
         geometry.computeVertexNormals();
         const mesh = new Mesh(geometry, material);
-        mesh.userData.faceTile = Int32Array.from(this.faceTile);
+        mesh.userData.faceTile = this.faceTile.slice(0, this.count);
         return mesh;
     }
 }
@@ -439,12 +477,12 @@ const decorators = {
     water(tile, top, palette, out) {
         const surface = palette.terrain(tile);
         out.water.hexTop(tile.x, tile.z, WATER_LEVEL + WATER_LIFT, TILE_RADIUS, surface, out.index);
-        // Past each shore the water runs on a little over the land's slope, which dips under it: the land hides what lies
-        // above the water, so the shoreline is where the slope meets it.
+        // Past each shore the water runs on a little, in a wavy strip, over the land's slope, which dips under it there.
         for (let k = 0; k < 6; k++) {
             if (out.shape.joined(tile, k) && out.shape.neighbour(tile, k).shape !== 'water') {
-                const lake = j => out.shape.neighbour(tile, j)?.shape === 'water';
-                out.water.skirt(tile.x, tile.z, WATER_LEVEL + WATER_LIFT, k, [!lake((k + 5) % 6), !lake((k + 1) % 6)], surface, out.index);
+                // An end of the strip reaches out only where the land goes on beside it (not another lake, the mist or the map's edge).
+                const land = j => out.shape.joined(tile, j) && out.shape.neighbour(tile, j).shape !== 'water';
+                out.water.skirt(tile.x, tile.z, WATER_LEVEL + WATER_LIFT, k, [land((k + 5) % 6), land((k + 1) % 6)], surface, out.index);
             }
         }
         const kind = variant(tile, 3);
@@ -575,7 +613,7 @@ export function buildTerrain(scene, palette) {
     pick.receiveShadow = true;
     pick.castShadow = true;
     group.add(pick);
-    if (out.water.positions.length) {
+    if (out.water.count) {
         const surface = out.water.build(water);
         surface.receiveShadow = true;
         group.add(surface);

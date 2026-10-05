@@ -4,14 +4,14 @@ import {
     BoxGeometry, BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial,
 } from '../../lib/three/three.module.js';
 import { instances } from './shapes.js';
-import { corners as hexCorners, groundOf, PLATEAU, TOP_JITTER } from './ground.js';
+import { corners as hexCorners, groundOf, PLATEAU } from './ground.js';
 
 const DASH = 0.14;
 const GAP = 0.08;
 const DASH_WIDTH = 0.05;
 const DASH_HEIGHT = 0.025;
-// Above the highest a tile top can vary (terrain.js), so the dashes always show.
-const LIFT = TOP_JITTER + 0.002;
+// Just over the ground they are draped on (ground.js), so the dashes and tints never flicker against it.
+const LIFT = 0.008;
 
 const block = new BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
 const paint = new MeshLambertMaterial({ flatShading: true });
@@ -58,8 +58,9 @@ const TINT_LIFT = 0.03;
 const TINT_RADIUS = 0.9;
 const RING_RADIUS = 0.93;
 const RING_WIDTH = 0.07;
+const RING_HEIGHT = 0.05;
 const tints = new MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: DoubleSide });
-const ring = new MeshLambertMaterial({ flatShading: true });
+const ring = new MeshLambertMaterial({ vertexColors: true, flatShading: true, side: DoubleSide });
 
 // A tint is a hex fan draped on the ground: the plateau's ring and the tint's own rim, each corner and edge middle at the
 // ground's height under it.
@@ -102,20 +103,40 @@ function buildTints(tiles, palette, ground) {
     return mesh;
 }
 
+// The selection ring: a raised band round the tile, draped over the ground (each corner and edge middle at the ground's height
+// under it), so it hugs a hillside instead of floating over it.
 function buildRing(tile, palette, ground) {
     const colour = palette.token(tile.tint);
-    const length = RING_RADIUS;
-    const sides = hexCorners.map(([ax, az], k) => {
-        const [bx, bz] = hexCorners[(k + 1) % 6];
-        const [x, z] = [tile.x + (ax + bx) / 2 * RING_RADIUS, tile.z + (az + bz) / 2 * RING_RADIUS];
-        return {
-            x, y: (ground ? ground.surfaceAt(x, z, tile.height) : tile.height) + LIFT, z,
-            sx: length, sy: 0.05, sz: RING_WIDTH, turn: Math.atan2(-(bz - az), bx - ax), colour,
-        };
+    const positions = [];
+    const colours = [];
+    const lay = (share, k, middle, raise) => {
+        const [ax, az] = hexCorners[k];
+        const [bx, bz] = middle ? hexCorners[(k + 1) % 6] : hexCorners[k];
+        const [x, z] = [tile.x + (ax + bx) / 2 * share, tile.z + (az + bz) / 2 * share];
+        return [x, (ground ? ground.surfaceAt(x, z, tile.height) : tile.height) + LIFT + raise, z];
+    };
+    const quad = (a, b, c, d) => {
+        positions.push(...a, ...b, ...c, ...a, ...c, ...d);
+        for (let v = 0; v < 6; v++) {
+            colours.push(colour.r, colour.g, colour.b);
+        }
+    };
+    const [inner, outer] = [RING_RADIUS - RING_WIDTH / 2, RING_RADIUS + RING_WIDTH / 2];
+    // The ring's points in order round the tile: each corner, then the middle of the edge after it.
+    const steps = Array.from({ length: 12 }, (_, i) => [Math.floor(i / 2), i % 2 === 1]);
+    steps.forEach(([k, middle], i) => {
+        const [nk, nmiddle] = steps[(i + 1) % 12];
+        const [i0, i1] = [lay(inner, k, middle, RING_HEIGHT), lay(inner, nk, nmiddle, RING_HEIGHT)];
+        const [o0, o1] = [lay(outer, k, middle, RING_HEIGHT), lay(outer, nk, nmiddle, RING_HEIGHT)];
+        quad(i0, o0, o1, i1);
+        quad(o0, lay(outer, k, middle, 0), lay(outer, nk, nmiddle, 0), o1);
+        quad(i1, lay(inner, nk, nmiddle, 0), lay(inner, k, middle, 0), i0);
     });
-    const mesh = instances(block, ring, sides);
-    mesh.castShadow = false;
-    return mesh;
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new Float32BufferAttribute(colours, 3));
+    geometry.computeVertexNormals();
+    return new Mesh(geometry, ring);
 }
 
 // Builds the overlay over a scene's ground, or null when it is empty.
