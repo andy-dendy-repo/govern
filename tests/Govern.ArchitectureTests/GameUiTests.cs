@@ -139,9 +139,9 @@ public partial class GameUiTests
     [Fact]
     public void Board3DTerrain_SharesTheWaterLevelWithTerrainReliefs()
     {
-        var match = WaterLevelRegex().Match(File.ReadAllText(Path.Combine(Board3DRoot, "terrain.js")));
+        var match = WaterLevelRegex().Match(File.ReadAllText(Path.Combine(Board3DRoot, "ground.js")));
 
-        match.Success.ShouldBeTrue("js/board3d/terrain.js declares WATER_LEVEL");
+        match.Success.ShouldBeTrue("js/board3d/ground.js declares WATER_LEVEL");
         double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)
             .ShouldBe(TerrainReliefs.WaterLevel, "things on a lake stand on the water the renderer draws");
     }

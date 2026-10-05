@@ -1,5 +1,7 @@
-// The board's ground: one raised hex per tile (flat-shaded, with darker sides) whose top is cut into small facets shaded in soft
-// patches that run on across tiles of the same terrain, water over lake tiles, and the low-poly dressing of each tile shape (clear
+// The board's ground: one continuous, flat-shaded landscape (ground.js gives its shape: a level plateau per tile that slopes to
+// meet its neighbours, with no seams between explored tiles). Each tile's top is cut into small facets; its colour runs into its
+// neighbours' at the rim, where the tiles around a point share one blended colour, and leans in soft patches that run on across
+// the map, so terrains fade into each other instead of ending at a hex line. Water lies over lake tiles, plus and the low-poly dressing of each tile shape (clear
 // of the tile's improvement or building): trees, hills, peaks, dunes, grass, flowers, stones, reeds and so on. Each shape comes in
 // a few variants (conifers or broadleaf, a meadow or flowers…), picked per tile, so neighbours of one terrain don't look the same.
 // A mist covers unexplored tiles and thins out towards the known land. Built from a BoardScene (Features/Games/Models/BoardScene).
@@ -7,14 +9,27 @@ import {
     BufferGeometry, ConeGeometry, CylinderGeometry, Float32BufferAttribute, Group, IcosahedronGeometry, InstancedMesh, Matrix4,
     Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Quaternion, Vector3,
 } from '../../lib/three/three.module.js';
+import { corners, groundOf, hash, PLATEAU, tileLevel, TOP_JITTER, WATER_LEVEL } from './ground.js';
 
-// Tiles nearly touch: a thin seam shows the hex grid without wide gaps. They stand on a ground at y = 0.
-const TILE_RADIUS = 0.985;
+export { hash, TOP_JITTER };
+
+// Tiles meet edge to edge; the board stands on a ground at y = 0, which shows only at the map's edge and under the mist.
+const TILE_RADIUS = 1;
 const BASE = 0;
-const WATER_LEVEL = 0.1;
 const MIST_LEVEL = 0.16;
 const MIST_DENSITY = 0.92;
-export const TOP_JITTER = 0.02;
+// The water's surface sits just above the waterline the shores come down to, so the two never flicker.
+const WATER_LIFT = 0.003;
+// How far past a lake's rim its water runs onto the land's slope (map units), in steps along each edge, waving at this size.
+const SHORE_MIN = 0.03;
+const SHORE_MAX = 0.24;
+const SHORE_STEPS = 6;
+const SHORE_WAVE = 0.45;
+// Where the facets of a plateau bend: its inner ring, as a share of the radius.
+const INNER = 0.35;
+// The size, in map units, of the slow light and shade that runs over the whole ground, and how strong it is (either way).
+const SHADE_SIZE = 3.2;
+const SHADE = 0.05;
 // How far a decoration keeps from an improvement or building on its tile.
 const FEATURE_ROOM = 0.5;
 // How far the facets inside a tile's top may dip below its rim (the rim stays level, so rivers and borders lie on it).
@@ -41,30 +56,22 @@ const decoration = new MeshLambertMaterial({ flatShading: true });
 const mist = new MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false });
 const water = new MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.72, roughness: 0.25, metalness: 0, depthWrite: false });
 
-// The corners of a hex around its centre: pointy top, corner k at 60k − 30 degrees, as in HexLayout.
-const corners = Array.from({ length: 6 }, (_, k) => {
-    const angle = Math.PI / 180 * (60 * k - 30);
-    return [Math.cos(angle), Math.sin(angle)];
-});
-
-// A stable pseudo-random number in [0, 1) per tile and purpose, so a tile looks the same on every view.
-export function hash(q, r, salt) {
-    let h = Math.imul(q, 374761393) ^ Math.imul(r, 668265263) ^ Math.imul(salt, 2246822519);
-    h = Math.imul(h ^ (h >>> 13), 1274126177);
-    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
-
 function smooth(t) {
     return t * t * (3 - 2 * t);
 }
 
 // Smooth value noise in [0, 1) over the ground, one lattice value per `size` map units, so a patch runs on across tiles.
 function noise(x, z, size, salt) {
-    const [fx, fz] = [x / size, z / size];
-    const [i, j] = [Math.floor(fx), Math.floor(fz)];
-    const [u, v] = [smooth(fx - i), smooth(fz - j)];
-    const top = hash(i, j, salt) + (hash(i + 1, j, salt) - hash(i, j, salt)) * u;
-    const bottom = hash(i, j + 1, salt) + (hash(i + 1, j + 1, salt) - hash(i, j + 1, salt)) * u;
+    const fx = x / size;
+    const fz = z / size;
+    const i = Math.floor(fx);
+    const j = Math.floor(fz);
+    const u = smooth(fx - i);
+    const v = smooth(fz - j);
+    const a = hash(i, j, salt);
+    const c = hash(i, j + 1, salt);
+    const top = a + (hash(i + 1, j, salt) - a) * u;
+    const bottom = c + (hash(i + 1, j + 1, salt) - c) * u;
     return top + (bottom - top) * v;
 }
 
@@ -88,15 +95,29 @@ function accentOf(tile, colour) {
     return colour.clone().offsetHSL(h, sat, tile.terrain ? l : l / 3);
 }
 
-// The height of a tile's top: its relief's height, varied a little per tile (up to TOP_JITTER either way) so the ground isn't
-// perfectly flat. Rivers and borders are lifted just above TOP_JITTER (rivers.js, overlays.js) so they never flicker.
+// The height of a tile's top (its plateau): see tileLevel in ground.js.
 export function tileTop(tile) {
-    return tile.height + (hash(tile.q, tile.r, 1) - 0.5) * 2 * TOP_JITTER;
+    return tileLevel(tile);
 }
 
 // Where things stand on a tile: its top, or the water over a lake.
 export function tileSurface(tile) {
     return tile.shape === 'water' ? Math.max(tileTop(tile), WATER_LEVEL) : tileTop(tile);
+}
+
+// The colour of the ground at (x, z), shared by the tiles that meet there: each one's colour leaned towards its accent by the
+// patches (world-space, so the same at that point for every tile), averaged, then lit or shaded by the slow shade.
+// Plain numbers ({ r, g, b }) rather than THREE.Color: a big map has a few hundred thousand of these.
+function groundColour(x, z, looks) {
+    const lean = patch(x, z);
+    let [r, g, b] = [0, 0, 0];
+    for (const { colour, accent } of looks) {
+        r += colour.r + (accent.r - colour.r) * lean;
+        g += colour.g + (accent.g - colour.g) * lean;
+        b += colour.b + (accent.b - colour.b) * lean;
+    }
+    const scale = (1 + (noise(x, z, SHADE_SIZE, 94) - 0.5) * 2 * SHADE) / looks.length;
+    return { r: r * scale, g: g * scale, b: b * scale };
 }
 
 class MeshBuilder {
@@ -108,7 +129,7 @@ class MeshBuilder {
 
     // A triangle in one colour, or with a colour per corner (`colour` an array of three).
     triangle(a, b, c, colour, tile) {
-        this.positions.push(...a, ...b, ...c);
+        this.positions.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
         for (let i = 0; i < 3; i++) {
             const corner = Array.isArray(colour) ? colour[i] : colour;
             this.colours.push(corner.r, corner.g, corner.b);
@@ -116,32 +137,85 @@ class MeshBuilder {
         this.faceTile.push(tile);
     }
 
-    // A hex top cut into 24 facets: each of the six triangles in four, through the middles of its sides. The rim and the centre
-    // stay at `y`; the points between dip a little, so the light picks out the facets. Every point leans from `colour` towards
-    // `accent` by the ground's patches.
-    texturedTop(x, z, y, radius, colour, accent, tile) {
-        const point = (px, pz, dip) => {
-            const position = [px, y - dip, pz];
-            return { position, colour: colour.clone().lerp(accent, patch(px, pz)) };
+    // A tile's piece of the landscape: a plateau at its level cut into facets (the inner ring dips a little, so the light picks
+    // them out) and the slope from the plateau's rim (PLATEAU of the radius) to the tile's own rim, whose corners and edge
+    // middles take the heights the ground gives them and the colours of the tiles that meet there. `look(tile)` gives a tile's
+    // colours; `shared` holds the rim colours already worked out.
+    landTop(tile, ground, look, shared, index) {
+        const [x, z] = [tile.x, tile.z];
+        const level = tileLevel(tile);
+        const own = [look(tile)];
+        const at = (px, pz, y, looks = own) => ({ position: [px, y, pz], colour: groundColour(px, pz, looks) });
+        const ring = share => corners.map(([cx, cz]) => [x + cx * share * TILE_RADIUS, z + cz * share * TILE_RADIUS]);
+        const middles = points => points.map(([ax, az], k) => [(ax + points[(k + 1) % 6][0]) / 2, (az + points[(k + 1) % 6][1]) / 2]);
+        const centre = at(x, z, level);
+        const inner = ring(INNER).map(([px, pz]) => at(px, pz, level - FACET_DIP * noise(px, pz, PATCH_FINE, 93)));
+        const plateau = ring(PLATEAU);
+        const flat = plateau.map(([px, pz]) => at(px, pz, level));
+        const flatMiddle = middles(plateau).map(([px, pz]) => at(px, pz, level));
+        const rimPoints = ring(1);
+        // A rim point is shared by two or three tiles: its colour is worked out once (`shared`, keyed by place).
+        const rimAt = (px, pz, y, tiles) => {
+            const key = Math.round(px * 8) * 65536 + Math.round(pz * 8);
+            let colour = shared.get(key);
+            if (!colour) {
+                colour = groundColour(px, pz, tiles.map(look));
+                shared.set(key, colour);
+            }
+            return { position: [px, y, pz], colour };
         };
-        const centre = point(x, z, 0);
-        const rim = corners.map(([cx, cz]) => point(x + cx * radius, z + cz * radius, 0));
-        const inner = corners.map(([cx, cz]) => {
-            const [px, pz] = [x + cx * radius / 2, z + cz * radius / 2];
-            return point(px, pz, FACET_DIP * noise(px, pz, PATCH_FINE, 93));
-        });
-        const middle = corners.map(([ax, az], k) => {
-            const [bx, bz] = corners[(k + 1) % 6];
-            return point(x + (ax + bx) / 2 * radius, z + (az + bz) / 2 * radius, 0);
-        });
-        const face = (p, q, r) => this.triangle(p.position, q.position, r.position, [p.colour, q.colour, r.colour], tile);
+        const rim = rimPoints.map(([px, pz], k) => rimAt(px, pz, ground.cornerHeight(tile, k), ground.around(tile, k)));
+        const rimMiddle = middles(rimPoints).map(([px, pz], k) => rimAt(px, pz, ground.edgeHeight(tile, k), ground.beside(tile, k)));
+        const face = (p, q, r) => this.triangle(p.position, q.position, r.position, [p.colour, q.colour, r.colour], index);
         for (let k = 0; k < 6; k++) {
-            const [a, b] = [rim[k], rim[(k + 1) % 6]];
-            const [ia, ib] = [inner[k], inner[(k + 1) % 6]];
-            face(centre, ib, ia);
-            face(ib, b, middle[k]);
-            face(ia, middle[k], a);
-            face(ib, middle[k], ia);
+            const next = (k + 1) % 6;
+            face(centre, inner[next], inner[k]);
+            face(inner[next], flat[next], flatMiddle[k]);
+            face(inner[k], flatMiddle[k], flat[k]);
+            face(inner[next], flatMiddle[k], inner[k]);
+            face(flat[k], flatMiddle[k], rimMiddle[k]);
+            face(flat[k], rimMiddle[k], rim[k]);
+            face(flatMiddle[k], flat[next], rim[next]);
+            face(flatMiddle[k], rim[next], rimMiddle[k]);
+            if (!ground.joined(tile, k)) {
+                this.edgeSide(rim[k], rimMiddle[k], rim[next], index);
+            }
+        }
+    }
+
+    // The wall under a rim edge (corner, middle, corner) down to the base, where no explored neighbour meets it: at the map's
+    // edge and along the mist.
+    edgeSide(a, middle, b, index) {
+        const shade = point => ({ r: point.colour.r * 0.7, g: point.colour.g * 0.7, b: point.colour.b * 0.7 });
+        const wall = (p, q) => {
+            const [p0, q0] = [[p.position[0], BASE, p.position[2]], [q.position[0], BASE, q.position[2]]];
+            this.triangle(p0, q.position, q0, [shade(p), shade(q), shade(q)], index);
+            this.triangle(p0, p.position, q.position, [shade(p), shade(p), shade(q)], index);
+        };
+        wall(a, middle);
+        wall(middle, b);
+    }
+
+    // The water's run past edge k of a hex at height y, onto the land's slope that dips under it: a strip whose outer line
+    // wanders out between SHORE_MIN and SHORE_MAX (world-space noise, so it runs on smoothly round a corner into the next edge),
+    // which gives the lake a shoreline of its own instead of a hex line. At an end shared with another lake the strip closes
+    // to the corner (`reach`), so no water lies there twice.
+    skirt(x, z, y, k, reach, colour, tile) {
+        const [ax, az] = corners[k];
+        const [bx, bz] = corners[(k + 1) % 6];
+        const point = i => {
+            const t = i / SHORE_STEPS;
+            const [px, pz] = [x + ax + (bx - ax) * t, z + az + (bz - az) * t];
+            const ends = (i === 0 && !reach[0]) || (i === SHORE_STEPS && !reach[1]);
+            const out = ends ? 0 : SHORE_MIN + (SHORE_MAX - SHORE_MIN) * noise(px, pz, SHORE_WAVE, 95);
+            const [dx, dz] = [px - x, pz - z];
+            const length = Math.hypot(dx, dz);
+            return [[px, y, pz], [px + dx / length * out, y, pz + dz / length * out]];
+        };
+        for (let i = 0; i < SHORE_STEPS; i++) {
+            const [[a, a1], [b, b1]] = [point(i), point(i + 1)];
+            this.triangle(a, b, b1, colour, tile);
+            this.triangle(a, b1, a1, colour, tile);
         }
     }
 
@@ -151,20 +225,6 @@ class MeshBuilder {
             const [ax, az] = corners[k];
             const [bx, bz] = corners[(k + 1) % 6];
             this.triangle([x, y, z], [x + bx * radius, y, z + bz * radius], [x + ax * radius, y, z + az * radius], colour, tile);
-        }
-    }
-
-    // The six sides of a hex prism from `bottom` up to `top`.
-    hexSides(x, z, bottom, top, radius, colour, tile) {
-        for (let k = 0; k < 6; k++) {
-            const [ax, az] = corners[k];
-            const [bx, bz] = corners[(k + 1) % 6];
-            const a0 = [x + ax * radius, bottom, z + az * radius];
-            const b0 = [x + bx * radius, bottom, z + bz * radius];
-            const a1 = [x + ax * radius, top, z + az * radius];
-            const b1 = [x + bx * radius, top, z + bz * radius];
-            this.triangle(a0, b1, b0, colour, tile);
-            this.triangle(a0, a1, b1, colour, tile);
         }
     }
 
@@ -377,7 +437,16 @@ const decorators = {
     },
     // Lakes: open water, reeds along the shore, or lily pads.
     water(tile, top, palette, out) {
-        out.water.hexTop(tile.x, tile.z, WATER_LEVEL, TILE_RADIUS, palette.terrain(tile), out.index);
+        const surface = palette.terrain(tile);
+        out.water.hexTop(tile.x, tile.z, WATER_LEVEL + WATER_LIFT, TILE_RADIUS, surface, out.index);
+        // Past each shore the water runs on a little over the land's slope, which dips under it: the land hides what lies
+        // above the water, so the shoreline is where the slope meets it.
+        for (let k = 0; k < 6; k++) {
+            if (out.shape.joined(tile, k) && out.shape.neighbour(tile, k).shape !== 'water') {
+                const lake = j => out.shape.neighbour(tile, j)?.shape === 'water';
+                out.water.skirt(tile.x, tile.z, WATER_LEVEL + WATER_LIFT, k, [!lake((k + 5) % 6), !lake((k + 1) % 6)], surface, out.index);
+            }
+        }
         const kind = variant(tile, 3);
         if (kind === 1) {
             const colour = palette.faded('--gv-board3d-reed', tile);
@@ -394,7 +463,7 @@ const decorators = {
             const colour = palette.faded('--gv-terrain-forest', tile).offsetHSL(0.03, 0, 0.05);
             strew(out, out.pads, tile, 3, 0.6, 960, (x, z, k) => {
                 const s = size(tile, 970 + k, 0.7, 0.6);
-                return { x, y: WATER_LEVEL + 0.004, z, sx: s, sy: 1, sz: s, turn: k, colour };
+                return { x, y: WATER_LEVEL + WATER_LIFT + 0.004, z, sx: s, sy: 1, sz: s, turn: k, colour };
             });
         }
     },
@@ -448,6 +517,26 @@ function spotKey(x, z) {
     return `${Math.round(x * 4)},${Math.round(z * 4)}`;
 }
 
+// The lists of dressing a tile adds to.
+const dressing = {
+    trees: 0, crowns: 0, trunks: 0, hills: 0, peaks: 0, caps: 0, rocks: 0, tufts: 0, flowers: 0, cacti: 0, pads: 0, reeds: 0,
+};
+
+// Lowers (or raises) what a tile's decorators placed past its plateau onto the slope under it, so nothing floats over a hillside
+// or sinks into a rise. Water dressing (reeds, pads) floats and stays.
+function settle(out, first, ground, tile) {
+    const level = tileLevel(tile);
+    for (const name of Object.keys(dressing)) {
+        if (name === 'pads' || name === 'reeds') {
+            continue;
+        }
+        const list = out[name];
+        for (let i = first[name]; i < list.length; i++) {
+            list[i].y += ground.heightAt(list[i].x, list[i].z, level, level) - level;
+        }
+    }
+}
+
 // Builds the ground of a scene. Returns the group to add and the mesh to pick tiles on (`userData.faceTile`: tile per face).
 export function buildTerrain(scene, palette) {
     const ground = new MeshBuilder();
@@ -457,17 +546,28 @@ export function buildTerrain(scene, palette) {
         cacti: [], pads: [], reeds: [], index: 0, features,
     };
 
+    const shape = groundOf(scene);
+    const shared = new Map();
+    const looks = new Map();
+    const look = tile => {
+        let colours = looks.get(tile);
+        if (!colours) {
+            const colour = tile.shape === 'water' ? palette.faded('--gv-board3d-seabed', tile) : palette.terrain(tile);
+            colours = { colour, accent: accentOf(tile, colour) };
+            looks.set(tile, colours);
+        }
+        return colours;
+    };
+    out.shape = shape;
     scene.tiles.forEach((tile, index) => {
         out.index = index;
-        const top = tileTop(tile);
-        const shade = 0.96 + hash(tile.q, tile.r, 2) * 0.08;
-        const colour = tile.shape === 'water' ? palette.faded('--gv-board3d-seabed', tile) : palette.terrain(tile).multiplyScalar(shade);
-        ground.texturedTop(tile.x, tile.z, top, TILE_RADIUS, colour, accentOf(tile, colour), index);
-        ground.hexSides(tile.x, tile.z, BASE, top, TILE_RADIUS, colour.clone().multiplyScalar(0.7), index);
+        ground.landTop(tile, shape, look, shared, index);
         if (!tile.terrain) {
             return;
         }
-        (decorators[tile.shape] ?? decorators.flat)(tile, top, palette, out);
+        const first = Object.fromEntries(Object.keys(dressing).map(name => [name, out[name].length]));
+        (decorators[tile.shape] ?? decorators.flat)(tile, tileTop(tile), palette, out);
+        settle(out, first, shape, tile);
     });
 
     const group = new Group();

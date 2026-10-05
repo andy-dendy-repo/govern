@@ -1,10 +1,10 @@
 // Territory borders and the overlay. Borders: a dashed line of small raised blocks in the owner's seat colour along each border stretch, dashed so a
-// border never reads as a river. Built from a BoardScene's borders.
+// border never reads as a river. Both lie on the ground's slopes (ground.js), not on a flat tile top. Built from a BoardScene's borders.
 import {
     BoxGeometry, BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial,
 } from '../../lib/three/three.module.js';
 import { instances } from './shapes.js';
-import { TOP_JITTER } from './terrain.js';
+import { corners as hexCorners, groundOf, PLATEAU, TOP_JITTER } from './ground.js';
 
 const DASH = 0.14;
 const GAP = 0.08;
@@ -21,6 +21,7 @@ export function buildBorders(scene, palette) {
     if (!scene.borders?.length) {
         return null;
     }
+    const ground = groundOf(scene);
     const dashes = [];
     for (const border of scene.borders) {
         const colour = palette.token(`--gv-seat-${border.seat}`);
@@ -31,8 +32,9 @@ export function buildBorders(scene, palette) {
         const turn = Math.atan2(-dz, dx);
         for (let i = 0; i < count; i++) {
             const share = (start + i * (DASH + GAP)) / length;
+            const [x, z] = [border.x1 + dx * share, border.z1 + dz * share];
             dashes.push({
-                x: border.x1 + dx * share, y: border.height + LIFT, z: border.z1 + dz * share,
+                x, y: ground.surfaceAt(x, z, border.height) + LIFT, z,
                 sx: DASH, sy: DASH_HEIGHT, sz: DASH_WIDTH, turn, colour,
             });
         }
@@ -59,24 +61,37 @@ const RING_WIDTH = 0.07;
 const tints = new MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: DoubleSide });
 const ring = new MeshLambertMaterial({ flatShading: true });
 
-const hexCorners = Array.from({ length: 6 }, (_, k) => {
-    const angle = Math.PI / 180 * (60 * k - 30);
-    return [Math.cos(angle), Math.sin(angle)];
-});
-
-function buildTints(tiles, palette) {
+// A tint is a hex fan draped on the ground: the plateau's ring and the tint's own rim, each corner and edge middle at the
+// ground's height under it.
+function buildTints(tiles, palette, ground) {
     const positions = [];
     const colours = [];
     tiles.forEach(tile => {
         const { colour, alpha } = palette.tint(tile.tint);
-        const y = tile.height + LIFT + TINT_LIFT * 0.3;
-        for (let k = 0; k < 6; k++) {
+        const lift = LIFT + TINT_LIFT * 0.3;
+        const point = (share, k, middle) => {
             const [ax, az] = hexCorners[k];
-            const [bx, bz] = hexCorners[(k + 1) % 6];
-            positions.push(tile.x, y, tile.z, tile.x + bx * TINT_RADIUS, y, tile.z + bz * TINT_RADIUS, tile.x + ax * TINT_RADIUS, y, tile.z + az * TINT_RADIUS);
+            const [bx, bz] = middle ? hexCorners[(k + 1) % 6] : hexCorners[k];
+            const [x, z] = [tile.x + (ax + bx) / 2 * share, tile.z + (az + bz) / 2 * share];
+            return [x, (ground ? ground.surfaceAt(x, z, tile.height) : tile.height) + lift, z];
+        };
+        const triangle = (a, b, c) => {
+            positions.push(...a, ...b, ...c);
             for (let v = 0; v < 3; v++) {
                 colours.push(colour.r, colour.g, colour.b, alpha);
             }
+        };
+        const centre = point(0, 0, false);
+        for (let k = 0; k < 6; k++) {
+            const next = (k + 1) % 6;
+            const [inA, inM, inB] = [point(PLATEAU, k, false), point(PLATEAU, k, true), point(PLATEAU, next, false)];
+            const [outA, outM, outB] = [point(TINT_RADIUS, k, false), point(TINT_RADIUS, k, true), point(TINT_RADIUS, next, false)];
+            triangle(centre, inB, inM);
+            triangle(centre, inM, inA);
+            triangle(inA, inM, outM);
+            triangle(inA, outM, outA);
+            triangle(inM, inB, outB);
+            triangle(inM, outB, outM);
         }
     });
     const geometry = new BufferGeometry();
@@ -87,13 +102,14 @@ function buildTints(tiles, palette) {
     return mesh;
 }
 
-function buildRing(tile, palette) {
+function buildRing(tile, palette, ground) {
     const colour = palette.token(tile.tint);
     const length = RING_RADIUS;
     const sides = hexCorners.map(([ax, az], k) => {
         const [bx, bz] = hexCorners[(k + 1) % 6];
+        const [x, z] = [tile.x + (ax + bx) / 2 * RING_RADIUS, tile.z + (az + bz) / 2 * RING_RADIUS];
         return {
-            x: tile.x + (ax + bx) / 2 * RING_RADIUS, y: tile.height + LIFT, z: tile.z + (az + bz) / 2 * RING_RADIUS,
+            x, y: (ground ? ground.surfaceAt(x, z, tile.height) : tile.height) + LIFT, z,
             sx: length, sy: 0.05, sz: RING_WIDTH, turn: Math.atan2(-(bz - az), bx - ax), colour,
         };
     });
@@ -102,17 +118,18 @@ function buildRing(tile, palette) {
     return mesh;
 }
 
-// Builds the overlay, or null when it is empty.
-export function buildOverlay(overlay, palette) {
+// Builds the overlay over a scene's ground, or null when it is empty.
+export function buildOverlay(overlay, palette, scene) {
     if (!overlay || (!overlay.tiles.length && !overlay.selected)) {
         return null;
     }
+    const ground = scene ? groundOf(scene) : null;
     const group = new Group();
     if (overlay.tiles.length) {
-        group.add(buildTints(overlay.tiles, palette));
+        group.add(buildTints(overlay.tiles, palette, ground));
     }
     if (overlay.selected) {
-        group.add(buildRing(overlay.selected, palette));
+        group.add(buildRing(overlay.selected, palette, ground));
     }
     return group;
 }

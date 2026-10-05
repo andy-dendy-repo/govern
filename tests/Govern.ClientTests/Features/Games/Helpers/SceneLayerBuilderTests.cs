@@ -154,7 +154,8 @@ public class SceneLayerBuilderTests
             rivers: static coord => coord == At(2, 3) ? new TileRivers(East: River) : null);
 
         SceneLayerBuilder.Features(view).ShouldHaveSingleItem().Height.ShouldBe(TerrainReliefs.WaterLevel);
-        SceneLayerBuilder.Rivers(view).ShouldHaveSingleItem().Height.ShouldBe(TerrainReliefs.For(Plains).Height);
+        // The water lies just under the lowest land, so a river on the shore lies on the water.
+        SceneLayerBuilder.Rivers(view).ShouldHaveSingleItem().Height.ShouldBe(TerrainReliefs.WaterLevel);
         SceneLayerBuilder.Borders(view)
             .Where(static border => border.Height == TerrainReliefs.WaterLevel)
             .ShouldNotBeEmpty("the lake tile's border stretches lie on its water");
