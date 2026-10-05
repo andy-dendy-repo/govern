@@ -6,7 +6,7 @@ namespace Govern.Core.Rulesets;
 // into the same list, with JSON paths.
 internal static class TradeRulesValidator
 {
-    private const int MaxRoutesPerCity = 10;
+    private const int MaxTradersPerCity = 10;
     private const int MaxCap = 100;
     private const int MaxSmoothing = 1000;
     private const int MaxDemandPercent = 1000;
@@ -41,7 +41,7 @@ internal static class TradeRulesValidator
 
     private static void ValidateTraders(RulesetDocument document, List<RulesetProblem> problems)
     {
-        // A trader on a route takes no other order, so the trade ability can't share a unit with another one.
+        // A trader on a deal takes no other order, so the trade ability can't share a unit with another one.
         for (var index = 0; index < document.Units.Length; index++)
         {
             var unit = document.Units[index];
@@ -60,7 +60,7 @@ internal static class TradeRulesValidator
             problems.Add(new("$.trade.building", $"The building '{trade.Building.Id}' does not exist."));
         }
 
-        RulesetValidator.InRange(trade.RoutesPerCity, 1, MaxRoutesPerCity, "$.trade.routesPerCity", problems);
+        RulesetValidator.InRange(trade.TradersPerCity, 1, MaxTradersPerCity, "$.trade.tradersPerCity", problems);
         RulesetValidator.InRange(trade.MaxCap, 1, MaxCap, "$.trade.maxCap", problems);
         RulesetValidator.InRange(trade.DemandStepPercent, 1, 100, "$.trade.demandStepPercent", problems);
         RulesetValidator.InRange(trade.DemandSmoothing, 1, MaxSmoothing, "$.trade.demandSmoothing", problems);

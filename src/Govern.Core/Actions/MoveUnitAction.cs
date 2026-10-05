@@ -9,7 +9,7 @@ using Govern.Core.Visibility;
 namespace Govern.Core.Actions;
 
 /// <summary>
-/// Moves a unit along the cheapest path to an empty tile within its remaining movement.
+/// Moves a unit along the cheapest path to a tile no other unit holds, within its remaining movement (a trader may end on any tile).
 /// </summary>
 /// <param name="UnitId">The actor's unit.</param>
 /// <param name="Target">Destination tile.</param>
@@ -32,8 +32,9 @@ internal static class MoveUnitRule
             return busy;
         }
 
-        // Only a visible blocker is reported as occupied; a hidden one must look like any other unreachable tile.
-        if (state.UnitAt(command.Target) is { } blocker && blocker.Id != unit.Id
+        // Only a visible blocker is reported as occupied; a hidden one must look like any other unreachable tile. A trader shares
+        // tiles, so nothing occupies a tile for it.
+        if (!ruleset.Unit(unit.Type).SharesTiles && state.HolderAt(ruleset, command.Target) is { } blocker && blocker.Id != unit.Id
             && VisibilityCalculator.VisibleTiles(ruleset, state, actor).Contains(command.Target))
         {
             return RuleViolations.TileOccupied;
@@ -56,10 +57,10 @@ internal static class MoveUnitRule
         return new GameUpdate(state.WithUnit(moved), [new UnitMovedEvent(unit.Id, unit.Owner, unit.Type, reachability.PathTo(command.Target))]);
     }
 
-    // A unit on a trade route, with a job or without movement left can't take a step.
+    // A trader on an agreed deal, a unit with a job or without movement left can't take a step.
     private static RuleViolation? CheckFree(Unit unit) => unit switch
     {
-        { RouteId: not null } => RuleViolations.OnTradeRoute,
+        { DealId: not null } => RuleViolations.OnTradeDeal,
         { Job: not null } => RuleViolations.UnitBusy,
         { MovementLeft: <= 0 } => RuleViolations.NoMovementLeft,
         _ => null,

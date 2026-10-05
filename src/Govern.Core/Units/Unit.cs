@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Govern.Core.Cities;
 using Govern.Core.Economy;
 using Govern.Core.Map;
 using Govern.Core.Rulesets;
@@ -7,7 +8,8 @@ using Govern.Core.State;
 namespace Govern.Core.Units;
 
 /// <summary>
-/// A unit on the map. At most one unit stands on a tile.
+/// A unit on the map. At most one unit that holds its tile stands on a tile; traders (<see cref="UnitDefinition.SharesTiles"/>)
+/// share tiles with any unit and never block one.
 /// </summary>
 /// <param name="Id">Unit identifier.</param>
 /// <param name="Owner">Player who controls the unit.</param>
@@ -23,13 +25,17 @@ namespace Govern.Core.Units;
 /// The tile the unit walks to on its own, turn after turn (see <see cref="Actions.SetDestinationCommand"/>); left out of the JSON
 /// while it has no such order.
 /// </param>
-/// <param name="RouteId">
-/// The trade route the unit, a trader, serves (G17): it walks to the host's trade post and, once a deal is accepted, back and
-/// forth between the two posts; its owner can't move it while it is on a route. Left out of the JSON otherwise.
+/// <param name="DealId">
+/// The agreed trade deal the unit, a trader, serves (G17b): it walks to the host's trade post and, once the deal is active,
+/// back and forth between the two posts; its owner can't move it meanwhile. Left out of the JSON otherwise.
 /// </param>
 /// <param name="Exploring">
 /// Whether the unit explores on its own (see <see cref="Actions.ExploreCommand"/>): turn after turn it walks to the nearest tile
 /// its owner knows next to one they never saw. Left out of the JSON while it has no such order.
+/// </param>
+/// <param name="HomeCity">
+/// The city a trader belongs to (G17b): the one that trained it, or the city it was moved to when that one was lost. Its deals
+/// start there. Left out of the JSON for other units.
 /// </param>
 public sealed record Unit(
     UnitId Id,
@@ -40,8 +46,9 @@ public sealed record Unit(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int Damage = 0,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] UnitJob? Job = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HexCoord? Destination = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TradeRouteId? RouteId = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Exploring = false)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TradeDealId? DealId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Exploring = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CityId? HomeCity = null) : IUnitOnMap
 {
     /// <summary>The unit's health under a ruleset: its maximum minus <see cref="Damage"/>.</summary>
     /// <param name="ruleset">The game's ruleset.</param>

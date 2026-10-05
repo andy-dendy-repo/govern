@@ -16,8 +16,8 @@ namespace Govern.Core.Actions;
 public sealed record SetMarketOrderCommand(CityId CityId, ResourceType Resource, MarketSide? Side, int Cap = 0) : GameCommand;
 
 /// <summary>
-/// Changes a city's market (see <see cref="SetMarketOrderCommand"/>). An order can't drop below what the city's deals already use of it (accepted deals, and its own
-/// proposals), so a deal never outgrows its markets; cancel a deal first.
+/// Changes a city's market (see <see cref="SetMarketOrderCommand"/>). An order can't drop below what the city's deals already use of it (agreed deals), so a deal
+/// never outgrows its markets; cancel a deal first.
 /// </summary>
 internal static class SetMarketOrderRule
 {
@@ -39,7 +39,7 @@ internal static class SetMarketOrderRule
             return RuleViolations.CapOutOfRange;
         }
 
-        var deals = TradeRule.Deals(state).ToList();
+        var deals = TradeRule.AgreedTerms(state).ToList();
         foreach (var each in Enum.GetValues<MarketSide>())
         {
             var allowed = command.Side == each ? command.Cap : 0;

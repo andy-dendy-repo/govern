@@ -88,12 +88,15 @@ public class GameLogFormatterTests
             .ShouldBe("You captured Aria from Seat 2");
 
     [Theory]
-    [InlineData(TradeChange.Opened, "Seat 2's trader reached Rome: the trade route from a city is open")]
-    [InlineData(TradeChange.Proposed, "Seat 2's trader proposed a deal from a city at Rome")]
+    [InlineData(TradeChange.Proposed, "Seat 2's trader from a city offered Rome a deal")]
+    [InlineData(TradeChange.Countered, "New terms were offered for the deal between a city and Rome")]
+    [InlineData(TradeChange.Accepted, "The deal between a city and Rome was accepted: the trader sets off for Rome")]
+    [InlineData(TradeChange.Started, "Seat 2's trader reached Rome: the deal with a city is active")]
     [InlineData(TradeChange.Broken, "The deal between a city and Rome broke: its trader was lost")]
-    public void Describe_TradeRouteChange_NamesTheCitiesItKnows(TradeChange change, string text)
+    [InlineData(TradeChange.Ended, "The deal between a city and Rome ended: a city changed hands")]
+    public void Describe_TradeDealChange_NamesTheCitiesItKnows(TradeChange change, string text)
     {
-        var line = GameLogFormatter.Describe(Ruleset, View, new TradeRouteChangedEvent(new TradeRouteId(4), Opponent, You, new CityId(9), new CityId(7), change))!;
+        var line = GameLogFormatter.Describe(Ruleset, View, new TradeDealChangedEvent(new TradeDealId(4), Opponent, You, new CityId(9), new CityId(7), change))!;
 
         line.Text.ShouldBe(text);
         line.Tile.ShouldBe(At(3, 3));
@@ -106,8 +109,8 @@ public class GameLogFormatterTests
     [InlineData(true, true, "No trade between Rome and Tyre this turn: neither city had its part")]
     public void Describe_TradeExchanged_SaysWhatMovedOrWhoLackedIt(bool homeShort, bool hostShort, string text)
     {
-        var route = new Govern.Core.Visibility.TradeRouteView(new TradeRouteId(4), You, new CityId(7), "Rome", new CityId(9), "Tyre", Opponent, Opened: true);
-        var view = View with { TradeRoutes = [route] };
+        var route = new Govern.Core.Visibility.TradeDealView(new TradeDealId(4), You, new CityId(7), "Rome", new CityId(9), "Tyre", Opponent, new TradeTerms([new(Food, 3)], [new(Stone, 1)]), TradeDealStatus.Active);
+        var view = View with { TradeDeals = [route] };
         var exchanged = new TradeExchangedEvent(route.Id, You, Opponent, route.Home, route.Host, [new(Food, 3)], [new(Stone, 1)], homeShort, hostShort);
 
         var line = GameLogFormatter.Describe(Ruleset, view, exchanged)!;

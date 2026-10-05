@@ -32,9 +32,9 @@ internal static class SetDestinationRule
             return error;
         }
 
-        if (unit.RouteId is not null)
+        if (unit.DealId is not null)
         {
-            return RuleViolations.OnTradeRoute;
+            return RuleViolations.OnTradeDeal;
         }
 
         if (command.Target is not { } target)
@@ -48,7 +48,7 @@ internal static class SetDestinationRule
         }
 
         // Only a visible blocker is reported as occupied; a hidden one doesn't stop the order (the walk stops in front of it).
-        if (state.UnitAt(target) is { } blocker && blocker.Id != unit.Id
+        if (!ruleset.Unit(unit.Type).SharesTiles && state.HolderAt(ruleset, target) is { } blocker && blocker.Id != unit.Id
             && VisibilityCalculator.VisibleTiles(ruleset, state, actor).Contains(target))
         {
             return RuleViolations.TileOccupied;

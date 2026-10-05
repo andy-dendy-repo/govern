@@ -24,7 +24,7 @@ namespace Govern.Core.Events;
 [JsonDerivedType(typeof(UnitStarvedEvent), "unit_starved")]
 [JsonDerivedType(typeof(BuildingDamagedEvent), "building_damaged")]
 [JsonDerivedType(typeof(UpkeepPrioritySetEvent), "upkeep_priority_set")]
-[JsonDerivedType(typeof(TradeRouteChangedEvent), "trade_route_changed")]
+[JsonDerivedType(typeof(TradeDealChangedEvent), "trade_deal_changed")]
 [JsonDerivedType(typeof(TradeExchangedEvent), "trade_exchanged")]
 [JsonDerivedType(typeof(ScienceNodeChangedEvent), "science_node_changed")]
 [JsonDerivedType(typeof(UnitUpgradedEvent), "unit_upgraded")]

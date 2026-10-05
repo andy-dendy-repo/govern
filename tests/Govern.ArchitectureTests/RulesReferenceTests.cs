@@ -174,7 +174,7 @@ public class RulesReferenceTests
             Row("Full health of a building", Ruleset.Upkeep.BuildingHealth),
             Row("Health a building regains per paid turn", Ruleset.Upkeep.BuildingRecovery),
             Row("Building that holds a market", Ruleset.BuildingName(Ruleset.Trade.Building)),
-            Row("Trade routes per city", Ruleset.Trade.RoutesPerCity),
+            Row("Traders per city", Ruleset.Trade.TradersPerCity),
             Row("Largest market cap", Ruleset.Trade.MaxCap),
             Row("Demand change per turn", $"{Ruleset.Trade.DemandStepPercent}%"),
             Row("Lowest demand", $"{Ruleset.Trade.MinDemandPercent}%"),

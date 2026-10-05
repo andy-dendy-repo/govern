@@ -5,7 +5,7 @@ using Govern.Core.Rulesets;
 namespace Govern.Core.Economy;
 
 /// <summary>
-/// The arithmetic of trading (G17), shared by the rules on the state and by the client on the view so both decide the same way:
+/// The arithmetic of trading (G17, G17b), shared by the rules on the state and by the client on the view so both decide the same way:
 /// demand levels and values, what a city's deals already use of its market, and whether a deal fits two markets.
 /// </summary>
 public static class TradeCalculator
@@ -32,22 +32,22 @@ public static class TradeCalculator
     }
 
     /// <summary>
-    /// How much of a resource a city's deals use of its market: what it gives (selling) or takes (buying) each turn. Accepted
-    /// deals always count; a proposal counts for its home city only, which already promised it.
+    /// How much of a resource a city's agreed deals use of its market: what it gives (selling) or takes (buying) each turn.
+    /// Offers still on the table use nothing; both markets are checked again when one is accepted.
     /// </summary>
-    /// <param name="routes">Routes the city is part of (others are ignored), as home, host and deal.</param>
+    /// <param name="deals">Agreed deals (those the city isn't part of are ignored), as home, host and terms.</param>
     /// <param name="city">The city.</param>
     /// <param name="resource">The resource.</param>
     /// <param name="side">Selling or buying.</param>
     /// <returns>The amount per turn.</returns>
-    public static int Committed(IEnumerable<(CityId Home, CityId Host, TradeDeal? Deal)> routes, CityId city, ResourceType resource, MarketSide side)
+    public static int Committed(IEnumerable<(CityId Home, CityId Host, TradeTerms Terms)> deals, CityId city, ResourceType resource, MarketSide side)
     {
-        ArgumentNullException.ThrowIfNull(routes);
+        ArgumentNullException.ThrowIfNull(deals);
 
         var total = 0;
-        foreach (var (home, host, deal) in routes)
+        foreach (var (home, host, deal) in deals)
         {
-            if (deal is null || (home != city && host != city) || (!deal.Accepted && home != city))
+            if (home != city && host != city)
             {
                 continue;
             }
@@ -63,14 +63,14 @@ public static class TradeCalculator
 
     /// <summary>A city's market with each order's cap reduced by what its deals already use (<see cref="Committed"/>).</summary>
     /// <param name="market">The city's orders.</param>
-    /// <param name="routes">Routes the city is part of, without the one being decided.</param>
+    /// <param name="deals">Agreed deals, without the ones being decided.</param>
     /// <param name="city">The city.</param>
     /// <returns>The orders with what is still free of each cap (possibly 0), in the same order.</returns>
-    public static ImmutableArray<MarketOrder> FreeMarket(IEnumerable<MarketOrder> market, IEnumerable<(CityId Home, CityId Host, TradeDeal? Deal)> routes, CityId city)
+    public static ImmutableArray<MarketOrder> FreeMarket(IEnumerable<MarketOrder> market, IEnumerable<(CityId Home, CityId Host, TradeTerms Terms)> deals, CityId city)
     {
         ArgumentNullException.ThrowIfNull(market);
-        var deals = routes.ToList();
-        return [.. market.Select(order => order with { Cap = Math.Max(0, order.Cap - Committed(deals, city, order.Resource, order.Side)) })];
+        var agreed = deals.ToList();
+        return [.. market.Select(order => order with { Cap = Math.Max(0, order.Cap - Committed(agreed, city, order.Resource, order.Side)) })];
     }
 
     /// <summary>

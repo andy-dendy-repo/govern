@@ -34,7 +34,7 @@ public static class TileCardBuilder
             lines.Add($"{Whose(view, city.Owner)} city: {city.Name}");
         }
 
-        if (view.UnitAt(coord) is { } unit)
+        foreach (var unit in view.UnitsAt(coord))
         {
             lines.Add(string.Create(CultureInfo.InvariantCulture,
                 $"{Whose(view, unit.Owner)} unit: {ruleset.UnitName(unit.Type)}, health {unit.Health} of {ruleset.Combat.MaxHealth}"));

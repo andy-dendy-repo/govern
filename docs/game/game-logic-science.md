@@ -2,7 +2,7 @@
 title: Game logic, science (the science budget, unlocking, locks, unit lines and upgrades)
 tags: [game, core, rules, algorithms, science, science-tree, nodes, budget, unlock, disable, locked, replaces, unit-upgrade, building-upgrade, previews, fog-of-war]
 code: [src/Govern.Core/Engine/ScienceRule.cs, src/Govern.Core/Science, src/Govern.Core/Actions/UnlockNodeAction.cs, src/Govern.Core/Actions/UpgradeUnitAction.cs, src/Govern.Core/Actions/UpgradeBuildingAction.cs, src/Govern.Core/Visibility/SciencePreviewCalculator.cs]
-updated: 2026-10-04
+updated: 2026-10-05
 ---
 
 # Game logic: science
@@ -46,7 +46,7 @@ A switched-off node takes nothing, locks its units and buildings again, and bloc
 ## Upgrade a unit
 
 1. The unit must be the actor's → `unit.not_found`.
-2. It must not be a trader on a route → `trade.on_route`.
+2. It must not be a trader carrying a deal → `trade.on_deal`.
 3. The newest of its line must be another unit → `upgrade.none`.
 4. It must have movement left → `unit.no_movement`.
 5. Its tile must be in the territory of one of the actor's cities → `upgrade.not_in_territory`.

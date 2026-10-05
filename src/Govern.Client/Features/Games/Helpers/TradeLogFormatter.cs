@@ -10,14 +10,14 @@ using Govern.Core.Visibility;
 namespace Govern.Client.Features.Games.Helpers;
 
 /// <summary>
-/// Writes the trade events of the game log (G17) as sentences, for <see cref="GameLogFormatter"/>. Only the two sides of a
-/// route get these events. Cities are named from the player's routes or the cities they see.
+/// Writes the trade events of the game log (G17b) as sentences, for <see cref="GameLogFormatter"/>. Only the two sides of a
+/// deal get these events. Cities are named from the cities the player sees, their trade partners or their deals.
 /// </summary>
 public static class TradeLogFormatter
 {
     /// <summary>Describes one trade event.</summary>
     /// <param name="ruleset">The game's ruleset (resource names).</param>
-    /// <param name="view">The player's current view (seats, routes and cities).</param>
+    /// <param name="view">The player's current view (seats, deals and cities).</param>
     /// <param name="gameEvent">An event from the player's log.</param>
     /// <returns>The line; <see langword="null"/> for an event that isn't about trade.</returns>
     public static GameLogLine? Describe(Ruleset ruleset, PlayerView view, GameEvent gameEvent)
@@ -27,32 +27,33 @@ public static class TradeLogFormatter
 
         return gameEvent switch
         {
-            TradeRouteChangedEvent changed => Changed(view, changed),
+            TradeDealChangedEvent changed => Changed(view, changed),
             TradeExchangedEvent exchanged => Exchanged(ruleset, view, exchanged),
             _ => null,
         };
     }
 
-    private static GameLogLine Changed(PlayerView view, TradeRouteChangedEvent changed)
+    private static GameLogLine Changed(PlayerView view, TradeDealChangedEvent changed)
     {
-        var (home, host) = (CityName(view, changed.RouteId, changed.Home, home: true), CityName(view, changed.RouteId, changed.Host, home: false));
+        var (home, host) = (CityName(view, changed.DealId, changed.Home, home: true), CityName(view, changed.DealId, changed.Host, home: false));
         var owner = changed.Owner == view.Viewer ? "Your" : $"Seat {Seats.Number(view, changed.Owner)}'s";
         var text = changed.Change switch
         {
-            TradeChange.Opened => $"{owner} trader reached {host}: the trade route from {home} is open",
-            TradeChange.Proposed => $"{owner} trader proposed a deal from {home} at {host}",
-            TradeChange.Accepted => $"The deal between {home} and {host} was accepted",
-            TradeChange.Declined => $"The deal proposed from {home} at {host} was declined",
+            TradeChange.Proposed => $"{owner} trader from {home} offered {host} a deal",
+            TradeChange.Countered => $"New terms were offered for the deal between {home} and {host}",
+            TradeChange.Accepted => $"The deal between {home} and {host} was accepted: the trader sets off for {host}",
+            TradeChange.Declined => $"The deal between {home} and {host} was declined",
+            TradeChange.Started => $"{owner} trader reached {host}: the deal with {home} is active",
             TradeChange.Cancelled => $"The deal between {home} and {host} was cancelled",
             TradeChange.Broken => $"The deal between {home} and {host} broke: its trader was lost",
-            _ => $"The trade route between {home} and {host} closed",
+            _ => $"The deal between {home} and {host} ended: a city changed hands",
         };
         return new GameLogLine(text, CityTile(view, changed.Host), changed.Owner == view.Viewer);
     }
 
     private static GameLogLine Exchanged(Ruleset ruleset, PlayerView view, TradeExchangedEvent exchanged)
     {
-        var (home, host) = (CityName(view, exchanged.RouteId, exchanged.Home, home: true), CityName(view, exchanged.RouteId, exchanged.Host, home: false));
+        var (home, host) = (CityName(view, exchanged.DealId, exchanged.Home, home: true), CityName(view, exchanged.DealId, exchanged.Host, home: false));
         var text = (exchanged.HomeShort, exchanged.HostShort) switch
         {
             (false, false) => $"{home} gave {ResourceFormatter.Describe(ruleset, exchanged.Gives)} to {host} for {ResourceFormatter.Describe(ruleset, exchanged.Receives)}",
@@ -63,9 +64,10 @@ public static class TradeLogFormatter
         return new GameLogLine(text, CityTile(view, exchanged.Host), exchanged.Owner == view.Viewer);
     }
 
-    private static string CityName(PlayerView view, TradeRouteId route, CityId city, bool home) =>
+    private static string CityName(PlayerView view, TradeDealId deal, CityId city, bool home) =>
         view.Cities.FirstOrDefault(seen => seen.Id == city)?.Name
-        ?? view.TradeRouteList.FirstOrDefault(known => known.Id == route) switch
+        ?? view.TradePartnerList.FirstOrDefault(partner => partner.Id == city)?.Name
+        ?? view.TradeDealList.FirstOrDefault(known => known.Id == deal) switch
         {
             { } known => home ? known.HomeName : known.HostName,
             null => "a city",

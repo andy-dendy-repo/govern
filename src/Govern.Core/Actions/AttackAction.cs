@@ -34,8 +34,8 @@ internal static class AttackRule
             return error;
         }
 
-        var defender = state.UnitAt(command.Target);
         var city = state.CityAt(command.Target);
+        var defender = DefenderAt(ruleset, state.UnitsAt(command.Target), city is not null, attacker.Owner);
         var target = new AttackTarget(
             state.Map.Contains(command.Target),
             defender?.Owner ?? city?.Owner,
@@ -80,6 +80,16 @@ internal static class AttackRule
             _ when !targetInfo.HasUnit && targetInfo.River is { } river && !ruleset.River(river).IsCrossable => RuleViolations.RiverInTheWay,
             _ => null,
         };
+    }
+
+    // The unit an attack on a tile hits: the unit holding it; with none, a trader of another player there, unless the tile is a
+    // city (an undefended city is captured, its traders untouched). Shared with the view previews, which pass the units they see.
+    public static TUnit? DefenderAt<TUnit>(Ruleset ruleset, IEnumerable<TUnit> unitsOnTile, bool isCity, PlayerId attackerOwner)
+        where TUnit : class, IUnitOnMap
+    {
+        var units = unitsOnTile.ToList();
+        return units.FirstOrDefault(unit => !ruleset.Unit(unit.Type).SharesTiles)
+            ?? (isCity ? null : units.FirstOrDefault(unit => unit.Owner != attackerOwner));
     }
 
     public static Combatant CombatantOf(GameState state, Ruleset ruleset, Unit unit) =>

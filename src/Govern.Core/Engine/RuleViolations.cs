@@ -160,32 +160,29 @@ public static class RuleViolations
     /// <summary>The unit type cannot trade.</summary>
     public static readonly RuleViolation CannotTrade = new("trade.cannot_trade", "This unit cannot trade.");
 
-    /// <summary>The trader serves a trade route; its owner can only free it by closing the route.</summary>
-    public static readonly RuleViolation OnTradeRoute = new("trade.on_route", "The trader serves a trade route; close the route to use it.");
+    /// <summary>The trader is on its way to, or serving, an agreed deal; its owner frees it by cancelling the deal.</summary>
+    public static readonly RuleViolation OnTradeDeal = new("trade.on_deal", "The trader serves a deal; cancel the deal to use it.");
 
     /// <summary>The city has no trade post (the ruleset's <c>trade.building</c>) standing on a tile of its territory.</summary>
     public static readonly RuleViolation NoTradePost = new("trade.no_trade_post", "The city needs a Trade post to trade.");
 
     /// <summary>
-    /// The target is the home city itself, or a city the actor doesn't see, or one whose trade post the actor doesn't see (the
-    /// three are not distinguished, so probing reveals nothing hidden).
+    /// The target is the trader's home city itself, or a city the actor never saw the trade post of, or one with no trade post
+    /// (the three are not distinguished, so probing reveals nothing hidden).
     /// </summary>
-    public static readonly RuleViolation NoTradePartner = new("trade.no_partner", "Pick another city whose Trade post you can see.");
+    public static readonly RuleViolation NoTradePartner = new("trade.no_partner", "Pick another city whose Trade post you have seen.");
 
-    /// <summary>The home city already opened as many routes as <c>trade.routesPerCity</c> allows.</summary>
-    public static readonly RuleViolation TooManyRoutes = new("trade.too_many_routes", "This city already runs as many trade routes as it can.");
+    /// <summary>The trader has no home city it can trade from (its home was lost and its owner has no other city).</summary>
+    public static readonly RuleViolation NoHomeCity = new("trade.no_home", "This trader has no home city.");
 
-    /// <summary>A route between the two cities already has its trader.</summary>
-    public static readonly RuleViolation RouteHasTrader = new("trade.route_has_trader", "A trader already serves the route between these cities.");
+    /// <summary>The trader already has a deal (offered, agreed or active); one trader carries one deal.</summary>
+    public static readonly RuleViolation TraderHasDeal = new("trade.trader_has_deal", "This trader already has a deal.");
 
-    /// <summary>The route does not exist, or the actor is not the side the command needs (the two are not distinguished).</summary>
-    public static readonly RuleViolation RouteNotFound = new("trade.route_not_found", "You have no such trade route.");
+    /// <summary>The city already has as many traders as <c>trade.tradersPerCity</c> allows.</summary>
+    public static readonly RuleViolation TooManyTraders = new("trade.too_many_traders", "This city already has as many traders as it can.");
 
-    /// <summary>The route's trader is not at the host's trade post (or within one tile of it), or there is none.</summary>
-    public static readonly RuleViolation TraderNotAtPost = new("trade.trader_not_at_post", "The trader must stand at the host's Trade post.");
-
-    /// <summary>The route already carries an accepted deal.</summary>
-    public static readonly RuleViolation DealActive = new("trade.deal_active", "Cancel the current deal first.");
+    /// <summary>The deal does not exist, or the actor is not the side the command needs (the two are not distinguished).</summary>
+    public static readonly RuleViolation DealNotFound = new("trade.deal_not_found", "There is no such trade deal.");
 
     /// <summary>The resource doesn't exist or can't be traded.</summary>
     public static readonly RuleViolation NotTradable = new("trade.not_tradable", "That resource can't be traded.");
@@ -202,14 +199,14 @@ public static class RuleViolations
     /// <summary>The host city's market doesn't sell or buy that much of a resource.</summary>
     public static readonly RuleViolation HostMarketFull = new("trade.host_market", "The host city's market doesn't sell or buy that much.");
 
-    /// <summary>There is no proposal on the route to answer.</summary>
-    public static readonly RuleViolation NoProposal = new("trade.no_proposal", "There is no proposal to answer.");
+    /// <summary>The answer is not accept, decline or counter.</summary>
+    public static readonly RuleViolation UnknownAnswer = new("trade.unknown_answer", "That answer does not exist.");
 
-    /// <summary>There is no deal on the route to cancel.</summary>
-    public static readonly RuleViolation NoDeal = new("trade.no_deal", "There is no deal to cancel.");
+    /// <summary>The deal has no offer waiting for the actor's answer (it is agreed, or waits for the other side).</summary>
+    public static readonly RuleViolation NoProposal = new("trade.no_proposal", "There is no offer for you to answer.");
 
-    /// <summary>A deal to cancel to make room is not an accepted deal of the host city's market.</summary>
-    public static readonly RuleViolation CannotCancelDeal = new("trade.cannot_cancel", "You can only cancel accepted deals of this city.");
+    /// <summary>A deal to cancel to make room is not an agreed deal of the answering city's market.</summary>
+    public static readonly RuleViolation CannotCancelDeal = new("trade.cannot_cancel", "You can only cancel agreed deals of this city.");
 
     /// <summary>A market order's cap is outside 1 to <c>trade.maxCap</c>.</summary>
     public static readonly RuleViolation CapOutOfRange = new("market.cap_out_of_range", "The cap must be from 1 to the largest cap.");

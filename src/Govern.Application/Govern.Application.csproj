@@ -9,7 +9,7 @@
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\..\rulesets\default\v12.json" LogicalName="Govern.Rulesets.default.v12.json" />
+    <EmbeddedResource Include="..\..\rulesets\default\v13.json" LogicalName="Govern.Rulesets.default.v13.json" />
     <EmbeddedResource Include="..\..\maps\*.json" LogicalName="Govern.Maps.%(Filename).json" />
   </ItemGroup>
 </Project>

@@ -108,6 +108,33 @@ public class BoardClickResolverTests
     }
 
     [Fact]
+    public void Resolve_UnitsSharingATile_AreSelectedInTurnThenTheCity()
+    {
+        var view = Create([Unit(5, You, TraderType, At(2, 2)), Soldier(2, You, At(2, 2))], [City(7, You, At(2, 2))]);
+
+        var first = BoardClickResolver.Resolve(Ruleset, view, BoardSelection.None, At(2, 2));
+        var second = BoardClickResolver.Resolve(Ruleset, view, first.Next, At(2, 2));
+        var third = BoardClickResolver.Resolve(Ruleset, view, second.Next, At(2, 2));
+
+        first.Next.ShouldBe(BoardSelection.Of(new UnitId(2)));
+        second.Next.ShouldBe(BoardSelection.Of(new UnitId(5)));
+        third.Next.ShouldBe(BoardSelection.Of(new CityId(7)));
+    }
+
+    [Fact]
+    public void Resolve_SelectedSoldierAndALoneEnemyTrader_ShowsTheForecastThenMovesOntoIt()
+    {
+        var view = Create([Soldier(2, You, At(3, 2)), Unit(6, Opponent, TraderType, At(4, 2))]);
+        var selection = BoardSelection.Of(new UnitId(2));
+
+        var first = BoardClickResolver.Resolve(Ruleset, view, selection, At(4, 2));
+        var second = BoardClickResolver.Resolve(Ruleset, view, first.Next, At(4, 2));
+
+        first.ShouldBe(new BoardClick(selection with { Target = At(4, 2) }, null));
+        second.ShouldBe(new BoardClick(selection, new MoveUnitCommand(new UnitId(2), At(4, 2))));
+    }
+
+    [Fact]
     public void Resolve_EnemyUnitOrCity_SelectsItForInspection()
     {
         var view = Create([Soldier(3, Opponent, At(5, 2))], [City(8, Opponent, At(5, 4))]);

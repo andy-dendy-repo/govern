@@ -19,7 +19,7 @@
         <div class="hud hud-notices">
             <NoticeStack View="@View" Stale="@_stale" Error="@_error"/>
         </div>
-        <div class="hud hud-selection">
+        <div class="@(_ui.Selection.City is not null ? "hud hud-selection hud-selection-city" : "hud hud-selection")">
             <SelectionCard View="@View" Ruleset="@Ruleset" Busy="@_sending" Command="@SendAsync"/>
         </div>
         @if (_ui.ScienceOpen)
