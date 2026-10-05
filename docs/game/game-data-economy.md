@@ -48,7 +48,7 @@ Each city keeps its own stock (`City.Stock`). At the end of its owner's turn it 
 | `cities.storage` | list, amount 1..1000 | Every city's storage cap per resource; every resource but `science.resource` needs one | food 30, water 30, wood 20, stone 20, gold 20, culture 40 |
 | `buildings[].storage` | list, amount 1..1000, may be empty | Added to its city's caps while the building works (not at 0 health). An upgrade replaces its building, so it lists its own full amounts | see [Buildings](#buildings-buildings) |
 
-At the very end of every End turn (after production, and for every player's cities, since hosted deals deliver to both sides), each city's stock is cut to its caps (`CityStorage`); the rest is lost. `cities.startingStock` must fit in `cities.storage`. Culture is capped too, which limits territory growth: a city can only afford tiles whose price fits its culture cap.
+At the very end of every End turn (after production, and for every player's cities, since hosted deals deliver to both sides), each city's stock is cut to its caps (`CityStorage`); the rest is lost. `cities.startingStock` must fit in `cities.storage`. Culture is capped too, which limits territory growth: a city buys its tile before the cut, so it can afford tiles whose price is at most its culture cap plus that turn's culture income. Every resource cost (`units[].resourceCost`, `units[].upgradeCost`, `buildings[].resourceCost`) must fit in `cities.storage`, since upgrades are paid from a stock already cut to the caps.
 
 ## Territory (`territory`)
 
@@ -184,7 +184,7 @@ The trade post (`trade.building`) holds its city's market and lets it produce tr
 - Every resource and terrain reference resolves; improvement terrains are passable.
 - `buildProduction` ≥ 1 exactly for units with `build_improvement` or `build_bridge`.
 - Terrain, river and `cities.yields` amounts 1..100 per resource, each resource once; `cities.startingStock` amounts 1..1000.
-- Storage: `cities.storage` and `buildings[].storage` amounts 1..1000, each resource once; every resource but `science.resource` has a `cities.storage` cap (science is never in either list); each `cities.startingStock` amount is at most its cap.
+- Storage: `cities.storage` and `buildings[].storage` amounts 1..1000, each resource once; every resource but `science.resource` has a `cities.storage` cap (science is never in either list); each `cities.startingStock` amount and every resource cost and upgrade cost is at most its cap.
 - `territory`: `initialRadius` 0..10, `maxRadius` `initialRadius`..10, `tileCost` 1..1000, `tileCostIncrease` 0..1000, `growthResource` exists, and `cities.minimumSpacing` > 2 × `initialRadius`, so two new cities never claim the same tile.
 - No sight invariant for bridges any more: a unit sees enemy territory on the tiles it sees, and the bridge check only looks at the two tiles beside the edge, which the unit always sees.
 - Resource costs: amounts 1..1000, each resource once, and never `territory.growthResource` (territory growth spends it just before production pays, so the city panel could not tell for sure whether production can begin). Upkeep: amounts 1..100, each resource once.

@@ -32,7 +32,8 @@
             @foreach (var resource in Ruleset.Resources.Where(resource => resource.Id != Ruleset.Science.Resource))
             {
                 var (amount, gain) = (YieldCalculator.AmountOf(City.StockList, resource.Id), Net(forecast, resource.Id));
-                var (cap, lost) = (CapOf(forecast, resource.Id), LostOf(forecast, resource.Id));
+                var cap = CapOf(forecast, resource.Id);
+                var lost = LostOf(forecast, resource.Id, amount, gain, cap);
                 @if (amount != 0 || gain != 0)
                 {
                     <span class="@($"city-resource city-resource-{resource.Id.Id}{(amount >= cap || lost > 0 ? " city-resource-full" : "")}")"

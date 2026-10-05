@@ -30,7 +30,9 @@ internal static class UpkeepPreviewCalculator
         var working = city.BuildingList.Where(building => !damage.Any(entry => entry.Building == building && entry.Damage >= ruleset.Upkeep.BuildingHealth));
         var sources = CityProduction.Sources(ruleset, working);
         var perTurn = missing.IsEmpty ? sources.Sum(static source => source.Amount) : 0;
-        var caps = CityStorage.Caps(ruleset, working);
+        // A building finished by this turn's production already adds its storage when the stock is cut (EndTurnRule.Store).
+        var finishes = city.ProducingBuilding is { } building && perTurn > 0 && (city.ProductionProgress ?? 0) + perTurn >= ruleset.Building(building).Cost;
+        var caps = CityStorage.Caps(ruleset, finishes ? working.Append(city.ProducingBuilding!.Value) : working);
         var kept = city.ProductionPaid || !missing.IsEmpty
             ? upkeep.Stock
             : UpkeepCalculator.Subtract(ruleset, upkeep.Stock, CityProduction.ResourceCost(ruleset, city.ProducingBuilding, producing));

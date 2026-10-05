@@ -1,6 +1,7 @@
 using Govern.Client.Features.Games.Components;
 using Govern.ClientTests.Support;
 using Govern.Core.Economy;
+using Govern.Core.Units;
 using Govern.Core.Visibility;
 using static Govern.ClientTests.Support.TestViews;
 
@@ -44,6 +45,18 @@ public class GameTableStorageTests : ClientTestContext
         cut.Find(".city-resource-food").ClassList.ShouldContain("city-resource-full");
         cut.Find(".city-resource-food .city-resource-lost").TextContent.ShouldBe("10 lost");
         cut.Find(".city-resource-food").GetAttribute("title").ShouldBe("30 of 30 Food the city can hold; 10 won't fit at the end of the turn and is lost");
+    }
+
+    [Fact]
+    public void SelectOwnCity_ProductionFeedsAJob_CountsTheUnpaidCostAsLost()
+    {
+        var builder = Unit(1, You, BuilderType, At(3, 2), movementLeft: 0) with { Job = new UnitJob(0, 3, Improvement: Farm) };
+        var cut = RenderTable(Create([builder], [City(7, You, At(2, 2), stock: [new ResourceAmount(Food, 30), new ResourceAmount(Water, 5)])]));
+
+        _board.Click(At(2, 2));
+
+        // 30 + 14 from the plains - 1 for the builder = 43: the settler's 4 Food aren't paid while the city feeds the job.
+        cut.Find(".city-resource-food .city-resource-lost").TextContent.ShouldBe("13 lost");
     }
 
     [Fact]

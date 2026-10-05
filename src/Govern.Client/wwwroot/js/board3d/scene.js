@@ -78,7 +78,7 @@ export class Board3D {
 
         this.listen();
         this.resize();
-        // Units show without their figures until the baked characters arrive; then the pieces are built again.
+        // Units show a stand-in body until the baked characters arrive; then the pieces are built again.
         loadFigures().then(loaded => loaded && !this.disposed && this.rebuildPieces()).catch(error => console.error(error));
     }
 

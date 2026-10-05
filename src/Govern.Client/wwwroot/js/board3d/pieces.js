@@ -23,7 +23,7 @@ const solid = new MeshLambertMaterial({ flatShading: true });
 const painted = new MeshLambertMaterial({ flatShading: true, vertexColors: true });
 
 // The baked characters, by file name, each split into its own colours (`name`) and its seat parts (`name:seat`); filled once
-// by loadFigures, and empty until then (units then don't show, except the horse and the trader's pack).
+// by loadFigures, and empty until then (units then show a stand-in body, see `character`).
 const FIGURES = ['soldier', 'spearman', 'archer', 'builder', 'settler', 'scout', 'rider'];
 const figures = new Map();
 let loading = null;
@@ -37,11 +37,14 @@ const FIGURE_HEIGHT = 0.5;
 // A character from its baked file standing on the ground (no base: the seat colour is on its clothes).
 const standing = (c, name) => [...character(c, name, 0, 0, 0)];
 
-// The two parts of a baked character: its own colours and its seat parts.
-const character = (c, name, x, y, z) => [
-    [name, x, y, z, FIGURE_HEIGHT, FIGURE_HEIGHT, FIGURE_HEIGHT, c.tint],
-    [`${name}:seat`, x, y, z, FIGURE_HEIGHT, FIGURE_HEIGHT, FIGURE_HEIGHT, c.seat],
-];
+// The two parts of a baked character: its own colours and its seat parts. Until its file has loaded (or when it failed) a
+// small seat-coloured body stands in for it, so the unit never vanishes from the board.
+const character = (c, name, x, y, z) => figures.has(name)
+    ? [
+        [name, x, y, z, FIGURE_HEIGHT, FIGURE_HEIGHT, FIGURE_HEIGHT, c.tint],
+        [`${name}:seat`, x, y, z, FIGURE_HEIGHT, FIGURE_HEIGHT, FIGURE_HEIGHT, c.seat],
+    ]
+    : [['body', x, y, z, 0.16, 0.36, 0.16, c.seat]];
 
 // Parts turned about the model's centre by `angle` (a quarter turn shows a horse side on).
 const turned = (angle, parts) => parts.map(([shape, x, y, z, sx, sy, sz, colour, turn = 0]) => [
@@ -212,7 +215,7 @@ export function bannerAnchor(piece) {
 }
 
 // Loads the baked characters (true when any arrived); a board rebuilds its pieces when they do. A file that fails to load
-// leaves its units without their figures, and the next board tries it again.
+// leaves its units with their stand-in body, and the next board tries it again.
 export function loadFigures() {
     loading ??= Promise.allSettled(FIGURES.filter(name => !figures.has(name)).map(async name => {
         const response = await fetch(new URL(`../../models/units/${name}.json`, import.meta.url));
