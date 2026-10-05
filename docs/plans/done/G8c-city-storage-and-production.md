@@ -7,7 +7,7 @@ updated: 2026-10-05
 
 # Plan: G8c city storage caps, production breakdown, no unit base disc
 
-**Status:** done 2026-10-05 (backlog G8c, PR #PRNUM). Asked by the owner on 2026-10-05 together with population, which the owner put out of scope (it stays in G8b).
+**Status:** done 2026-10-05 (backlog G8c, PR #65). Asked by the owner on 2026-10-05 together with population, which the owner put out of scope (it stays in G8b).
 
 ## Context
 A city's stock grows without limit: every turn its territory and buildings add their yields (`ConstructionRule.CollectYields`), so a quiet city hoards forever. The owner wants a storage cap per resource: a default for every city plus what each building adds. The city panel also only shows a production progress bar, not where the production comes from or what it goes to, and the 3D board draws a seat-coloured disc under every unit, which the owner wants gone.
