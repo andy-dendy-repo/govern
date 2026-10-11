@@ -7,7 +7,7 @@ updated: 2026-10-11
 
 # Plan: F21 terrain regions on the 3D board
 
-Status: done 2026-10-11 (PR linked in the backlog's "Recently done"). The owner picked "all terrains" from the suggestions (2026-10-11); plan, implementation and close-out go in one PR.
+Status: done 2026-10-11 (PR #72). The owner picked "all terrains" from the suggestions (2026-10-11); plan, implementation and close-out go in one PR.
 
 ## Context
 Each mountain tile was a flat grey shelf with one to three copies of one massif near its middle, so a range read as a grid of cones with no transition between neighbours. Hills, dunes and forests were placed the same way, tile by tile. Andrii asked for natural transitions between mountain tiles and for the other terrains. The fix describes each terrain as a field over the whole map that tiles only sample, so shapes run on across tiles.
