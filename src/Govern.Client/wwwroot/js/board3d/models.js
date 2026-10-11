@@ -4,6 +4,7 @@
 import {
     BoxGeometry, ConeGeometry, CylinderGeometry, Group, MeshLambertMaterial, SphereGeometry, Vector3,
 } from '../../lib/three/three.module.js';
+import { groundOf } from './ground.js';
 import { hash, tileSurface } from './terrain.js';
 import { instances } from './shapes.js';
 
@@ -99,11 +100,13 @@ export function buildFeatures(scene, palette) {
         return null;
     }
     const tiles = new Map(scene.tiles.map(tile => [`${tile.q},${tile.r}`, tile]));
+    const ground = groundOf(scene);
     const parts = new Map();
     const up = new Vector3(0, 1, 0);
     for (const feature of scene.features) {
         const tile = tiles.get(`${feature.q},${feature.r}`);
-        const top = tile ? tileSurface(tile) : feature.height;
+        // On its tile's surface, lifted by a region's relief where the spot reaches past the tile's shelf (ground.js).
+        const top = tile ? tileSurface(tile) + ground.reliefAt(feature.x, feature.z) : feature.height;
         const turn = (hash(feature.q, feature.r, 80) - 0.5) * 0.6;
         const build = models[feature.model] ?? (feature.seat > 0 ? models.hall : models.field);
         for (const [shape, x, y, z, sx, sy, sz, colour] of build(colours(feature, palette))) {

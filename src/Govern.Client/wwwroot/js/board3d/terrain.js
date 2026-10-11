@@ -1,16 +1,22 @@
 // The board's ground: one continuous, flat-shaded landscape (ground.js gives its shape: a level plateau per tile that slopes to
-// meet its neighbours, with no seams between explored tiles). Each tile's top is cut into small facets; its colour runs into its
+// meet its neighbours, with no seams between explored tiles, and the relief of the terrain regions over it: mountain ranges,
+// rolling downs, dune seas). A smooth tile's top is cut into small facets, a tile a region rises on into a fine grid of rings
+// that follows its relief; every tile's rim has the same points, shared with its neighbours. Its colour runs into its
 // neighbours' at the rim, where the tiles around a point share one blended colour, and leans in soft patches that run on across
-// the map, so terrains fade into each other instead of ending at a hex line. Water lies over lake tiles and runs a little onto
-// their shores. Each tile carries the low-poly dressing of its shape (clear of its improvement or building, set on the slope
-// under it): trees, hills, peaks, dunes, grass, flowers, stones, reeds and so on. Each shape comes in
-// a few variants (conifers or broadleaf, a meadow or flowers…), picked per tile, so neighbours of one terrain don't look the same.
+// the map, so terrains fade into each other instead of ending at a hex line; sand lines the slope down to a lake and snow lies
+// over the snowline. Water lies over lake tiles, lighter in the shallows, and runs a little onto their shores. The woods are
+// planted over the whole map at once (plantWoods), so neighbouring forest tiles make one wood with a ragged edge. Each tile
+// carries the low-poly dressing of its shape (clear of its improvement or building, set on the ground under it): grass, flowers,
+// stones, a range's crags, cacti, reeds and so on. Each shape comes in a few variants (a meadow or flowers…), picked per tile,
+// so neighbours of one terrain don't look the same.
 // A mist covers unexplored tiles and thins out towards the known land. Built from a BoardScene (Features/Games/Models/BoardScene).
 import {
     BufferAttribute, BufferGeometry, ConeGeometry, CylinderGeometry, Float32BufferAttribute, Group, IcosahedronGeometry, InstancedMesh, Matrix4,
     Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Quaternion, Vector3,
 } from '../../lib/three/three.module.js';
-import { corners, groundOf, hash, PLATEAU, tileLevel, WATER_LEVEL } from './ground.js';
+import {
+    corners, fan, groundOf, hash, noise, PLATEAU, RIM_STEPS, ring, SHELF, smooth, stitch, tileLevel, WATER_LEVEL, weightsAt,
+} from './ground.js';
 import { massif, snowfield } from './mountains.js';
 
 export { hash };
@@ -29,6 +35,26 @@ const SHORE_STEPS = 6;
 const SHORE_WAVE = 0.45;
 // Where the facets of a plateau bend: its inner ring, as a share of the radius.
 const INNER = 0.35;
+// The snowline over the ground (map units), how far it wanders and how soft it is; how much sand lies on a lake's shore.
+const SNOW_LINE = 0.9;
+const SNOW_RAGGED = 0.16;
+const SNOW_BLEND = 0.06;
+const BEACH = 0.8;
+// How much lighter a lake is in its shallows; the height a crag's top must reach to carry snow.
+const SHALLOWS = 0.07;
+const CAP_LINE = 1.05;
+// Where a range's crags may stand: tries round the shelf, and how far the range must lift the ground there (map units).
+const SUMMIT_TRIES = 12;
+const SUMMIT_RISE = 0.12;
+// The woods: the grid trees are planted on (map units), the density a tree needs (plus up to WOOD_EDGE_WANDER, by noise, so
+// the edge wavers), the clearing kept round a forest tile's middle (a share of the radius) and the room kept from a river.
+const WOOD_CELL = 0.44;
+const WOOD_EDGE = 0.36;
+const WOOD_EDGE_WANDER = 0.3;
+const CLEARING = 0.18;
+const RIVER_ROOM = 0.14;
+// The terrains a tree may stand on.
+const WOODED = new Set(['trees', 'flat', 'hills']);
 // The size, in map units, of the slow light and shade that runs over the whole ground, and how strong it is (either way).
 const SHADE_SIZE = 3.2;
 const SHADE = 0.05;
@@ -55,25 +81,6 @@ const solid = new MeshLambertMaterial({ vertexColors: true, flatShading: true })
 const decoration = new MeshLambertMaterial({ flatShading: true });
 const mist = new MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false });
 const water = new MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.72, roughness: 0.25, metalness: 0, depthWrite: false });
-
-function smooth(t) {
-    return t * t * (3 - 2 * t);
-}
-
-// Smooth value noise in [0, 1) over the ground, one lattice value per `size` map units, so a patch runs on across tiles.
-function noise(x, z, size, salt) {
-    const fx = x / size;
-    const fz = z / size;
-    const i = Math.floor(fx);
-    const j = Math.floor(fz);
-    const u = smooth(fx - i);
-    const v = smooth(fz - j);
-    const a = hash(i, j, salt);
-    const c = hash(i, j + 1, salt);
-    const top = a + (hash(i + 1, j, salt) - a) * u;
-    const bottom = c + (hash(i + 1, j + 1, salt) - c) * u;
-    return top + (bottom - top) * v;
-}
 
 // How much of the accent colour a point of the ground takes: coarse patches with fine grain over them.
 function patch(x, z) {
@@ -113,24 +120,33 @@ function snap(value) {
 
 // Plain numbers ({ r, g, b }) rather than THREE.Color: a big map has a few hundred thousand of these.
 function groundColour(x, z, looks) {
-    const lean = patch(x, z);
+    return scaled(leaned(looks, patch(x, z)), shadeAt(x, z));
+}
+
+// The mean of some tiles' colours, each leaned towards its accent by `lean`.
+function leaned(looks, lean) {
     let [r, g, b] = [0, 0, 0];
     for (const { colour, accent } of looks) {
         r += colour.r + (accent.r - colour.r) * lean;
         g += colour.g + (accent.g - colour.g) * lean;
         b += colour.b + (accent.b - colour.b) * lean;
     }
-    const scale = (1 + (noise(x, z, SHADE_SIZE, 94) - 0.5) * 2 * SHADE) / looks.length;
-    return { r: r * scale, g: g * scale, b: b * scale };
+    return { r: r / looks.length, g: g / looks.length, b: b / looks.length };
 }
 
-// Writes triangles straight into typed arrays that double when full: a big map has a few hundred thousand.
+// The slow light and shade over the ground at (x, z), as a factor.
+function shadeAt(x, z) {
+    return 1 + (noise(x, z, SHADE_SIZE, 94) - 0.5) * 2 * SHADE;
+}
+
+// Writes triangles straight into typed arrays that double when full: a big map has a few hundred thousand. `capacity` is the
+// number of triangles to make room for at first.
 class MeshBuilder {
-    constructor() {
+    constructor(capacity = 1024) {
         this.count = 0;
-        this.positions = new Float32Array(9 * 1024);
-        this.colours = new Float32Array(9 * 1024);
-        this.faceTile = new Int32Array(1024);
+        this.positions = new Float32Array(9 * capacity);
+        this.colours = new Float32Array(9 * capacity);
+        this.faceTile = new Int32Array(capacity);
     }
 
     // A triangle in one colour, or with a colour per corner (`colour` an array of three).
@@ -164,73 +180,83 @@ class MeshBuilder {
         this.faceTile = bigger(this.faceTile, Int32Array);
     }
 
-    // A tile's piece of the landscape: a plateau at its level cut into facets (the inner ring dips a little, so the light picks
-    // them out) and the slope from the plateau's rim (PLATEAU of the radius) to the tile's own rim, whose corners and edge
-    // middles take the heights the ground gives them and the colours of the tiles that meet there. `look(tile)` gives a tile's
-    // colours; `shared` holds the rim colours already worked out.
+    // A tile's piece of the landscape (`look(tile)` gives a tile's colours; `shared` holds the rim vertices already worked out).
+    // Its rim has RIM_STEPS points along each edge, whose heights and colours come from the tiles that meet there. Inside, a
+    // smooth tile is a level plateau cut into facets (the inner ring dips a little, so the light picks them out) and the slope
+    // from it to the rim; a tile a region's relief rises on (ground.js) is cut into a fine grid of rings that follows it.
     landTop(tile, ground, look, shared, index) {
         const [x, z] = [tile.x, tile.z];
-        const level = tileLevel(tile);
-        const own = [look(tile)];
         if (!tile.terrain) {
             // Unexplored: a plain flat hex under the mist; its explored neighbours wall their side down to the base.
-            this.hexTop(x, z, level, TILE_RADIUS, groundColour(x, z, own), index);
+            this.hexTop(x, z, tileLevel(tile), TILE_RADIUS, groundColour(x, z, [look(tile)]), index);
             return;
         }
-        const at = (px, pz, y, looks = own) => ({ position: [px, y, pz], colour: groundColour(px, pz, looks) });
-        const ring = share => corners.map(([cx, cz]) => [x + cx * share * TILE_RADIUS, z + cz * share * TILE_RADIUS]);
-        const middles = points => points.map(([ax, az], k) => [(ax + points[(k + 1) % 6][0]) / 2, (az + points[(k + 1) % 6][1]) / 2]);
-        const centre = at(x, z, level);
-        const inner = ring(INNER).map(([px, pz]) => at(px, pz, level - FACET_DIP * noise(px, pz, PATCH_FINE, 93)));
-        const plateau = ring(PLATEAU);
-        const flat = plateau.map(([px, pz]) => at(px, pz, level));
-        const flatMiddle = middles(plateau).map(([px, pz]) => at(px, pz, level));
-        // Rim points are snapped to a fine grid, so the tiles sharing one write exactly the same vertex (no hairline cracks).
-        const rimPoints = ring(1).map(([px, pz]) => [snap(px), snap(pz)]);
-        // A rim point shared by two or three explored tiles has one colour, worked out once (`shared`, keyed by place); a point
-        // only one tile takes part in (along the mist or the map's edge) is that tile's own.
-        const rimAt = (px, pz, y, tiles) => {
-            if (tiles.length < 2) {
-                return at(px, pz, y);
-            }
-            const key = Math.round(px * 8) * 65536 + Math.round(pz * 8);
-            let colour = shared.get(key);
-            if (!colour) {
-                colour = groundColour(px, pz, tiles.map(look));
-                shared.set(key, colour);
-            }
-            return { position: [px, y, pz], colour };
+        const point = (px, pz, dip = 0) => {
+            const weights = weightsAt(px - x, pz - z);
+            const y = ground.heightIn(tile, px, pz, undefined, weights) - dip;
+            return { position: [px, y, pz], colour: colourAt(tile, px, pz, y, ground, look, weights) };
         };
-        const rim = rimPoints.map(([px, pz], k) => rimAt(px, pz, ground.cornerHeight(tile, k), ground.around(tile, k)));
-        const rimMiddle = middles(rimPoints).map(([px, pz], k) => rimAt(px, pz, ground.edgeHeight(tile, k), ground.beside(tile, k)));
-        const face = (p, q, r) => this.triangle(p.position, q.position, r.position, [p.colour, q.colour, r.colour], index);
+        // A facet's small dip on the level middle of a tile (none on the rim, where rivers and borders lie).
+        const facet = (px, pz) => point(px, pz, FACET_DIP * noise(px, pz, PATCH_FINE, 93));
+        // Rim points are snapped to a fine grid and worked out once per place, so the tiles sharing one write exactly the same
+        // vertex (no hairline cracks).
+        const rim = ring(x, z, 1, RIM_STEPS).map(([px, pz]) => {
+            const [sx, sz] = [snap(px), snap(pz)];
+            const key = Math.round(sx * 4096) * 4194304 + Math.round(sz * 4096) + 1048576;
+            let vertex = shared.get(key);
+            if (!vertex) {
+                vertex = point(sx, sz);
+                shared.set(key, vertex);
+            }
+            return vertex;
+        });
+        const face = (p, q, r) => this.landTriangle(p, q, r, index);
+        const centre = facet(x, z);
+        let inner;
+        if (ground.rough(tile)) {
+            inner = ring(x, z, 1 / RIM_STEPS, 1).map(([px, pz]) => facet(px, pz));
+            fan(centre, inner, face);
+            for (let j = 2; j < RIM_STEPS; j++) {
+                const share = j / RIM_STEPS;
+                // (A ring's share of the radius is in map units too: the radius is 1.)
+                const next = ring(x, z, share, j).map(([px, pz]) => share < SHELF ? facet(px, pz) : point(px, pz));
+                stitch(inner, next, face);
+                inner = next;
+            }
+        } else {
+            const facets = ring(x, z, INNER, 1).map(([px, pz]) => facet(px, pz));
+            fan(centre, facets, face);
+            inner = ring(x, z, PLATEAU, 2).map(([px, pz]) => point(px, pz));
+            stitch(facets, inner, face);
+        }
+        stitch(inner, rim, face);
         for (let k = 0; k < 6; k++) {
-            const next = (k + 1) % 6;
-            face(centre, inner[next], inner[k]);
-            face(inner[next], flat[next], flatMiddle[k]);
-            face(inner[k], flatMiddle[k], flat[k]);
-            face(inner[next], flatMiddle[k], inner[k]);
-            face(flat[k], flatMiddle[k], rimMiddle[k]);
-            face(flat[k], rimMiddle[k], rim[k]);
-            face(flatMiddle[k], flat[next], rim[next]);
-            face(flatMiddle[k], rim[next], rimMiddle[k]);
             if (!ground.joined(tile, k)) {
-                this.edgeSide(rim[k], rimMiddle[k], rim[next], index);
+                this.edgeSide(Array.from({ length: RIM_STEPS + 1 }, (_, s) => rim[(k * RIM_STEPS + s) % rim.length]), index);
             }
         }
     }
 
-    // The wall under a rim edge (corner, middle, corner) down to the base, where no explored neighbour meets it: at the map's
-    // edge and along the mist.
-    edgeSide(a, middle, b, index) {
+    // A triangle of the land, turned to face up, with a colour per corner.
+    landTriangle(p, q, r, index) {
+        const [a, b, c] = [p.position, q.position, r.position];
+        if ((b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]) < 0) {
+            this.triangle(a, c, b, [p.colour, r.colour, q.colour], index);
+        } else {
+            this.triangle(a, b, c, [p.colour, q.colour, r.colour], index);
+        }
+    }
+
+    // The wall under a rim edge (its points from corner to corner) down to the base, where no explored neighbour meets it: at
+    // the map's edge and along the mist.
+    edgeSide(points, index) {
         const shade = point => ({ r: point.colour.r * 0.7, g: point.colour.g * 0.7, b: point.colour.b * 0.7 });
-        const wall = (p, q) => {
+        for (let i = 0; i < points.length - 1; i++) {
+            const [p, q] = [points[i], points[i + 1]];
             const [p0, q0] = [[p.position[0], BASE, p.position[2]], [q.position[0], BASE, q.position[2]]];
             this.triangle(p0, q.position, q0, [shade(p), shade(q), shade(q)], index);
             this.triangle(p0, p.position, q.position, [shade(p), shade(p), shade(q)], index);
-        };
-        wall(a, middle);
-        wall(middle, b);
+        }
     }
 
     // The water's run past edge k of a hex at height y, onto the land's slope that dips under it: a strip whose outer line
@@ -256,24 +282,76 @@ class MeshBuilder {
         }
     }
 
-    // A hex top at height y, radius `radius`, around (x, z).
-    hexTop(x, z, y, radius, colour, tile) {
+    // A hex top at height y, radius `radius`, around (x, z): one colour, or the middle's and one per corner (`rim`).
+    hexTop(x, z, y, radius, colour, tile, rim) {
         for (let k = 0; k < 6; k++) {
             const [ax, az] = corners[k];
             const [bx, bz] = corners[(k + 1) % 6];
-            this.triangle([x, y, z], [x + bx * radius, y, z + bz * radius], [x + ax * radius, y, z + az * radius], colour, tile);
+            const shades = rim ? [colour, rim[(k + 1) % 6], rim[k]] : colour;
+            this.triangle([x, y, z], [x + bx * radius, y, z + bz * radius], [x + ax * radius, y, z + az * radius], shades, tile);
         }
     }
 
-    build(material) {
+    // The mesh of the triangles written. `normals` false skips working them out for a flat-shaded material, which lights each
+    // face by its own slope; it gets a plain upward normal instead (the shadow pass still reads one).
+    build(material, normals = true) {
         const geometry = new BufferGeometry();
         geometry.setAttribute('position', new BufferAttribute(this.positions.slice(0, this.count * 9), 3));
         geometry.setAttribute('color', new BufferAttribute(this.colours.slice(0, this.count * 9), 3));
-        geometry.computeVertexNormals();
+        if (normals) {
+            geometry.computeVertexNormals();
+        } else {
+            const up = new Float32Array(this.count * 9);
+            for (let i = 1; i < up.length; i += 3) {
+                up[i] = 1;
+            }
+            geometry.setAttribute('normal', new BufferAttribute(up, 3));
+        }
         const mesh = new Mesh(geometry, material);
         mesh.userData.faceTile = this.faceTile.slice(0, this.count);
         return mesh;
     }
+}
+
+// The colour of the ground at a point of a tile at height y: the tile's own on its plateau, blended at its rim with the tiles
+// that meet there (each leaned towards its accent by the patches), sand on the slope down to a lake, and snow over the snowline.
+function colourAt(tile, x, z, y, ground, look, weights) {
+    const lean = patch(x, z);
+    let colour = scaled(leaned([look(tile)], lean), weights.plateau);
+    let beach = 0;
+    const shore = tiles => tiles.some(other => other.shape === 'water') && tiles.some(other => other.shape !== 'water') ? 1 : 0;
+    if (weights.corner > 0) {
+        const around = ground.around(tile, weights.c);
+        colour = added(colour, scaled(leaned(around.map(look), lean), weights.corner));
+        beach += weights.corner * shore(around);
+    }
+    if (weights.middle > 0) {
+        const beside = ground.beside(tile, weights.k);
+        colour = added(colour, scaled(leaned(beside.map(look), lean), weights.middle));
+        beach += weights.middle * shore(beside);
+    }
+    colour = scaled(colour, shadeAt(x, z));
+    const paints = look(tile);
+    if (beach > 0) {
+        colour = mixed(colour, paints.beach, beach * BEACH);
+    }
+    const line = SNOW_LINE + (noise(x, z, 0.6, 96) - 0.5) * SNOW_RAGGED;
+    if (y > line) {
+        colour = mixed(colour, paints.snow, smooth(Math.min((y - line) / SNOW_BLEND, 1)));
+    }
+    return colour;
+}
+
+function scaled(colour, by) {
+    return { r: colour.r * by, g: colour.g * by, b: colour.b * by };
+}
+
+function added(a, b) {
+    return { r: a.r + b.r, g: a.g + b.g, b: a.b + b.b };
+}
+
+function mixed(a, b, t) {
+    return { r: a.r + (b.r - a.r) * t, g: a.g + (b.g - a.g) * t, b: a.b + (b.b - a.b) * t };
 }
 
 // Many copies of one shape, each with its own place, scale, turn and colour.
@@ -368,6 +446,57 @@ function tree(tile, x, z, top, scale, broadleaf, leaves, wood, out, k) {
     }
 }
 
+// Where a range's crag stands on a tile: its highest point round the shelf, if the range rises there well over the shelf.
+function summits(tile, ground, out) {
+    const level = tileLevel(tile) + ground.reliefIn(tile, tile.x, tile.z);
+    const candidates = Array.from({ length: SUMMIT_TRIES }, (_, i) => {
+        const angle = (i + hash(tile.q, tile.r, 520 + i) * 0.6) / SUMMIT_TRIES * Math.PI * 2;
+        const distance = 0.5 + hash(tile.q, tile.r, 540 + i) * 0.18;
+        const [x, z] = [tile.x + Math.cos(angle) * distance, tile.z + Math.sin(angle) * distance];
+        return { x, z, angle, rise: ground.heightIn(tile, x, z) - level };
+    }).filter(candidate => candidate.rise > SUMMIT_RISE && clear(out, tile, candidate.x, candidate.z));
+    const highest = candidates.reduce((best, candidate) => (!best || candidate.rise > best.rise ? candidate : best), null);
+    return highest ? [[highest.x, highest.z]] : [];
+}
+
+// The trees of every wood, planted over the whole map at once on a jittered grid rather than tile by tile, so neighbouring
+// forest tiles make one wood with no gap at the hex line. A tree grows where the wood is dense enough (the forest's share,
+// blended over the rims like the ground's colours) for the wavering line its edge follows, so the edge is ragged and a few
+// trees stand out on the land beside it; never on a lake, a mountain or the sand, beside a river, on a building's spot or on a
+// neighbour's shelf. Conifers and broadleaf grow in stands of their own that run on across tiles.
+function plantWoods(scene, ground, palette, out) {
+    const cells = new Set();
+    for (const tile of scene.tiles) {
+        if (tile.terrain && tile.shape === 'trees') {
+            for (let i = Math.floor((tile.x - 1.2) / WOOD_CELL); i <= Math.floor((tile.x + 1.2) / WOOD_CELL); i++) {
+                for (let j = Math.floor((tile.z - 1.2) / WOOD_CELL); j <= Math.floor((tile.z + 1.2) / WOOD_CELL); j++) {
+                    cells.add(`${i},${j}`);
+                }
+            }
+        }
+    }
+    const share = tiles => tiles.filter(tile => tile.shape === 'trees').length / tiles.length;
+    for (const cell of cells) {
+        const [i, j] = cell.split(',').map(Number);
+        const [x, z] = [(i + 0.15 + hash(i, j, 730) * 0.7) * WOOD_CELL, (j + 0.15 + hash(i, j, 731) * 0.7) * WOOD_CELL];
+        const tile = ground.tileAt(x, z);
+        if (!tile?.terrain || !WOODED.has(tile.shape)) {
+            continue;
+        }
+        const weights = weightsAt(x - tile.x, z - tile.z);
+        const density = ground.blend(tile, weights, tile.shape === 'trees' ? 1 : 0, share, share);
+        const own = tile.shape === 'trees';
+        if (density < WOOD_EDGE + noise(x, z, 0.9, 732) * WOOD_EDGE_WANDER || weights.reach < (own ? CLEARING : SHELF)
+            || !clear(out, tile, x, z) || ground.riverDistance(x, z) < RIVER_ROOM) {
+            continue;
+        }
+        const leaves = palette.faded('--gv-terrain-forest', tile);
+        const wood = palette.faded('--gv-board3d-trunk', tile);
+        const scale = 0.45 + density * 0.25 + hash(i, j, 734) * 0.2;
+        tree(tile, x, z, ground.heightIn(tile, x, z) - FACET_DIP, scale, noise(x, z, 2.6, 733) > 0.55, leaves, wood, out, i * 7 + j);
+    }
+}
+
 const decorators = {
     // Plains: a meadow, flowers, bushes or a few stones, always with some grass.
     flat(tile, top, palette, out) {
@@ -395,36 +524,13 @@ const decorators = {
                 stones(tile, top, palette, out, 2, 600);
         }
     },
-    // Forest: conifers, broadleaf or mixed woods, a dense stand of eight to eleven trees: a few round the middle and a wider ring.
+    // Forest: its trees are planted over the whole wood at once (plantWoods); a tile adds only grass under them.
     trees(tile, top, palette, out) {
-        const leaves = palette.terrain(tile);
-        const wood = palette.faded('--gv-board3d-trunk', tile);
-        const kind = variant(tile, 3);
-        const inner = 3;
-        const outer = 5 + Math.floor(hash(tile.q, tile.r, 81) * 4);
-        for (let k = 0; k < inner + outer; k++) {
-            const [x, z] = k < inner ? scatter(tile, k, inner, 0.3, 700) : scatter(tile, k - inner, outer, 0.68, 720);
-            if (!clear(out, tile, x, z)) {
-                continue;
-            }
-            const broadleaf = kind === 1 || (kind === 2 && k % 2 === 1);
-            tree(tile, x, z, top, 0.62 + hash(tile.q, tile.r, 90 + k) * 0.28, broadleaf, leaves, wood, out, k);
-        }
         grass(tile, top, palette, out, 2, 310);
     },
-    // Hills: rolling humps, with a rocky outcrop or a few trees on some.
+    // Hills: the downs' swells are in the ground (ground.js); a tile adds a rocky outcrop or a tree on some.
     hills(tile, top, palette, out) {
-        const colour = palette.terrain(tile).multiplyScalar(1.08);
         const kind = variant(tile, 3);
-        const humps = kind === 0 ? 3 : 2;
-        for (let k = 0; k < humps; k++) {
-            const [x, z] = spot(tile, k, 0.4);
-            if (!clear(out, tile, x, z)) {
-                continue;
-            }
-            const s = 0.8 + hash(tile.q, tile.r, 50 + k) * 0.4;
-            out.hills.push({ x, y: top - 0.04, z, sx: s, sy: s * 0.55, sz: s, turn: k * 2, colour });
-        }
         if (kind === 1) {
             stones(tile, top, palette, out, 3, 610);
         } else if (kind === 2) {
@@ -437,39 +543,36 @@ const decorators = {
         }
         grass(tile, top, palette, out, 2, 320);
     },
-    // Mountains: a massif with a lower one, a range of three, or one great massif among boulders (mountains.js). Each is turned
-    // and stretched its own way; the lowest stay bare of snow.
+    // Mountains: the range itself is in the ground (ground.js); a crag (mountains.js) stands on its highest point round the
+    // tile's shelf where it rises well over it, snow-capped when high enough. A lone mountain, which no range lifts, keeps a
+    // massif of its own: one with a lower one, a group of three, or one great massif.
     peaks(tile, top, palette, out) {
         const rock = palette.terrain(tile);
         const snow = palette.faded('--gv-board3d-snow', tile);
-        const kind = variant(tile, 3);
-        const peaks = kind === 0 ? [[tile.x - 0.08, tile.z - 0.05, 1], [...spot(tile, 1, 0.38), 0.6]]
-            : kind === 1 ? [[...spot(tile, 0, 0.35), 0.75], [...spot(tile, 1, 0.4), 0.6], [...spot(tile, 2, 0.35), 0.85]]
-                : [[tile.x, tile.z, 1.15]];
+        const ground = out.shape;
+        let peaks;
+        if (ground.touches(tile, 'peaks')) {
+            peaks = summits(tile, ground, out).map(([x, z], k) => [x, z, 0.42 + hash(tile.q, tile.r, 56 + k) * 0.18]);
+        } else {
+            const kind = variant(tile, 3);
+            peaks = kind === 0 ? [[tile.x - 0.08, tile.z - 0.05, 1], [...spot(tile, 1, 0.38), 0.6]]
+                : kind === 1 ? [[...spot(tile, 0, 0.35), 0.75], [...spot(tile, 1, 0.4), 0.6], [...spot(tile, 2, 0.35), 0.85]]
+                    : [[tile.x, tile.z, 1.15]];
+        }
         peaks.filter(([x, z]) => clear(out, tile, x, z)).forEach(([x, z, s], k) => {
             const height = s * (0.8 + hash(tile.q, tile.r, 60 + k) * 0.3);
             const stretch = 0.85 + hash(tile.q, tile.r, 64 + k) * 0.3;
             const place = { x, y: top - 0.04, z, sx: s * stretch, sy: height, sz: s / stretch, turn: hash(tile.q, tile.r, 68 + k) * Math.PI * 2 };
             out.peaks.push({ ...place, colour: rock });
-            if (height > 0.62) {
+            if (ground.heightIn(tile, x, z) + height > CAP_LINE) {
                 out.caps.push({ ...place, colour: snow });
             }
         });
-        stones(tile, top, palette, out, kind === 2 ? 4 : 2, 620);
+        stones(tile, top, palette, out, 2, 620);
     },
-    // Desert: dunes, some with a cactus or stones.
+    // Desert: the dunes are in the ground (ground.js); a tile adds a few cacti or stones on some.
     dunes(tile, top, palette, out) {
-        const colour = palette.terrain(tile).multiplyScalar(1.06);
         const kind = variant(tile, 3);
-        const dunes = kind === 2 ? 3 : 2;
-        for (let k = 0; k < dunes; k++) {
-            const [x, z] = spot(tile, k, 0.35);
-            if (!clear(out, tile, x, z)) {
-                continue;
-            }
-            const long = kind === 2 ? 1 : 1.3;
-            out.hills.push({ x, y: top - 0.06, z, sx: long, sy: 0.25, sz: 0.7, turn: hash(tile.q, tile.r, 70 + k) * Math.PI, colour });
-        }
         if (kind === 1) {
             const green = palette.faded('--gv-board3d-cactus', tile);
             strew(out, out.cacti, tile, 2, 0.6, 800, (x, z, k) => {
@@ -483,13 +586,17 @@ const decorators = {
     // Lakes: open water, reeds along the shore, or lily pads.
     water(tile, top, palette, out) {
         const surface = palette.terrain(tile);
-        out.water.hexTop(tile.x, tile.z, WATER_LEVEL + WATER_LIFT, TILE_RADIUS, surface, out.index);
+        // Lighter in the shallows, where the shore's slope comes up under the water: at the corners the land takes part in.
+        const shallow = surface.clone().offsetHSL(0, -0.04, SHALLOWS);
+        const land = k => out.shape.around(tile, k).some(other => other.shape !== 'water');
+        const rim = corners.map((_, k) => land(k) ? shallow : surface);
+        out.water.hexTop(tile.x, tile.z, WATER_LEVEL + WATER_LIFT, TILE_RADIUS, surface, out.index, rim);
         // Past each shore the water runs on a little, in a wavy strip, over the land's slope, which dips under it there.
         for (let k = 0; k < 6; k++) {
             if (out.shape.joined(tile, k) && out.shape.neighbour(tile, k).shape !== 'water') {
                 // An end of the strip reaches out only where the land goes on beside it (not another lake, the mist or the map's edge).
-                const land = j => out.shape.joined(tile, j) && out.shape.neighbour(tile, j).shape !== 'water';
-                out.water.skirt(tile.x, tile.z, WATER_LEVEL + WATER_LIFT, k, [land((k + 5) % 6), land((k + 1) % 6)], surface, out.index);
+                const shore = j => out.shape.joined(tile, j) && out.shape.neighbour(tile, j).shape !== 'water';
+                out.water.skirt(tile.x, tile.z, WATER_LEVEL + WATER_LIFT, k, [shore((k + 5) % 6), shore((k + 1) % 6)], shallow, out.index);
             }
         }
         const kind = variant(tile, 3);
@@ -584,7 +691,8 @@ function settle(out, first, ground, tile) {
 
 // Builds the ground of a scene. Returns the group to add and the mesh to pick tiles on (`userData.faceTile`: tile per face).
 export function buildTerrain(scene, palette) {
-    const ground = new MeshBuilder();
+    // A smooth tile takes 72 triangles, a rough one 216 (fewer than half are rough on most maps).
+    const ground = new MeshBuilder(scene.tiles.length * 128);
     const features = new Map((scene.features ?? []).map(feature => [`${feature.q},${feature.r}`, feature]));
     const out = {
         water: new MeshBuilder(), trees: [], crowns: [], trunks: [], hills: [], peaks: [], caps: [], rocks: [], tufts: [], flowers: [],
@@ -598,7 +706,12 @@ export function buildTerrain(scene, palette) {
         let colours = looks.get(tile);
         if (!colours) {
             const colour = tile.shape === 'water' ? palette.faded('--gv-board3d-seabed', tile) : palette.terrain(tile);
-            colours = { colour, accent: accentOf(tile, colour) };
+            colours = {
+                colour,
+                accent: accentOf(tile, colour),
+                beach: palette.faded('--gv-board3d-beach', tile),
+                snow: palette.faded('--gv-board3d-snow', tile),
+            };
             looks.set(tile, colours);
         }
         return colours;
@@ -614,9 +727,10 @@ export function buildTerrain(scene, palette) {
         (decorators[tile.shape] ?? decorators.flat)(tile, tileTop(tile), palette, out);
         settle(out, first, shape, tile);
     });
+    plantWoods(scene, shape, palette, out);
 
     const group = new Group();
-    const pick = ground.build(solid);
+    const pick = ground.build(solid, false);
     pick.receiveShadow = true;
     pick.castShadow = true;
     group.add(pick);
