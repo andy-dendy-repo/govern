@@ -6,6 +6,7 @@ import {
 } from '../../lib/three/three.module.js';
 import { CameraRig } from './camera.js';
 import { Gestures } from './gestures.js';
+import { groundOf } from './ground.js';
 import { KeyPan } from './keys.js';
 import { Palette } from './palette.js';
 import { Labels } from './labels.js';
@@ -20,17 +21,23 @@ import { buildTerrain, disposeShared as disposeGround, disposeTerrain } from './
 // The layers drawn on the ground besides the terrain and the pieces, each built from its own part of the scene.
 const builders = { rivers: buildRivers, features: buildFeatures, borders: buildBorders };
 
+// What the ground (ground.js) is built from, as text to compare: the tiles and the rivers' courses.
+function groundKey(scene) {
+    const courses = (scene.rivers ?? []).map(river => [river.x1, river.z1, river.x2, river.z2]);
+    return JSON.stringify([scene.tiles, courses]);
+}
+
 // What each layer is built from, as text to compare: a layer is built again only when its text changes. The terrain also reads
 // the features (no trees under a building), and the features the tiles they stand on.
-function layerKeys(scene) {
+function layerKeys(scene, ground) {
     const tiles = new Map(scene.tiles.map(tile => [`${tile.q},${tile.r}`, tile]));
     const under = (scene.features ?? []).map(feature => tiles.get(`${feature.q},${feature.r}`));
-    // Rivers and borders lie on the ground's slopes (ground.js), which follow the tiles, so they are built again with them.
-    const ground = JSON.stringify(scene.tiles);
+    // Rivers, borders and the features lie on the ground (ground.js), which follows the tiles and the rivers (a river cuts a
+    // gorge through a region's relief), so they are built again with them.
     return {
         terrain: ground + JSON.stringify(scene.features),
         rivers: JSON.stringify([scene.rivers, scene.bridges]) + ground,
-        features: JSON.stringify([scene.features, under]),
+        features: JSON.stringify([scene.features, under]) + ground,
         borders: JSON.stringify(scene.borders) + ground,
         pieces: JSON.stringify(scene.pieces),
     };
@@ -114,6 +121,17 @@ export class Board3D {
     setScene(scene) {
         const previous = this.scene;
         this.scene = scene;
+        this.groundKey = groundKey(scene);
+        // The same tiles and rivers as before: the scene keeps the earlier tile list (equal, item for item), so the ground built
+        // for it (cached per tile list) serves again and a view that only moves pieces doesn't build it anew.
+        if (previous && this.groundKey === this.previousGroundKey) {
+            scene.tiles = previous.tiles;
+        }
+        this.previousGroundKey = this.groundKey;
+        this.lift(scene.pieces);
+        // The overlay comes again after every new view (GameBoard), which places its labels on the new ground; until then its
+        // marks keep to it.
+        this.placeMarks(this.overlayData);
         this.rig.setBounds(scene.map);
         this.pieceByUnit = new Map((scene.pieces ?? []).filter(piece => piece.unit != null).map(piece => [piece.unit, piece]));
         const sameMap = previous && JSON.stringify(previous.map) === JSON.stringify(scene.map);
@@ -122,8 +140,37 @@ export class Board3D {
 
     // Animates the scene (BoardAnimationService's motion); the scene itself stays as it is.
     setMotion(motion) {
+        this.lift(motion?.positions);
+        this.lift((motion?.ghosts ?? []).map(ghost => ghost.piece));
+        this.lift(motion?.effects);
         this.motion.set(motion, performance.now());
         this.requestRender();
+    }
+
+    // Puts the overlay's tiles and edges (where the lens's labels stand) on the ground under them, which a region's relief may
+    // lift; the same every time, so it can run again with a new scene.
+    placeMarks(overlay) {
+        if (!this.scene || !overlay) {
+            return;
+        }
+        const ground = groundOf(this.scene);
+        for (const mark of [...(overlay.tiles ?? []), ...(overlay.edges ?? [])]) {
+            mark.height = ground.surfaceAt(mark.x, mark.z, mark.height);
+        }
+    }
+
+    // Lifts things placed by the scene's tile heights (pieces, the motion's places) by the relief the ground's regions add
+    // where they stand (ground.js), so a unit on a range's shelf stands on it rather than in it.
+    lift(items) {
+        if (!this.scene || !items?.length) {
+            return;
+        }
+        const ground = groundOf(this.scene);
+        for (const item of items) {
+            // From the scene's own height every time, so lifting the same item again changes nothing.
+            item.base ??= item.height;
+            item.height = item.base + ground.reliefAt(item.x, item.z);
+        }
     }
 
     // A unit's piece in the scene, by its id.
@@ -147,6 +194,7 @@ export class Board3D {
     // Draws the player's current choice (lens, highlights, selection) over the scene; the map stays as it is.
     setOverlay(overlay) {
         this.overlayData = overlay;
+        this.placeMarks(overlay);
         this.labels.setOverlay(overlay);
         this.drawOverlay(new Palette(this.host));
         this.requestRender();
@@ -170,7 +218,7 @@ export class Board3D {
             return;
         }
         const began = performance.now();
-        const keys = layerKeys(this.scene);
+        const keys = layerKeys(this.scene, this.groundKey ?? groundKey(this.scene));
         const all = which === 'all' || !this.layers;
         const changed = Object.keys(keys).filter(name => all || keys[name] !== this.keys?.[name]);
         this.keys = keys;
@@ -275,7 +323,7 @@ export class Board3D {
     anchor(element, q, r) {
         const tile = element && this.scene?.tiles.find(candidate => candidate.q === q && candidate.r === r);
         if (tile) {
-            this.labels.setAnchor(element, tile.x, tile.height + 0.4, tile.z);
+            this.labels.setAnchor(element, tile.x, groundOf(this.scene).surfaceAt(tile.x, tile.z, tile.height) + 0.4, tile.z);
         } else {
             this.labels.clearAnchor();
         }

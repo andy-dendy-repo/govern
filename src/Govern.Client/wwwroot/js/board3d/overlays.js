@@ -4,7 +4,7 @@ import {
     BoxGeometry, BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial,
 } from '../../lib/three/three.module.js';
 import { instances } from './shapes.js';
-import { corners as hexCorners, groundOf, PLATEAU } from './ground.js';
+import { fan, groundOf, RIM_STEPS, ring as hexRing, stitch } from './ground.js';
 
 const DASH = 0.14;
 const GAP = 0.08;
@@ -62,38 +62,29 @@ const RING_HEIGHT = 0.05;
 const tints = new MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: DoubleSide });
 const ring = new MeshLambertMaterial({ vertexColors: true, flatShading: true, side: DoubleSide });
 
-// A tint is a hex fan draped on the ground: the plateau's ring and the tint's own rim, each corner and edge middle at the
-// ground's height under it.
+// A tint is a hex draped on the ground: the rings the terrain cuts a rough tile into (terrain.js), out to the tint's own rim,
+// each point at the ground's height under it, so it lies on a range's crests and a hill's swells instead of cutting into them.
 function buildTints(tiles, palette, ground) {
     const positions = [];
     const colours = [];
     tiles.forEach(tile => {
         const { colour, alpha } = palette.tint(tile.tint);
         const lift = LIFT + TINT_LIFT * 0.3;
-        const point = (share, k, middle) => {
-            const [ax, az] = hexCorners[k];
-            const [bx, bz] = middle ? hexCorners[(k + 1) % 6] : hexCorners[k];
-            const [x, z] = [tile.x + (ax + bx) / 2 * share, tile.z + (az + bz) / 2 * share];
-            return [x, (ground ? ground.surfaceAt(x, z, tile.height) : tile.height) + lift, z];
-        };
-        const triangle = (a, b, c) => {
+        const lay = ([x, z]) => [x, (ground ? ground.surfaceAt(x, z, tile.height) : tile.height) + lift, z];
+        const face = (a, b, c) => {
             positions.push(...a, ...b, ...c);
             for (let v = 0; v < 3; v++) {
                 colours.push(colour.r, colour.g, colour.b, alpha);
             }
         };
-        const centre = point(0, 0, false);
-        for (let k = 0; k < 6; k++) {
-            const next = (k + 1) % 6;
-            const [inA, inM, inB] = [point(PLATEAU, k, false), point(PLATEAU, k, true), point(PLATEAU, next, false)];
-            const [outA, outM, outB] = [point(TINT_RADIUS, k, false), point(TINT_RADIUS, k, true), point(TINT_RADIUS, next, false)];
-            triangle(centre, inB, inM);
-            triangle(centre, inM, inA);
-            triangle(inA, inM, outM);
-            triangle(inA, outM, outA);
-            triangle(inM, inB, outB);
-            triangle(inM, outB, outM);
+        let inner = hexRing(tile.x, tile.z, 1 / RIM_STEPS, 1).map(lay);
+        fan(lay([tile.x, tile.z]), inner, face);
+        for (let j = 2; j < RIM_STEPS; j++) {
+            const next = hexRing(tile.x, tile.z, j / RIM_STEPS, j).map(lay);
+            stitch(inner, next, face);
+            inner = next;
         }
+        stitch(inner, hexRing(tile.x, tile.z, TINT_RADIUS, RIM_STEPS).map(lay), face);
     });
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
@@ -103,34 +94,28 @@ function buildTints(tiles, palette, ground) {
     return mesh;
 }
 
-// The selection ring: a raised band round the tile, draped over the ground (each corner and edge middle at the ground's height
-// under it), so it hugs a hillside instead of floating over it.
+// The selection ring: a raised band round the tile, draped over the ground (RIM_STEPS points along each side, each at the
+// ground's height under it), so it hugs a hillside or a ridge instead of floating over it or cutting into it.
 function buildRing(tile, palette, ground) {
     const colour = palette.token(tile.tint);
     const positions = [];
     const colours = [];
-    const lay = (share, k, middle, raise) => {
-        const [ax, az] = hexCorners[k];
-        const [bx, bz] = middle ? hexCorners[(k + 1) % 6] : hexCorners[k];
-        const [x, z] = [tile.x + (ax + bx) / 2 * share, tile.z + (az + bz) / 2 * share];
-        return [x, (ground ? ground.surfaceAt(x, z, tile.height) : tile.height) + LIFT + raise, z];
-    };
+    const lay = ([x, z], raise) => [x, (ground ? ground.surfaceAt(x, z, tile.height) : tile.height) + LIFT + raise, z];
     const quad = (a, b, c, d) => {
         positions.push(...a, ...b, ...c, ...a, ...c, ...d);
         for (let v = 0; v < 6; v++) {
             colours.push(colour.r, colour.g, colour.b);
         }
     };
-    const [inner, outer] = [RING_RADIUS - RING_WIDTH / 2, RING_RADIUS + RING_WIDTH / 2];
-    // The ring's points in order round the tile: each corner, then the middle of the edge after it.
-    const steps = Array.from({ length: 12 }, (_, i) => [Math.floor(i / 2), i % 2 === 1]);
-    steps.forEach(([k, middle], i) => {
-        const [nk, nmiddle] = steps[(i + 1) % 12];
-        const [i0, i1] = [lay(inner, k, middle, RING_HEIGHT), lay(inner, nk, nmiddle, RING_HEIGHT)];
-        const [o0, o1] = [lay(outer, k, middle, RING_HEIGHT), lay(outer, nk, nmiddle, RING_HEIGHT)];
+    const inner = hexRing(tile.x, tile.z, RING_RADIUS - RING_WIDTH / 2, RIM_STEPS);
+    const outer = hexRing(tile.x, tile.z, RING_RADIUS + RING_WIDTH / 2, RIM_STEPS);
+    inner.forEach((_, i) => {
+        const n = (i + 1) % inner.length;
+        const [i0, i1] = [lay(inner[i], RING_HEIGHT), lay(inner[n], RING_HEIGHT)];
+        const [o0, o1] = [lay(outer[i], RING_HEIGHT), lay(outer[n], RING_HEIGHT)];
         quad(i0, o0, o1, i1);
-        quad(o0, lay(outer, k, middle, 0), lay(outer, nk, nmiddle, 0), o1);
-        quad(i1, lay(inner, nk, nmiddle, 0), lay(inner, k, middle, 0), i0);
+        quad(o0, lay(outer[i], 0), lay(outer[n], 0), o1);
+        quad(i1, lay(inner[n], 0), lay(inner[i], 0), i0);
     });
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
