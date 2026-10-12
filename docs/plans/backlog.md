@@ -2,7 +2,7 @@
 title: Backlog (all open work, prioritised)
 tags: [plan, backlog, priorities, roadmap, deferred, game, ui, ruleset, content]
 code: [docs/plans, docs/game/design-roadmap.md]
-updated: 2026-10-05
+updated: 2026-10-11
 ---
 
 # Backlog
@@ -76,6 +76,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| F21 | Terrain regions on the 3D board: mountains form continuous ranges (ridged crests in the ground, snow by altitude, foothills on the hills beside them, gorges along rivers), hills roll as downs, the desert runs in dune crests across one wind, forests are one wood planted over the map with a ragged edge, lakes get beaches and lighter shallows; tiles meet at the mean of their plateaus ([game UI](../features/game-ui.md#terrain-regions-on-the-board)) | 2026-10-11, PR #72 | [F21](done/F21-terrain-regions.md) |
 | G8c | City storage caps: every city holds at most 30 Food, 30 Water, 20 Wood, 20 Stone, 20 Gold and 40 Culture, plus what each working building adds (an upgrade its own amounts); the excess is lost at the end of every turn. The city panel shows amount / cap, what will be lost, where its production comes from and which job takes it; no base disc under units (ruleset v14, [rules](../game/rules.md#city-storage)). Population stays in G8b | 2026-10-05, PR #65 | [G8c](done/G8c-city-storage-and-production.md) |
 | G17b | Trading rework: no routes; each city has traders (2 per city, ruleset v13), each trader sends one deal from its home city, the target accepts, declines or counters (counters go back and forth), the trader walks to the host's post once accepted and the deal starts on arrival, then shuttles between the posts by the fastest way; traders never block and are never blocked; units on one tile stand side by side; the Market tab lists the city's traders and their deals; wider city panel ([rules](../game/rules.md#trading)) | 2026-10-05, PR #64 | [G17b](done/G17b-trading-rework.md) |
 | F20 | Auto-explore: Explore sends a unit, turn after turn, to the nearest land its owner never saw until nothing known is left or it sights an enemy. Shipped with the builder lock (a unit with a job can't move until Cancel job), WASD camera panning, richer tiles and rivers, and an asymmetric Basin ([rules](../game/rules.md#exploring)) | 2026-10-04, PR #61 | [F20](done/F20-auto-explore.md) |
