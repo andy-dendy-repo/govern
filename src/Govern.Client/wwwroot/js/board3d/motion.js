@@ -4,6 +4,7 @@
 // units return to the shared meshes. Ghosts walk or fade, damage numbers float (labels.js) and pulses grow on the tile top.
 // What plays and when is never decided here; the durations come with the motion.
 import { DoubleSide, Group, Mesh, MeshBasicMaterial, RingGeometry } from '../../lib/three/three.module.js';
+import { groundOf } from './ground.js';
 import { buildActor, disposeActor } from './pieces.js';
 
 // A move this long or longer (board units; neighbouring tiles are √3 apart) is a step to a tile; a shorter one is a lunge.
@@ -170,6 +171,11 @@ export class Motion {
         current.x = from.x + (to.x - from.x) * eased;
         current.z = from.z + (to.z - from.z) * eased;
         current.y = from.y + (to.y - from.y) * eased + state.hop * Math.sin(Math.PI * t);
+        // A step between tiles climbs over the ground on the way (a range's ridge or a hill's swell) instead of passing through it.
+        if (state.hop > 0 && t < 1 && this.board.scene) {
+            const ground = groundOf(this.board.scene).heightAt(current.x, current.z, undefined, current.y);
+            current.y = Math.max(current.y, ground + state.hop * Math.sin(Math.PI * t));
+        }
         current.turn = t < 1 ? turnBetween(from.turn, to.turn, Math.min(t * 2, 1)) : wrap(to.turn);
         return t < 1;
     }
