@@ -13,7 +13,7 @@ Govern is an HTTP Web API with a Blazor WASM client.
 | Infra as code | Bicep in `infra/` |
 | Source control and CI/CD | GitHub + GitHub Actions |
 
-`/Users/andriihome/plaincv/PlainCV` is a **sample only, not a source of truth**. Borrow ideas from it, never conventions. The rules below win.
+The PlainCV sample project (a separate local repo) is a **sample only, not a source of truth**. Borrow ideas from it, never conventions. The rules below win.
 
 ## Layout
 
