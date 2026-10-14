@@ -1,8 +1,10 @@
 <div align="center">
 
-# ⚔️ Govern
+<img src="docs/assets/social-preview.png" alt="Govern: .NET 10 Clean Architecture Web API with ASP.NET Core minimal APIs, EF Core, PostgreSQL, Blazor WebAssembly, Testcontainers, architecture tests, Azure Bicep and Claude Code" width="100%" />
 
-**A turn-based, two-player strategy game for the browser, a small Civilization-like game with an authoritative server.**
+# ⚔️ Govern: a .NET 10 Clean Architecture Web API + Blazor WebAssembly reference project
+
+**A real, end-to-end .NET 10 application: an ASP.NET Core minimal API, a Blazor WebAssembly client and a turn-based strategy game, built with modern architecture, testing, DevOps and an AI-assisted Claude Code workflow.**
 
 Hex maps with rivers and fog of war · cities, territory and a resource economy · builders, trading and a science tree · a 3D WebGL board
 
@@ -13,12 +15,23 @@ Hex maps with rivers and fog of war · cities, territory and a resource economy 
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![Three.js](https://img.shields.io/badge/Three.js-WebGL-000000?logo=threedotjs&logoColor=white)
 ![Azure](https://img.shields.io/badge/Azure-Bicep-0078D4?logo=microsoftazure&logoColor=white)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-hooks%20%C2%B7%20skills%20%C2%B7%20agents-D97757?logo=anthropic&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[The game](#-the-game) · [Tech stack](#-tech-stack) · [Architecture](#-architecture) · [Patterns](#-patterns-and-conventions) · [Engineering](#-engineering-highlights) · [AI guardrails](#-ai-assisted-development-with-guardrails) · [Getting started](#-getting-started)
+[Reference guide](#-use-it-as-a-reference-for) · [Tech stack](#-tech-stack-net-10-aspnet-core-ef-core-blazor) · [Architecture](#-clean-architecture-in-net-10) · [Patterns](#-patterns-and-conventions) · [Engineering](#-engineering-highlights) · [Claude Code setup](#-claude-code-setup-claudemd-hooks-skills-and-agents) · [Getting started](#-getting-started)
 
 </div>
 
 ---
+
+**Govern** is an open-source **.NET 10 / C# 14** reference project that shows how the pieces of a modern web application fit together in real code, not a to-do sample. It is built from:
+- **ASP.NET Core minimal APIs** following **Clean Architecture**;
+- **EF Core** with **PostgreSQL**;
+- **JWT** authentication with rotating refresh tokens;
+- live updates over **Server-Sent Events (SSE)**;
+- a **Blazor WebAssembly** client with a **Three.js** 3D board.
+
+Quality is enforced, not promised: integration tests run against real Postgres with **Testcontainers**, **architecture tests** use **ArchUnitNET**, and the build uses **Central Package Management** with warnings as errors. The API ships as a **chiseled container**, deployed to **Azure** with **Bicep** and **GitHub Actions** (OIDC). The whole codebase is developed with **Claude Code** under repo-encoded guardrails: a `CLAUDE.md`, path-scoped rules, hooks, skills and read-only review agents.
 
 ## 💡 What this project demonstrates
 
@@ -28,7 +41,32 @@ A solo pet project, built end to end from the domain model to the cloud:
 - 🏛️ **Architecture that holds:** Clean Architecture whose rules are **executable**. Architecture tests fail the build when a layer, folder or naming convention is broken.
 - 🔐 **Production practices:** JWT with rotating refresh tokens, rate limiting, CSP, ProblemDetails, health checks, live updates over SSE, and an infrastructure-as-code deployment to Azure.
 - 🧪 **Testing at every level:** 1,500+ tests, from pure unit tests to HTTP + real Postgres integration tests and bUnit component tests.
-- 🤖 **AI-assisted engineering done safely:** the AI pair programmer works inside repo-encoded rules, hooks and review agents ([details](#-ai-assisted-development-with-guardrails)).
+- 🤖 **AI-assisted engineering done safely:** the AI pair programmer works inside repo-encoded rules, hooks and review agents ([details](#-claude-code-setup-claudemd-hooks-skills-and-agents)).
+
+## 🧭 Use it as a reference for…
+
+Looking for a working example of something? Start here:
+
+| Looking for… | See |
+|---|---|
+| **Clean Architecture in .NET 10**, with enforced layer rules | [`src/`](src) · [architecture doc](docs/architecture.md) · [`LayerDependencyTests`](tests/Govern.ArchitectureTests/LayerDependencyTests.cs) |
+| **ASP.NET Core minimal APIs**, one endpoint per file, auto-discovered | [`SignInEndpoint.cs`](src/Govern.Api/Features/Users/SignInEndpoint.cs) · [`EndpointExtensions.cs`](src/Govern.Api/Extensions/EndpointExtensions.cs) |
+| **Result pattern + mediator without MediatR**, with pipelines | [`Result.cs`](src/Govern.Utils/Results/Result.cs) · [`Mediator/Pipelines`](src/Govern.Utils/Mediator/Pipelines) · [ADR 0001](docs/decisions/0001-mediator.md) |
+| A use case as **Request + FluentValidation validator + handler** in one file | [`SignInContract.cs`](src/Govern.Application/Users/Contracts/SignInContract.cs) |
+| **Errors as values → RFC 9457 ProblemDetails** | [`ResultExtensions.cs`](src/Govern.Api/Extensions/ResultExtensions.cs) |
+| **EF Core without repositories**: `IDbContextFactory`, interceptors, domain events | [`IApplicationDbContextFactory.cs`](src/Govern.Application.Common/Abstractions/IApplicationDbContextFactory.cs) · [`Interceptors/`](src/Govern.Infrastructure/Persistence/Interceptors) |
+| **Value objects** that can't be invalid | [`Email.cs`](src/Govern.Domain/ValueObjects/Email.cs) |
+| **JWT + rotating refresh tokens** with reuse detection | [users feature](docs/features/users.md) · [ADR 0002](docs/decisions/0002-auth-tokens.md) |
+| **Blazor WebAssembly auth**: token refresh, `AuthenticationStateProvider`, cross-tab lock | [`Client/Auth/`](src/Govern.Client/Auth) |
+| **Server-Sent Events (SSE)** live updates with per-user views | [`WatchGameEndpoint.cs`](src/Govern.Api/Features/Games/WatchGameEndpoint.cs) · [ADR 0005](docs/decisions/0005-live-updates.md) |
+| **Optimistic concurrency** with EF Core | [`SendGameCommandContract.cs`](src/Govern.Application/Games/Contracts/SendGameCommandContract.cs) |
+| A **pure, deterministic domain engine** shared by server and client | [`GameEngine.cs`](src/Govern.Core/Engine/GameEngine.cs) · [ADR 0004](docs/decisions/0004-game-engine.md) |
+| **Integration tests with Testcontainers + Respawn** and `WebApplicationFactory` | [`GovernApiFixture.cs`](tests/Govern.IntegrationTests/Fixtures/GovernApiFixture.cs) · [`GovernApiFactory.cs`](tests/Govern.IntegrationTests/Fixtures/GovernApiFactory.cs) |
+| **Architecture tests** with ArchUnitNET and reflection | [`tests/Govern.ArchitectureTests`](tests/Govern.ArchitectureTests) |
+| **Central Package Management** and a strict `Directory.Build.props` | [`Directory.Packages.props`](Directory.Packages.props) · [`Directory.Build.props`](Directory.Build.props) |
+| A **.NET container without a Dockerfile** (chiseled, non-root) | [`Govern.Api.csproj`](src/Govern.Api/Govern.Api.csproj) |
+| **Azure with Bicep** and **GitHub Actions with OIDC** | [`infra/`](infra) · [`release.yml`](.github/workflows/release.yml) · [deployment doc](docs/operations/deployment.md) |
+| A real **Claude Code setup**: `CLAUDE.md`, rules, hooks, skills, agents | [`CLAUDE.md`](CLAUDE.md) · [`.claude/`](.claude) · [details below](#-claude-code-setup-claudemd-hooks-skills-and-agents) |
 
 ## 🎲 The game
 
@@ -46,7 +84,7 @@ Two players start on opposite edges of a hex map, which is either generated with
 
 Every number in the game lives in a versioned, validated **ruleset** ([`rulesets/default/v14.json`](rulesets/default/v14.json)), not in code. The player-facing [rules reference](docs/game/rules.md) is checked against that ruleset by tests, so it can't drift from the game.
 
-## 🧰 Tech stack
+## 🧰 Tech stack: .NET 10, ASP.NET Core, EF Core, Blazor
 
 | Concern | Choice |
 |---|---|
@@ -62,7 +100,7 @@ Every number in the game lives in a versioned, validated **ruleset** ([`rulesets
 | **Hosting** | Azure Web App for Containers (Linux) for the API, Azure Static Web Apps for the client, Azure Database for PostgreSQL Flexible Server, Key Vault |
 | **Infra and delivery** | Bicep, GitHub Actions (CI on every PR, OIDC-based release to Azure), Dependabot, Cloudflare DNS |
 
-## 🏛️ Architecture
+## 🧱 Clean Architecture in .NET 10
 
 The server follows **Clean Architecture**: dependencies point inward, and the game rules live in a pure engine that the browser runs as well.
 
@@ -204,7 +242,7 @@ Conventions here are executable. `Govern.ArchitectureTests` fails CI when one is
 | `ClientSecurityTests` | CSP and security headers, self-hosted assets, no raw HTML, no secrets in client config |
 | `RulesReferenceTests` | the player rules doc matches the ruleset |
 
-## 🧪 Testing
+## 🧪 Testing: unit, integration (Testcontainers), bUnit and architecture tests
 
 **1,500+ tests** across four projects:
 
@@ -267,7 +305,7 @@ The [`docs/`](docs/README.md) folder is the project's knowledge base:
 - **Operations:** [configuration](docs/operations/configuration.md) · [deployment](docs/operations/deployment.md) · [branching](docs/operations/branching.md)
 - **Planning:** the [backlog](docs/plans/backlog.md) and every feature's plan, active and done
 
-## 🤖 AI-assisted development with guardrails
+## 🤖 Claude Code setup: CLAUDE.md, hooks, skills and agents
 
 Govern is built with [Claude Code](https://claude.com/claude-code) as a pair programmer. The project's conventions, workflow and safety limits are **code in the repo** ([`.claude/`](.claude) and [`CLAUDE.md`](CLAUDE.md)), not prompts typed by hand. The AI works under the same rules as a human contributor, and the rules that matter are enforced by tooling, not left to the model's judgement.
 
@@ -286,7 +324,7 @@ flowchart LR
     H -.-> PR
 ```
 
-### 🛡️ Guardrails (hooks)
+### 🚧 Guardrails: Claude Code hooks
 
 [Hooks](.claude/hooks) are shell scripts that Claude Code runs around every action. They are deterministic and can **block** an action outright.
 
@@ -314,3 +352,11 @@ On top of the hooks:
 - **[Agents](.claude/agents) (3):** `code-reviewer`, `security-auditor` and `ef-core-specialist`. They are **read-only** (they can't write or edit files) and keep [project memory](.claude/agent-memory) of accepted risks and past findings, so reviews don't re-raise settled issues. A security audit is part of every release: Critical or High findings block the stage → main PR.
 - **Knowledge base:** [`docs/`](docs/README.md) is written for retrieval. Every page has front matter (tags, code paths, last update), and the [backlog](docs/plans/backlog.md) is the single place where priorities live.
 - **MCP tools:** Roslyn navigation and refactoring, Microsoft Learn and library docs, a local Postgres inspector, and Playwright to check UI changes in a real browser.
+
+## 📄 License
+
+Govern is open source under the [MIT License](LICENSE): free to use, copy, modify and learn from.
+
+Third-party assets keep their own licenses: [Three.js](src/Govern.Client/wwwroot/lib/three/LICENSE) (MIT) and the [KayKit](https://kaylousberg.itch.io/) unit models (CC0).
+
+If this project helped you learn something, a ⭐ helps others find it.

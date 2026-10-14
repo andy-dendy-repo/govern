@@ -486,3 +486,6 @@ $RECYCLE.BIN/
 
 # Per-developer Claude Code settings
 .claude/settings.local.json
+
+# Playwright MCP snapshots and screenshots
+.playwright-mcp/
