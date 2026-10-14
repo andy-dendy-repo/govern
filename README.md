@@ -353,6 +353,10 @@ On top of the hooks:
 - **Knowledge base:** [`docs/`](docs/README.md) is written for retrieval. Every page has front matter (tags, code paths, last update), and the [backlog](docs/plans/backlog.md) is the single place where priorities live.
 - **MCP tools:** Roslyn navigation and refactoring, Microsoft Learn and library docs, a local Postgres inspector, and Playwright to check UI changes in a real browser.
 
+## 🤝 Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch flow, the Definition of Done and the conventions. To report a vulnerability, follow [SECURITY.md](SECURITY.md) and don't open a public issue.
+
 ## 📄 License
 
 Govern is open source under the [MIT License](LICENSE): free to use, copy, modify and learn from.
