@@ -1,0 +1,30 @@
+@* The players of a game of three or more in turn order, in the top strip: each seat's colour, "You" or its seat number, and
+   whose turn it is or how a player left (resigned, eliminated). *@
+@using Govern.Core.State
+@using Govern.Core.Visibility
+
+<ul class="player-strip" aria-label="Players">
+    @foreach (var player in View.Players)
+    {
+        <li class="@($"player-strip-item {(player.Id == View.CurrentPlayer && View.Status == GameStatus.InProgress ? "current" : string.Empty)}")">
+            <span class="@($"seat-swatch {Seats.Class(View, player.Id)}")" aria-hidden="true"></span>
+            <span>@Describe(player)</span>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
+
+    private string Describe(PlayerSummary player)
+    {
+        var name = player.Id == View.Viewer ? "You" : $"Seat {Seats.Number(View, player.Id)}";
+        return player.Status switch
+        {
+            PlayerStatus.Resigned => $"{name} (resigned)",
+            PlayerStatus.Eliminated => $"{name} (eliminated)",
+            _ when player.Id == View.CurrentPlayer && View.Status == GameStatus.InProgress => $"{name} (to move)",
+            _ => name,
+        };
+    }
+}

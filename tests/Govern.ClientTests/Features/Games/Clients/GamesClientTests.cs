@@ -25,11 +25,11 @@ public class GamesClientTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, "/api/games", () => FakeApiHandler.Json(new { id = TestGames.Id, inviteCode = TestGames.InviteCode }, HttpStatusCode.Created));
 
-        var result = await Games.CreateAsync("random", Ct);
+        var result = await Games.CreateAsync("random", 3, Ct);
 
         result.Value.ShouldBe(new CreateGameResponse(TestGames.Id, TestGames.InviteCode));
         Api.Requests.Single().Authorization.ShouldStartWith("Bearer ");
-        Api.Requests.Single().Body.ShouldBe("""{"map":"random"}""");
+        Api.Requests.Single().Body.ShouldBe("""{"map":"random","seats":3}""");
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class GamesClientTests : ClientTestContext
     [Fact]
     public async Task ListAsync_Page_SendsPageAndSize()
     {
-        var item = new MyGameItem(TestGames.Id, GamePhase.Lobby, 1, true, false, TestGames.CreatedAt);
+        var item = new MyGameItem(TestGames.Id, GamePhase.Lobby, 1, 2, true, false, false, TestGames.CreatedAt);
         Api.On(HttpMethod.Get, "/api/games?page=2&pageSize=20", () => FakeApiHandler.Json(new ListMyGamesResponse([item], 21)));
 
         var result = await Games.ListAsync(2, 20, Ct);
@@ -217,7 +217,7 @@ public class GamesClientTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, "/api/games", () => FakeApiHandler.Empty(HttpStatusCode.TooManyRequests));
 
-        var result = await Games.CreateAsync("random", Ct);
+        var result = await Games.CreateAsync("random", 2, Ct);
 
         result.Error.ShouldNotBeNull().Status.ShouldBe(429);
         result.Error.Message.ShouldContain("Too many requests");
@@ -233,7 +233,7 @@ public class GamesClientTests : ClientTestContext
             throw new HttpRequestException("aborted");
         });
 
-        await Should.ThrowAsync<Exception>(() => Games.CreateAsync("random", cancellation.Token));
+        await Should.ThrowAsync<Exception>(() => Games.CreateAsync("random", 2, cancellation.Token));
     }
 
     [Fact]
@@ -241,7 +241,7 @@ public class GamesClientTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, "/api/games", () => throw new HttpRequestException("offline"));
 
-        var result = await Games.CreateAsync("random", Ct);
+        var result = await Games.CreateAsync("random", 2, Ct);
 
         result.Error.ShouldNotBeNull().IsNetwork.ShouldBeTrue();
     }

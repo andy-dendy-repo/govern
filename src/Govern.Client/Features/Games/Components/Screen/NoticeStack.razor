@@ -1,11 +1,11 @@
 @* Notices over the top of the game board, under the top strip: the command that arrived too late, the Api's error and, once the
-   game is over, its result. *@
+   game is over for the viewer (finished, or they resigned or were eliminated while it goes on), its result. *@
 @using Govern.Client.Features.Games.Components
 @using Govern.Client.Models
 @using Govern.Core.State
 @using Govern.Core.Visibility
 
-@if (Stale || Error is not null || View.Status == GameStatus.Finished)
+@if (Stale || Error is not null || IsOver)
 {
     <div class="notice-stack">
         @if (Stale)
@@ -15,7 +15,7 @@
             </RadzenAlert>
         }
         <ApiErrorAlert Error="@Error"/>
-        @if (View.Status == GameStatus.Finished)
+        @if (IsOver)
         {
             <div class="hud-card">
                 <GameOverPanel View="@View"/>
@@ -32,4 +32,7 @@
 
     /// <summary>The last command's error, if any.</summary>
     [Parameter] public ApiError? Error { get; set; }
+
+    private bool IsOver => View.Status == GameStatus.Finished
+        || View.Players.FirstOrDefault(player => player.Id == View.Viewer) is not { Status: PlayerStatus.Active };
 }

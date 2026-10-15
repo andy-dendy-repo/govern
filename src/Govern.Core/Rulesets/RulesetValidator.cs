@@ -9,19 +9,10 @@ namespace Govern.Core.Rulesets;
 // author sees them all at once.
 internal static class RulesetValidator
 {
-    // The engine's own bounds on the map; they keep a stored game's size bounded whatever a ruleset says.
-    private const int SmallestMap = 8;
-    private const int LargestMap = 40;
     private const int MaxIdLength = 32;
-    private const int PlayerCount = 2;
-
-    // At most a quarter of the width each, so the two spawn zones, and the units placed towards the centre, never meet.
-    private const int MaxZoneColumnsPerMille = 250;
-
-    // The generator keeps at least half of every map default terrain, and lays down few enough impassable tiles that it can
-    // always keep the passable ones connected.
-    private const int MaxGeneratedSharePerMille = 500;
-    private const int MaxImpassableSharePerMille = 150;
+    // A game has at least two players and at most four: the client has four seat colours.
+    internal const int FewestPlayers = 2;
+    internal const int MostPlayers = 4;
 
     // Keeps the integer combat maths far from overflowing (see CombatRulesValidator).
     private const int MaxDefenceBonus = 100;
@@ -36,8 +27,7 @@ internal static class RulesetValidator
         CheckUnits(document, problems);
         CheckTerrains(document.Terrains, problems);
         CheckSetup(document, units, problems);
-        CheckMap(document.Map, terrains, document.Terrains, problems);
-        CheckGeneration(document.Map, terrains, document.Terrains, problems);
+        MapRulesValidator.Validate(document, terrains, problems);
         CheckCities(document, units, problems);
         CheckFogInvariants(document, problems);
         CheckTexts(document, problems);
@@ -116,10 +106,8 @@ internal static class RulesetValidator
     private static void CheckSetup(RulesetDocument document, HashSet<string> units, List<RulesetProblem> problems)
     {
         var setup = document.Setup;
-        if (setup.Players != PlayerCount)
-        {
-            problems.Add(new("$.setup.players", $"Must be {PlayerCount}: games are for two players for now."));
-        }
+        InRange(setup.MinPlayers, FewestPlayers, MostPlayers, "$.setup.minPlayers", problems);
+        InRange(setup.MaxPlayers, Math.Max(setup.MinPlayers, FewestPlayers), MostPlayers, "$.setup.maxPlayers", problems);
 
         if (setup.StartingUnits.IsEmpty)
         {
@@ -141,59 +129,6 @@ internal static class RulesetValidator
         if (setup.StartingUnits.Length > zone)
         {
             problems.Add(new("$.setup.startingUnits", $"At most {zone} units fit in a spawn zone on the smallest map."));
-        }
-    }
-
-    private static void CheckMap(MapRules map, HashSet<string> terrainIds, ImmutableArray<TerrainDefinition> terrains, List<RulesetProblem> problems)
-    {
-        InRange(map.MinSize, SmallestMap, LargestMap, "$.map.minSize", problems);
-        InRange(map.MaxSize, Math.Max(map.MinSize, SmallestMap), LargestMap, "$.map.maxSize", problems);
-        InRange(map.DefaultWidth, map.MinSize, map.MaxSize, "$.map.defaultWidth", problems);
-        InRange(map.DefaultHeight, map.MinSize, map.MaxSize, "$.map.defaultHeight", problems);
-
-        if (Reference(map.DefaultTerrain.Id, terrainIds, "terrain", "$.map.defaultTerrain", problems)
-            && !terrains.First(terrain => terrain.Id == map.DefaultTerrain).IsPassable)
-        {
-            problems.Add(new("$.map.defaultTerrain", "Must be passable: every unit starts on it."));
-        }
-
-        InRange(map.Spawn.ZoneColumnsPerMille, 1, MaxZoneColumnsPerMille, "$.map.spawn.zoneColumnsPerMille", problems);
-        var zone = map.Spawn.ZoneColumns(map.MinSize);
-        if (map.Spawn.EdgeMargin < 1 || map.Spawn.EdgeMargin >= zone || map.Spawn.EdgeMargin * 2 >= map.MinSize)
-        {
-            problems.Add(new("$.map.spawn.edgeMargin", $"Must be at least 1 and less than the spawn zone on the smallest map ({zone} columns)."));
-        }
-    }
-
-    private static void CheckGeneration(MapRules map, HashSet<string> terrainIds, ImmutableArray<TerrainDefinition> terrains, List<RulesetProblem> problems)
-    {
-        var patches = map.Generation.Patches;
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        for (var index = 0; index < patches.Length; index++)
-        {
-            var patch = patches[index];
-            var path = $"$.map.generation.patches[{index}]";
-            if (Reference(patch.Terrain.Id, terrainIds, "terrain", $"{path}.terrain", problems)
-                && (patch.Terrain == map.DefaultTerrain || !seen.Add(patch.Terrain.Id)))
-            {
-                problems.Add(new($"{path}.terrain", "Must not be the default terrain or a terrain listed before."));
-            }
-
-            AtLeast(patch.SharePerMille, 1, $"{path}.sharePerMille", problems);
-            AtLeast(patch.PatchSize, 1, $"{path}.patchSize", problems);
-        }
-
-        if (patches.Sum(static patch => patch.SharePerMille) > MaxGeneratedSharePerMille)
-        {
-            problems.Add(new("$.map.generation.patches", $"The shares must add up to at most {MaxGeneratedSharePerMille}."));
-        }
-
-        var impassable = patches
-            .Where(patch => terrains.FirstOrDefault(terrain => terrain.Id == patch.Terrain) is { IsPassable: false })
-            .Sum(static patch => patch.SharePerMille);
-        if (impassable > MaxImpassableSharePerMille)
-        {
-            problems.Add(new("$.map.generation.patches", $"The shares of impassable terrains must add up to at most {MaxImpassableSharePerMille}."));
         }
     }
 
@@ -266,7 +201,7 @@ internal static class RulesetValidator
         }
     }
 
-    private static bool Reference(string id, HashSet<string> ids, string kind, string path, List<RulesetProblem> problems)
+    internal static bool Reference(string id, HashSet<string> ids, string kind, string path, List<RulesetProblem> problems)
     {
         if (ids.Contains(id))
         {

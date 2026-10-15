@@ -55,8 +55,9 @@ internal static class EndTurnRule
     };
 
     // Hands the turn to the next active player in turn order; the round number increases when it wraps around. Their units get
-    // full movement, and those with a destination walk on at once, so the player sees where they got to before acting.
-    private static GameState PassTurn(Ruleset ruleset, GameState state, ImmutableArray<GameEvent>.Builder events)
+    // full movement, and those with a destination walk on at once, so the player sees where they got to before acting. Also
+    // used when the current player leaves the game on their turn (VictoryRule).
+    internal static GameState PassTurn(Ruleset ruleset, GameState state, ImmutableArray<GameEvent>.Builder events)
     {
         var players = state.Players;
         var currentIndex = players.Select(static player => player.Id).ToList().IndexOf(state.CurrentPlayer);

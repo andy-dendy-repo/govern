@@ -1,5 +1,6 @@
 @page "/games"
 @attribute [Authorize]
+@using Govern.Client.Features.Games.Enums
 @using Govern.Client.Features.Games.Models
 
 <PageTitle>My games - Govern</PageTitle>
@@ -9,7 +10,12 @@
 <ApiErrorAlert Error="@_error"/>
 
 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap" class="rz-mb-4">
-    <RadzenDropDown TValue="string" Data="@Maps.Options" TextProperty="@nameof(MapOption.Name)" ValueProperty="@nameof(MapOption.Value)"
+    <RadzenDropDown TValue="int" Data="@SeatChoices" Value="@_seats" ValueChanged="@SeatsChanged" Disabled="@_creating"
+                    aria-label="Players" class="seat-choice">
+        <Template Context="seats">@seats players</Template>
+        <ValueTemplate Context="seats">@seats players</ValueTemplate>
+    </RadzenDropDown>
+    <RadzenDropDown TValue="string" Data="@Maps.OptionsFor(_seats)" TextProperty="@nameof(MapOption.Name)" ValueProperty="@nameof(MapOption.Value)"
                     @bind-Value="@_map" Disabled="@_creating" aria-label="Map" class="map-choice"/>
     <RadzenButton Text="New game" Icon="add" IsBusy="@_creating" Click="@CreateAsync" class="new-game"/>
     <RadzenLink Path="join" Text="Join with a code" class="join-link"/>
@@ -24,13 +30,13 @@
             </Template>
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="MyGameItem" Title="Players">
-            <Template Context="game">@game.PlayerCount/2</Template>
+            <Template Context="game">@game.PlayerCount/@game.Seats</Template>
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="MyGameItem" Title="Role">
             <Template Context="game">@(game.IsCreator ? "Created" : "Joined")</Template>
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="MyGameItem" Title="Turn">
-            <Template Context="game">@(game.IsYourTurn ? "Your turn" : string.Empty)</Template>
+            <Template Context="game">@(game.IsYourTurn ? "Your turn" : game.IsOut && game.Phase == GamePhase.InProgress ? "You're out" : string.Empty)</Template>
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="MyGameItem" Title="Last activity">
             <Template Context="game">@game.ActivityAt.ToLocalTime().ToString("g", null)</Template>

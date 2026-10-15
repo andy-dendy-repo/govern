@@ -1,7 +1,7 @@
 ---
 title: Game rules reference (for players)
 tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, ships, naval, galley, bireme, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, science, science-tree, unlocks, unit-upgrade, building-upgrade, swordsman, pikeman, crossbowman, knight, workshop, barracks, university, market, port, deals, counter-offers, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
-code: [rulesets/default/v14.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
+code: [rulesets/default/v15.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
 updated: 2026-10-05
 ---
 
@@ -11,28 +11,29 @@ How Govern is played today, written for players. Every number on this page comes
 
 ## Goal and victory
 
-Govern is a turn-based strategy game for the number of players under "Game numbers" (two today) on a hex map. The last player standing wins.
+Govern is a turn-based strategy game for 2 to 4 players (see "Game numbers") on a hex map, every player against all the others. The last player standing wins.
 - A player who has no city and no unit that can found a city is **eliminated**, and their remaining units disappear.
-- A player can **resign** at any time, even during the opponent's turn. Their units disappear and the opponent wins.
+- A player can **resign** at any time, even during another player's turn. Their units disappear. With one player left, that player wins; otherwise the game goes on for the others.
+- A player who resigned or was eliminated is out: their turn is skipped from then on, and they can still watch the game to its end. A resigned player's cities stay on the map, undefended, and anyone can capture them. Deals their cities hosted end at once, and nobody can trade with their cities any more.
 - There are no other victory conditions yet.
 
 ## The map
 
 - The map is a rectangle of hexagonal tiles. Each tile has 6 neighbours, and distances are counted in hex steps.
-- The game's creator picks the map in the lobby: a random map from the map pool (the default), a named map from the pool, or a generated map (see "Maps").
-- A generated map's size is in the table under "Game numbers". Each generated map is different: mostly plains, with patches of forest, hills, mountains, lakes and desert (see "Terrain types").
-- **Both halves of a generated map are the same.** The map turned half a turn around its centre looks exactly like itself, so neither player gets the better side. Once you have explored your own half you know the terrain of your opponent's half too. Starts are not mirrored, though: the map only hints that your opponent started on plains in their zone. Pool maps are different: each side has land of its own (see "Maps").
+- The game's creator picks the number of players and the map in the lobby. The game starts only when every seat is taken. The map is a random map from the map pool (the default), a named map from the pool made for that many players, or a generated map (see "Maps"). A random map for a number of players no pool map is made for is a generated map.
+- A generated map's size grows with the number of players (see "Game numbers"). Each generated map is different: mostly plains, with patches of forest, hills, mountains, lakes and desert (see "Terrain types").
+- **Both halves of a generated map are the same.** The map turned half a turn around its centre looks exactly like itself, so neither side is better. Once you have explored your own half you know the terrain of the other half too. Starts are not mirrored, though: the map only hints that the others started on plains in their zones. With three or four players, every start is picked among the ones whose land within 3 tiles is worth about the same (within 5%). Pool maps are different: each side has land of its own (see "Maps").
 - Rivers run along the edges between tiles (see "Rivers").
 - Mountains, lakes and deep rivers never cut the map in two: every tile you can walk on can be reached from every other.
-- Each player starts near their own edge of the map (the first player on the left, the second on the right) with the starting units listed under "Game numbers", placed side by side (on plains on a generated map).
+- Each player starts in their own zone near the map's edge with the starting units listed under "Game numbers", placed side by side (on plains on a generated map). With two players the first starts on the left and the second on the right; with three, the first on the left and the others in the top and bottom thirds of the right edge; with four, one in each corner, clockwise from the top left.
 
 ## Maps
 
-The map pool holds hand-made maps. Unlike a generated map, the two sides of a pool map are not mirrors: each side has its own land, so exploring yours tells you little about your opponent's. They are checked to be worth the same: each half yields about as much of every resource (within 15%), and every possible start has land within 3 tiles worth about the same as the others (within 10%, and both sides' starts on average within 5%). Each pool map has a few possible starts on each side (at least 2), and they are no secret: your opponent started on one of the possible starts on their side. A game picks one for each player on its own, so your own start doesn't tell you which one they got.
+The map pool holds hand-made maps. Unlike a generated map, the two sides of a pool map are not mirrors: each side has its own land, so exploring yours tells you little about your opponent's. They are checked to be worth the same: each half yields about as much of every resource (within 15%), and every possible start has land within 3 tiles worth about the same as the others (within 10%, and both sides' starts on average within 5%). Each pool map is made for a number of players and has a few possible starts for each of them (at least 2), and they are no secret: your opponent started on one of the possible starts on their side. A game picks one for each player on its own, so your own start doesn't tell you which one they got.
 
-| Map | Size | Shape |
+| Map | Size, players | Shape |
 |---|---|---|
-| The Basin | 32 × 20 | A lake in the centre, with a north and a south flank around it. The west is a river valley behind a straight mountain ridge with two hill passes, with forests and a stream in the north. The east is higher land behind a bent ridge with a wide northern gap and a hill pass: a small lake, two rivers, more hills and a desert corner in the north-east. 3 possible starts on each side |
+| The Basin | 32 × 20, 2 players | A lake in the centre, with a north and a south flank around it. The west is a river valley behind a straight mountain ridge with two hill passes, with forests and a stream in the north. The east is higher land behind a bent ridge with a wide northern gap and a hill pass: a small lake, two rivers, more hills and a desert corner in the north-east. 3 possible starts on each side |
 
 ## Terrain types
 
@@ -70,7 +71,7 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 
 ## Turns and rounds
 
-- Players take turns in seat order. Only the player whose turn it is can act, except for resigning.
+- Players take turns in seat order: the game's creator first, then the others in the order they joined. Only the player whose turn it is can act, except for resigning. A player who is out is skipped.
 - A turn ends when the player ends it. There is no time limit.
 - When play wraps around to the first player, the round number goes up by 1. The game starts in round 1.
 - At the start of your turn, all your units get their full movement back.
@@ -428,9 +429,10 @@ The top bar counts your resources (food, water, wood, stone, gold, culture) over
 
 | Number | Value |
 |---|---|
-| Players | 2 |
-| Map width | 20 |
-| Map height | 14 |
+| Players | 2 to 4 |
+| Map size, 2 players | 20 × 14 |
+| Map size, 3 players | 26 × 18 |
+| Map size, 4 players | 30 × 20 |
 | Starting units | Settler, Soldier |
 | City sight | 2 |
 | Minimum distance between cities | 3 |

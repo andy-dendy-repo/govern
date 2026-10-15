@@ -4,6 +4,7 @@ using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.ClientTests.Support;
 using Govern.Core.Map;
+using Govern.Core.State;
 using Govern.Core.Visibility;
 using static Govern.ClientTests.Support.TestViews;
 
@@ -127,4 +128,49 @@ public class GameTableScreenTests : ClientTestContext
             .Add(static table => table.Game, TestGames.Started(view: view))
             .Add(static table => table.Title, "Game in progress")
             .Add(static table => table.Connection, connection));
+
+    private static readonly PlayerId Third = new(Guid.Parse("0199a1b2-0000-7000-8000-00000000000c"));
+
+    [Fact]
+    public void Render_TwoPlayers_HasNoPlayerStrip()
+    {
+        var cut = RenderTable(Start());
+
+        cut.FindAll(".player-strip").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_ThreePlayers_ListsThemInTurnOrderAndSaysWhoseTurnItIs()
+    {
+        var cut = RenderTable(ThreePlayers(PlayerStatus.Active, PlayerStatus.Resigned) with { CurrentPlayer = Opponent });
+
+        cut.FindAll(".player-strip-item").Select(static item => item.TextContent.Trim()).ShouldBe(["You", "Seat 2 (to move)", "Seat 3 (resigned)"]);
+        cut.Find(".player-strip-item.current").TextContent.ShouldContain("Seat 2");
+        cut.Find(".turn").TextContent.ShouldContain("seat 2's turn");
+        cut.Find("button.end-turn").HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Resign_WithTwoOthersStillPlaying_SaysTheGameGoesOn()
+    {
+        var cut = RenderTable(ThreePlayers(PlayerStatus.Active, PlayerStatus.Active));
+
+        cut.Find("button.resign").Click();
+
+        cut.Find(".confirm-text").TextContent.ShouldBe("Resign the game? It goes on for the others.");
+    }
+
+    [Fact]
+    public void Render_YouResignedWhileTheOthersPlayOn_ShowsYourResultWithoutTurnActions()
+    {
+        var cut = RenderTable(ThreePlayers(PlayerStatus.Resigned, PlayerStatus.Active) with { CurrentPlayer = Opponent });
+
+        cut.FindAll("button.end-turn, button.resign").ShouldBeEmpty();
+        cut.Find(".game-over .result").TextContent.ShouldBe("You resigned. The game goes on for the others.");
+    }
+
+    private static PlayerView ThreePlayers(PlayerStatus you, PlayerStatus third) => Start() with
+    {
+        Players = [new PlayerSummary(You, you), new PlayerSummary(Opponent, PlayerStatus.Active), new PlayerSummary(Third, third)],
+    };
 }

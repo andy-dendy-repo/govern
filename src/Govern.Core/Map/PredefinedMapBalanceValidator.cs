@@ -4,10 +4,11 @@ using Govern.Core.Rulesets;
 
 namespace Govern.Core.Map;
 
-// The fairness checks on a built predefined map. Its halves need not be mirrors, so fairness is measured: every passable tile is
+// The fairness checks on a built predefined map. Its sides need not be mirrors, so fairness is measured: every passable tile is
 // reachable from every other without crossing a river that can't be crossed; each player's spawn candidates leave room for the
-// starting units in their own half, as GameFactory places them (the k-th unit k columns towards the centre); the two halves
-// yield about as much of every resource; and every spawn candidate starts among land worth about the same, on both sides.
+// starting units on the spawn's side of the centre, as GameFactory places them (the k-th unit k columns towards the centre); on
+// a two-player map the two halves yield about as much of every resource; and every spawn candidate starts among land worth
+// about the same, for every player.
 internal static class PredefinedMapBalanceValidator
 {
     // How far apart the halves' yields of one resource, and a spawn candidate's start from the mean of all, may be.
@@ -18,14 +19,31 @@ internal static class PredefinedMapBalanceValidator
     // The land a start is judged by: the tiles within this distance of the spawn, the first city's neighbourhood.
     public const int StartRadius = 3;
 
-    public static void Validate(Ruleset ruleset, GameMap map, ImmutableArray<HexCoord> first, ImmutableArray<HexCoord> second, List<RulesetProblem> problems)
+    public static void Validate(Ruleset ruleset, GameMap map, ImmutableArray<ImmutableArray<HexCoord>> spawns, List<RulesetProblem> problems)
     {
         CheckConnected(ruleset, map, problems);
-        CheckSpawns(ruleset, map, first, isLeftSide: true, problems);
-        CheckSpawns(ruleset, map, second, isLeftSide: false, problems);
-        CheckHalves(ruleset, map, problems);
-        CheckStarts(ruleset, map, first, second, problems);
+        for (var group = 0; group < spawns.Length; group++)
+        {
+            CheckSpawns(ruleset, map, spawns[group], $"$.spawns[{group}]", problems);
+        }
+
+        CheckSharedRows(ruleset, map, spawns, problems);
+
+        // With more players the halves hold different numbers of starts, so only the starts themselves are compared.
+        if (spawns.Length == 2)
+        {
+            CheckOppositeHalves(map, spawns, problems);
+            CheckHalves(ruleset, map, problems);
+        }
+
+        CheckStarts(ruleset, map, spawns, problems);
     }
+
+    /// <summary>The column step from a spawn towards the map's centre column, the way the starting units stand.</summary>
+    /// <param name="map">The map.</param>
+    /// <param name="spawn">The spawn tile.</param>
+    /// <returns>1 in the left half, -1 otherwise.</returns>
+    public static int TowardsCentre(GameMap map, HexCoord spawn) => spawn.Column < map.Width / 2 ? 1 : -1;
 
     // What a start is worth: the yields (every resource alike) of the tiles within StartRadius and of the rivers between them.
     public static int StartValue(Ruleset ruleset, GameMap map, HexCoord spawn)
@@ -75,13 +93,13 @@ internal static class PredefinedMapBalanceValidator
         }
     }
 
-    private static void CheckSpawns(Ruleset ruleset, GameMap map, ImmutableArray<HexCoord> spawns, bool isLeftSide, List<RulesetProblem> problems)
+    private static void CheckSpawns(Ruleset ruleset, GameMap map, ImmutableArray<HexCoord> spawns, string path, List<RulesetProblem> problems)
     {
-        var path = isLeftSide ? "$.firstSpawns" : "$.secondSpawns";
-        var towardsCentre = isLeftSide ? 1 : -1;
-        var half = isLeftSide ? "left" : "right";
         for (var index = 0; index < spawns.Length; index++)
         {
+            var towardsCentre = TowardsCentre(map, spawns[index]);
+            var isLeftSide = towardsCentre > 0;
+            var half = isLeftSide ? "left" : "right";
             for (var slot = 0; slot < ruleset.Setup.StartingUnits.Length; slot++)
             {
                 var tile = HexCoord.FromOffset(spawns[index].Column + (slot * towardsCentre), spawns[index].Row);
@@ -89,6 +107,41 @@ internal static class PredefinedMapBalanceValidator
                 if (!map.Contains(tile) || !inHalf || !map.IsPassable(ruleset, tile))
                 {
                     problems.Add(new($"{path}[{index}]", $"Starting unit {slot + 1} would stand on {Name(tile)}, which must be a passable tile in the {half} half."));
+                }
+            }
+        }
+    }
+
+    // No tile where one player's starting units could stand is one where another player's could: two players' units never
+    // share a tile, whichever candidates are drawn.
+    private static void CheckSharedRows(Ruleset ruleset, GameMap map, ImmutableArray<ImmutableArray<HexCoord>> spawns, List<RulesetProblem> problems)
+    {
+        var owners = new Dictionary<HexCoord, int>();
+        for (var group = 0; group < spawns.Length; group++)
+        {
+            var tiles = spawns[group].SelectMany(spawn => SpawnPlanner.Row(ruleset, map, spawn)).Distinct().ToList();
+            if (tiles.Any(tile => owners.TryGetValue(tile, out var other) && other != group))
+            {
+                problems.Add(new($"$.spawns[{group}]", "A starting unit could stand on a tile where another player's starting units can stand."));
+            }
+
+            foreach (var tile in tiles)
+            {
+                owners.TryAdd(tile, group);
+            }
+        }
+    }
+
+    // On a two-player map the first player starts in the left half and the second in the right, as on a generated map.
+    private static void CheckOppositeHalves(GameMap map, ImmutableArray<ImmutableArray<HexCoord>> spawns, List<RulesetProblem> problems)
+    {
+        for (var group = 0; group < spawns.Length; group++)
+        {
+            for (var index = 0; index < spawns[group].Length; index++)
+            {
+                if (group == 0 ? !IsLeft(map, spawns[group][index]) : !IsRight(map, spawns[group][index]))
+                {
+                    problems.Add(new($"$.spawns[{group}][{index}]", $"On a map for two players, player {group + 1}'s spawn must lie in the {(group == 0 ? "left" : "right")} half."));
                 }
             }
         }
@@ -123,26 +176,31 @@ internal static class PredefinedMapBalanceValidator
         }
     }
 
-    private static void CheckStarts(Ruleset ruleset, GameMap map, ImmutableArray<HexCoord> first, ImmutableArray<HexCoord> second, List<RulesetProblem> problems)
+    // Every candidate within StartTolerancePercent of the mean of all; every group's average within SideTolerancePercent of the
+    // best group's.
+    private static void CheckStarts(Ruleset ruleset, GameMap map, ImmutableArray<ImmutableArray<HexCoord>> spawns, List<RulesetProblem> problems)
     {
-        var firstValues = first.Select(spawn => StartValue(ruleset, map, spawn)).ToList();
-        var secondValues = second.Select(spawn => StartValue(ruleset, map, spawn)).ToList();
-        var mean = firstValues.Concat(secondValues).Average();
-        foreach (var (path, spawns, values) in new[] { ("$.firstSpawns", first, firstValues), ("$.secondSpawns", second, secondValues) })
+        var values = spawns.Select(group => group.Select(spawn => StartValue(ruleset, map, spawn)).ToList()).ToList();
+        var mean = values.SelectMany(static group => group).Average();
+        for (var group = 0; group < spawns.Length; group++)
         {
-            for (var index = 0; index < spawns.Length; index++)
+            for (var index = 0; index < spawns[group].Length; index++)
             {
-                if (Math.Abs(values[index] - mean) * 100 > mean * StartTolerancePercent)
+                if (Math.Abs(values[group][index] - mean) * 100 > mean * StartTolerancePercent)
                 {
-                    problems.Add(new($"{path}[{index}]", $"The start at {Name(spawns[index])} is worth {values[index]}, more than {StartTolerancePercent}% from the mean of all starts ({mean:0.#}): the yields within {StartRadius} tiles must be about the same for every spawn."));
+                    problems.Add(new($"$.spawns[{group}][{index}]", $"The start at {Name(spawns[group][index])} is worth {values[group][index]}, more than {StartTolerancePercent}% from the mean of all starts ({mean:0.#}): the yields within {StartRadius} tiles must be about the same for every spawn."));
                 }
             }
         }
 
-        var (firstMean, secondMean) = (firstValues.Average(), secondValues.Average());
-        if (Math.Abs(firstMean - secondMean) * 100 > Math.Max(firstMean, secondMean) * SideTolerancePercent)
+        var means = values.Select(static group => group.Average()).ToList();
+        var best = means.Max();
+        for (var group = 0; group < means.Count; group++)
         {
-            problems.Add(new("$.secondSpawns", $"The first player's starts are worth {firstMean:0.#} on average and the second's {secondMean:0.#}: they must be within {SideTolerancePercent}% of each other."));
+            if ((best - means[group]) * 100 > best * SideTolerancePercent)
+            {
+                problems.Add(new($"$.spawns[{group}]", $"Player {group + 1}'s starts are worth {means[group]:0.#} on average and the best player's {best:0.#}: they must be within {SideTolerancePercent}% of each other."));
+            }
         }
     }
 

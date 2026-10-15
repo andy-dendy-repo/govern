@@ -89,6 +89,8 @@
     { "tile": [19, 15], "side": "northEast", "river": "stream" },
     { "tile": [19, 15], "side": "northWest", "river": "stream" }
   ],
-  "firstSpawns": [[2, 5], [2, 9], [2, 15]],
-  "secondSpawns": [[29, 4], [29, 11], [29, 16]]
+  "spawns": [
+    [[2, 5], [2, 9], [2, 15]],
+    [[29, 4], [29, 11], [29, 16]]
+  ]
 }

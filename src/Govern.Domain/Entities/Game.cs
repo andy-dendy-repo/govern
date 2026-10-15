@@ -13,7 +13,7 @@ using Govern.Domain.ValueObjects;
 namespace Govern.Domain.Entities;
 
 /// <summary>
-/// A two-player game: a lobby joined through an invite code, then a running game whose whole <see cref="GameState"/> is
+/// A game of 2 to 4 players (<see cref="Seats"/>): a lobby joined through an invite code, then a running game whose whole <see cref="GameState"/> is
 /// stored as one snapshot. The aggregate root for <see cref="GamePlayer"/>. Every change increments <see cref="Revision"/>,
 /// which the persistence layer uses as an optimistic concurrency token, and raises a <see cref="GameChangedEvent"/>. A lobby
 /// can be left by the joiner and cancelled by the creator; a running game ends through the engine (e.g. resign).
@@ -24,12 +24,10 @@ namespace Govern.Domain.Entities;
 /// </remarks>
 public sealed class Game : BaseAuditableEntity
 {
-    /// <summary>Number of seats. Every ruleset is for two players for now (<see cref="SetupRules.Players"/>).</summary>
-    public const int MaxPlayers = 2;
+    /// <summary>The fewest seats a game has; the ruleset's <see cref="SetupRules"/> decides the most, and handlers check both.</summary>
+    public const int MinSeats = 2;
 
-    /// <summary>
-    /// How long a lobby may go without activity (<see cref="ActivityAt"/>) before it expires and is deleted.
-    /// </summary>
+    /// <summary>How long a lobby may go without activity (<see cref="ActivityAt"/>) before it expires and is deleted.</summary>
     public static readonly TimeSpan LobbyLifetime = TimeSpan.FromDays(7);
 
     private readonly List<GamePlayer> _players = [];
@@ -39,9 +37,7 @@ public sealed class Game : BaseAuditableEntity
     {
     }
 
-    /// <summary>
-    /// The user who created the game; only they may start it.
-    /// </summary>
+    /// <summary>The user who created the game; only they may start it.</summary>
     public Guid CreatorId { get; private set; }
 
     /// <summary>
@@ -49,19 +45,16 @@ public sealed class Game : BaseAuditableEntity
     /// </summary>
     public InviteCode InviteCode { get; private set; } = null!;
 
-    /// <summary>
-    /// The map the game is played on; <see cref="MapChoice.Random"/> only until the game starts.
-    /// </summary>
+    /// <summary>How many players the game is for: the lobby starts once every seat is taken.</summary>
+    public int Seats { get; private set; } = MinSeats;
+
+    /// <summary>The map the game is played on; <see cref="MapChoice.Random"/> only until the game starts.</summary>
     public MapChoice Map { get; private set; } = MapChoice.Generated;
 
-    /// <summary>
-    /// Where the game is in its lifecycle.
-    /// </summary>
+    /// <summary>Where the game is in its lifecycle.</summary>
     public GamePhase Phase { get; private set; }
 
-    /// <summary>
-    /// Incremented by every change, so two concurrent changes to the same game cannot both be saved.
-    /// </summary>
+    /// <summary>Incremented by every change, so two concurrent changes to the same game cannot both be saved.</summary>
     public int Revision { get; private set; }
 
     /// <summary>
@@ -76,15 +69,13 @@ public sealed class Game : BaseAuditableEntity
     public Guid? CurrentPlayerId { get; private set; }
 
     /// <summary>
-    /// When the game last changed in a way every player sees: created, a seat taken or left, started, the turn passed or the
-    /// game finished. Unlike <see cref="BaseAuditableEntity.UpdatedAt"/>, a command whose effect may be hidden from the
-    /// opponent (a move, a production change) leaves it alone, so it reveals nothing about hidden activity.
+    /// When the game last changed in a way every player sees: created, a seat taken or left, started, the turn passed, a player
+    /// left or the game finished. Unlike <see cref="BaseAuditableEntity.UpdatedAt"/>, a command whose effect may be hidden from
+    /// others (a move, a production change) leaves it alone, so it reveals nothing about hidden activity.
     /// </summary>
     public DateTimeOffset ActivityAt { get; private set; }
 
-    /// <summary>
-    /// The seated players (the caller must load them).
-    /// </summary>
+    /// <summary>The seated players (the caller must load them).</summary>
     public IReadOnlyCollection<GamePlayer> Players => _players.AsReadOnly();
 
     /// <summary>
@@ -93,26 +84,29 @@ public sealed class Game : BaseAuditableEntity
     /// </summary>
     public IReadOnlyCollection<GameLogEntry> LogEntries => _logEntries.AsReadOnly();
 
-    /// <summary>
-    /// Whether every seat is taken.
-    /// </summary>
-    public bool IsFull => _players.Count >= MaxPlayers;
+    /// <summary>Whether every seat is taken.</summary>
+    public bool IsFull => _players.Count >= Seats;
 
-    /// <summary>
-    /// Creates a lobby with a new invite code; the creator takes seat 0.
-    /// </summary>
+    /// <summary>Creates a lobby with a new invite code; the creator takes seat 0.</summary>
     /// <param name="creatorId">The creating user.</param>
     /// <param name="now">The current time.</param>
     /// <param name="map">
     /// The map choice (the handler checks that a key is in the pool, and passes <see cref="MapChoice.Random"/> when the request
     /// names none); <see langword="null"/> for a generated map.
     /// </param>
+    /// <param name="seats">
+    /// How many players the game is for, at least <see cref="MinSeats"/> (the handler checks the ruleset's maximum, and that a
+    /// named pool map is made for this many).
+    /// </param>
     /// <returns>The new game.</returns>
     /// <exception cref="ArgumentException"><paramref name="creatorId"/> is empty.</exception>
-    public static Game Create(Guid creatorId, DateTimeOffset now, MapChoice? map = null)
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="seats"/> is below <see cref="MinSeats"/>.</exception>
+    public static Game Create(Guid creatorId, DateTimeOffset now, MapChoice? map = null, int seats = MinSeats)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(seats, MinSeats);
         var game = new Game
         {
+            Seats = seats,
             CreatorId = creatorId,
             InviteCode = InviteCode.New(),
             Phase = GamePhase.Lobby,
@@ -123,22 +117,18 @@ public sealed class Game : BaseAuditableEntity
         return game;
     }
 
-    /// <summary>
-    /// Returns the seat of <paramref name="userId"/>.
-    /// </summary>
+    /// <summary>Returns the seat of <paramref name="userId"/>.</summary>
     /// <param name="userId">The user.</param>
     /// <returns>The player, or <see langword="null"/> when the user is not in this game.</returns>
     public GamePlayer? FindPlayer(Guid userId) => _players.Find(player => player.UserId == userId);
 
-    /// <summary>
-    /// Whether <paramref name="userId"/> has a seat in this game.
-    /// </summary>
+    /// <summary>Whether <paramref name="userId"/> has a seat in this game.</summary>
     /// <param name="userId">The user.</param>
     /// <returns><see langword="true"/> for a seated player.</returns>
     public bool IsPlayer(Guid userId) => FindPlayer(userId) is not null;
 
     /// <summary>
-    /// Seats <paramref name="userId"/> in the next free seat. Joining again returns the existing seat and changes nothing.
+    /// Seats <paramref name="userId"/> in the lowest free seat. Joining again returns the existing seat and changes nothing.
     /// </summary>
     /// <param name="userId">The joining user.</param>
     /// <param name="now">The current time.</param>
@@ -156,7 +146,8 @@ public sealed class Game : BaseAuditableEntity
             throw new InvalidOperationException("Only a lobby with a free seat can be joined.");
         }
 
-        var player = GamePlayer.Create(Id, userId, _players.Count, now);
+        var seat = Enumerable.Range(0, Seats).First(free => _players.TrueForAll(player => player.Seat != free));
+        var player = GamePlayer.Create(Id, userId, seat, now);
         _players.Add(player);
         MarkChanged(now);
         return player;
@@ -177,8 +168,7 @@ public sealed class Game : BaseAuditableEntity
             throw new InvalidOperationException("Only a joined player can leave, and only a lobby.");
         }
 
-        // Two seats and the creator can't leave, so only seat 1 is ever freed and Join's next seat (_players.Count) is 1 again.
-        // More seats would need Join to take the lowest free seat instead.
+        // The creator can't leave, so seat 0 is never freed; Join fills the lowest free seat again.
         _players.Remove(player);
         MarkChanged(now);
     }
@@ -206,17 +196,18 @@ public sealed class Game : BaseAuditableEntity
     /// <param name="ruleset">The ruleset the game is played with.</param>
     /// <param name="now">The current time.</param>
     /// <param name="map">
-    /// The pool map to play on, which must fit <see cref="Map"/> (<see cref="MapChoice.Fits"/>); <see langword="null"/> for a
-    /// generated map.
+    /// The pool map to play on, which must fit <see cref="Map"/> (<see cref="MapChoice.Fits"/>) and be made for
+    /// <see cref="Seats"/> players; <see langword="null"/> for a generated map.
     /// </param>
     /// <exception cref="InvalidOperationException">
-    /// The user is not the creator, the game is not in the lobby, it is not full, or the map doesn't fit the lobby's choice.
+    /// The user is not the creator, the game is not in the lobby, it is not full, or the map doesn't fit the lobby's choice or
+    /// its seats.
     /// </exception>
     public void Start(Guid userId, Ruleset ruleset, DateTimeOffset now, PredefinedMap? map = null)
     {
         ArgumentNullException.ThrowIfNull(ruleset);
 
-        if (userId != CreatorId || Phase != GamePhase.Lobby || !IsFull || !Map.Fits(map))
+        if (userId != CreatorId || Phase != GamePhase.Lobby || !IsFull || !Map.Fits(map) || (map is not null && map.Players != Seats))
         {
             throw new InvalidOperationException("Only the creator can start a full lobby, on the map it chose.");
         }
@@ -231,7 +222,8 @@ public sealed class Game : BaseAuditableEntity
 
     /// <summary>
     /// Runs one player's command through the engine. An accepted command replaces <see cref="State"/>, moves
-    /// <see cref="CurrentPlayerId"/> and finishes the game when the engine does, and adds a <see cref="GameLogEntry"/> for each
+    /// <see cref="CurrentPlayerId"/>, marks the seats of players who left (<see cref="GamePlayer.IsOut"/>) and finishes the game
+    /// when the engine does, and adds a <see cref="GameLogEntry"/> for each
     /// seat that saw any of its events; a rejected one changes nothing. <see cref="ActivityAt"/> moves only when the turn passes or the game finishes.
     /// </summary>
     /// <param name="userId">The seated user sending the command.</param>
@@ -260,7 +252,8 @@ public sealed class Game : BaseAuditableEntity
             var (phase, currentPlayerId) = (Phase, CurrentPlayerId);
             Phase = finished ? GamePhase.Finished : GamePhase.InProgress;
             CurrentPlayerId = finished ? null : State.CurrentPlayer.Value;
-            if (Phase != phase || CurrentPlayerId != currentPlayerId)
+            var markedOut = _players.Aggregate(false, (changed, seat) => seat.MarkOut(State) || changed);
+            if (Phase != phase || CurrentPlayerId != currentPlayerId || markedOut)
             {
                 ActivityAt = now;
             }

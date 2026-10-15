@@ -28,6 +28,9 @@ public static class GamesApi
     public static Task<HttpResponseMessage> CreateWithMapAsync(HttpClient client, string? accessToken, string? map, CancellationToken ct) =>
         SendAsync(client, HttpMethod.Post, "/api/games", accessToken, JsonContent.Create(new { map }), ct);
 
+    public static Task<HttpResponseMessage> CreateWithSeatsAsync(HttpClient client, string? accessToken, string? map, int seats, CancellationToken ct) =>
+        SendAsync(client, HttpMethod.Post, "/api/games", accessToken, JsonContent.Create(new { map, seats }), ct);
+
     public static Task<HttpResponseMessage> JoinAsync(HttpClient client, string? accessToken, string? inviteCode, CancellationToken ct) =>
         SendAsync(client, HttpMethod.Post, "/api/games/join", accessToken, JsonContent.Create(new { inviteCode }), ct);
 
@@ -92,6 +95,26 @@ public static class GamesApi
         var game = await CreateGameAsync(client, creator, ct);
         (await JoinAsync(client, joiner.AccessToken, game.InviteCode, ct)).EnsureSuccessStatusCode();
         return (game, creator, joiner);
+    }
+
+    /// <summary>Creates a lobby for <paramref name="seats"/> players on a generated map and fills <paramref name="joiners"/> of the other seats.</summary>
+    public static async Task<(CreateGameResponse Game, Player[] Players)> CreateLobbyForAsync(HttpClient client, int seats, int joiners, CancellationToken ct)
+    {
+        var players = new Player[joiners + 1];
+        for (var i = 0; i < players.Length; i++)
+        {
+            players[i] = await NewPlayerAsync(client, ct);
+        }
+
+        var created = await CreateWithSeatsAsync(client, players[0].AccessToken, "generated", seats, ct);
+        created.EnsureSuccessStatusCode();
+        var game = (await created.Content.ReadFromJsonAsync<CreateGameResponse>(Json, ct))!;
+        foreach (var joiner in players.Skip(1))
+        {
+            (await JoinAsync(client, joiner.AccessToken, game.InviteCode, ct)).EnsureSuccessStatusCode();
+        }
+
+        return (game, players);
     }
 
     /// <summary>Creates, fills and starts a game.</summary>

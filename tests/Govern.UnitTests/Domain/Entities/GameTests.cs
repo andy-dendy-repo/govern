@@ -139,7 +139,7 @@ public class GameTests
 
         Should.Throw<InvalidOperationException>(() => generated.Start(Creator, TestRulesets.Default, Now, Basin));
         Should.Throw<InvalidOperationException>(() => other.Start(Creator, TestRulesets.Default, Now, Basin));
-        Should.Throw<InvalidOperationException>(() => random.Start(Creator, TestRulesets.Default, Now));
+        Should.Throw<InvalidOperationException>(() => ThreeSeatLobby(MapChoice.Random).Start(Creator, TestRulesets.Default, Now, Basin));
         random.Phase.ShouldBe(GamePhase.Lobby);
     }
 
@@ -501,6 +501,96 @@ public class GameTests
         var game = Game.Create(Creator, Now);
         game.Join(Joiner, Now);
         game.Start(Creator, TestRulesets.Default, Now);
+        return game;
+    }
+
+    [Fact]
+    public void Start_RandomLobbyWithoutAPoolMapForItsSeats_PlaysOnAGeneratedMap()
+    {
+        var game = ThreeSeatLobby(MapChoice.Random);
+
+        game.Start(Creator, TestRulesets.Default, Now);
+
+        game.Map.ShouldBe(MapChoice.Generated);
+        game.State!.Players.Length.ShouldBe(3);
+        game.State.Map.Width.ShouldBe(TestRulesets.Default.Map.SizeFor(3).Width);
+    }
+
+    [Fact]
+    public void Create_WithSeats_FillsOnlyWhenEverySeatIsTaken()
+    {
+        var game = Game.Create(Creator, Now, seats: 3);
+        game.Join(Joiner, Now);
+
+        game.Seats.ShouldBe(3);
+        game.IsFull.ShouldBeFalse();
+        game.Join(Guid.CreateVersion7(), Now).Seat.ShouldBe(2);
+        game.IsFull.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Create_FewerThanTwoSeats_Throws()
+    {
+        Should.Throw<ArgumentOutOfRangeException>(() => Game.Create(Creator, Now, seats: 1));
+    }
+
+    [Fact]
+    public void Join_AfterAMiddleSeatLeft_TakesTheLowestFreeSeat()
+    {
+        var game = Game.Create(Creator, Now, seats: 4);
+        game.Join(Joiner, Now);
+        var third = Guid.CreateVersion7();
+        game.Join(third, Now);
+        game.Leave(Joiner, Now);
+
+        var seat = game.Join(Guid.CreateVersion7(), Now);
+
+        seat.Seat.ShouldBe(1);
+        game.FindPlayer(third)!.Seat.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Start_FullThreeSeatLobby_CreatesThePlayersInSeatOrder()
+    {
+        var game = ThreeSeatLobby(MapChoice.Generated);
+
+        game.Start(Creator, TestRulesets.Default, Now);
+
+        game.State!.Players.Select(static player => player.Id)
+            .ShouldBe(game.Players.OrderBy(static player => player.Seat).Select(static player => player.PlayerId));
+    }
+
+    [Fact]
+    public void Execute_ResignWithThreePlayers_MarksTheSeatOutAndTheGameGoesOn()
+    {
+        var game = ThreeSeatLobby(MapChoice.Generated);
+        game.Start(Creator, TestRulesets.Default, Now);
+        var later = Now.AddMinutes(5);
+
+        game.Execute(Joiner, TestRulesets.Default, new ResignCommand(), later).IsSuccess.ShouldBeTrue();
+
+        game.Phase.ShouldBe(GamePhase.InProgress);
+        game.FindPlayer(Joiner)!.IsOut.ShouldBeTrue();
+        game.FindPlayer(Creator)!.IsOut.ShouldBeFalse();
+        game.ActivityAt.ShouldBe(later);
+    }
+
+    [Fact]
+    public void Execute_CurrentPlayerResignsWithThreePlayers_PassesTheTurn()
+    {
+        var game = ThreeSeatLobby(MapChoice.Generated);
+        game.Start(Creator, TestRulesets.Default, Now);
+
+        game.Execute(Creator, TestRulesets.Default, new ResignCommand(), Now).IsSuccess.ShouldBeTrue();
+
+        game.CurrentPlayerId.ShouldBe(game.FindPlayer(Joiner)!.Id);
+    }
+
+    private static Game ThreeSeatLobby(MapChoice map)
+    {
+        var game = Game.Create(Creator, Now, map, seats: 3);
+        game.Join(Joiner, Now);
+        game.Join(Guid.CreateVersion7(), Now);
         return game;
     }
 }

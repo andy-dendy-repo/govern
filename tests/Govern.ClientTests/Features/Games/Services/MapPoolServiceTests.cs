@@ -19,14 +19,21 @@ public class MapPoolServiceTests : ClientTestContext
     }
 
     [Fact]
-    public void Options_ListRandomThenEachMapThenGenerated()
+    public void OptionsFor_ListRandomThenEachMapForTheSeatsThenGenerated()
     {
-        Pool.Options.ShouldBe(
+        Pool.OptionsFor(2).ShouldBe(
         [
             new MapOption("random", "Random map from the pool"),
             new MapOption("basin", "The Basin"),
             new MapOption("generated", "Generated map"),
         ]);
+        Pool.OptionsFor(2).ShouldBeSameAs(Pool.OptionsFor(2));
+    }
+
+    [Fact]
+    public void OptionsFor_SeatsNoPoolMapIsFor_LeavesOutTheTwoPlayerMaps()
+    {
+        Pool.OptionsFor(3).Select(static option => option.Value).ShouldBe(["random", "generated"]);
     }
 
     [Theory]

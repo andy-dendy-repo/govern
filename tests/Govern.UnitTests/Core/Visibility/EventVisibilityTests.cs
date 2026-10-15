@@ -296,4 +296,25 @@ public class EventVisibilityTests
 
     private static GameUpdate Execute(GameState state, PlayerId actor, GameCommand command) =>
         GameEngine.Execute(TestRulesets.Default, state, actor, command).ShouldSucceed();
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EventsFor_AttackBetweenTwoOthers_IsSeenByAThirdPlayerOnlyInSight(bool thirdWatches)
+    {
+        var builder = new GameStateBuilder().WithPlayers(P1, P2, P3).WithCapitals();
+        builder.AddCity(P3, 0, Height - 1);
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 3);
+        builder.AddUnit(P2, TestRulesets.Soldier, 4, 3);
+        if (thirdWatches)
+        {
+            builder.AddUnit(P3, TestRulesets.Soldier, 6, 3);
+        }
+
+        var state = builder.Build();
+
+        var update = Execute(state, P1, new AttackCommand(attacker, At(4, 3)));
+
+        VisibilityCalculator.EventsFor(TestRulesets.Default, state, update, P3).OfType<UnitAttackedEvent>().Any().ShouldBe(thirdWatches);
+    }
 }

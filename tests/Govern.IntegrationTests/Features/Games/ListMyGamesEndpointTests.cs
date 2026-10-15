@@ -182,4 +182,22 @@ public class ListMyGamesEndpointTests(GovernApiFixture fixture) : ApiTestBase(fi
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         return (await response.Content.ReadFromJsonAsync<ListMyGamesResponse>(GamesApi.Json, Ct))!;
     }
+
+    [Fact]
+    public async Task Get_ResignedFromAGameThatGoesOn_IsListedAsOutForThatPlayerOnly()
+    {
+        var (game, players) = await GamesApi.CreateLobbyForAsync(Client, seats: 3, joiners: 2, Ct);
+        (await GamesApi.StartAsync(Client, players[0].AccessToken, game.Id, Ct)).EnsureSuccessStatusCode();
+        var version = (await GamesApi.GetGameAsync(Client, players[1], game.Id, Ct)).View!.Version;
+
+        (await GamesApi.SendCommandAsync(Client, players[1].AccessToken, game.Id, version, new ResignCommand(), Ct)).EnsureSuccessStatusCode();
+
+        var resigned = (await ListAsync(players[1], "")).Items.ShouldHaveSingleItem();
+        resigned.Phase.ShouldBe(GamePhase.InProgress);
+        resigned.IsOut.ShouldBeTrue();
+        resigned.Seats.ShouldBe(3);
+        var creator = (await ListAsync(players[0], "")).Items.ShouldHaveSingleItem();
+        creator.IsOut.ShouldBeFalse();
+        creator.IsYourTurn.ShouldBeTrue();
+    }
 }

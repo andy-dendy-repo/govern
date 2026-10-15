@@ -2,6 +2,8 @@ using Govern.Core.Actions;
 using Govern.Core.Economy;
 using Govern.Core.Engine;
 using Govern.Core.Events;
+using Govern.Core.State;
+using Govern.Core.Units;
 using Govern.UnitTests.Core.Builders;
 using static Govern.UnitTests.Core.Builders.GameStateBuilder;
 using static Govern.UnitTests.Core.Builders.TradeScenario;
@@ -159,5 +161,21 @@ public class ProposeDealActionTests
 
         state.FindUnit(scenario.Trader)!.Position.ShouldBe(At(5, 2));
         state.UnitsAt(At(5, 2)).Select(static unit => unit.Type).ShouldBe([TestRulesets.Soldier, TestRulesets.Trader], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void Propose_ToTheCityOfAPlayerWhoIsOut_IsNoPartnerAndLeavesTheViewsPartners()
+    {
+        var scenario = new TradeScenario();
+        var built = scenario.Builder.Build();
+        var settler = new Unit(new UnitId(999), P3, TestRulesets.Settler, At(5, 9), 0);
+        var state = built with { Players = [.. built.Players, new Player(P3, PlayerStatus.Active, [])], Units = [.. built.Units, settler] };
+        GameEngine.ViewFor(TestRulesets.Default, state, P1).TradePartnerList.ShouldContain(partner => partner.Id == scenario.Host);
+        var resigned = Execute(state, P2, new ResignCommand()).State;
+
+        var result = GameEngine.Execute(TestRulesets.Default, resigned, P1, new ProposeDealCommand(scenario.Trader, scenario.Host, Amounts((TestRulesets.Food, 3)), Amounts((TestRulesets.Stone, 1))));
+
+        result.ShouldFailWith(RuleViolations.NoTradePartner);
+        GameEngine.ViewFor(TestRulesets.Default, resigned, P1).TradePartnerList.ShouldNotContain(partner => partner.Id == scenario.Host);
     }
 }

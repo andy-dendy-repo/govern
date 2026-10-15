@@ -22,22 +22,31 @@ public sealed class MapPoolService(DefaultRulesetService rulesets)
     /// <exception cref="FormatException">An embedded document is not a valid map.</exception>
     public ImmutableArray<PredefinedMap> Maps => _maps.Value;
 
-    /// <summary>Whether a lobby may be created with this map choice.</summary>
+    /// <summary>Whether a lobby for this many seats may be created with this map choice.</summary>
     /// <param name="choice"><c>generated</c>, <c>random</c> or a pool map's key.</param>
-    /// <returns><see langword="true"/> for the generated or random choice, or the key of a map in the pool.</returns>
-    public bool IsChoice(string? choice) =>
-        choice == MapChoice.Generated.Value || choice == MapChoice.Random.Value || Maps.Any(map => map.Key == choice);
-
-    /// <summary>The pool map a game with this choice starts on.</summary>
-    /// <param name="choice">The lobby's choice.</param>
+    /// <param name="seats">The lobby's seats.</param>
     /// <returns>
-    /// The map the choice names, a random pool map for <see cref="MapChoice.Random"/>, or <see langword="null"/> for a generated
-    /// map or a key that is no longer in the pool.
+    /// <see langword="true"/> for the generated or random choice, or the key of a map in the pool made for <paramref name="seats"/>
+    /// players.
     /// </returns>
-    public PredefinedMap? Resolve(MapChoice choice)
+    public bool IsChoice(string? choice, int seats) =>
+        choice == MapChoice.Generated.Value || choice == MapChoice.Random.Value || Maps.Any(map => map.Key == choice && map.Players == seats);
+
+    /// <summary>The pool map a game with this choice and seats starts on.</summary>
+    /// <param name="choice">The lobby's choice.</param>
+    /// <param name="seats">The lobby's seats.</param>
+    /// <returns>
+    /// The map the choice names, a random pool map made for <paramref name="seats"/> players for <see cref="MapChoice.Random"/>,
+    /// or <see langword="null"/> for a generated map, a random choice the pool has no map for, or a key that is no longer in the
+    /// pool (or no longer for that many players).
+    /// </returns>
+    public PredefinedMap? Resolve(MapChoice choice, int seats)
     {
         ArgumentNullException.ThrowIfNull(choice);
-        return choice.IsRandom ? Maps[RandomNumberGenerator.GetInt32(Maps.Length)] : Maps.FirstOrDefault(map => map.Key == choice.Key);
+        var fitting = Maps.Where(map => map.Players == seats).ToList();
+        return choice.IsRandom
+            ? fitting.Count == 0 ? null : fitting[RandomNumberGenerator.GetInt32(fitting.Count)]
+            : fitting.Find(map => map.Key == choice.Key);
     }
 
     private static ImmutableArray<PredefinedMap> Load(DefaultRulesetService rulesets)

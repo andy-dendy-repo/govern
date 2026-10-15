@@ -19,6 +19,7 @@ namespace Govern.Client.Features.Games.Models;
 /// <see cref="Services.MapPoolService.NameOf"/>. <see langword="null"/> from an Api older than the map pool.
 /// </param>
 /// <param name="Log">The caller's recent game log (the previous round and this one), oldest first; empty in the lobby.</param>
+/// <param name="Seats">How many players the game is for; the lobby starts once <paramref name="Players"/> has this many.</param>
 public sealed record GetGameResponse(
     Guid Id,
     GamePhase Phase,
@@ -28,4 +29,5 @@ public sealed record GetGameResponse(
     PlayerView? View,
     DateTimeOffset CreatedAt,
     IReadOnlyList<GameLogItem>? Log = null,
-    string? Map = null);
+    string? Map = null,
+    int Seats = 2);

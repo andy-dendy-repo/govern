@@ -7,7 +7,8 @@ namespace Govern.UnitTests.Core.Map;
 
 public class PredefinedMapTests
 {
-    // An 8×8 map of plains with a lake tile and its mirror, a stream edge and its mirror, and two spawn candidates a side.
+    // An 8×8 two-player map of plains with a lake tile and its mirror, a stream edge and its mirror, and two spawn candidates a
+    // side.
     private static JsonObject ValidDocument() => new()
     {
         ["key"] = "test_map",
@@ -17,9 +18,11 @@ public class PredefinedMapTests
         ["legend"] = new JsonObject { ["."] = "plains", ["~"] = "lake", ["f"] = "forest" },
         ["rows"] = new JsonArray("........", "........", "...~....", "f.......", ".......f", "....~...", "........", "........"),
         ["rivers"] = new JsonArray(River(2, 4, "east", "stream"), River(4, 3, "east", "stream")),
-        ["firstSpawns"] = new JsonArray(new JsonArray(1, 2), new JsonArray(1, 5)),
-        ["secondSpawns"] = new JsonArray(new JsonArray(6, 5), new JsonArray(6, 2)),
+        ["spawns"] = Spawns([(1, 2), (1, 5)], [(6, 5), (6, 2)]),
     };
+
+    private static JsonArray Spawns(params (int Column, int Row)[][] groups) =>
+        [.. groups.Select(static group => (JsonNode)new JsonArray([.. group.Select(static spawn => (JsonNode)new JsonArray(spawn.Column, spawn.Row))]))];
 
     private static JsonObject River(int column, int row, string side, string river) =>
         new() { ["tile"] = new JsonArray(column, row), ["side"] = side, ["river"] = river };
@@ -40,8 +43,9 @@ public class PredefinedMapTests
         map.Map.TileAt(HexCoord.FromOffset(3, 2)).Terrain.ShouldBe(TestRulesets.Lake);
         map.Map.TileAt(HexCoord.FromOffset(0, 3)).Terrain.ShouldBe(TestRulesets.Forest);
         map.Map.RiverBetween(HexCoord.FromOffset(2, 4), HexCoord.FromOffset(3, 4)).ShouldBe(TestRulesets.Stream);
-        map.FirstSpawns.ShouldBe([HexCoord.FromOffset(1, 2), HexCoord.FromOffset(1, 5)]);
-        map.SecondSpawns.ShouldBe([HexCoord.FromOffset(6, 5), HexCoord.FromOffset(6, 2)]);
+        map.Players.ShouldBe(2);
+        map.Spawns[0].ShouldBe([HexCoord.FromOffset(1, 2), HexCoord.FromOffset(1, 5)]);
+        map.Spawns[1].ShouldBe([HexCoord.FromOffset(6, 5), HexCoord.FromOffset(6, 2)]);
     }
 
     [Fact]
@@ -74,18 +78,21 @@ public class PredefinedMapTests
         { """{"rivers":[{"tile":[2,4],"side":"east","river":"lava"}]}""", "$.rivers[0].river" },
         { """{"rivers":[{"tile":[2,4],"side":"east","river":"stream"},{"tile":[2,4],"side":"east","river":"stream"},{"tile":[4,3],"side":"east","river":"stream"}]}""", "$.rivers[1]" },
         { """{"rivers":[{"tile":[9,4],"side":"east","river":"stream"}]}""", "$.rivers[0].tile" },
-        { """{"firstSpawns":[]}""", "$.firstSpawns" },
-        { """{"secondSpawns":[[6,2]]}""", "$.secondSpawns" },
-        { """{"firstSpawns":[[1],[1,5]]}""", "$.firstSpawns[0]" },
-        { """{"secondSpawns":[null,[6,5]]}""", "$.secondSpawns[0]" },
+        { """{"spawns":[[],[[6,5],[6,2]]]}""", "$.spawns[0]" },
+        { """{"spawns":[[[1,2],[1,5]],[[6,2]]]}""", "$.spawns[1]" },
+        { """{"spawns":[[[1],[1,5]],[[6,5],[6,2]]]}""", "$.spawns[0][0]" },
+        { """{"spawns":[[[1,2],[1,5]],[null,[6,5]]]}""", "$.spawns[1][0]" },
+        { """{"spawns":[[[1,2],[1,5]]]}""", "$.spawns" },
+        { """{"spawns":[[[1,2],[1,5]],[[6,5],[6,2]],[[1,6],[1,1]],[[6,6],[6,1]],[[2,6],[2,1]]]}""", "$.spawns" },
         { """{"rows":["........","........","...~....","f.......",".......f","....~...","........",null]}""", "$.rows[7]" },
         { """{"rivers":[null]}""", "$.rivers[0]" },
-        { """{"firstSpawns":[[3,2],[1,5]]}""", "$.firstSpawns[0]" },
-        { """{"firstSpawns":[[3,4],[1,5]]}""", "$.firstSpawns[0]" },
-        { """{"firstSpawns":[[1,2],[1,2]]}""", "$.firstSpawns[1]" },
-        { """{"secondSpawns":[[1,2],[6,2]]}""", "$.secondSpawns[0]" },
-        { """{"secondSpawns":[[4,5],[6,2]]}""", "$.secondSpawns[0]" },
-        { """{"spawns":[[1,2],[1,5]]}""", "$.spawns" },
+        { """{"spawns":[[[3,2],[1,5]],[[6,5],[6,2]]]}""", "$.spawns[0][0]" },
+        { """{"spawns":[[[3,4],[1,5]],[[6,5],[6,2]]]}""", "$.spawns[0][0]" },
+        { """{"spawns":[[[1,2],[1,2]],[[6,5],[6,2]]]}""", "$.spawns[0][1]" },
+        { """{"spawns":[[[1,2],[1,5]],[[1,2],[6,2]]]}""", "$.spawns[1]" },
+        { """{"spawns":[[[1,2],[1,5]],[[4,5],[6,2]]]}""", "$.spawns[1][0]" },
+        { """{"spawns":[[[1,2],[1,5]],[[2,3],[2,6]]]}""", "$.spawns[1][0]" },
+        { """{"firstSpawns":[[1,2],[1,5]]}""", "$.firstSpawns" },
         { """{"extra":1}""", "$.extra" },
     };
 
@@ -128,7 +135,7 @@ public class PredefinedMapTests
 
         var result = Parse(document);
 
-        result.Problems.ShouldContain(problem => problem.Path == "$.firstSpawns[0]" && problem.Message.Contains("mean of all starts"), string.Join("; ", result.Problems));
+        result.Problems.ShouldContain(problem => problem.Path == "$.spawns[0][0]" && problem.Message.Contains("mean of all starts"), string.Join("; ", result.Problems));
     }
 
     [Fact]
@@ -140,11 +147,45 @@ public class PredefinedMapTests
         document["width"] = 16;
         document["rows"] = new JsonArray("................", "......f.......f.", "......f......f..", "......f......f..", "......f......f..", "......f......f..", "......f.......f.", "................");
         document["rivers"] = new JsonArray();
-        document["secondSpawns"] = new JsonArray(new JsonArray(14, 5), new JsonArray(14, 2));
+        document["spawns"] = Spawns([(1, 2), (1, 5)], [(14, 5), (14, 2)]);
 
         var result = Parse(document);
 
-        result.Problems.ShouldHaveSingleItem(string.Join("; ", result.Problems)).Path.ShouldBe("$.secondSpawns");
+        result.Problems.ShouldHaveSingleItem(string.Join("; ", result.Problems)).Path.ShouldBe("$.spawns[0]");
+    }
+
+    [Fact]
+    public void Parse_ThreeGroups_IsAMapForThreePlayers()
+    {
+        var document = ValidDocument();
+        // Plains only: the halves would differ (one start west, two east), so only the starts are compared.
+        document["width"] = 12;
+        document["height"] = 12;
+        document["rows"] = new JsonArray([.. Enumerable.Range(0, 12).Select(static _ => (JsonNode)"............")]);
+        document["rivers"] = new JsonArray();
+        document["spawns"] = Spawns([(1, 4), (1, 7)], [(10, 3), (10, 4)], [(10, 7), (10, 8)]);
+
+        var result = Parse(document);
+
+        result.Problems.ShouldBeEmpty();
+        result.Map!.Players.ShouldBe(3);
+    }
+
+    [Fact]
+    public void Parse_TwoPlayersStartingRowsCanMeet_ReportsTheLaterGroup()
+    {
+        var document = ValidDocument();
+        // Player 3's candidate [10, 3] puts its second unit on [9, 3], where player 2's candidate [9, 3] puts its first.
+        document["width"] = 12;
+        document["height"] = 12;
+        document["rows"] = new JsonArray([.. Enumerable.Range(0, 12).Select(static _ => (JsonNode)"............")]);
+        document["rivers"] = new JsonArray();
+        document["spawns"] = Spawns([(1, 4), (1, 7)], [(9, 3), (10, 8)], [(10, 3), (10, 7)]);
+
+        var result = Parse(document);
+
+        result.Problems.ShouldContain(problem => problem.Path == "$.spawns[2]" && problem.Message.Contains("another player's starting units"), string.Join("; ", result.Problems));
+        result.Problems.ShouldNotContain(problem => problem.Message.Contains("another player's starting units") && problem.Path != "$.spawns[2]");
     }
 
     [Fact]
@@ -153,8 +194,7 @@ public class PredefinedMapTests
         var document = ValidDocument();
         document["rows"] = new JsonArray("...~....", "...~....", "...~....", "...~....", "....~...", "....~...", "....~...", "....~...");
         document["rivers"] = new JsonArray();
-        document["firstSpawns"] = new JsonArray(new JsonArray(0, 2), new JsonArray(0, 1));
-        document["secondSpawns"] = new JsonArray(new JsonArray(7, 5), new JsonArray(7, 6));
+        document["spawns"] = Spawns([(0, 2), (0, 1)], [(7, 5), (7, 6)]);
 
         var result = Parse(document);
 

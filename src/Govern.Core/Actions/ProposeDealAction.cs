@@ -80,8 +80,10 @@ internal static class ProposeDealRule
     }
 
     // Another city with a trade post the actor knows of: their own, or one whose post they have seen (Player.KnownPosts; a city
-    // they never saw the post of reads like no partner at all).
+    // they never saw the post of reads like no partner at all), of a player still in the game (a player who is out trades with
+    // nobody).
     private static bool IsPartner(Ruleset ruleset, GameState state, PlayerId actor, CityId homeId, CityId hostId) =>
         state.FindCity(hostId) is { } host && host.Id != homeId && TradeRule.PostTile(ruleset, state.Map, host.Id) is not null
-        && (host.Owner == actor || state.FindPlayer(actor)!.KnownPostList.Contains(host.Id));
+        && (host.Owner == actor || state.FindPlayer(actor)!.KnownPostList.Contains(host.Id))
+        && state.FindPlayer(host.Owner) is { Status: PlayerStatus.Active };
 }

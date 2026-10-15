@@ -7,7 +7,7 @@ updated: 2026-10-05
 
 # Game data: the loadable ruleset
 
-**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v14.json`](../../rulesets/default/v14.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8, F12 suggested city names instead of the name template in v9, G17 the trader, trade values and the `trade` section in v10, G11a the `science` section, unit lines and building upgrades in v11, G15a water terrain (`isWater`), unit `domain` and `requiresBuilding`, and the galley and bireme in v12, G17b `trade.tradersPerCity` in place of `routesPerCity` in v13, G8c storage caps (`cities.storage`, `buildings[].storage`) in v14; [`v1.json`](../../rulesets/default/v1.json) to [`v13.json`](../../rulesets/default/v13.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
+**Status: the format is implemented in Core; storing and pinning are deferred** ([ruleset B plan](../plans/deferred/ruleset-b-store-and-pin.md), 2026-09-30). The document below is [`rulesets/default/v15.json`](../../rulesets/default/v15.json) (G4 added terrain and map generation in v2, G9 units, health and combat in v3, G6 rivers in v4, G10a builders, improvements, buildings and bridges in v5, G5 and G7 tile yields, water, desert and city territory in v6, G8a resource costs, upkeep and building health in v7, G9b the scout in v8, F12 suggested city names instead of the name template in v9, G17 the trader, trade values and the `trade` section in v10, G11a the `science` section, unit lines and building upgrades in v11, G15a water terrain (`isWater`), unit `domain` and `requiresBuilding`, and the galley and bireme in v12, G17b `trade.tradersPerCity` in place of `routesPerCity` in v13, G8c storage caps (`cities.storage`, `buildings[].storage`) in v14, F10 `setup.minPlayers`/`maxPlayers` and `map.sizes` in place of `setup.players` and `map.defaultWidth`/`defaultHeight` in v15; [`v1.json`](../../rulesets/default/v1.json) to [`v14.json`](../../rulesets/default/v14.json) stay in the repository unchanged as published versions, but today's Core no longer reads them, see [Versions in the repository](#versions-in-the-repository)). Core reads, validates and hashes it (`Govern.Core/Rulesets`), and every rule takes its numbers from it: there are no game constants left in Core code. Until rulesets are stored in the database ([ruleset plan](../plans/deferred/ruleset-b-store-and-pin.md), Ruleset B), the Api (`DefaultRulesetService`) and the client (`RulesetService`) embed that file and play every game with it. The algorithms that use this data are in [game logic](game-logic.md).
 
 ## The boundary: data or logic
 
@@ -108,12 +108,13 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 
 | Field | Default | Meaning |
 |---|---|---|
-| `players` | 2 | Exactly this many seats in a game; must be 2 for now (later a range, see [F10](../plans/deferred/follow-ups.md#f10-more-than-two-players)) |
+| `minPlayers`, `maxPlayers` | 2, 4 | How many seats a game may have; the lobby's creator picks a number in this range (F10). The engine supports 2 to 4, so both stay within it and `minPlayers` ≤ `maxPlayers` |
 | `startingUnits` | settler, soldier | Unit ids each player starts with, in placement order |
 
 ```json
 "setup": {
-  "players": 2,
+  "minPlayers": 2,
+  "maxPlayers": 4,
   "startingUnits": ["settler", "soldier"]
 }
 ```
@@ -126,16 +127,19 @@ The building sections (`bridges`, `resources`, `improvements`, `buildings`, plus
 
 | Field | Default | Meaning |
 |---|---|---|
-| `defaultWidth`, `defaultHeight` | 20 × 14 | The size of a new map (`GameSetup.Width`/`Height` may override it within the limits) |
+| `sizes[]` | 2 players: 20 × 14, 3: 26 × 18, 4: 30 × 20 | The size of a new generated map per number of players (`players`, `width`, `height`); exactly one entry for every count from `setup.minPlayers` to `setup.maxPlayers`, each size within `minSize`–`maxSize` (`GameSetup.Width`/`Height` may override it within the limits) |
 | `minSize`, `maxSize` | 8, 40 | Allowed width and height; the engine's own bounds are 8–40, which keep a stored game's size bounded |
 | `defaultTerrain` | `plains` | Terrain of every tile the generator leaves alone, and of every starting tile; must be passable |
-| `spawn.zoneColumnsPerMille` | 250 (a quarter of the width) | Each player spawns in their own zone at the left or right edge; at most 250, so the two zones never meet |
+| `spawn.zoneColumnsPerMille` | 250 (a quarter of the width) | Each player spawns in their own zone at the left or right edge; at most 250, so the left and right zones never meet. With three players the right edge holds two zones (its top and bottom thirds), with four each corner holds one (a third of the height each); see [game logic](game-logic.md#creating-a-game) |
 | `spawn.edgeMargin` | 1 tile | Spawns never touch the map edge; at least 1 and less than the zone on the smallest map |
 
 ```json
 "map": {
-  "defaultWidth": 20,
-  "defaultHeight": 14,
+  "sizes": [
+    { "players": 2, "width": 20, "height": 14 },
+    { "players": 3, "width": 26, "height": 18 },
+    { "players": 4, "width": 30, "height": 20 }
+  ],
   "minSize": 8,
   "maxSize": 40,
   "defaultTerrain": "plains",
@@ -404,7 +408,7 @@ Everything a player reads about the game's content comes from here: unit, class 
 - Units and combat: see [Units](#units-units) and [Combat](#combat-combat).
 - Bridges, resources, improvements, buildings, build production, tile yields, city stock, territory, resource costs, upkeep and trade: see [game data: building sections](game-data-economy.md#validation-of-the-building-sections).
 - Science, unit lines and building upgrades: see [game data: science](game-data-science.md#validation-of-the-science-section).
-- Numbers are in range: movement, sight, costs, city sight, spacing and production ≥ 1; `8 ≤ minSize ≤ maxSize ≤ 40`; the default size within them; `players` = 2.
+- Numbers are in range: movement, sight, costs, city sight, spacing and production ≥ 1; `8 ≤ minSize ≤ maxSize ≤ 40`; every `map.sizes` entry within them, one per player count from `setup.minPlayers` to `setup.maxPlayers`, each listed once; `2 ≤ minPlayers ≤ maxPlayers ≤ 4`.
 - Spawn: `zoneColumnsPerMille` 1–250; `edgeMargin` ≥ 1 and less than the zone on the smallest map; `startingUnits` no more than that zone.
 - At least one terrain is passable, and `defaultTerrain` is.
 - **Ships and buildings units need (G15a):** a water terrain is not passable; `requiresBuilding` names a building; a naval unit needs a water terrain, a `requiresBuilding` whose `requiresAdjacentTerrain` lists a water terrain (so the ship can be launched), and no ability but `attack` or `ranged_attack`; starting units and `cities.initialProduction` are land units without `requiresBuilding`.

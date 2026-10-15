@@ -26,19 +26,20 @@ public sealed class GamesClient(HttpClient http)
     private const string HeartbeatEventType = "heartbeat";
     private const string EventStreamMediaType = "text/event-stream";
 
-    /// <summary>Creates a lobby with the caller in seat 0, played on the chosen map.</summary>
+    /// <summary>Creates a lobby with the caller in seat 0, for the chosen number of players and played on the chosen map.</summary>
     /// <param name="map">The map choice (<see cref="MapOption.Value"/>).</param>
+    /// <param name="seats">How many players the game is for.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>
-    /// The game and its invite code, or the error (400 for a map the Api doesn't offer; 409 for a cap, e.g.
+    /// The game and its invite code, or the error (400 for seats or a map the Api doesn't offer; 409 for a cap, e.g.
     /// <c>game.too_many_open_lobbies</c>; 429).
     /// </returns>
-    public Task<ApiResult<CreateGameResponse>> CreateAsync(string map, CancellationToken cancellationToken)
+    public Task<ApiResult<CreateGameResponse>> CreateAsync(string map, int seats, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(map);
         var request = new HttpRequestMessage(HttpMethod.Post, "api/games")
         {
-            Content = JsonContent.Create(new CreateGameRequest(map), options: ApiJson.Options),
+            Content = JsonContent.Create(new CreateGameRequest(map, seats), options: ApiJson.Options),
         };
         return http.SendForResultAsync<CreateGameResponse>(request, cancellationToken);
     }

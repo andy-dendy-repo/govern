@@ -13,32 +13,43 @@ using Microsoft.EntityFrameworkCore;
 namespace Govern.Application.Games.Contracts;
 
 /// <summary>
-/// Creates a lobby for the caller, who takes seat 0. Share the returned invite code with the second player.
+/// Creates a lobby for the caller, who takes seat 0. Share the returned invite code with the other players.
 /// </summary>
 /// <param name="Map">
-/// The map to play on: <c>random</c> (any pool map, drawn at the start), <c>generated</c>, or a pool map's key
-/// (<see cref="MapPoolService"/>); <see langword="null"/> for <c>random</c>.
+/// The map to play on: <c>random</c> (any pool map for this many seats, drawn at the start, or a generated map when the pool
+/// has none), <c>generated</c>, or the key of a pool map made for this many seats (<see cref="MapPoolService"/>);
+/// <see langword="null"/> for <c>random</c>.
 /// </param>
-public sealed record CreateGameRequest(string? Map = null) : IRequest<CreateGameRequest, CreateGameResponse>;
+/// <param name="Seats">How many players the game is for, within the ruleset's range (2 to 4); 2 when left out.</param>
+public sealed record CreateGameRequest(string? Map = null, int Seats = Game.MinSeats) : IRequest<CreateGameRequest, CreateGameResponse>;
 
 /// <summary>
 /// The new lobby.
 /// </summary>
 /// <param name="Id">Game id.</param>
-/// <param name="InviteCode">The secret code another user joins with; share it only with the intended player.</param>
+/// <param name="InviteCode">The secret code other users join with; share it only with the intended players.</param>
 public sealed record CreateGameResponse(Guid Id, string InviteCode) : IResponse;
 
 /// <summary>
-/// Validates <see cref="CreateGameRequest"/>: the map is a choice the pool offers.
+/// Validates <see cref="CreateGameRequest"/>: the seats are within the ruleset's range and the map is a choice the pool offers
+/// for them.
 /// </summary>
 public sealed class CreateGameValidator : AbstractValidator<CreateGameRequest>
 {
     /// <summary>Creates the validation rules.</summary>
     /// <param name="maps">The map pool.</param>
-    public CreateGameValidator(MapPoolService maps) =>
+    /// <param name="rulesets">The ruleset games are played with (its player range).</param>
+    public CreateGameValidator(MapPoolService maps, DefaultRulesetService rulesets)
+    {
+        ArgumentNullException.ThrowIfNull(rulesets);
+        var setup = rulesets.Ruleset.Setup;
+        RuleFor(request => request.Seats)
+            .InclusiveBetween(setup.MinPlayers, setup.MaxPlayers);
         RuleFor(request => request.Map)
-            .Must(map => map is null || maps.IsChoice(map))
-            .WithMessage("'Map' must be 'random', 'generated' or the key of a map in the pool.");
+            .Must((request, map) => map is null || maps.IsChoice(map, request.Seats))
+            .When(request => setup.Allows(request.Seats))
+            .WithMessage("'Map' must be 'random', 'generated' or the key of a map in the pool made for this many seats.");
+    }
 }
 
 /// <summary>
@@ -72,7 +83,7 @@ internal sealed class CreateGameHandler(
             return limit;
         }
 
-        var game = Game.Create(userId, now, request.Map is { } map ? MapChoice.Create(map) : MapChoice.Random);
+        var game = Game.Create(userId, now, request.Map is { } map ? MapChoice.Create(map) : MapChoice.Random, request.Seats);
         db.Games.Add(game);
         await db.SaveChangesAsync(cancellationToken);
 

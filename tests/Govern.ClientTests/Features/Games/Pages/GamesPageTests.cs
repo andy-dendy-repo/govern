@@ -21,8 +21,8 @@ public class GamesPageTests : ClientTestContext
     {
         Api.On(HttpMethod.Get, FirstPage, () => FakeApiHandler.Json(new ListMyGamesResponse(
             [
-                new MyGameItem(TestGames.Id, GamePhase.InProgress, 2, false, true, TestGames.CreatedAt),
-                new MyGameItem(Guid.CreateVersion7(), GamePhase.Lobby, 1, true, false, TestGames.CreatedAt),
+                new MyGameItem(TestGames.Id, GamePhase.InProgress, 2, 2, false, true, false, TestGames.CreatedAt),
+                new MyGameItem(Guid.CreateVersion7(), GamePhase.Lobby, 1, 2, true, false, false, TestGames.CreatedAt),
             ], 2)));
 
         var cut = Render<GamesPage>();
@@ -50,7 +50,7 @@ public class GamesPageTests : ClientTestContext
     public void Pager_NextPage_LoadsPageTwo()
     {
         var items = Enumerable.Range(0, 20)
-            .Select(_ => new MyGameItem(Guid.CreateVersion7(), GamePhase.Lobby, 1, true, false, TestGames.CreatedAt)).ToList();
+            .Select(_ => new MyGameItem(Guid.CreateVersion7(), GamePhase.Lobby, 1, 2, true, false, false, TestGames.CreatedAt)).ToList();
         Api.On(HttpMethod.Get, FirstPage, () => FakeApiHandler.Json(new ListMyGamesResponse(items, 21)));
         Api.On(HttpMethod.Get, "/api/games?page=2&pageSize=20", () => FakeApiHandler.Json(new ListMyGamesResponse([items[0]], 21)));
         var cut = Render<GamesPage>();
@@ -82,7 +82,7 @@ public class GamesPageTests : ClientTestContext
 
         cut.Find("button.new-game").Click();
 
-        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"random"}"""));
+        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"random","seats":2}"""));
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public class GamesPageTests : ClientTestContext
         cut.FindAll(".map-choice .rz-dropdown-item")[1].Click();
         cut.Find("button.new-game").Click();
 
-        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"basin"}"""));
+        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"basin","seats":2}"""));
     }
 
     [Fact]
@@ -112,5 +112,33 @@ public class GamesPageTests : ClientTestContext
 
         cut.WaitForAssertion(() => cut.Find(".api-error").TextContent.ShouldContain("3 open lobbies"));
         Navigation.Uri.ShouldBe("http://localhost/");
+    }
+
+    [Fact]
+    public void NewGame_ForThreePlayers_OffersOnlyMapsForThreeAndAsksForThem()
+    {
+        Api.On(HttpMethod.Get, FirstPage, () => FakeApiHandler.Json(new ListMyGamesResponse([], 0)));
+        Api.On(HttpMethod.Post, "/api/games", () => FakeApiHandler.Json(new CreateGameResponse(TestGames.Id, TestGames.InviteCode), HttpStatusCode.Created));
+        var cut = Render<GamesPage>();
+        cut.FindAll(".seat-choice .rz-dropdown-item").Select(static item => item.TextContent.Trim()).ShouldBe(["2 players", "3 players", "4 players"]);
+        cut.FindAll(".map-choice .rz-dropdown-item")[1].Click();
+
+        cut.FindAll(".seat-choice .rz-dropdown-item")[1].Click();
+        cut.Find("button.new-game").Click();
+
+        cut.FindAll(".map-choice .rz-dropdown-item").Select(static item => item.TextContent.Trim()).ShouldBe(["Random map from the pool", "Generated map"]);
+        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"random","seats":3}"""));
+    }
+
+    [Fact]
+    public void Render_AGameYouLeftWhileItGoesOn_SaysYoureOut()
+    {
+        Api.On(HttpMethod.Get, FirstPage, () => FakeApiHandler.Json(new ListMyGamesResponse(
+            [new MyGameItem(TestGames.Id, GamePhase.InProgress, 3, 3, false, false, true, DateTimeOffset.UnixEpoch)], 1)));
+
+        var cut = Render<GamesPage>();
+
+        cut.WaitForAssertion(() => cut.Find("tbody").TextContent.ShouldContain("You're out"));
+        cut.Find("tbody").TextContent.ShouldContain("3/3");
     }
 }

@@ -10,7 +10,7 @@ public class PlayerListTests : ClientTestContext
     {
         var cut = Render<PlayerList>(parameters => parameters.Add(static list => list.Players, TestGames.CreatorLobby().Players));
 
-        Texts(cut).ShouldBe(["Player 1 (you, creator)", "Waiting for a second player…"]);
+        Texts(cut).ShouldBe(["Player 1 (you, creator)", "Waiting for 1 more player…"]);
     }
 
     [Fact]
@@ -23,4 +23,14 @@ public class PlayerListTests : ClientTestContext
 
     private static string[] Texts(IRenderedComponent<PlayerList> cut) =>
         [.. cut.FindAll(".player").Select(static player => player.TextContent.Trim())];
+
+    [Fact]
+    public void Render_LobbyForFourWithTwoSeated_SaysHowManyAreMissing()
+    {
+        var cut = Render<PlayerList>(parameters => parameters
+            .Add(static list => list.Players, TestGames.CreatorLobby(players: 2).Players)
+            .Add(static list => list.Seats, 4));
+
+        Texts(cut).ShouldBe(["Player 1 (you, creator)", "Player 2", "Waiting for 2 more players…"]);
+    }
 }

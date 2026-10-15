@@ -10,7 +10,7 @@ internal static class PredefinedMapValidator
 {
     private const int MaxNameLength = 40;
 
-    // The candidates are public, so they narrow down where the opponent started; with one, the opponent's start would be known.
+    // The candidates are public, so they narrow down where the others started; with one, a player's start would be known.
     private const int MinSpawns = 2;
 
     public static PredefinedMap? Validate(Ruleset ruleset, PredefinedMapDocument document, List<RulesetProblem> problems)
@@ -24,15 +24,14 @@ internal static class PredefinedMapValidator
 
         var map = ReadTiles(document, legend, problems);
         map = ReadRivers(ruleset, document, map, problems);
-        var first = ReadSpawns(document.FirstSpawns, "$.firstSpawns", map, problems);
-        var second = ReadSpawns(document.SecondSpawns, "$.secondSpawns", map, problems);
+        var spawns = ReadSpawnGroups(ruleset, document.Spawns, map, problems);
         if (problems.Count > 0)
         {
             return null;
         }
 
-        PredefinedMapBalanceValidator.Validate(ruleset, map, first, second, problems);
-        return problems.Count == 0 ? new PredefinedMap(document.Key, document.Name, map, first, second) : null;
+        PredefinedMapBalanceValidator.Validate(ruleset, map, spawns, problems);
+        return problems.Count == 0 ? new PredefinedMap(document.Key, document.Name, map, spawns) : null;
     }
 
     private static void CheckHeader(Ruleset ruleset, PredefinedMapDocument document, List<RulesetProblem> problems)
@@ -181,11 +180,34 @@ internal static class PredefinedMapValidator
         return edge;
     }
 
+    // One group per player, for a player count the ruleset allows; no tile in two groups.
+    private static ImmutableArray<ImmutableArray<HexCoord>> ReadSpawnGroups(
+        Ruleset ruleset, ImmutableArray<ImmutableArray<ImmutableArray<int>>> groups, GameMap map, List<RulesetProblem> problems)
+    {
+        if (!ruleset.Setup.Allows(groups.Length))
+        {
+            problems.Add(new("$.spawns", $"Must have one group per player: from {ruleset.Setup.MinPlayers} to {ruleset.Setup.MaxPlayers} groups."));
+        }
+
+        var read = groups.Select((group, index) => ReadSpawns(group, $"$.spawns[{index}]", map, problems)).ToImmutableArray();
+        var seen = new HashSet<HexCoord>();
+        for (var index = 0; index < read.Length; index++)
+        {
+            if (read[index].Any(spawn => !seen.Add(spawn)))
+            {
+                problems.Add(new($"$.spawns[{index}]", "A tile is also a candidate of another group."));
+            }
+        }
+
+        return read;
+    }
+
     private static ImmutableArray<HexCoord> ReadSpawns(ImmutableArray<ImmutableArray<int>> pairs, string path, GameMap map, List<RulesetProblem> problems)
     {
-        if (pairs.Length < MinSpawns)
+        if (pairs.IsDefault || pairs.Length < MinSpawns)
         {
-            problems.Add(new(path, $"At least {MinSpawns} spawn tiles are required, so the opponent's start stays uncertain."));
+            problems.Add(new(path, $"At least {MinSpawns} spawn tiles are required, so the player's start stays uncertain."));
+            return [];
         }
 
         var spawns = new List<HexCoord>();

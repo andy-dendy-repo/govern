@@ -222,4 +222,18 @@ public class JoinGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixtu
         cancel.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         await join.ShouldBeProblemAsync(HttpStatusCode.NotFound, "game.invite_not_found", Ct);
     }
+
+    [Fact]
+    public async Task Post_LobbyForFour_SeatsJoinersInOrderUntilItIsFull()
+    {
+        var (game, players) = await GamesApi.CreateLobbyForAsync(Client, seats: 4, joiners: 3, Ct);
+        var fifth = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        var response = await GamesApi.JoinAsync(Client, fifth.AccessToken, game.InviteCode, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.full", Ct);
+        var lobby = await GamesApi.GetGameAsync(Client, players[0], game.Id, Ct);
+        lobby.Players.Select(p => p.Seat).ShouldBe([0, 1, 2, 3]);
+        lobby.Players.Single(p => p.IsYou).Seat.ShouldBe(0);
+    }
 }

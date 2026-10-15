@@ -82,7 +82,7 @@ Two players start on opposite edges of a hex map, which is either generated with
 | 🤝 **Trading** | City markets, traders with a home city, and deals that can be proposed, countered, accepted or declined |
 | 🔬 **Science** | A science tree that unlocks units and buildings, with unit lines, upgrades and building upgrades |
 
-Every number in the game lives in a versioned, validated **ruleset** ([`rulesets/default/v14.json`](rulesets/default/v14.json)), not in code. The player-facing [rules reference](docs/game/rules.md) is checked against that ruleset by tests, so it can't drift from the game.
+Every number in the game lives in a versioned, validated **ruleset** ([`rulesets/default/v15.json`](rulesets/default/v15.json)), not in code. The player-facing [rules reference](docs/game/rules.md) is checked against that ruleset by tests, so it can't drift from the game.
 
 ## 🧰 Tech stack: .NET 10, ASP.NET Core, EF Core, Blazor
 

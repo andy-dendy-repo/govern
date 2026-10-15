@@ -12,7 +12,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Govern.Application.Games.Contracts;
 
 /// <summary>
-/// Starts a full lobby (creator only): creates the board with a secret random seed. The creator moves first.
+/// Starts a full lobby (creator only): creates the board with a secret random seed. The players move in seat order, the creator
+/// first.
 /// </summary>
 /// <param name="GameId">Game id.</param>
 public sealed record StartGameRequest(Guid GameId) : IRequest<StartGameRequest, GetGameResponse>;
@@ -59,8 +60,8 @@ internal sealed class StartGameHandler(
             return error;
         }
 
-        var map = maps.Resolve(game.Map);
-        if (map is null && !game.Map.IsGenerated)
+        var map = maps.Resolve(game.Map, game.Seats);
+        if (map is null && game.Map.Key is not null)
         {
             return GameErrors.MapNotInPool;
         }

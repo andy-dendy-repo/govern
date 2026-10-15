@@ -69,6 +69,12 @@ namespace Govern.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("revision");
 
+                    b.Property<int>("Seats")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(2)
+                        .HasColumnName("seats");
+
                     b.Property<string>("State")
                         .HasColumnType("jsonb")
                         .HasColumnName("state");
@@ -141,6 +147,10 @@ namespace Govern.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("GameId")
                         .HasColumnType("uuid")
                         .HasColumnName("game_id");
+
+                    b.Property<bool>("IsOut")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_out");
 
                     b.Property<DateTimeOffset>("JoinedAt")
                         .HasColumnType("timestamp with time zone")

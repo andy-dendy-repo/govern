@@ -408,4 +408,27 @@ public class VisibilityCalculatorTests
 
         VisibilityCalculator.VisibleTiles(TestRulesets.Default, builder.Build(), P1).ShouldNotContain(At(8, 5));
     }
+
+    [Fact]
+    public void ViewFor_ThreePlayers_EachSeesOnlyTheirOwnPiecesAndEveryPlayersStatus()
+    {
+        var builder = new GameStateBuilder().WithPlayers(P1, P2, P3).WithCapitals();
+        builder.AddCity(P3, 0, Height - 1);
+        var units = new Dictionary<PlayerId, UnitId>
+        {
+            [P1] = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2),
+            [P2] = builder.AddUnit(P2, TestRulesets.Soldier, 9, 7),
+            [P3] = builder.AddUnit(P3, TestRulesets.Soldier, 2, 7),
+        };
+        var state = builder.Build();
+
+        foreach (var (viewer, own) in units)
+        {
+            var view = GameEngine.ViewFor(TestRulesets.Default, state, viewer);
+
+            view.Units.ShouldHaveSingleItem().Id.ShouldBe(own);
+            view.Cities.ShouldAllBe(city => city.Owner == viewer);
+            view.Players.Select(static player => player.Id).ShouldBe([P1, P2, P3]);
+        }
+    }
 }
