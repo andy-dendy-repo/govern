@@ -13,9 +13,13 @@ namespace Govern.Infrastructure.RateLimiting.Helpers;
 /// instance for the outage rather than blocking every request or none.
 /// </summary>
 /// <param name="context">The Redis database, clock and logger.</param>
-/// <param name="fallback">The in-process limiter used while Redis is unreachable; owned and disposed by this limiter.</param>
-internal abstract partial class RedisRateLimiter(RedisLimiterContext context, RateLimiter fallback) : RateLimiter
+/// <param name="createFallback">
+/// Creates the in-process limiter used while Redis is unreachable, on first need (it may own a timer); owned and disposed by
+/// this limiter.
+/// </param>
+internal abstract partial class RedisRateLimiter(RedisLimiterContext context, Func<RateLimiter> createFallback) : RateLimiter
 {
+    private readonly Lazy<RateLimiter> _fallback = new(createFallback);
     private long _lastActivity = context.TimeProvider.GetTimestamp();
 
     /// <summary>The Redis database, clock and logger.</summary>
@@ -55,20 +59,20 @@ internal abstract partial class RedisRateLimiter(RedisLimiterContext context, Ra
         catch (Exception exception) when (exception is RedisException or RedisTimeoutException)
         {
             Log.FellBack(Context.Logger, exception);
-            return await fallback.AcquireAsync(permitCount, cancellationToken);
+            return await _fallback.Value.AcquireAsync(permitCount, cancellationToken);
         }
     }
 
     /// <summary>The fallback's idle time, for subclasses that combine it with their own.</summary>
-    /// <returns><see langword="null"/> while the fallback holds leases.</returns>
-    protected TimeSpan? FallbackIdleDuration() => fallback.IdleDuration;
+    /// <returns><see langword="null"/> while the fallback holds leases or has used permits in its window.</returns>
+    protected TimeSpan? FallbackIdleDuration() => _fallback.IsValueCreated ? _fallback.Value.IdleDuration : TimeSpan.MaxValue;
 
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && _fallback.IsValueCreated)
         {
-            fallback.Dispose();
+            _fallback.Value.Dispose();
         }
 
         base.Dispose(disposing);

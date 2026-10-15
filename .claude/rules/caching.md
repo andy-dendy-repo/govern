@@ -26,9 +26,11 @@ Example: sign-in throttling (`ISignInThrottlingService` → `Infrastructure/Cach
 
 Example: `Infrastructure/Caching/Services/RedisSignInThrottlingService.cs`, `Infrastructure/RateLimiting`, `Infrastructure/Realtime/Services/RedisGameChangeService.cs`.
 
-- Keys and channels go through `RedisOptions.Key(...)` (the `Redis:KeyPrefix`). Hash personal data in keys (SHA-256 of the email), never store it raw.
+- Only Infrastructure references `StackExchange.Redis` (`LayerDependencyTests.OnlyInfrastructure_UsesRedis`).
+- Keys and channels go through `RedisOptions.Key(...)` (the `Redis:KeyPrefix`). Hash personal data in keys (emails, client IP addresses: a 16-byte SHA-256 prefix), never store it raw.
 - Check-and-update runs in one Lua script (`ScriptEvaluateAsync`), never a read then a write.
 - Every key expires (the window or a lease lifetime), so a crashed instance can't leave state behind for good.
+- A `RedisTimeoutException` doesn't mean the command didn't run: undo what it may have written (e.g. a lease) before falling back.
 - Redis being down is expected: catch `RedisException`/`RedisTimeoutException`, fall back to the in-process implementation (or a safe no-op) and log it; never fail the request. The connection uses `BacklogPolicy.FailFast`, so a fallback is immediate.
 
 ## Cached queries

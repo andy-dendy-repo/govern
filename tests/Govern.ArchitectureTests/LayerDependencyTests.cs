@@ -80,6 +80,16 @@ public class LayerDependencyTests
     }
 
     [Fact]
+    public void OnlyInfrastructure_UsesRedis()
+    {
+        Types().That().ResideInNamespaceMatching(@"^Govern\.(?!Infrastructure(?:\.|$)).*$")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceMatching(@"^StackExchange\.Redis(?:\..*)?$")
+            .Because("Redis is an Infrastructure detail behind Application.Common abstractions (see caching.md)")
+            .WithoutRequiringPositiveResults()
+            .Check(GovernArchitecture.Instance);
+    }
+
+    [Fact]
     public void Application_DoesNotDependOnAspNetCore()
     {
         Types().That().ResideInNamespaceMatching(Layers.NamespacePattern("Govern.Application"))

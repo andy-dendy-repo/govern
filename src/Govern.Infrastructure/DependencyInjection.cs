@@ -82,6 +82,7 @@ public static class DependencyInjection
             var redisConfiguration = ConfigurationOptions.Parse(redisConnectionString);
             redisConfiguration.AbortOnConnectFail = false;
             redisConfiguration.BacklogPolicy = BacklogPolicy.FailFast;
+            ShortenRedisTimeouts(redisConfiguration, redisConnectionString);
 
             // Production Redis is an external service: its password and the throttle counters must not cross the internet in clear.
             services.AddOptions<RedisOptions>()
@@ -97,6 +98,26 @@ public static class DependencyInjection
             services.AddSingleton<IGameChangeService>(static provider => provider.GetRequiredService<RedisGameChangeService>());
             services.AddHostedService(static provider => provider.GetRequiredService<RedisGameChangeService>());
             services.AddHealthChecks().AddCheck<RedisHealthCheck>("redis", tags: [HealthCheckTags.Ready]);
+        }
+
+        // A Redis call sits in front of every rate-limited request, so on a link that silently drops packets the library's 5 s
+        // defaults would add 5 s to each request until the socket is declared dead. Shorter defaults unless the string sets them.
+        private static void ShortenRedisTimeouts(ConfigurationOptions redisConfiguration, string connectionString)
+        {
+            if (!connectionString.Contains("syncTimeout", StringComparison.OrdinalIgnoreCase))
+            {
+                redisConfiguration.SyncTimeout = 1000;
+            }
+
+            if (!connectionString.Contains("asyncTimeout", StringComparison.OrdinalIgnoreCase))
+            {
+                redisConfiguration.AsyncTimeout = 1000;
+            }
+
+            if (!connectionString.Contains("connectTimeout", StringComparison.OrdinalIgnoreCase))
+            {
+                redisConfiguration.ConnectTimeout = 2000;
+            }
         }
 
         private void AddPersistence(IConfiguration configuration)

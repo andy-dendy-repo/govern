@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.RateLimiting;
 using Govern.Application.Common.Abstractions;
 using Govern.Infrastructure.RateLimiting.Helpers;
@@ -11,7 +13,7 @@ namespace Govern.Infrastructure.RateLimiting.Services;
 
 /// <summary>
 /// <see cref="IRateLimiterService"/> that counts in Redis, so every Api instance enforces the same limits once. Keys are
-/// <c>&lt;prefix&gt;:rl:&lt;key&gt;</c>. While Redis is unreachable each limiter counts in process (see
+/// <c>&lt;prefix&gt;:rl:&lt;hash of key&gt;</c>: partition keys hold client IP addresses, which are not stored in Redis. While Redis is unreachable each limiter counts in process (see
 /// <see cref="RedisRateLimiter"/>).
 /// </summary>
 internal sealed class RedisRateLimiterService(
@@ -33,6 +35,6 @@ internal sealed class RedisRateLimiterService(
     private RedisKey RedisKeyFor(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        return options.Value.Key($"rl:{key}");
+        return options.Value.Key($"rl:{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(key)).AsSpan(0, 16))}");
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Govern.Application.Common.Abstractions;
 using Govern.Infrastructure.Redis.Options;
 using Microsoft.Extensions.Hosting;
@@ -13,9 +14,14 @@ namespace Govern.Infrastructure.Realtime.Services;
 /// own watchers of that game. A message carries only the publishing instance and the game id, never game data.
 /// </summary>
 /// <remarks>
-/// Redis pub/sub is at-most-once: messages published while an instance is disconnected are lost. After the subscription
-/// connection is restored, every local watcher is signalled once; a stream re-reads its game and pushes only if the player's
-/// view changed, so a lost message costs one read, never a missed move.
+/// Redis pub/sub is at-most-once, so both ends of a lost message are covered:
+/// <list type="bullet">
+/// <item>Receiving: after any connection to Redis is restored, every local watcher is signalled once; a stream re-reads its
+/// game and pushes only if the player's view changed.</item>
+/// <item>Sending: a game whose publish failed is kept as pending and published again after the next restored connection or
+/// successful publish, so other instances hear about it even if they never disconnected.</item>
+/// </list>
+/// A lost message therefore costs a delay and one read per open stream, never a missed move.
 /// </remarks>
 internal sealed partial class RedisGameChangeService(
     InMemoryGameChangeService local,
@@ -25,6 +31,7 @@ internal sealed partial class RedisGameChangeService(
 {
     private readonly string _instanceId = Guid.NewGuid().ToString("N");
     private readonly RedisChannel _channel = RedisChannel.Literal(options.Value.Key("game-changed"));
+    private readonly ConcurrentDictionary<Guid, byte> _pending = new();
     private int _subscribed;
 
     /// <inheritdoc />
@@ -57,13 +64,36 @@ internal sealed partial class RedisGameChangeService(
 
     private async Task PublishToOtherInstancesAsync(Guid gameId)
     {
+        if (await TryPublishAsync(gameId) && !_pending.IsEmpty)
+        {
+            await PublishPendingAsync();
+        }
+    }
+
+    // Publishes again every game whose publish failed; one that fails again goes back to pending.
+    private async Task PublishPendingAsync()
+    {
+        foreach (var gameId in _pending.Keys)
+        {
+            if (_pending.TryRemove(gameId, out _))
+            {
+                await TryPublishAsync(gameId);
+            }
+        }
+    }
+
+    private async Task<bool> TryPublishAsync(Guid gameId)
+    {
         try
         {
             await redis.GetSubscriber().PublishAsync(_channel, $"{_instanceId}:{gameId:N}");
+            return true;
         }
-        catch (Exception exception) when (exception is RedisException or RedisTimeoutException)
+        catch (Exception exception) when (exception is RedisException or RedisTimeoutException or ObjectDisposedException)
         {
+            _pending.TryAdd(gameId, 0);
             Log.PublishFailed(logger, gameId, exception);
+            return false;
         }
     }
 
@@ -79,7 +109,7 @@ internal sealed partial class RedisGameChangeService(
         {
             await redis.GetSubscriber().SubscribeAsync(_channel, OnMessage);
         }
-        catch (Exception exception) when (exception is RedisException or RedisTimeoutException)
+        catch (Exception exception) when (exception is RedisException or RedisTimeoutException or ObjectDisposedException)
         {
             Volatile.Write(ref _subscribed, 0);
             Log.SubscribeFailed(logger, exception);
@@ -98,15 +128,13 @@ internal sealed partial class RedisGameChangeService(
         }
     }
 
+    // Any restored connection (with a shared subscription connection there is no separate Subscription one): retry a failed
+    // subscription, send what failed to send, and let every local stream re-read once in case a message was missed.
     private void OnConnectionRestored(object? sender, ConnectionFailedEventArgs args)
     {
-        if (args.ConnectionType != ConnectionType.Subscription)
-        {
-            return;
-        }
-
-        Log.Resynced(logger);
+        Log.Resynced(logger, args.ConnectionType);
         _ = EnsureSubscribedAsync();
+        _ = PublishPendingAsync();
         local.SignalAll();
     }
 
@@ -118,7 +146,7 @@ internal sealed partial class RedisGameChangeService(
         [LoggerMessage(EventId = 2301, Level = LogLevel.Warning, Message = "Subscribing to game changes from other Api instances failed; retrying when Redis reconnects")]
         public static partial void SubscribeFailed(ILogger logger, Exception exception);
 
-        [LoggerMessage(EventId = 2302, Level = LogLevel.Information, Message = "Redis subscription connection restored; signalling every open game stream once")]
-        public static partial void Resynced(ILogger logger);
+        [LoggerMessage(EventId = 2302, Level = LogLevel.Information, Message = "Redis {ConnectionType} connection restored; resending failed game changes and signalling every open game stream once")]
+        public static partial void Resynced(ILogger logger, ConnectionType connectionType);
     }
 }

@@ -29,6 +29,9 @@ public sealed class RedisFixture : IAsyncLifetime
     /// <summary>Drops every pub/sub client connection, as a network blip would; the Api hosts reconnect on their own.</summary>
     public Task KillSubscriptionConnectionsAsync() => Server.ExecuteAsync("CLIENT", "KILL", "TYPE", "pubsub");
 
+    /// <summary>Runs a Redis command as the admin connection (e.g. <c>ACL SETUSER</c>).</summary>
+    public Task<RedisResult> ExecuteAsync(string command, params object[] args) => Server.ExecuteAsync(command, args);
+
     public async ValueTask DisposeAsync()
     {
         if (_admin is not null)

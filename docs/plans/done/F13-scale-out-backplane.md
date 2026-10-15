@@ -34,7 +34,7 @@ Live game updates reach players through an in-process hub: `InMemoryGameChangeSe
 
 ## Steps
 1. Infrastructure: `RedisGameChangeService`. `Subscribe` uses the local hub; `Publish` signals local subscriptions, then fire-and-forget publishes `<instanceId>:<gameId>` to `<prefix>:game-changed`; at startup (hosted service) it subscribes once and wakes local watchers for other instances' messages. No game data in Redis.
-2. Infrastructure: resync. On `ConnectionRestored` for the subscription connection, call `SignalAll()` (and retry a subscription that failed at startup). Streams push only if the view changed.
+2. Infrastructure: resync. On any `ConnectionRestored`, call `SignalAll()`, retry a subscription that failed at startup, and resend games whose publish failed (kept as pending; found by the code review: without it, a failed publish on the sender was lost for instances that never disconnected). Streams push only if the view changed.
 3. Infrastructure: connection with `AbortOnConnectFail=false` (start without Redis) and `BacklogPolicy.FailFast` (fail at once while disconnected, so fallbacks are immediate). Readiness check reports `Degraded` while Redis is down: the Api still serves, so a load balancer must keep it.
 4. Application.Common + Application: `IRateLimiterService`; `ISignInThrottlingService` async, `SignInContract` updated.
 5. Infrastructure: shared limits.
@@ -49,12 +49,12 @@ Live game updates reach players through an in-process hub: `InMemoryGameChangeSe
 ## Tests
 - Unit: none (Infrastructure isn't unit-tested here).
 - Integration (`tests/Govern.IntegrationTests/ScaleOut`, `RedisFixture` + `ScaleOutTestBase` with two hosts on one database and one Redis):
-  - `GameChangeBackplaneTests`: a start on A reaches streams on A and B; an end turn on B reaches the opponent on A; a change missed during a disconnect arrives after the reconnect (A without Redis stands for the lost message; fails without `SignalAll`); a reconnect without a change pushes only heartbeats.
+  - `GameChangeBackplaneTests`: a start on A reaches streams on A and B; an end turn on B reaches the opponent on A; a change missed during a disconnect arrives after the reconnect (A without Redis stands for the lost message; fails without `SignalAll`); a reconnect without a change pushes only heartbeats; a change whose publish failed on A (its Redis user may not PUBLISH) reaches B after A reconnects.
   - `SharedRateLimitTests`: a fixed window shared across A and B rejects the request past the limit; open streams are capped across instances and a closed one frees a permit on the other.
   - `SharedSignInThrottlingTests`: failed attempts on A and B add up; 20 parallel attempts across both check only 5 passwords; a success on one instance resets the other.
   - `RedisOutageTests`: with Redis unreachable the instance starts, `/health/ready` is 200 `Degraded`, streams and commands work, and the throttle falls back to the instance; with Redis reachable readiness is `Healthy`. A rate-limit fallback keeps its window after the limiter has been idle for over 10 s (found by the security audit), and a Redis connection string without `ssl=true` stops startup outside Development.
   - Existing tests run without Redis on the in-memory implementations, unchanged.
-- Architecture: none; existing folder and naming rules cover the new folders.
+- Architecture: `LayerDependencyTests.OnlyInfrastructure_UsesRedis`; existing folder and naming rules cover the new folders.
 
 ## Docs & rules
 - New `docs/operations/scale-out.md`; `docs/operations/configuration.md`, `deployment.md`, `local-development.md`; `docs/features/games.md`, `users.md`; ADR 0005 Consequences; `docs/README.md`.

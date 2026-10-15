@@ -34,7 +34,7 @@ internal sealed class RedisConcurrencyLimiter : RedisRateLimiter
     /// <param name="permitLimit">Leases allowed at once.</param>
     /// <param name="leaseLifetime">How long an unreleased lease counts at most.</param>
     public RedisConcurrencyLimiter(RedisLimiterContext context, RedisKey key, int permitLimit, TimeSpan leaseLifetime)
-        : base(context, new ConcurrencyLimiter(new ConcurrencyLimiterOptions { PermitLimit = permitLimit, QueueLimit = 0 }))
+        : base(context, () => new ConcurrencyLimiter(new ConcurrencyLimiterOptions { PermitLimit = permitLimit, QueueLimit = 0 }))
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(permitLimit, 1);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(leaseLifetime, TimeSpan.Zero);
@@ -56,10 +56,20 @@ internal sealed class RedisConcurrencyLimiter : RedisRateLimiter
         var now = Context.TimeProvider.GetUtcNow();
         var leaseId = Guid.NewGuid().ToString("N");
         var lifetimeMilliseconds = (long)Math.Ceiling(_leaseLifetime.TotalMilliseconds);
-        var acquired = (long)await Context.Database.ScriptEvaluateAsync(
-            Script,
-            [_key],
-            [now.ToUnixTimeMilliseconds(), permitCount, _permitLimit, (now + _leaseLifetime).ToUnixTimeMilliseconds(), leaseId, lifetimeMilliseconds]) == 1;
+        bool acquired;
+        try
+        {
+            acquired = (long)await Context.Database.ScriptEvaluateAsync(
+                Script,
+                [_key],
+                [now.ToUnixTimeMilliseconds(), permitCount, _permitLimit, (now + _leaseLifetime).ToUnixTimeMilliseconds(), leaseId, lifetimeMilliseconds]) == 1;
+        }
+        catch (RedisTimeoutException)
+        {
+            // The script may still have run on the server: remove the lease it may have added before falling back.
+            RemoveLease(leaseId, permitCount);
+            throw;
+        }
         if (!acquired)
         {
             return RedisLease.Rejected;
@@ -69,20 +79,25 @@ internal sealed class RedisConcurrencyLimiter : RedisRateLimiter
         return new RedisLease(true, () => Release(leaseId, permitCount));
     }
 
-    // Fire and forget: a release that never reaches Redis (it went down) frees itself at the lease's expiry.
     private void Release(string leaseId, int permitCount)
+    {
+        RemoveLease(leaseId, permitCount);
+        Interlocked.Decrement(ref _held);
+        Touch();
+    }
+
+    // Fire and forget: a removal that never reaches Redis (it went down, or the app is shutting down) frees itself at the
+    // lease's expiry.
+    private void RemoveLease(string leaseId, int permitCount)
     {
         RedisValue[] members = [.. Enumerable.Range(1, permitCount).Select(i => (RedisValue)$"{leaseId}:{i}")];
         try
         {
             Context.Database.SortedSetRemove(_key, members, CommandFlags.FireAndForget);
         }
-        catch (Exception exception) when (exception is RedisException or RedisTimeoutException)
+        catch (Exception exception) when (exception is RedisException or RedisTimeoutException or ObjectDisposedException)
         {
             // Nothing to do: the lease frees itself at its expiry.
         }
-
-        Interlocked.Decrement(ref _held);
-        Touch();
     }
 }

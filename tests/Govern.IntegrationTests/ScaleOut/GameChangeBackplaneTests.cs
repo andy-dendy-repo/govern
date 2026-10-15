@@ -61,6 +61,25 @@ public class GameChangeBackplaneTests(GovernApiFixture fixture, RedisFixture red
     }
 
     [Fact]
+    public async Task ChangeWhosePublishFailed_IsPublishedAfterTheSenderReconnects()
+    {
+        // Instance A's Redis user may not PUBLISH, so A's change fails to reach the channel while B stays connected.
+        await Redis.ExecuteAsync("ACL", "SETUSER", "instance-a", "reset", "on", ">secret", "~*", "&*", "+@all", "-publish");
+        var a = StartInstance(redisConnectionString: $"{Redis.ConnectionString},user=instance-a,password=secret");
+        var b = StartInstance();
+        var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(a, Ct);
+        await using var joinerOnB = await GameEventsReader.OpenAsync(b, joiner.AccessToken, game.Id, Ct);
+        var before = await joinerOnB.NextGameAsync();
+        await SendAsync(a, creator, game.Id, new EndTurnCommand());
+
+        await Redis.ExecuteAsync("ACL", "SETUSER", "instance-a", "+publish");
+        await Redis.ExecuteAsync("CLIENT", "KILL", "USER", "instance-a");
+
+        var after = await joinerOnB.NextGameAsync();
+        after.View.ShouldNotBeNull().CurrentPlayer.ShouldBe(new PlayerId(before.Players.Single(p => p.IsYou).PlayerId));
+    }
+
+    [Fact]
     public async Task ReconnectWithoutAChange_PushesNothing()
     {
         var a = StartInstance();

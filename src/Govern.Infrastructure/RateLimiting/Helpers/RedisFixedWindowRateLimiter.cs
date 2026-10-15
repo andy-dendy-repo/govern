@@ -30,7 +30,7 @@ internal sealed class RedisFixedWindowRateLimiter : RedisRateLimiter
     /// <param name="permitLimit">Requests allowed per window.</param>
     /// <param name="window">The window length.</param>
     public RedisFixedWindowRateLimiter(RedisLimiterContext context, RedisKey key, int permitLimit, TimeSpan window)
-        : base(context, new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions { PermitLimit = permitLimit, Window = window }))
+        : base(context, () => new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions { PermitLimit = permitLimit, Window = window }))
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(permitLimit, 1);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(window, TimeSpan.Zero);
