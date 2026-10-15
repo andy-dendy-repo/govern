@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using Govern.Core.Actions;
+using Govern.Core.Economy;
 using Govern.Core.Events;
 using Govern.Core.Rulesets;
 using Govern.Core.State;
@@ -7,7 +9,10 @@ namespace Govern.Core.Engine;
 
 /// <summary>
 /// Runs after every accepted command: eliminates active players without cities and settlers, removes the units of players who
-/// left, and finishes the game when at most one active player remains (with two players, anyone leaving ends the game).
+/// left, and finishes the game when at most one active player remains (with two players, anyone leaving ends the game). When the
+/// game goes on but the player whose turn it is has left (resigned on their own turn), the turn passes to the next active player.
+/// A departed player's cities stay where they are, undefended, for the others to capture, and the deals they hosted end (the
+/// deals of their own traders break with the traders, in <see cref="TradeRule.Reconcile"/>).
 /// </summary>
 internal static class VictoryRule
 {
@@ -27,6 +32,14 @@ internal static class VictoryRule
 
             state = state with { Status = GameStatus.Finished, Winner = winner };
         }
+        else
+        {
+            state = EndHostedDeals(ruleset, state, events);
+            if (state.FindPlayer(state.CurrentPlayer) is not { Status: PlayerStatus.Active })
+            {
+                state = EndTurnRule.PassTurn(ruleset, state, events);
+            }
+        }
 
         return new GameUpdate(state, events.ToImmutable());
     }
@@ -45,6 +58,10 @@ internal static class VictoryRule
     private static bool CanStillPlay(Ruleset ruleset, GameState state, PlayerId player) =>
         state.Cities.Any(city => city.Owner == player)
         || state.Units.Any(unit => unit.Owner == player && ruleset.Unit(unit.Type).CanFoundCity);
+
+    private static GameState EndHostedDeals(Ruleset ruleset, GameState state, ImmutableArray<GameEvent>.Builder events) => state.TradeDealList
+        .Where(deal => state.FindPlayer(deal.HostOwner) is not { Status: PlayerStatus.Active })
+        .Aggregate(state, (current, deal) => TradeRule.EndDeal(ruleset, current, deal, TradeChange.Ended, events));
 
     private static GameState RemoveDepartedUnits(GameState state, ImmutableArray<GameEvent>.Builder events)
     {

@@ -23,7 +23,7 @@ When an item is picked up, it runs through `/develop-feature`: its own plan in `
 | F7 | [Invite code rotation (kick)](#f7-invite-code-rotation-kick) | game | S |
 | F8 | [Turn timers and absent players](#f8-turn-timers-and-absent-players) | game | M |
 | F9 | [Simultaneous turns (Civ 6 style)](#f9-simultaneous-turns-civ-6-style) | game | M–L |
-| F10 | [More than two players](#f10-more-than-two-players) | game | M |
+| F10 | [More than two players](#f10-more-than-two-players) (done 2026-10-15) | game | M |
 
 ## F1. Ship the game
 
@@ -92,26 +92,4 @@ When an item is picked up, it runs through `/develop-feature`: its own plan in `
 
 ## F10. More than two players
 
-- **Why:** games are 1-vs-1 only. Free-for-all games of 3–4 players would add variety.
-- **Already N-ready:**
-  - turn order (`EndTurnRule.PassTurn` walks the player list and skips inactive players);
-  - victory (`VictoryRule` ends the game when at most one active player remains);
-  - fog of war (views are built per viewer, and `PlayerView.Players` is a list);
-  - seats, SSE streams, the quota and the version fingerprint are per player.
-- **Hard-coded for two:**
-
-| Where | Today | Change |
-|---|---|---|
-| The ruleset's `setup.players` (the validator requires 2) and the `GameFactory` check | exactly 2 | a range of 2–N (say 4) in the ruleset |
-| `GameFactory.SpawnTiles(isLeftSide)` | left or right quarter of the map | spawn spots spread over the map (corners or a ring) with a minimum distance, still drawn from the seeded generator |
-| Map size | 20×14 default | scales with the player count, or the creator chooses |
-| `Domain/Entities/Game.MaxPlayers` / `IsFull` | = `PlayerCount` | max seats chosen at create time (min 2), stored in a column; one migration |
-| Start rule | full lobby | start once at least 2 have joined, or keep requiring a full lobby (decide) |
-| Client | "n/2", start needs 2, "Your opponent", own/enemy colours | "n/max", one colour per seat, "Player 2 (red)" labels in the panels, game over lists every player's result |
-| Tests | two-player scenarios | 3–4 players: turn order, elimination mid-game, resigning out of turn, each player's fog |
-
-- **Decide first:**
-  - **Waiting:** with alternating turns, each player waits for all the others every round. Do this with or after [simultaneous turns](#f9-simultaneous-turns-civ-6-style) and [turn timers](#f8-turn-timers-and-absent-players).
-  - **Free-for-all dynamics:** ganging up and kingmaking are expected; teams or diplomacy would be a separate feature.
-  - **Resigning mid-game:** the game continues for the others. Check that the current player resigning on their own turn passes the turn with 3+ players.
-  - **Start below the max:** the invite code stays valid until start, which makes [invite code rotation](#f7-invite-code-rotation-kick) a bit more relevant.
+Done 2026-10-15 (PR #77): lobbies of 2 to 4 players, free-for-all in seat order, the lobby starts when full, and a resigned player's cities stay capturable. The plan with what was built and why is [F10](../done/F10-more-players.md). Turn timers ([F8](#f8-turn-timers-and-absent-players)) stay deferred: one absent player still stalls a game of three or four.

@@ -1,4 +1,4 @@
-@* The seats of a game as text: who is in, which seat is the caller's, and an empty seat while waiting for a second player. *@
+@* The seats of a game as text: who is in, which seat is the caller's, and how many seats are still free. *@
 @using Govern.Client.Features.Games.Models
 
 <RadzenStack Gap="0.25rem" class="player-list">
@@ -6,14 +6,19 @@
     {
         <RadzenText TextStyle="TextStyle.Body1" class="player">@Describe(player)</RadzenText>
     }
-    @if (Players.Count < 2)
+    @if (Seats - Players.Count is > 0 and var free)
     {
-        <RadzenText TextStyle="TextStyle.Body2" class="player waiting">Waiting for a second player…</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body2" class="player waiting">
+            @(free == 1 ? "Waiting for 1 more player…" : $"Waiting for {free} more players…")
+        </RadzenText>
     }
 </RadzenStack>
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<GamePlayerSummary> Players { get; set; } = [];
+
+    /// <summary>How many players the game is for.</summary>
+    [Parameter] public int Seats { get; set; } = 2;
 
     private static string Describe(GamePlayerSummary player)
     {

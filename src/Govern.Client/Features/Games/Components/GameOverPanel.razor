@@ -1,4 +1,5 @@
-@* The result of a finished game: who won and how each player left. *@
+@* The result for a player who is done: who won and how each player left, once the game is over; while it goes on for the
+   others, how the viewer left it. *@
 @using Govern.Core.State
 @using Govern.Core.Visibility
 
@@ -7,7 +8,8 @@
     @foreach (var player in View.Players)
     {
         <RadzenText TextStyle="TextStyle.Body2" class="player-result">
-            @(player.Id == View.Viewer ? "You" : "Your opponent"): @Status(player)
+            <span class="@($"seat-swatch {Seats.Class(View, player.Id)}")" aria-hidden="true"></span>
+            @Name(player): @Status(player)
         </RadzenText>
     }
     <RadzenLink Path="games" Text="Back to my games" class="back"/>
@@ -16,17 +18,25 @@
 @code {
     [Parameter, EditorRequired] public PlayerView View { get; set; } = null!;
 
-    private string Result => View.Winner switch
-    {
-        null => "Nobody won.",
-        var winner when winner == View.Viewer => "You won!",
-        _ => "You lost.",
-    };
+    private string Result => View.Status == GameStatus.InProgress
+        ? $"{Left(View.Players.First(player => player.Id == View.Viewer))} The game goes on for the others."
+        : View.Winner switch
+        {
+            null => "Nobody won.",
+            var winner when winner == View.Viewer => "You won!",
+            _ => "You lost.",
+        };
+
+    private string Name(PlayerSummary player) =>
+        player.Id == View.Viewer ? "You" : View.Players.Length == 2 ? "Your opponent" : $"Seat {Seats.Number(View, player.Id)}";
+
+    private static string Left(PlayerSummary player) =>
+        player.Status == PlayerStatus.Eliminated ? "You were eliminated." : "You resigned.";
 
     private string Status(PlayerSummary player) => player.Status switch
     {
         PlayerStatus.Resigned => "resigned",
         PlayerStatus.Eliminated => "eliminated",
-        _ => player.Id == View.Winner ? "won" : "still standing",
+        _ => player.Id == View.Winner ? "won" : "still playing",
     };
 }

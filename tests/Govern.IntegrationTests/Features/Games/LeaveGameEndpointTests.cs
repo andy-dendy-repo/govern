@@ -144,4 +144,18 @@ public class LeaveGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixt
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Post_FromTheMiddleOfALobbyForThree_TheNextJoinerTakesTheFreedSeat()
+    {
+        var (game, players) = await GamesApi.CreateLobbyForAsync(Client, seats: 3, joiners: 2, Ct);
+        (await GamesApi.LeaveAsync(Client, players[1].AccessToken, game.Id, Ct)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        var newcomer = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        (await GamesApi.JoinAsync(Client, newcomer.AccessToken, game.InviteCode, Ct)).EnsureSuccessStatusCode();
+
+        var lobby = await GamesApi.GetGameAsync(Client, newcomer, game.Id, Ct);
+        lobby.Players.Single(p => p.IsYou).Seat.ShouldBe(1);
+        lobby.Players.Select(p => p.Seat).ShouldBe([0, 1, 2]);
+    }
 }

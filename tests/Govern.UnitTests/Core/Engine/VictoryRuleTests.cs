@@ -96,4 +96,76 @@ public class VictoryRuleTests
         update.State.Status.ShouldBe(GameStatus.InProgress);
         update.State.FindPlayer(P2)!.Status.ShouldBe(PlayerStatus.Active);
     }
+
+    [Fact]
+    public void Execute_CurrentPlayerResignsWithThreePlayers_TheGameGoesOnWithTheNextPlayer()
+    {
+        var builder = ThreePlayers();
+        var resigned = builder.AddUnit(P1, TestRulesets.Soldier, 2, 2);
+        var next = builder.AddUnit(P2, TestRulesets.Soldier, 8, 5, movementLeft: 0);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P1, new ResignCommand()).ShouldSucceed();
+
+        update.State.Status.ShouldBe(GameStatus.InProgress);
+        update.State.Winner.ShouldBeNull();
+        update.State.CurrentPlayer.ShouldBe(P2);
+        update.State.Turn.ShouldBe(1);
+        update.State.FindUnit(resigned).ShouldBeNull();
+        update.State.FindUnit(next)!.MovementLeft.ShouldBe(TestRulesets.Default.Unit(TestRulesets.Soldier).Movement);
+        update.Events.ShouldContain(new TurnEndedEvent(P1, P2, 1));
+    }
+
+    [Fact]
+    public void Execute_ResignOutOfTurnWithThreePlayers_KeepsTheTurnAndTheResignedCities()
+    {
+        var builder = ThreePlayers();
+        var city = builder.AddCity(P3, 5, 5);
+
+        var update = GameEngine.Execute(TestRulesets.Default, builder.Build(), P3, new ResignCommand()).ShouldSucceed();
+
+        update.State.Status.ShouldBe(GameStatus.InProgress);
+        update.State.CurrentPlayer.ShouldBe(P1);
+        update.State.FindPlayer(P3)!.Status.ShouldBe(PlayerStatus.Resigned);
+        update.State.FindCity(city)!.Owner.ShouldBe(P3);
+        update.Events.OfType<TurnEndedEvent>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Execute_ResignedPlayersUndefendedCity_CanBeCaptured()
+    {
+        var builder = ThreePlayers();
+        var city = builder.AddCity(P3, 5, 5);
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 4, 5);
+        var resigned = GameEngine.Execute(TestRulesets.Default, builder.Build(), P3, new ResignCommand()).ShouldSucceed().State;
+
+        var update = GameEngine.Execute(TestRulesets.Default, resigned, P1, new AttackCommand(attacker, At(5, 5))).ShouldSucceed();
+
+        update.State.FindCity(city)!.Owner.ShouldBe(P1);
+        update.State.Status.ShouldBe(GameStatus.InProgress);
+    }
+
+    [Fact]
+    public void Execute_OneOfThreeEliminated_TheGameGoesOnUntilOneIsLeft()
+    {
+        var builder = new GameStateBuilder().WithPlayers(P1, P2, P3).WithCapitals();
+        var attacker = builder.AddUnit(P1, TestRulesets.Soldier, 3, 5);
+        builder.AddCity(P3, 4, 5);
+        var state = builder.Build();
+
+        var first = GameEngine.Execute(TestRulesets.Default, state, P1, new AttackCommand(attacker, At(4, 5))).ShouldSucceed();
+        var last = GameEngine.Execute(TestRulesets.Default, first.State, P2, new ResignCommand()).ShouldSucceed();
+
+        first.State.FindPlayer(P3)!.Status.ShouldBe(PlayerStatus.Eliminated);
+        first.State.Status.ShouldBe(GameStatus.InProgress);
+        last.State.Status.ShouldBe(GameStatus.Finished);
+        last.State.Winner.ShouldBe(P1);
+    }
+
+    // Three players, each with a capital far from the others (P3's in the middle of the bottom edge).
+    private static GameStateBuilder ThreePlayers()
+    {
+        var builder = new GameStateBuilder().WithPlayers(P1, P2, P3).WithCapitals();
+        builder.AddCity(P3, 5, Height - 1);
+        return builder;
+    }
 }

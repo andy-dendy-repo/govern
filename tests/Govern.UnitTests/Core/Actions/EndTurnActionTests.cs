@@ -265,4 +265,33 @@ public class EndTurnActionTests
         update.State.FindUnit(docked)!.Damage.ShouldBe(20);
         update.State.FindUnit(away)!.Damage.ShouldBe(30);
     }
+
+    [Fact]
+    public void Execute_ThreePlayers_PassTheTurnInSeatOrderAndTheRoundGoesUpAfterTheLast()
+    {
+        var builder = new GameStateBuilder().WithPlayers(P1, P2, P3).WithCapitals();
+        builder.AddCity(P3, 5, Height - 1);
+        var state = builder.Build();
+
+        var second = GameEngine.Execute(TestRulesets.Default, state, P1, new EndTurnCommand()).ShouldSucceed().State;
+        var third = GameEngine.Execute(TestRulesets.Default, second, P2, new EndTurnCommand()).ShouldSucceed().State;
+        var round = GameEngine.Execute(TestRulesets.Default, third, P3, new EndTurnCommand()).ShouldSucceed().State;
+
+        (second.CurrentPlayer, second.Turn).ShouldBe((P2, 1));
+        (third.CurrentPlayer, third.Turn).ShouldBe((P3, 1));
+        (round.CurrentPlayer, round.Turn).ShouldBe((P1, 2));
+    }
+
+    [Fact]
+    public void Execute_ThreePlayersOneResigned_SkipsTheResignedSeat()
+    {
+        var builder = new GameStateBuilder().WithPlayers(P1, P2, P3).WithCapitals();
+        builder.AddCity(P3, 5, Height - 1);
+        var resigned = GameEngine.Execute(TestRulesets.Default, builder.Build(), P2, new ResignCommand()).ShouldSucceed().State;
+
+        var update = GameEngine.Execute(TestRulesets.Default, resigned, P1, new EndTurnCommand()).ShouldSucceed();
+
+        update.State.CurrentPlayer.ShouldBe(P3);
+        update.Events.ShouldContain(new TurnEndedEvent(P1, P3, 1));
+    }
 }

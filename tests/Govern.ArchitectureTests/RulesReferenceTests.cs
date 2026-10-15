@@ -158,9 +158,8 @@ public class RulesReferenceTests
     {
         List<string> expected =
         [
-            Row("Players", Ruleset.Setup.Players),
-            Row("Map width", Ruleset.Map.DefaultWidth),
-            Row("Map height", Ruleset.Map.DefaultHeight),
+            Row("Players", $"{Ruleset.Setup.MinPlayers} to {Ruleset.Setup.MaxPlayers}"),
+            .. Ruleset.Map.Sizes.Select(static size => Row($"Map size, {size.Players} players", $"{size.Width} × {size.Height}")),
             Row("Starting units", string.Join(", ", Ruleset.Setup.StartingUnits.Select(static unit => Ruleset.UnitName(unit)))),
             Row("City sight", Ruleset.Cities.Sight),
             Row("Minimum distance between cities", Ruleset.Cities.MinimumSpacing),

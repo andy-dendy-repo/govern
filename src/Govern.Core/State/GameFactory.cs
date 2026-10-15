@@ -10,11 +10,12 @@ namespace Govern.Core.State;
 
 /// <summary>
 /// Creates the initial <see cref="GameState"/> from the game's ruleset: a generated map (forests, hills and so on) or the
-/// setup's predefined map, and for each player its starting units. On a generated map the first player spawns in a zone at the
-/// left edge, the second at the right edge, and the seed picks the exact spawn tile; on a predefined map the seed picks one of
-/// the first player's spawn candidates and, on its own, one of the second player's. The other starting units stand in a row from
-/// the spawn towards the centre. A generated map's two halves are mirrors of each other, but the spawns are not, so the map
-/// barely hints where the opponent started.
+/// setup's predefined map, and for each player its starting units. On a generated map for two players the first spawns in a
+/// zone at the left edge, the second at the right edge, and the seed picks the exact spawn tile before the terrain is laid; with
+/// three or four players each spawns in a zone of their own (<see cref="SpawnRules"/>), drawn after the terrain among the zone's
+/// fair starts. On a predefined map the seed picks one candidate of each player's spawn group on its own. The other starting
+/// units stand in a row from the spawn towards the centre. A generated map's halves are mirrors of each other, but the spawns
+/// are not, so the map barely hints where the others started.
 /// </summary>
 public static class GameFactory
 {
@@ -23,7 +24,8 @@ public static class GameFactory
     /// <param name="setup">Players, seed and map size.</param>
     /// <returns>Turn 1, first player to move, version 0.</returns>
     /// <exception cref="ArgumentException">
-    /// The setup does not have as many distinct, non-empty players as <see cref="SetupRules.Players"/>.
+    /// The setup does not have distinct, non-empty players, as many as <see cref="SetupRules"/> allows, or a predefined map is not
+    /// made for that many players.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">The map size is outside the ruleset's limits.</exception>
     /// <exception cref="ArgumentException">The predefined map uses a terrain the ruleset doesn't have.</exception>
@@ -31,24 +33,23 @@ public static class GameFactory
     {
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(setup);
-        ValidatePlayers(ruleset.Setup.Players, setup.Players);
+        ValidatePlayers(ruleset.Setup, setup);
 
-        var blank = setup.Map is { } predefined ? CheckMap(ruleset, predefined.Map) : CreateMap(ruleset.Map, setup);
+        var count = setup.Players.Length;
+        var map = setup.Map is { } predefined ? CheckMap(ruleset, predefined.Map) : CreateMap(ruleset.Map, setup);
         var random = new DeterministicRandom(setup.Seed);
-        var ids = new HashSet<int>();
-        var units = ImmutableArray.CreateBuilder<Unit>();
 
-        for (var index = 0; index < setup.Players.Length; index++)
+        // Two players keep the original order (spawns, then terrain around them), so their games stay as they were.
+        var spawns = ImmutableArray<HexCoord>.Empty;
+        if (setup.Map is null && count > 2)
         {
-            var spawn = setup.Map is { } map
-                ? PredefinedSpawn(map, random, isLeftSide: index == 0)
-                : GeneratedSpawn(ruleset, blank, random, isLeftSide: index == 0);
-            var tiles = SpawnRow(ruleset, spawn, isLeftSide: index == 0);
-            for (var slot = 0; slot < tiles.Length; slot++)
-            {
-                var definition = ruleset.Unit(ruleset.Setup.StartingUnits[slot]);
-                units.Add(NewUnit(random, ids, setup.Players[index], definition, tiles[slot]));
-            }
+            (map, spawns) = SpawnPlanner.Place(ruleset, MapGenerator.Generate(ruleset, map, random, []), random, count);
+        }
+
+        var units = PlaceUnits(ruleset, setup, map, spawns, random);
+        if (setup.Map is null && count == 2)
+        {
+            map = MapGenerator.Generate(ruleset, map, random, [.. units.Select(static unit => unit.Position)]);
         }
 
         var state = new GameState
@@ -57,9 +58,9 @@ public static class GameFactory
             Turn = 1,
             CurrentPlayer = setup.Players[0],
             Status = GameStatus.InProgress,
-            Map = setup.Map is null ? MapGenerator.Generate(ruleset, blank, random, [.. units.Select(static unit => unit.Position)]) : blank,
+            Map = map,
             Players = [.. setup.Players.Select(static id => new Player(id, PlayerStatus.Active, []))],
-            Units = units.ToImmutable(),
+            Units = units,
             Cities = ImmutableArray<City>.Empty,
             RngState = random.State,
         };
@@ -67,10 +68,34 @@ public static class GameFactory
         return VisibilityCalculator.UpdateExplored(ruleset, state);
     }
 
+    // Each player's starting units in seat order, in a row from their spawn: on a pool map one of their candidates, with three or
+    // more players the planned spawn, and with two a tile in their edge's zone.
+    private static ImmutableArray<Unit> PlaceUnits(
+        Ruleset ruleset, GameSetup setup, GameMap map, ImmutableArray<HexCoord> spawns, DeterministicRandom random)
+    {
+        var ids = new HashSet<int>();
+        var units = ImmutableArray.CreateBuilder<Unit>();
+        for (var index = 0; index < setup.Players.Length; index++)
+        {
+            var spawn = setup.Map is { } pool ? PredefinedSpawn(pool, random, index)
+                : spawns.IsEmpty ? GeneratedSpawn(ruleset, map, random, isLeftSide: index == 0)
+                : spawns[index];
+            var tiles = SpawnPlanner.Row(ruleset, map, spawn);
+            for (var slot = 0; slot < tiles.Length; slot++)
+            {
+                var definition = ruleset.Unit(ruleset.Setup.StartingUnits[slot]);
+                units.Add(NewUnit(random, ids, setup.Players[index], definition, tiles[slot]));
+            }
+        }
+
+        return units.ToImmutable();
+    }
+
     private static GameMap CreateMap(MapRules rules, GameSetup setup)
     {
-        var width = setup.Width ?? rules.DefaultWidth;
-        var height = setup.Height ?? rules.DefaultHeight;
+        var size = rules.SizeFor(setup.Players.Length);
+        var width = setup.Width ?? size.Width;
+        var height = setup.Height ?? size.Height;
         ArgumentOutOfRangeException.ThrowIfLessThan(width, rules.MinSize, nameof(setup));
         ArgumentOutOfRangeException.ThrowIfGreaterThan(width, rules.MaxSize, nameof(setup));
         ArgumentOutOfRangeException.ThrowIfLessThan(height, rules.MinSize, nameof(setup));
@@ -92,16 +117,22 @@ public static class GameFactory
         return map;
     }
 
-    private static void ValidatePlayers(int count, ImmutableArray<PlayerId> players)
+    private static void ValidatePlayers(SetupRules rules, GameSetup setup)
     {
-        if (players.IsDefault || players.Length != count)
+        var players = setup.Players;
+        if (players.IsDefault || !rules.Allows(players.Length))
         {
-            throw new ArgumentException($"A game needs exactly {count} players.", nameof(players));
+            throw new ArgumentException($"A game needs {rules.MinPlayers} to {rules.MaxPlayers} players.", nameof(setup));
+        }
+
+        if (setup.Map is { } map && map.Players != players.Length)
+        {
+            throw new ArgumentException($"The map '{map.Key}' is made for {map.Players} players.", nameof(setup));
         }
 
         if (players.Any(static player => player.Value == Guid.Empty) || players.Distinct().Count() != players.Length)
         {
-            throw new ArgumentException("Players must be distinct and non-empty.", nameof(players));
+            throw new ArgumentException("Players must be distinct and non-empty.", nameof(setup));
         }
     }
 
@@ -124,19 +155,11 @@ public static class GameFactory
         return HexCoord.FromOffset(column, row);
     }
 
-    // One of the player's candidates on the map; the map's validator keeps the row of starting units passable and in the player's
-    // half. The pick is visible to its player, so it is a hashed draw.
-    private static HexCoord PredefinedSpawn(PredefinedMap map, DeterministicRandom random, bool isLeftSide)
+    // One of the player's candidates on the map; the map's validator keeps the row of starting units passable and on the spawn's
+    // side of the centre. The pick is visible to its player, so it is a hashed draw.
+    private static HexCoord PredefinedSpawn(PredefinedMap map, DeterministicRandom random, int seat)
     {
-        var spawns = isLeftSide ? map.FirstSpawns : map.SecondSpawns;
+        var spawns = map.Spawns[seat];
         return spawns[random.NextHashed(0, spawns.Length)];
-    }
-
-    // The k-th starting unit stands k columns from the spawn towards the centre.
-    private static ImmutableArray<HexCoord> SpawnRow(Ruleset ruleset, HexCoord spawn, bool isLeftSide)
-    {
-        var towardsCentre = isLeftSide ? 1 : -1;
-        return [.. Enumerable.Range(0, ruleset.Setup.StartingUnits.Length)
-            .Select(slot => HexCoord.FromOffset(spawn.Column + (slot * towardsCentre), spawn.Row))];
     }
 }

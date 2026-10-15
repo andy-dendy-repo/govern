@@ -34,6 +34,12 @@ public sealed class GamePlayer : BaseEntity
     public DateTimeOffset JoinedAt { get; private set; }
 
     /// <summary>
+    /// Whether the player has left a running game (resigned or eliminated) while it goes on for the others; copied from the
+    /// state so lists and the seat limits never read the snapshot. Stays <see langword="false"/> for the last player standing.
+    /// </summary>
+    public bool IsOut { get; private set; }
+
+    /// <summary>
     /// The engine's identifier for this player: the per-game <see cref="BaseEntity.Id"/>, not the user id.
     /// </summary>
     public PlayerId PlayerId => new(Id);
@@ -42,6 +48,19 @@ public sealed class GamePlayer : BaseEntity
     /// How many <see cref="GameLogEntry"/> rows this seat has; the next entry's <see cref="GameLogEntry.Sequence"/> is one more.
     /// </summary>
     public int LogLength { get; private set; }
+
+    // Marks the seat out once its player resigned or was eliminated (which every player sees) while the game goes on for the
+    // others; a finished game ends every seat alike. Returns whether it changed.
+    internal bool MarkOut(GameState state)
+    {
+        if (IsOut || state.Status != GameStatus.InProgress || state.FindPlayer(PlayerId) is { Status: PlayerStatus.Active })
+        {
+            return false;
+        }
+
+        IsOut = true;
+        return true;
+    }
 
     // Numbers the next log entry for this seat.
     internal int NextLogSequence() => ++LogLength;

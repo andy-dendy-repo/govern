@@ -7,7 +7,7 @@ namespace Govern.Application.Games.Services;
 
 /// <summary>
 /// Reads the recent part of a player's game log, which every game response carries: the entries of the previous round and the
-/// current one (so always the opponent's last turn and the player's own), at most <see cref="MaxEntries"/> of them.
+/// current one (so always the other players' last turns and the player's own), at most <see cref="MaxEntries"/> of them.
 /// </summary>
 public static class GameLogService
 {

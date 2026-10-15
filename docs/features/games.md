@@ -2,24 +2,24 @@
 title: Games feature (lobby, invite codes, leave, cancel, lobby expiry, start, commands, live updates, player views, game log, game list, limits, quota)
 tags: [games, game, lobby, map, map-choice, map-pool, invite, invite-code, leave, cancel, expiry, quota, activity-at, start, commands, expected-version, live-updates, sse, server-sent-events, stream, heartbeat, rate-limit, player-view, fog-of-war, game-log, events, jsonb, concurrency, privacy]
 code: [src/Govern.Application/Games, src/Govern.Api/Features/Games, src/Govern.Api/Models/GameCommandBody.cs, src/Govern.Api/Extensions/AsyncEnumerableExtensions.cs, src/Govern.Infrastructure/Realtime, src/Govern.Infrastructure/Background/ExpiredLobbyCleanupService.cs, src/Govern.Domain/Entities/Game.cs, src/Govern.Domain/Entities/GamePlayer.cs, src/Govern.Domain/Entities/GameLogEntry.cs, src/Govern.Infrastructure/Persistence/Configurations/GameLogEntryConfiguration.cs, src/Govern.Domain/ValueObjects/InviteCode.cs, src/Govern.Domain/ValueObjects/MapChoice.cs, src/Govern.Application/Games/Services/MapPoolService.cs, src/Govern.Infrastructure/Persistence/Configurations/GameConfiguration.cs]
-updated: 2026-10-03
+updated: 2026-10-15
 ---
 
 # Games feature
 
-The Games feature lets a signed-in user create a two-player game, share an invite code, see who joined, leave or cancel a lobby, start the game, send commands (move, attack, found city, set production, end turn, resign), read their own fog-of-war view of the board and watch it change live over server-sent events. The rules themselves live in the Core engine ([game-core](game-core.md)); this feature stores games and exposes them over HTTP.
+The Games feature lets a signed-in user create a game for 2 to 4 players (F10), share an invite code, see who joined, leave or cancel a lobby, start the game, send commands (move, attack, found city, set production, end turn, resign), read their own fog-of-war view of the board and watch it change live over server-sent events. The rules themselves live in the Core engine ([game-core](game-core.md)); this feature stores games and exposes them over HTTP.
 
 ## Game lifecycle (GamePhase)
 
 | Phase | Meaning | Allowed |
 |---|---|---|
-| `lobby` | Created; waiting for a second player. `state` is null | Join with the invite code; the joiner leaves; the creator cancels (deletes) it, or starts once both seats are taken. Deleted after 7 days without activity |
-| `inProgress` | Started: `GameFactory.Create` built the board from the default ruleset (`rulesets/default/v2.json`, embedded and parsed once by `DefaultRulesetService`, which every game handler passes to the engine) with a secret random seed. The creator (seat 0) moves first | Send commands; read the view |
+| `lobby` | Created for `games.seats` players (2 to 4, the ruleset's `setup.minPlayers`–`maxPlayers`); waiting for the others. `state` is null | Join with the invite code (the lowest free seat); a joiner leaves; the creator cancels (deletes) it, or starts once every seat is taken. Deleted after 7 days without activity |
+| `inProgress` | Started: `GameFactory.Create` built the board from the default ruleset (`rulesets/default/v15.json`, embedded and parsed once by `DefaultRulesetService`, which every game handler passes to the engine) with a secret random seed. Turns go in seat order: the creator (seat 0) moves first. A player who resigns or is eliminated while two or more others play on is out (`game_players.is_out`): their turn is skipped, they can still read and watch the game, and it no longer counts toward their unfinished-games cap | Send commands; read the view |
 | `finished` | The engine decided the game (victory or resignation). Set by the same command that ended it | Read; every command returns `game.finished` |
 
 Phases are stored as text (`games.phase`) and sent as camelCase strings. A cancelled or expired lobby is deleted, not given a phase: its rows and invite code are gone, and GET returns 404. Leaving a running game is done by resigning. Regenerating an invite code is not supported yet.
 
-- **Leave** (`Game.Leave`): only a joined player, only in the lobby. The seat row is deleted, the creator sees a one-seat lobby again, and the leaver may rejoin with the code (seat 1 again).
+- **Leave** (`Game.Leave`): only a joined player, only in the lobby. The seat row is deleted and the seat is free again; the next joiner (the leaver too) takes the lowest free seat.
 - **Cancel** (`Game.Cancel`, then the handler deletes the game): only the creator, only in the lobby. The creator can't leave their own lobby (`game.creator_cannot_leave`).
 - **Expiry:** `Infrastructure/Background/ExpiredLobbyCleanupService` runs every `LobbyCleanup:Interval` (1 hour) and deletes lobbies whose `activity_at` is older than `Game.LobbyLifetime` (7 days), in batches of `LobbyCleanup:BatchSize` (500). The delete repeats the predicate, so a lobby joined in between survives. It uses `ExecuteDeleteAsync` (no domain events), so it signals the deleted games' watchers itself. An expired lobby lingers for up to one interval.
 
@@ -29,7 +29,7 @@ All endpoints require a bearer token (`.RequireAuthorization()`). Create, join, 
 
 | Method and route | Use case | Success | Errors |
 |---|---|---|---|
-| `POST /api/games` optional body `{ map }` | `CreateGameContract` | 201 `{ id, inviteCode }`, `Location: /api/games/{id}` | 400 a map that is not `random`, `generated` or a pool key; 401; 409 `game.too_many_open_lobbies`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
+| `POST /api/games` optional body `{ map, seats }` | `CreateGameContract` | 201 `{ id, inviteCode }`, `Location: /api/games/{id}` | 400 seats outside the ruleset's `setup.minPlayers`–`maxPlayers` (default 2), a map that is not `random`, `generated` or a pool key made for that many players; 401; 409 `game.too_many_open_lobbies`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
 | `POST /api/games/join` body `{ inviteCode }` | `JoinGameContract` | 200 `{ gameId }` | 400 malformed code; 401; 404 `game.invite_not_found`; 409 `game.already_started`, `game.full`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
 | `POST /api/games/{id}/leave` | `LeaveGameContract` | 204 | 400 empty id; 401; 404 `game.not_found`; 409 `game.creator_cannot_leave`, `game.already_started`, `game.stale_version`; 429 |
 | `DELETE /api/games/{id}` | `CancelGameContract` | 204 (the lobby is deleted) | 400 empty id; 401; 403 `game.not_creator`; 404 `game.not_found`; 409 `game.already_started`, `game.stale_version`; 429 |
@@ -37,11 +37,11 @@ All endpoints require a bearer token (`.RequireAuthorization()`). Create, join, 
 | `POST /api/games/{id}/commands` body `{ expectedVersion, command }` | `SendGameCommandContract` | 200 `GetGameResponse` (the caller's view after the command) | 400 malformed body or unknown command type, empty id, negative version; 401; 404 `game.not_found`; 409 `game.not_started`, `game.stale_version` or a rule-violation code; 413 body over 4 KiB; 415 not JSON; 429 |
 | `GET /api/games/{id}` | `GetGameContract` | 200 `GetGameResponse` | 400 empty id; 401; 404 `game.not_found` |
 | `GET /api/games/{id}/stream` | `WatchGameContract` | 200 `text/event-stream` of `game` (a `GetGameResponse`) and `heartbeat` events (see [Live game updates](#live-game-updates-sse)) | 400 empty id; 401; 404 `game.not_found`; 429 |
-| `GET /api/games?page=1&pageSize=20` | `ListMyGamesContract` | 200 `{ items: [{ id, phase, playerCount, isCreator, isYourTurn, activityAt }], total }` | 400 page outside 1–10,000 or page size outside 1–50; 401 |
+| `GET /api/games?page=1&pageSize=20` | `ListMyGamesContract` | 200 `{ items: [{ id, phase, playerCount, seats, isCreator, isYourTurn, isOut, activityAt }], total }` | 400 page outside 1–10,000 or page size outside 1–50; 401 |
 
-The list is ordered by `activityAt`, newest first: the last change both players see (created, a seat taken or left, the start, a turn change, the finish). A move or production change leaves it alone, so the list reveals nothing about the opponent's hidden activity. It is stored in `games.activity_at` and set by `Game`; `updated_at` is only the audit column and is never returned.
+The list is ordered by `activityAt`, newest first: the last change every player sees (created, a seat taken or left, the start, a turn change, the finish). A move or production change leaves it alone, so the list reveals nothing about the other players' hidden activity. It is stored in `games.activity_at` and set by `Game`; `updated_at` is only the audit column and is never returned.
 
-`GetGameResponse` is `{ id, phase, isCreator, inviteCode, players: [{ playerId, seat, isYou, isCreator }], view, createdAt, map, log }`:
+`GetGameResponse` is `{ id, phase, isCreator, inviteCode, seats, players: [{ playerId, seat, isYou, isCreator }], view, createdAt, map, log }` (`seats` is how many players the game is for):
 - `inviteCode` is set only for the creator, and only while in the lobby.
 - `map` is the lobby's map choice (`random`, `generated` or a pool map's key); once started, the map played on (`random` becomes the key drawn). The client names it from its own copy of the pool.
 - `view` is the caller's `PlayerView` once started, and null in the lobby.
@@ -52,11 +52,11 @@ A lobby stores its map choice in `games.map` (`MapChoice`, G18, [maps](../game/m
 
 | Choice | Created by | At the start |
 |---|---|---|
-| `random` | `POST /api/games` with no body, no `map`, or `{ "map": "random" }` (the lobby picker's default) | `MapPoolService.Resolve` draws a pool map (`RandomNumberGenerator`); `games.map` becomes its key |
+| `random` | `POST /api/games` with no body, no `map`, or `{ "map": "random" }` (the lobby picker's default) | `MapPoolService.Resolve` draws a pool map made for the lobby's seats (`RandomNumberGenerator`); `games.map` becomes its key. With no pool map for that many players it is a generated map, and `games.map` becomes `generated` |
 | A pool key, such as `basin` | `{ "map": "basin" }` | The game is played on that map; if the key left the pool since, start answers 409 `game.map_not_in_pool` |
 | `generated` | `{ "map": "generated" }` | A generated map, as before G18; rows created before G18 hold `generated` |
 
-`CreateGameValidator` accepts only `random`, `generated` or a key the pool holds (400 otherwise). `Game.Start` throws when the map it is given doesn't fit the choice (`MapChoice.Fits`), which the handler rules out.
+`CreateGameValidator` accepts only `random`, `generated` or a key of a pool map made for the requested seats (400 otherwise). `Game.Start` throws when the map it is given doesn't fit the choice (`MapChoice.Fits`), which the handler rules out.
 
 ## Games error codes (GameErrors)
 
@@ -68,8 +68,8 @@ A lobby stores its map choice in `games.map` (`MapChoice`, G18, [maps](../game/m
 | `game.not_creator` | 403 | A player other than the creator tried to start or cancel |
 | `game.creator_cannot_leave` | 409 | The creator tried to leave their own lobby; they cancel it instead |
 | `game.already_started` | 409 | Join, start, leave or cancel after the game left the lobby |
-| `game.full` | 409 | Both seats are taken |
-| `game.not_enough_players` | 409 | Start with only the creator seated |
+| `game.full` | 409 | Every seat is taken |
+| `game.not_enough_players` | 409 | Start before every seat is taken |
 | `game.too_many_unfinished_games` | 409 | Create or join (as a new player) while the caller already plays in `GameErrors.MaxUnfinishedGamesPerUser` (20) games that are not finished, joined lobbies included. A soft cap, like the lobby cap. Leaving or cancelling a lobby frees a slot |
 | `game.daily_quota_reached` | 429 | Create or join (as a new player) after the caller took `GameErrors.MaxGamesJoinedPerWindow` (30) seats in the last 24 hours (`GameErrors.QuotaWindow`), finished games included. A soft cap |
 | `game.not_started` | 409 | A command for a game still in the lobby |
@@ -82,7 +82,7 @@ The Core rule-violation codes (`move.unreachable`, `game.not_your_turn`, `game.f
 
 - 16 bytes from `RandomNumberGenerator`, base64url without padding: always 22 characters from `A–Z a–z 0–9 - _`.
 - Codes are case-sensitive and never normalised. Surrounding whitespace, padding or `+`/`/` make a code malformed (400).
-- The code is a bearer secret: anyone who has it can take the free seat. That is acceptable for 2 players, because the code is unguessable (128 bits) and the creator sees who joined.
+- The code is a bearer secret: anyone who has it can take the free seat. That is acceptable for up to 4 players, because the code is unguessable (128 bits) and the creator sees who joined.
 - The code is sent in the request **body** of `POST /api/games/join`, so it never appears in URLs, access logs or `Referer` headers. No log line contains it.
 - Only the creator can read the code again through `GET /api/games/{id}`, and only while in the lobby. The joined player never gets it back, and nobody sees it once the game starts.
 - **Invite link:** the client shares `https://<client>/join#<code>`. The code sits in the URL **fragment**, which browsers never send to a server (not to the Static Web App, not in `Referer`). The join page removes the fragment from the address bar and the Back history at once, fills in its form, and posts the code in the body only when the player clicks Join (a link alone never joins). The browser's global history still records the visited link. See [client game lobby](client.md#invite-link-policy-code-only-in-the-fragment-or-the-body).
@@ -105,7 +105,7 @@ The Core rule-violation codes (`move.unreachable`, `game.not_your_turn`, `game.f
 | `game-commands` rate-limit policy | 120 commands per user per minute (`RateLimiting:GameCommandsPermitLimit` / `GameCommandsWindow`) | Fixed window partitioned by the JWT `sub` |
 | `game-streams` rate-limit policy | 4 open streams per user (`RateLimiting:GameStreamsConcurrentLimit`), and 30 streams opened per user per minute (`GameStreamsPermitLimit` / `GameStreamsWindow`) | A concurrency limiter chained with a fixed window (`Api/Helpers/OwningChainedRateLimiter`), partitioned by the JWT `sub`; the concurrency permit is held while the stream is open, and the partition is never dropped while a stream holds one |
 | Open lobbies created | 5 per user (`GameErrors.MaxOpenLobbiesPerUser`) | `CreateGameHandler` |
-| Unfinished games played in | 20 per user (`GameErrors.MaxUnfinishedGamesPerUser`) | `GameSeatLimitService`, from `CreateGameHandler` and `JoinGameHandler` (new players only) |
+| Unfinished games played in | 20 per user (`GameErrors.MaxUnfinishedGamesPerUser`) | `GameSeatLimitService`, from `CreateGameHandler` and `JoinGameHandler` (new players only); a running game the user is out of no longer counts |
 | Seats taken (rolling quota) | 30 per user in any 24 hours, finished games included (`GameErrors.MaxGamesJoinedPerWindow`, `QuotaWindow`); counted from `game_players.joined_at` | `GameSeatLimitService` |
 | Lobby lifetime | 7 days without activity (`Game.LobbyLifetime`), then deleted | `ExpiredLobbyCleanupService` |
 | Command body | 4 KiB (`GameCommandBody.MaxBytes`) | `GameCommandBody.BindAsync` |
@@ -164,14 +164,14 @@ Each player has their own log of what they saw happen (F11a, [plan](../plans/don
 
 | Table | Columns | Constraints |
 |---|---|---|
-| `games` | `id`, `creator_id`, `invite_code` (varchar 22), `phase` (varchar 16), `map` (varchar 32: `MapChoice`, default `generated`), `revision` (concurrency token), `state` (`jsonb`, null in the lobby), `current_player_id` (the `game_players.id` to move; null in the lobby and once finished; no FK), `activity_at` (last change both players see), `created_at`, `updated_at` | Unique `invite_code`; index `(phase, activity_at)` for the lobby sweep; index and restrict FK on `creator_id` → `users` |
-| `game_players` | `id` (= `PlayerId`), `game_id`, `user_id`, `seat` (0 or 1), `joined_at`, `log_length` (the seat's last log sequence) | Unique `(game_id, seat)` and `(game_id, user_id)`; index `(user_id, joined_at)` (the FK, member filters and the quota) and restrict FK on `user_id` → `users`; cascade delete from `games` |
+| `games` | `id`, `creator_id`, `invite_code` (varchar 22), `phase` (varchar 16), `map` (varchar 32: `MapChoice`, default `generated`), `seats` (int, default 2), `revision` (concurrency token), `state` (`jsonb`, null in the lobby), `current_player_id` (the `game_players.id` to move; null in the lobby and once finished; no FK), `activity_at` (last change every player sees), `created_at`, `updated_at` | Unique `invite_code`; index `(phase, activity_at)` for the lobby sweep; index and restrict FK on `creator_id` → `users` |
+| `game_players` | `id` (= `PlayerId`), `game_id`, `user_id`, `seat` (0 to seats − 1), `joined_at`, `log_length` (the seat's last log sequence), `is_out` (resigned or eliminated while the game goes on) | Unique `(game_id, seat)` and `(game_id, user_id)`; index `(user_id, joined_at)` (the FK, member filters and the quota) and restrict FK on `user_id` → `users`; cascade delete from `games` |
 | `game_log_entries` | `id`, `game_id`, `player_id` (the seat), `sequence`, `turn`, `events` (`jsonb`, `GameSerializer` format); no timestamps | Index `(player_id, sequence)` for the window read (not unique: the game's `revision` already lets one command commit per revision, and a unique index made concurrent commands deadlock); index on `game_id`; cascade delete from `games` and `game_players` |
 
 - **The `jsonb` state snapshot:** `games.state` holds the whole `GameState`, written and read through `GameSerializer`. That is the same format the Api and client use, and it carries `schemaVersion`.
   - EF compares the state by reference. The state is immutable and replaced on every change, so there is no deep comparison.
   - Queries never look inside the JSON: anything a list needs has its own column. `ListMyGames` never reads `state`; `isYourTurn` compares `current_player_id` with the caller's seat.
-- **Migrations:** `AddGames`, `AddGameCurrentPlayer`, `AddGameLog` (games already running start with an empty log), `AddGameLobbyLifecycle` (existing rows got `activity_at` = 0001-01-01, so lobbies created before it are swept at once and older games sort last; `gamecore` was never deployed, so only local data is affected), `AddGameMap` (G18; existing rows got `generated`, the map they were created with).
+- **Migrations:** `AddGames`, `AddGameCurrentPlayer`, `AddGameLog` (games already running start with an empty log), `AddGameLobbyLifecycle` (existing rows got `activity_at` = 0001-01-01, so lobbies created before it are swept at once and older games sort last; `gamecore` was never deployed, so only local data is affected), `AddGameMap` (G18; existing rows got `generated`, the map they were created with), `AddGameSeats` (F10; existing rows got 2 seats and nobody out).
 
 ## Games JSON format
 

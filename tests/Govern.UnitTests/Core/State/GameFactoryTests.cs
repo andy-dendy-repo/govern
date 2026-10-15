@@ -27,8 +27,8 @@ public class GameFactoryTests
         state.Status.ShouldBe(GameStatus.InProgress);
         state.Winner.ShouldBeNull();
         state.Cities.ShouldBeEmpty();
-        state.Map.Width.ShouldBe(TestRulesets.Default.Map.DefaultWidth);
-        state.Map.Height.ShouldBe(TestRulesets.Default.Map.DefaultHeight);
+        state.Map.Width.ShouldBe(TestRulesets.Default.Map.SizeFor(2).Width);
+        state.Map.Height.ShouldBe(TestRulesets.Default.Map.SizeFor(2).Height);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public class GameFactoryTests
         {
             json["setup"]!["startingUnits"] = new JsonArray("settler", "soldier", "soldier");
             json["map"]!["minSize"] = 12;
-            json["map"]!["defaultWidth"] = 24;
+            json["map"]!["sizes"]![0]!["width"] = 24;
         });
 
         var state = GameFactory.Create(ruleset, new GameSetup([P1, P2], Seed: 3));
@@ -198,7 +198,7 @@ public class GameFactoryTests
     {
         ImmutableArray<PlayerId>.Empty,
         ImmutableArray.Create(P1),
-        ImmutableArray.Create(P1, P2, new PlayerId(Guid.NewGuid())),
+        ImmutableArray.Create(P1, P2, new PlayerId(Guid.NewGuid()), new PlayerId(Guid.NewGuid()), new PlayerId(Guid.NewGuid())),
         ImmutableArray.Create(P1, P1),
         ImmutableArray.Create(P1, new PlayerId(Guid.Empty)),
     };
@@ -208,5 +208,95 @@ public class GameFactoryTests
     public void Create_InvalidPlayers_Throws(ImmutableArray<PlayerId> players)
     {
         Should.Throw<ArgumentException>(() => GameFactory.Create(TestRulesets.Default, new GameSetup(players, Seed: 1)));
+    }
+
+    public static TheoryData<int, ulong> ManyPlayers => new() { { 3, 1 }, { 3, 7 }, { 3, 42 }, { 4, 1 }, { 4, 7 }, { 4, 42 } };
+
+    [Theory]
+    [MemberData(nameof(ManyPlayers))]
+    public void Create_ThreeOrFourPlayers_SpawnsEachInTheirOwnCornerOnPassableLand(int count, ulong seed)
+    {
+        var players = Players(count);
+        var ruleset = TestRulesets.Default;
+
+        var state = GameFactory.Create(ruleset, new GameSetup(players, seed));
+
+        var size = ruleset.Map.SizeFor(count);
+        (state.Map.Width, state.Map.Height).ShouldBe((size.Width, size.Height));
+        var columns = ruleset.Map.Spawn.ZoneColumns(size.Width);
+        var rows = size.Height / 3;
+        for (var seat = 0; seat < count; seat++)
+        {
+            var units = state.Units.Where(unit => unit.Owner == players[seat]).ToList();
+            units.Select(static unit => unit.Type).ShouldBe(ruleset.Setup.StartingUnits);
+            units.ShouldAllBe(unit => state.Map.IsPassable(ruleset, unit.Position));
+            var spawn = units[0].Position;
+            var (left, top) = Corner(count, seat);
+            (left ? spawn.Column < columns : spawn.Column >= size.Width - columns).ShouldBeTrue($"seat {seat} column {spawn.Column}");
+            if (top is { } isTop)
+            {
+                (isTop ? spawn.Row < rows : spawn.Row >= size.Height - rows).ShouldBeTrue($"seat {seat} row {spawn.Row}");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void Create_ThreeOrFourPlayers_StartsAreWorthAboutTheSame(int count)
+    {
+        var ruleset = TestRulesets.Default;
+        foreach (var seed in Enumerable.Range(1, 30).Select(static seed => (ulong)seed))
+        {
+            var state = GameFactory.Create(ruleset, new GameSetup(Players(count), seed));
+
+            var values = state.Units.GroupBy(static unit => unit.Owner).Select(group => StartValue(state.Map, group.First().Position)).ToList();
+            (values.Max() * 100).ShouldBeLessThanOrEqualTo(values.Min() * 111, $"seed {seed}: {string.Join(", ", values)}");
+        }
+    }
+
+    [Fact]
+    public void Create_ThreePlayers_SameSeedGivesTheSameState()
+    {
+        var setup = new GameSetup(Players(3), 5);
+
+        GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, setup)).ShouldBe(GameSerializer.Serialize(GameFactory.Create(TestRulesets.Default, setup)));
+    }
+
+    [Fact]
+    public void Create_PredefinedMapForTwoWithThreePlayers_Throws()
+    {
+        var basin = PredefinedMap.ParseValid(TestRulesets.Default, File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "maps", "basin.json")));
+
+        Should.Throw<ArgumentException>(() => GameFactory.Create(TestRulesets.Default, new GameSetup(Players(3), 1, Map: basin)));
+    }
+
+    private static ImmutableArray<PlayerId> Players(int count) =>
+        [.. new[] { P1, P2, GameStateBuilder.P3, GameStateBuilder.P4 }.Take(count)];
+
+    // Whether a seat's zone is on the left, and on the top (null: the whole height, the first of three).
+    private static (bool Left, bool? Top) Corner(int count, int seat) => (count, seat) switch
+    {
+        (3, 0) => (true, null),
+        (3, 1) => (false, true),
+        (3, 2) => (false, false),
+        (_, 0) => (true, true),
+        (_, 1) => (false, true),
+        (_, 2) => (false, false),
+        _ => (true, false),
+    };
+
+    // What a start is worth, as the map pool's balance check measures it: the yields of the tiles within 3 tiles of the spawn
+    // and of the rivers between them.
+    private static int StartValue(GameMap map, HexCoord spawn)
+    {
+        var ruleset = TestRulesets.Default;
+        var area = spawn.WithinRadius(3).Where(map.Contains).ToHashSet();
+        var tiles = area.Sum(coord => ruleset.Terrain(map.TileAt(coord).Terrain).Yields.Sum(static amount => amount.Amount));
+        var rivers = area
+            .SelectMany(coord => coord.Neighbors().Where(area.Contains).Select(next => (coord, next)))
+            .Where(static pair => (pair.coord.Row, pair.coord.Column).CompareTo((pair.next.Row, pair.next.Column)) < 0)
+            .Sum(pair => map.RiverBetween(pair.coord, pair.next) is { } river ? ruleset.River(river).Yields.Sum(static amount => amount.Amount) : 0);
+        return tiles + rivers;
     }
 }

@@ -393,6 +393,26 @@
     background: currentColor;
 }
 
+/* The players of a game of three or more, in turn order (PlayerStrip). */
+.player-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.player-strip-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.player-strip-item.current {
+    font-weight: 600;
+}
+
 /* The icon set, drawn once per screen and referenced by <use>. */
 .game-sprite {
     position: absolute;

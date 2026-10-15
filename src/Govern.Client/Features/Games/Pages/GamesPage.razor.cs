@@ -21,6 +21,7 @@ public partial class GamesPage
     private bool _loading;
     private bool _creating;
     private string _map = MapPoolService.Random;
+    private int _seats = 2;
     private ApiError? _error;
 
     [Inject]
@@ -31,6 +32,23 @@ public partial class GamesPage
 
     [Inject]
     private MapPoolService Maps { get; set; } = null!;
+
+    [Inject]
+    private RulesetService Rulesets { get; set; } = null!;
+
+    // From the ruleset's fewest to its most players.
+    private IReadOnlyList<int> SeatChoices => field ??=
+        [.. Enumerable.Range(Rulesets.Ruleset.Setup.MinPlayers, Rulesets.Ruleset.Setup.MaxPlayers - Rulesets.Ruleset.Setup.MinPlayers + 1)];
+
+    // A map made for another number of players is no longer a choice, so the picker goes back to random.
+    private void SeatsChanged(int seats)
+    {
+        _seats = seats;
+        if (Maps.OptionsFor(seats).All(option => option.Value != _map))
+        {
+            _map = MapPoolService.Random;
+        }
+    }
 
     private async Task LoadAsync(LoadDataArgs args)
     {
@@ -52,7 +70,7 @@ public partial class GamesPage
     {
         _creating = true;
         _error = null;
-        var result = await Games.CreateAsync(_map, CancellationToken.None);
+        var result = await Games.CreateAsync(_map, _seats, CancellationToken.None);
         _creating = false;
         if (!result.IsSuccess)
         {

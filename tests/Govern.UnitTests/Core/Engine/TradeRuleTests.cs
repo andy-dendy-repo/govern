@@ -212,4 +212,20 @@ public class TradeRuleTests
 
     private static GameState WithTile(GameState state, HexCoord coord, TerrainType terrain) =>
         state with { Map = state.Map with { Tiles = [.. state.Map.Tiles.Select(tile => tile.Coord == coord ? tile with { Terrain = terrain } : tile)] } };
+
+    [Fact]
+    public void Resign_HostLeavesAGameThatGoesOn_EndsTheDealsItHosted()
+    {
+        var scenario = new TradeScenario();
+        var (active, deal) = scenario.Active();
+        var settler = new Unit(new UnitId(999), P3, TestRulesets.Settler, At(5, 9), 0);
+        var state = active with { Players = [.. active.Players, new Player(P3, PlayerStatus.Active, [])], Units = [.. active.Units, settler] };
+
+        var update = Execute(state, P2, new ResignCommand());
+
+        update.State.FindDeal(deal).ShouldBeNull();
+        update.State.FindCity(scenario.Host)!.Owner.ShouldBe(P2);
+        update.Events.OfType<TradeDealChangedEvent>().ShouldHaveSingleItem().Change.ShouldBe(TradeChange.Ended);
+        update.State.FindUnit(scenario.Trader)!.DealId.ShouldBeNull();
+    }
 }

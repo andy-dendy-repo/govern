@@ -29,29 +29,26 @@ updated: 2026-10-05
 
 ## Creating a game
 
-Input: the players (in turn order), a secret random seed and, optionally, a predefined map from the map pool (see [Predefined maps](#predefined-maps)).
+Input: the players (in turn order: the creator, then the others in seat order), a secret random seed and, optionally, a predefined map from the map pool (see [Predefined maps](#predefined-maps)).
 
-1. Check the players: exactly [`setup.players`], all distinct.
-2. Size the map: a predefined map keeps its own size and tiles (within [`map.minSize`]–[`map.maxSize`]); otherwise [`map.defaultWidth`] × [`map.defaultHeight`], every tile [`map.defaultTerrain`] for now.
+1. Check the players: [`setup.minPlayers`] to [`setup.maxPlayers`] of them, all distinct; a predefined map must be made for exactly that many.
+2. Size the map: a predefined map keeps its own size and tiles (within [`map.minSize`]–[`map.maxSize`]); otherwise the [`map.sizes`] entry for the number of players, every tile [`map.defaultTerrain`] for now.
 3. Start the random generator from the seed.
-4. For each player, in order:
-   1. On a predefined map, pick one of its spawn candidates at random; the second player picks again, on their own, and takes the candidate's mirror. Skip step 2.
-   2. On a generated map, pick the spawn zone (the first player's is the left [`map.spawn.zoneColumnsPerMille`] of the columns, the second's the right one), then a random column in the zone and a random row, keeping [`map.spawn.edgeMargin`] tiles from the edges.
-   3. Place the [`setup.startingUnits`] in order: the first on the spawn tile, the k-th k columns from it towards the map centre on the same row (by default a settler, with a soldier next to it). Each unit starts with full movement [`units.*.movement`] and a new random id (see [Randomness and ids](#randomness-and-ids)).
-5. On a generated map, generate the terrain (see [Map generation](#map-generation)); the tiles of every starting unit stay [`map.defaultTerrain`]. A predefined map is used as it is.
-6. Set round 1, the current player to the first player, status "in progress".
-7. Update what every player has explored (see [Fog of war](#fog-of-war)).
+4. **Three or four players on a generated map:** generate the terrain first (see [Map generation](#map-generation), with no reserved tiles), then plan the spawns:
+   1. Each player gets a zone [`map.spawn.zoneColumnsPerMille`] of the columns wide, [`map.spawn.edgeMargin`] tiles from the edges. Three players: the left edge over the full height, then the top and the bottom third of the right edge. Four: the corners, clockwise from the top left (a third of the height each).
+   2. A zone's candidates are its tiles whose row of starting units (see step 5) is passable. A zone without one gets its first tile's row cleared to [`map.defaultTerrain`].
+   3. Each candidate is worth the yields within 3 tiles, as the pool maps' balance check counts them. The target is the value every zone can come closest to; each zone keeps the candidates within 5% of it (or, when none is, the closest ones) and draws one at random.
+5. For each player, in seat order, find the spawn and place the [`setup.startingUnits`] in order: the first on the spawn tile, the k-th k columns from it towards the map centre on the same row (by default a settler, with a soldier next to it). Each unit starts with full movement [`units.*.movement`] and a new random id (see [Randomness and ids](#randomness-and-ids)). The spawn is:
+   - on a predefined map, one of that player's spawn candidates, drawn on its own;
+   - with three or four players on a generated map, the one planned in step 4;
+   - with two players on a generated map, a random tile in the player's zone (the first player's is the left [`map.spawn.zoneColumnsPerMille`] of the columns, the second's the right one), [`map.spawn.edgeMargin`] tiles from the edges.
+6. Two players on a generated map: generate the terrain now (see [Map generation](#map-generation)); the tiles of every starting unit stay [`map.defaultTerrain`]. (Two-player games keep this order, so a seed gives the same game as before.) A predefined map is used as it is.
+7. Set round 1, the current player to the first player, status "in progress".
+8. Update what every player has explored (see [Fog of war](#fog-of-war)).
 
 ### Predefined maps
 
-A predefined map is a file `maps/<key>.json` (format and authoring: [maps](maps.md)). It is checked against the ruleset before any game uses it, and the checks keep the same promises a generated map makes:
-
-1. Its size is within [`map.minSize`]–[`map.maxSize`] and its height is even, so the mirror keeps neighbours neighbours.
-2. Every tile and every river edge equals its mirror (a half turn), so both halves play the same.
-3. Every passable tile ([`terrains.*.isPassable`]) can reach every other without crossing a river that can't be crossed ([`rivers.*.isCrossable`]).
-4. Every spawn candidate lies in the left half and leaves the row of [`setup.startingUnits`] (the k-th unit k columns towards the centre) on passable tiles.
-
-The game keeps its own copy of the map in its state, so a later change to the file never touches a running game.
+A predefined map is a file `maps/<key>.json` (format, authoring and every check: [maps](maps.md)). It is checked against the ruleset before any game uses it: its size is within [`map.minSize`]–[`map.maxSize`], every passable tile ([`terrains.*.isPassable`]) can reach every other without crossing a river that can't be crossed ([`rivers.*.isCrossable`]), its spawn groups (one per player, [`setup.minPlayers`] to [`setup.maxPlayers`] of them) each leave the row of [`setup.startingUnits`] passable, and the starts are worth about the same. The game keeps its own copy of the map in its state, so a later change to the file never touches a running game.
 
 ### Map generation
 
@@ -262,8 +259,8 @@ Bridges and improvements have no upkeep. Upkeep is paid before territory growth,
 
 ### Resign
 
-1. Allowed at any time, even on the opponent's turn (the guard skips the turn check).
-2. The actor's status becomes "resigned". Victory decides the rest.
+1. Allowed at any time, even on another player's turn (the guard skips the turn check).
+2. The actor's status becomes "resigned". Victory decides the rest; the resigned player's cities stay where they are, with no units to defend them.
 
 ## Elimination and victory
 
@@ -271,6 +268,7 @@ After every successful command:
 1. **Eliminate** every active player who has no city and no unit with the `found_city` ability [`units.*.abilities`].
 2. **Remove** all units of players who are no longer active (eliminated or resigned).
 3. If at most one active player is left, the game is **finished**: the winner is that player, or nobody if none is left. There are no other victory conditions for now.
+4. Otherwise the game goes on for the active players: every deal whose host city belongs to a player who is no longer active ends (`trade_deal_changed`, ended), and if the current player is no longer active (they resigned during their own turn, or were eliminated), the turn passes as in steps 9 to 11 of [End turn](#end-turn).
 
 ### Territory
 

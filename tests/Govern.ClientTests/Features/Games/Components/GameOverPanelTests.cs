@@ -40,4 +40,20 @@ public class GameOverPanelTests : ClientTestContext
 
     private IRenderedComponent<GameOverPanel> RenderPanel(PlayerView view) =>
         Render<GameOverPanel>(parameters => parameters.Add(static panel => panel.View, view));
+
+    [Fact]
+    public void Render_YouResignedWhileTheOthersPlayOn_SaysSoAndNamesTheOthersBySeat()
+    {
+        var third = new PlayerId(Guid.Parse("0199a1b2-0000-7000-8000-00000000000c"));
+        var view = Start() with
+        {
+            Players = [new PlayerSummary(You, PlayerStatus.Resigned), new PlayerSummary(Opponent, PlayerStatus.Active), new PlayerSummary(third, PlayerStatus.Eliminated)],
+        };
+
+        var cut = RenderPanel(view);
+
+        cut.Find(".result").TextContent.ShouldBe("You resigned. The game goes on for the others.");
+        cut.FindAll(".player-result").Select(static line => line.TextContent.Trim())
+            .ShouldBe(["You: resigned", "Seat 2: still playing", "Seat 3: eliminated"]);
+    }
 }

@@ -20,6 +20,8 @@ internal sealed class GameStateBuilder
 
     public static readonly PlayerId P1 = new(Guid.Parse("00000000-0000-0000-0000-000000000001"));
     public static readonly PlayerId P2 = new(Guid.Parse("00000000-0000-0000-0000-000000000002"));
+    public static readonly PlayerId P3 = new(Guid.Parse("00000000-0000-0000-0000-000000000003"));
+    public static readonly PlayerId P4 = new(Guid.Parse("00000000-0000-0000-0000-000000000004"));
 
     private readonly List<Unit> _units = [];
     private readonly List<City> _cities = [];
@@ -31,6 +33,7 @@ internal sealed class GameStateBuilder
     private readonly Dictionary<HexCoord, CityId?> _territory = [];
     private int _nextId = 1;
     private PlayerId _currentPlayer = P1;
+    private List<PlayerId> _players = [P1, P2];
     private int _turn = 1;
     private readonly HashSet<PlayerId> _exploredAll = [];
     private readonly Dictionary<PlayerId, List<OwnedNode>> _nodes = [];
@@ -188,6 +191,13 @@ internal sealed class GameStateBuilder
         return this;
     }
 
+    // The players in turn order (P1 and P2 unless set), e.g. WithPlayers(P1, P2, P3) for a three-player game.
+    public GameStateBuilder WithPlayers(params PlayerId[] players)
+    {
+        _players = [.. players];
+        return this;
+    }
+
     public GameStateBuilder WithCurrentPlayer(PlayerId player, int turn = 1)
     {
         _currentPlayer = player;
@@ -202,7 +212,7 @@ internal sealed class GameStateBuilder
         CurrentPlayer = _currentPlayer,
         Status = GameStatus.InProgress,
         Map = BuildMap(),
-        Players = [new Player(P1, PlayerStatus.Active, ExploredBy(P1), NodesOf(P1)), new Player(P2, PlayerStatus.Active, ExploredBy(P2), NodesOf(P2))],
+        Players = [.. _players.Select(player => new Player(player, PlayerStatus.Active, ExploredBy(player), NodesOf(player)))],
         Units = [.. _units],
         Cities = [.. _cities],
         RngState = 42,

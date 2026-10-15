@@ -14,7 +14,7 @@ public class RulesetTests
     {
         ["unknown field"] = json => json["units"]![0]!["cost"] = 1,
         ["missing field"] = json => json["units"]![0]!.AsObject().Remove("sight"),
-        ["number as text"] = json => json["setup"]!["players"] = "2",
+        ["number as text"] = json => json["setup"]!["minPlayers"] = "2",
         ["null section"] = json => json["cities"] = null,
         ["ability as number"] = json => json["units"]![0]!["abilities"] = new JsonArray(0),
         ["unknown ability"] = json => json["units"]![0]!["abilities"] = new JsonArray("fly"),
@@ -25,14 +25,19 @@ public class RulesetTests
         ["no movement"] = json => json["units"]![1]!["movement"] = 0,
         ["free unit"] = json => json["units"]![1]!["productionCost"] = 0,
         ["free terrain"] = json => json["terrains"]![0]!["movementCost"] = 0,
-        ["three players"] = json => json["setup"]!["players"] = 3,
+        ["one player"] = json => json["setup"]!["minPlayers"] = 1,
+        ["five players"] = json => json["setup"]!["maxPlayers"] = 5,
+        ["min above a listed size"] = json => json["setup"]!["minPlayers"] = 3,
+        ["max below min"] = json => { json["setup"]!["minPlayers"] = 4; json["setup"]!["maxPlayers"] = 3; },
         ["no starting units"] = json => json["setup"]!["startingUnits"] = new JsonArray(),
         ["unknown starting unit"] = json => json["setup"]!["startingUnits"] = new JsonArray("settler", "dragoon"),
         ["no founder"] = json => json["setup"]!["startingUnits"] = new JsonArray("soldier"),
         ["too many starting units"] = json => json["setup"]!["startingUnits"] = new JsonArray("settler", "soldier", "soldier"),
         ["map below the engine's minimum"] = json => json["map"]!["minSize"] = 7,
         ["map above the engine's maximum"] = json => json["map"]!["maxSize"] = 41,
-        ["default width above the maximum"] = json => json["map"]!["defaultWidth"] = 41,
+        ["map size width above the maximum"] = json => json["map"]!["sizes"]![0]!["width"] = 41,
+        ["map size for a player count the setup doesn't allow"] = json => json["map"]!["sizes"]![2]!["players"] = 5,
+        ["no map size for a player count"] = json => json["map"]!["sizes"]!.AsArray().RemoveAt(1),
         ["unknown default terrain"] = json => json["map"]!["defaultTerrain"] = "tundra",
         ["impassable default terrain"] = json => json["terrains"]![0]!["isPassable"] = false,
         ["empty spawn zone"] = json => json["map"]!["spawn"]!["zoneColumnsPerMille"] = 0,
@@ -221,7 +226,7 @@ public class RulesetTests
     {
         { "unknown field", "$.units[0].cost" },
         { "missing field", "$.units[0]" },
-        { "number as text", "$.setup.players" },
+        { "number as text", "$.setup.minPlayers" },
         { "null section", "$.cities" },
         { "ability as number", "$.units[0].abilities[0]" },
         { "unknown ability", "$.units[0].abilities[0]" },
@@ -232,14 +237,19 @@ public class RulesetTests
         { "no movement", "$.units[1].movement" },
         { "free unit", "$.units[1].productionCost" },
         { "free terrain", "$.terrains[0].movementCost" },
-        { "three players", "$.setup.players" },
+        { "one player", "$.setup.minPlayers" },
+        { "five players", "$.setup.maxPlayers" },
+        { "min above a listed size", "$.map.sizes[0].players" },
+        { "max below min", "$.setup.maxPlayers" },
         { "no starting units", "$.setup.startingUnits" },
         { "unknown starting unit", "$.setup.startingUnits[1]" },
         { "no founder", "$.setup.startingUnits" },
         { "too many starting units", "$.setup.startingUnits" },
         { "map below the engine's minimum", "$.map.minSize" },
         { "map above the engine's maximum", "$.map.maxSize" },
-        { "default width above the maximum", "$.map.defaultWidth" },
+        { "map size width above the maximum", "$.map.sizes[0].width" },
+        { "map size for a player count the setup doesn't allow", "$.map.sizes[2].players" },
+        { "no map size for a player count", "$.map.sizes" },
         { "unknown default terrain", "$.map.defaultTerrain" },
         { "impassable default terrain", "$.map.defaultTerrain" },
         { "empty spawn zone", "$.map.spawn.zoneColumnsPerMille" },
@@ -439,7 +449,8 @@ public class RulesetTests
         result.IsValid.ShouldBeTrue(string.Join("; ", result.Problems));
         result.Problems.ShouldBeEmpty();
         var ruleset = result.Ruleset;
-        ruleset.Setup.Players.ShouldBe(2);
+        ruleset.Setup.MinPlayers.ShouldBe(2);
+        ruleset.Setup.MaxPlayers.ShouldBe(4);
         ruleset.Setup.StartingUnits.ShouldBe([TestRulesets.Settler, TestRulesets.Soldier]);
         ruleset.Units.Select(static unit => unit.Id).ShouldBe([TestRulesets.Settler, TestRulesets.Soldier, TestRulesets.Spearman, TestRulesets.Horseman, TestRulesets.Archer, TestRulesets.Builder, TestRulesets.Scout, TestRulesets.Trader, TestRulesets.Swordsman, TestRulesets.Pikeman, TestRulesets.Crossbowman, TestRulesets.Knight, TestRulesets.Galley, TestRulesets.Bireme]);
         ruleset.ReplacementOf(TestRulesets.Soldier)!.Id.ShouldBe(TestRulesets.Swordsman);
@@ -507,8 +518,9 @@ public class RulesetTests
         ruleset.Terrain(TestRulesets.Lake).IsPassable.ShouldBeFalse();
         ruleset.Map.Generation.Patches.Select(static patch => patch.Terrain)
             .ShouldBe([TestRulesets.Forest, TestRulesets.Hills, TestRulesets.Mountains, TestRulesets.Lake, TestRulesets.Desert]);
-        ruleset.Map.DefaultWidth.ShouldBe(20);
-        ruleset.Map.DefaultHeight.ShouldBe(14);
+        ruleset.Map.SizeFor(2).ShouldBe(new MapSizeRules(2, 20, 14));
+        ruleset.Map.SizeFor(3).ShouldBe(new MapSizeRules(3, 26, 18));
+        ruleset.Map.SizeFor(4).ShouldBe(new MapSizeRules(4, 30, 20));
         ruleset.Cities.MinimumSpacing.ShouldBe(3);
         ruleset.Unit(TestRulesets.Settler).Strength.ShouldBeNull();
         ruleset.Unit(TestRulesets.Archer).CanRangedAttack.ShouldBeTrue();
@@ -554,7 +566,7 @@ public class RulesetTests
     [InlineData("{")]
     [InlineData("[]")]
     [InlineData("null")]
-    [InlineData("""{ "setup": { "players": 2, "players": 2, "startingUnits": [] } }""")]
+    [InlineData("""{ "setup": { "minPlayers": 2, "minPlayers": 2, "startingUnits": [] } }""")]
     public void Parse_NotARulesetObject_ReportsAProblem(string json)
     {
         var result = Ruleset.Parse(json);
@@ -593,11 +605,11 @@ public class RulesetTests
     [Fact]
     public void ParseValid_InvalidDocument_ThrowsWithEveryProblem()
     {
-        var json = TestRulesets.Document(json => json["setup"]!["players"] = 3).ToJsonString();
+        var json = TestRulesets.Document(json => json["setup"]!["maxPlayers"] = 5).ToJsonString();
 
         var exception = Should.Throw<FormatException>(() => Ruleset.ParseValid(json));
 
-        exception.Message.ShouldContain("$.setup.players");
+        exception.Message.ShouldContain("$.setup.maxPlayers");
     }
 
     [Fact]

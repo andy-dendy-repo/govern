@@ -59,7 +59,7 @@ public static class GameErrors
     public static readonly Error Full = Error.Conflict("game.full", "The game is full.");
 
     /// <summary>The creator tried to start before a second player joined.</summary>
-    public static readonly Error NotEnoughPlayers = Error.Conflict("game.not_enough_players", "The game needs two players to start.");
+    public static readonly Error NotEnoughPlayers = Error.Conflict("game.not_enough_players", "Every seat must be taken before the game starts.");
 
     /// <summary>The lobby's map was removed from the pool after the lobby was created; cancel it and create a new one.</summary>
     public static readonly Error MapNotInPool = Error.Conflict(

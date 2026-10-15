@@ -206,4 +206,50 @@ public class StartGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fixt
 
         await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.not_enough_players", Ct);
     }
+
+    [Fact]
+    public async Task Post_LobbyForThreeWithTwoSeated_Returns409NotEnoughPlayers()
+    {
+        var (game, players) = await GamesApi.CreateLobbyForAsync(Client, seats: 3, joiners: 1, Ct);
+
+        var response = await GamesApi.StartAsync(Client, players[0].AccessToken, game.Id, Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.not_enough_players", Ct);
+    }
+
+    [Theory]
+    [InlineData(3, 26, 18)]
+    [InlineData(4, 30, 20)]
+    public async Task Post_FullLobbyForMoreThanTwo_StartsEveryPlayerInSeatOrderOnTheRightSize(int seats, int width, int height)
+    {
+        var (game, players) = await GamesApi.CreateLobbyForAsync(Client, seats, joiners: seats - 1, Ct);
+
+        var body = await GamesApi.ReadGameAsync(await GamesApi.StartAsync(Client, players[0].AccessToken, game.Id, Ct), Ct);
+
+        body.Phase.ShouldBe(GamePhase.InProgress);
+        body.Seats.ShouldBe(seats);
+        body.View.ShouldNotBeNull().Width.ShouldBe(width);
+        body.View.Height.ShouldBe(height);
+        body.View.Players.Length.ShouldBe(seats);
+        body.View.CurrentPlayer.ShouldBe(new PlayerId(body.Players.Single(p => p.IsYou).PlayerId));
+        body.View.Units.Select(u => u.Owner).Distinct().ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task Post_RandomMapForThree_StartsOnAGeneratedMap()
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+        var created = await GamesApi.CreateWithSeatsAsync(Client, creator.AccessToken, "random", 3, Ct);
+        var game = (await created.Content.ReadFromJsonAsync<CreateGameResponse>(GamesApi.Json, Ct))!;
+        foreach (var _ in Enumerable.Range(0, 2))
+        {
+            var joiner = await GamesApi.NewPlayerAsync(Client, Ct);
+            (await GamesApi.JoinAsync(Client, joiner.AccessToken, game.InviteCode, Ct)).EnsureSuccessStatusCode();
+        }
+
+        var body = await GamesApi.ReadGameAsync(await GamesApi.StartAsync(Client, creator.AccessToken, game.Id, Ct), Ct);
+
+        body.Map.ShouldBe("generated");
+        body.View.ShouldNotBeNull().Width.ShouldBe(26);
+    }
 }

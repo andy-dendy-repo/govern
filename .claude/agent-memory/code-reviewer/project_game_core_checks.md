@@ -128,3 +128,9 @@ G8c review (2026-10-05, city storage caps, `EndTurnRule.Store` after Produce, `C
 - Validator doesn't tie resource costs (unit/building/upgrade, unit upgrades paid mid-turn from a stock <= cap) to the caps; a future ruleset can soft-lock items/upgrades.
 - Removing a placeholder mesh (unit base disc) makes pieces invisible until/if figures load.
 Verified OK, don't re-derive: Grow happens before the cut, so effective tile budget = culture cap + that turn's income; cutting the opponent's cities in the actor's turn reveals nothing new (only trade deliveries can push them over); costs never use the growth resource, so cost-before-growth order in the preview is equivalent.
+
+F10 review (2026-10-15, claude/project-thread-uyfebi: 2-4 seats, SpawnPlanner, spawn groups, VictoryRule departures). No critical. Found:
+- **Generalising map validation from "left/right" to "N groups" dropped cross-group checks:** `CheckSpawns` derives the side from the spawn itself, so group 0 is no longer forced left on a 2-player map, and nothing stops two groups' starting rows from sharing a tile (only spawn tiles are deduplicated). When a per-side check becomes per-group, ask what the old side split guaranteed between players.
+- **"Out" players keep state others interact with:** a resigned player's cities stay partners (`IsPartner`/`TradePartners` don't check owner status), so a proposal succeeds and `VictoryRule.EndHostedDeals` ends it in the same command. For any departed-player cleanup in a post-command rule, check which commands can recreate the cleaned-up thing.
+- Out player keeps live city sight + log (As built, deliberate); kingmaking is accepted by the owner.
+Verified OK, don't re-derive: Start orders by Seat (not insertion); Join lowest free seat + unique (game_id, seat); PassTurn from VictoryRule wraps turn correctly; 2-player draw order unchanged; SpawnPlanner corner rows never empty (edge margin < zone columns <= W/4 < H/3).

@@ -35,6 +35,9 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
         // same game cannot both win; the loser gets DbUpdateConcurrencyException.
         builder.Property(game => game.Revision).IsConcurrencyToken();
 
+        // Games created before seats were chosen were all for two players.
+        builder.Property(game => game.Seats).HasDefaultValue(Game.MinSeats);
+
         // Never queried inside: anything a query needs (phase, players, current player) has its own column. The current
         // player column is a denormalised copy of the snapshot's, without a foreign key (the seat rows are inserted later).
         builder.Property(game => game.State)

@@ -38,7 +38,7 @@ else
         {
             <RadzenStack Gap="1rem" class="rz-mt-4">
                 <RadzenText TextStyle="TextStyle.Body1" class="lobby-map">Map: @Maps.NameOf(lobby.Map)</RadzenText>
-                <PlayerList Players="@lobby.Players"/>
+                <PlayerList Players="@lobby.Players" Seats="@lobby.Seats"/>
                 @if (lobby.InviteCode is { } inviteCode)
                 {
                     <InviteShare Code="@inviteCode"/>

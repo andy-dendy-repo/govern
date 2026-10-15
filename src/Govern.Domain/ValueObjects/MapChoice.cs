@@ -5,7 +5,7 @@ namespace Govern.Domain.ValueObjects;
 /// <summary>
 /// The map a game is played on: a generated one (<see cref="Generated"/>), a pool map by its key
 /// (<see cref="PredefinedMap.Key"/>) or, in the lobby only, a random pool map (<see cref="Random"/>), which becomes the key of
-/// the map drawn when the game starts.
+/// the map drawn when the game starts (or a generated map when the pool has none for the game's seats).
 /// </summary>
 public sealed record MapChoice
 {
@@ -60,8 +60,11 @@ public sealed record MapChoice
 
     /// <summary>Whether a game with this choice may start on <paramref name="map"/>.</summary>
     /// <param name="map">The pool map, or <see langword="null"/> for a generated map.</param>
-    /// <returns><see langword="true"/> when the map is the one chosen, or any pool map for <see cref="Random"/>.</returns>
-    public bool Fits(PredefinedMap? map) => IsGenerated ? map is null : IsRandom ? map is not null : map?.Key == Value;
+    /// <returns>
+    /// <see langword="true"/> when the map is the one chosen; for <see cref="Random"/>, any pool map, or a generated map when the
+    /// pool has none for the game's seats.
+    /// </returns>
+    public bool Fits(PredefinedMap? map) => IsGenerated ? map is null : IsRandom || map?.Key == Value;
 
     /// <summary>The stored text.</summary>
     /// <returns><see cref="Value"/>.</returns>

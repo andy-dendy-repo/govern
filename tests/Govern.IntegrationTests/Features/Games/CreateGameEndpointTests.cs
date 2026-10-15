@@ -209,4 +209,76 @@ public class CreateGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fix
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(4)]
+    public async Task Post_WithSeats_Returns201AndStoresThem(int seats)
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        var response = await GamesApi.CreateWithSeatsAsync(Client, creator.AccessToken, "random", seats, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var body = (await response.Content.ReadFromJsonAsync<CreateGameResponse>(GamesApi.Json, Ct))!;
+        (await GamesApi.GetGameAsync(Client, creator, body.Id, Ct)).Seats.ShouldBe(seats);
+    }
+
+    [Fact]
+    public async Task Post_WithoutSeats_IsForTwoPlayers()
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+        var body = await GamesApi.CreateGameAsync(Client, creator, Ct);
+
+        (await GamesApi.GetGameAsync(Client, creator, body.Id, Ct)).Seats.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(5)]
+    public async Task Post_WithSeatsOutsideTheRulesetsRange_Returns400(int seats)
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        var response = await GamesApi.CreateWithSeatsAsync(Client, creator.AccessToken, "random", seats, Ct);
+
+        await response.ShouldBeValidationProblemAsync(Ct, "Seats");
+    }
+
+    [Fact]
+    public async Task Post_WithAPoolMapMadeForAnotherNumberOfPlayers_Returns400()
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        var response = await GamesApi.CreateWithSeatsAsync(Client, creator.AccessToken, "basin", 3, Ct);
+
+        await response.ShouldBeValidationProblemAsync(Ct, "Map");
+    }
+
+    [Fact]
+    public async Task Post_WithSeatsWithoutToken_Returns401()
+    {
+        var response = await GamesApi.CreateWithSeatsAsync(Client, accessToken: null, "random", 3, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Post_AtUnfinishedGameLimitAfterResigningFromAGameThatGoesOn_Returns201()
+    {
+        var (game, players) = await GamesApi.CreateLobbyForAsync(Client, seats: 3, joiners: 2, Ct);
+        (await GamesApi.StartAsync(Client, players[0].AccessToken, game.Id, Ct)).EnsureSuccessStatusCode();
+        var caller = players[2];
+        var other = await GamesApi.NewPlayerAsync(Client, Ct);
+        await GamesApi.SeedJoinedLobbiesAsync(Fixture, other.UserId, caller.UserId, GameErrors.MaxUnfinishedGamesPerUser - 1, Ct);
+        await (await GamesApi.CreateAsync(Client, caller.AccessToken, Ct)).ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.too_many_unfinished_games", Ct);
+        var version = (await GamesApi.GetGameAsync(Client, caller, game.Id, Ct)).View!.Version;
+        (await GamesApi.SendCommandAsync(Client, caller.AccessToken, game.Id, version, new ResignCommand(), Ct)).EnsureSuccessStatusCode();
+
+        var response = await GamesApi.CreateAsync(Client, caller.AccessToken, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        (await GamesApi.GetGameAsync(Client, players[0], game.Id, Ct)).Phase.ShouldBe(GamePhase.InProgress);
+    }
 }

@@ -22,21 +22,34 @@ public sealed class MapPoolService(RulesetService rulesets)
 
     private readonly Lazy<ImmutableArray<PredefinedMap>> _maps = new(() => Load(rulesets));
 
-    private IReadOnlyList<MapOption>? _options;
+    private readonly Dictionary<int, IReadOnlyList<MapOption>> _options = [];
 
     /// <summary>Every pool map, in key order.</summary>
     /// <exception cref="FormatException">An embedded document is not a valid map.</exception>
     /// <exception cref="InvalidOperationException">A file's name is not its key, or a key is a reserved choice.</exception>
     public ImmutableArray<PredefinedMap> Maps => _maps.Value;
 
-    /// <summary>The picker's choices: a random pool map first (the default), then each pool map, then a generated map.</summary>
-    /// <remarks>Built once, so the picker's data keeps its reference between renders.</remarks>
-    public IReadOnlyList<MapOption> Options => _options ??=
-    [
-        new(Random, NameOf(Random)),
-        .. Maps.Select(static map => new MapOption(map.Key, map.Name)),
-        new(Generated, NameOf(Generated)),
-    ];
+    /// <summary>
+    /// The picker's choices for a game of this many seats: a random pool map first (the default), then each pool map made for
+    /// that many players, then a generated map. Without a pool map for the seats, random gives a generated map too.
+    /// </summary>
+    /// <param name="seats">The game's seats.</param>
+    /// <returns>The choices; built once per seat count, so the picker's data keeps its reference between renders.</returns>
+    public IReadOnlyList<MapOption> OptionsFor(int seats)
+    {
+        if (!_options.TryGetValue(seats, out var options))
+        {
+            options =
+            [
+                new(Random, NameOf(Random)),
+                .. Maps.Where(map => map.Players == seats).Select(static map => new MapOption(map.Key, map.Name)),
+                new(Generated, NameOf(Generated)),
+            ];
+            _options[seats] = options;
+        }
+
+        return options;
+    }
 
     /// <summary>The name players see for a game's map (<see cref="GetGameResponse.Map"/>).</summary>
     /// <param name="map"><c>random</c>, <c>generated</c> or a pool map's key.</param>

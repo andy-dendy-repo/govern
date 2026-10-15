@@ -25,7 +25,7 @@ else
                 <RadzenDropDown TValue="string" Data="@Maps.Maps" TextProperty="@nameof(PredefinedMap.Name)" ValueProperty="@nameof(PredefinedMap.Key)"
                                 Value="@_map.Key" ValueChanged="@Show" aria-label="Map" class="preview-map"/>
                 <RadzenText TextStyle="TextStyle.Body2" class="preview-size">
-                    @_map.Map.Width×@_map.Map.Height, spawn candidates: @_map.FirstSpawns.Length west, @_map.SecondSpawns.Length east
+                    @_map.Map.Width×@_map.Map.Height, @_map.Players players, spawn candidates: @string.Join(", ", _map.Spawns.Select(static group => group.Length))
                 </RadzenText>
             </RadzenStack>
             <GameBoard View="@_view" Selection="@_ui.Selection" Highlights="@_ui.Highlights" Lens="@_ui.ActiveLens"

@@ -170,7 +170,7 @@ public static class VisibilityCalculator
         return deals.IsEmpty ? null : deals;
     }
 
-    // Other players' cities with a trade post the viewer may trade with, ordered by id: those whose post they have seen
+    // Other active players' cities with a trade post the viewer may trade with, ordered by id: those whose post they have seen
     // (Player.KnownPosts, with the post's tile), and the other side of each deal they are a side of (without it, unless seen:
     // an offer from an unseen city tells its name, not where it is). Each market has what its agreed deals the viewer is not a
     // side of use taken off (the client takes off the viewer's own); null when none.
@@ -184,7 +184,8 @@ public static class VisibilityCalculator
             .Distinct()
             .Select(state.FindCity)
             .OfType<City>()
-            .Where(city => city.Owner != viewer.Id && TradeRule.PostTile(ruleset, state.Map, city.Id) is not null)
+            .Where(city => city.Owner != viewer.Id && state.FindPlayer(city.Owner) is { Status: PlayerStatus.Active }
+                && TradeRule.PostTile(ruleset, state.Map, city.Id) is not null)
             .OrderBy(static city => city.Id.Value)
             .Select(city => PartnerOf(ruleset, state, city, known.Contains(city.Id), dealIds))
             .ToImmutableArray();

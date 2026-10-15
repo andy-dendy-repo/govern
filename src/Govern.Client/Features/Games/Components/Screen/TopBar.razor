@@ -30,13 +30,17 @@
     <div class="top-actions">
         <RadzenButton Icon="@(_more ? "close" : "more_horiz")" ButtonStyle="ButtonStyle.Light" class="top-more-toggle"
                       aria-label="@(_more ? "Hide more" : "More")" aria-expanded="@(_more ? "true" : "false")" Click="@(() => _more = !_more)"/>
-        @if (View.Status == GameStatus.InProgress)
+        @if (View.Status == GameStatus.InProgress && IsActive)
         {
             <RadzenButton Text="End turn" Icon="skip_next" Disabled="@(Busy || !IsYourTurn)"
                           Click="@(() => Command.InvokeAsync(new EndTurnCommand()))" class="end-turn"/>
         }
     </div>
     <div class="@(_more ? "top-more open" : "top-more")">
+        @if (View.Players.Length > 2)
+        {
+            <PlayerStrip View="@View"/>
+        }
         @if (Ruleset.Resources.Length > 0)
         {
             <div class="stockpile" role="group" aria-label="Resources in all your cities">
@@ -79,9 +83,9 @@
                               title="@(Ui.FullScreen ? "Exit full screen" : "Full screen")" aria-label="@(Ui.FullScreen ? "Exit full screen" : "Full screen")"
                               class="full-screen"/>
             }
-            @if (View.Status == GameStatus.InProgress)
+            @if (View.Status == GameStatus.InProgress && IsActive)
             {
-                <ConfirmButton Text="Resign" Icon="flag" Question="Resign the game? Your opponent wins." ConfirmText="Yes, resign"
+                <ConfirmButton Text="Resign" Icon="flag" Question="@ResignQuestion" ConfirmText="Yes, resign"
                                CancelText="Keep playing" Disabled="@Busy" Class="resign"
                                Confirmed="@(() => Command.InvokeAsync(new ResignCommand()))"/>
             }
@@ -119,8 +123,4 @@
     private int ScienceUsed => ScienceCalculator.Used(Ruleset, View.Science?.NodeList ?? []);
 
     private bool IsYourTurn => View.CurrentPlayer == View.Viewer;
-
-    private string TurnText => View.Status == GameStatus.Finished
-        ? $"Turn {View.Turn}: game over"
-        : $"Turn {View.Turn}: {(IsYourTurn ? "your turn" : "opponent's turn")}";
 }

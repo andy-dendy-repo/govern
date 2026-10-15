@@ -8,7 +8,8 @@ namespace Govern.Application.Games.Services;
 
 /// <summary>
 /// The per-user limits checked before a user takes a new seat (creating or joining a game): at most
-/// <see cref="GameErrors.MaxUnfinishedGamesPerUser"/> unfinished games at a time, and at most
+/// <see cref="GameErrors.MaxUnfinishedGamesPerUser"/> unfinished games at a time (a game the user has left while it goes on for
+/// the others is finished for them), and at most
 /// <see cref="GameErrors.MaxGamesJoinedPerWindow"/> seats taken within <see cref="GameErrors.QuotaWindow"/>. The counts are
 /// not locked, so simultaneous requests can overshoot them: soft caps, bounded by the per-user rate limit.
 /// </summary>
@@ -29,7 +30,7 @@ public static class GameSeatLimitService
         ArgumentNullException.ThrowIfNull(db);
 
         var unfinished = await db.Games.CountAsync(
-            game => game.Phase != GamePhase.Finished && game.Players.Any(player => player.UserId == userId), cancellationToken);
+            game => game.Phase != GamePhase.Finished && game.Players.Any(player => player.UserId == userId && !player.IsOut), cancellationToken);
         if (unfinished >= GameErrors.MaxUnfinishedGamesPerUser)
         {
             return GameErrors.TooManyUnfinishedGames;

@@ -29,6 +29,7 @@ public sealed record GetGameRequest(Guid GameId) : IRequest<GetGameRequest, GetG
 /// <param name="InviteCode">
 /// The invite code, only for the creator and only while in the lobby; <see langword="null"/> otherwise (only the creator shares it).
 /// </param>
+/// <param name="Seats">How many players the game is for; the lobby starts once <paramref name="Players"/> has this many.</param>
 /// <param name="Players">Seats in order.</param>
 /// <param name="View">The caller's view of the board once started; <see langword="null"/> in the lobby.</param>
 /// <param name="CreatedAt">When the game was created.</param>
@@ -44,6 +45,7 @@ public sealed record GetGameResponse(
     GamePhase Phase,
     bool IsCreator,
     string? InviteCode,
+    int Seats,
     IReadOnlyList<GamePlayerSummary> Players,
     PlayerView? View,
     DateTimeOffset CreatedAt,
@@ -74,6 +76,7 @@ public sealed record GetGameResponse(
             game.Phase,
             isCreator,
             isCreator && game.Phase == GamePhase.Lobby ? game.InviteCode.Value : null,
+            game.Seats,
             players,
             game.State is { } state ? GameEngine.ViewFor(ruleset, state, caller.PlayerId) : null,
             game.CreatedAt,

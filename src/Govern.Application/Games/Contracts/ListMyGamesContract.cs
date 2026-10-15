@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Govern.Application.Games.Contracts;
 
 /// <summary>
-/// Lists the games the caller plays in, the most recent activity both players see first.
+/// Lists the games the caller plays in, the most recent activity every player sees first.
 /// </summary>
 /// <param name="Page">One-based page number, 1–<see cref="ListMyGamesValidator.MaxPage"/>.</param>
 /// <param name="PageSize">Items per page, 1–<see cref="ListMyGamesValidator.MaxPageSize"/>.</param>
@@ -73,8 +73,10 @@ internal sealed class ListMyGamesHandler(IApplicationDbContextFactory dbContextF
                 game.Id,
                 game.Phase,
                 game.Players.Count,
+                game.Seats,
                 game.CreatorId == userId,
                 game.Players.Any(player => player.UserId == userId && player.Id == game.CurrentPlayerId),
+                game.Players.Any(player => player.UserId == userId && player.IsOut),
                 game.ActivityAt))
             .ToListAsync(cancellationToken);
 

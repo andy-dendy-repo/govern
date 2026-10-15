@@ -110,4 +110,14 @@ public class LobbyPanelTests : ClientTestContext
             .Add(static panel => panel.Game, game)
             .Add(static panel => panel.Started, onStarted ?? (static _ => { }))
             .Add(static panel => panel.Closed, onClosed ?? (static () => { })));
+
+    [Theory]
+    [InlineData(2, true)]
+    [InlineData(3, false)]
+    public void Render_CreatorOfALobbyForThree_StartNeedsEverySeatTaken(int players, bool disabled)
+    {
+        var cut = RenderPanel(TestGames.CreatorLobby(players) with { Seats = 3 });
+
+        cut.Find("button.start").HasAttribute("disabled").ShouldBe(disabled);
+    }
 }
