@@ -70,8 +70,9 @@ internal sealed partial class RedisSignInThrottlingService(
         }
     }
 
+    // The first 16 bytes of the hash keep keys short (Redis memory) and still never collide in practice.
     private RedisKey KeyFor(Email email) =>
-        redisOptions.Value.Key($"sign-in:{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(email.Value)))}");
+        redisOptions.Value.Key($"sign-in:{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(email.Value)).AsSpan(0, 16))}");
 
     private static partial class Log
     {

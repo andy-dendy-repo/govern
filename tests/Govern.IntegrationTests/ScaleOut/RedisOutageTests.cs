@@ -4,6 +4,8 @@ using Govern.Core.Engine;
 using Govern.Core.State;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace Govern.IntegrationTests.ScaleOut;
 
@@ -47,6 +49,39 @@ public class RedisOutageTests(GovernApiFixture fixture, RedisFixture redis) : Sc
 
         (await stream.NextGameAsync()).View.ShouldNotBeNull().CurrentPlayer
             .ShouldBe(new PlayerId(before.Players.Single(p => p.IsYou).PlayerId));
+    }
+
+    [Fact]
+    public async Task RedisUnreachable_RateLimitFallbackKeepsItsWindowWhileTheLimiterIsIdle()
+    {
+        var client = StartInstance(
+            new Dictionary<string, string> { ["RateLimiting:HealthPermitLimit"] = "2" }, redisConnectionString: UnreachableRedis);
+        for (var i = 0; i < 2; i++)
+        {
+            using var allowed = await client.GetAsync("/health/ready", Ct);
+            allowed.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        // ASP.NET Core drops a partition whose limiter reports idle for more than 10 s; that must not reset the window.
+        await Task.Delay(TimeSpan.FromSeconds(11), Ct);
+
+        using var response = await client.GetAsync("/health/ready", Ct);
+        response.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public void Startup_RedisWithoutTlsOutsideDevelopment_Fails()
+    {
+        using var factory = Fixture.Factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Production");
+            builder.UseSetting("HostFiltering:AllowedHosts:0", "localhost");
+            builder.UseSetting("ConnectionStrings:Redis", UnreachableRedis);
+        });
+
+        var exception = Should.Throw<OptionsValidationException>(() => factory.CreateClient());
+
+        exception.Message.ShouldContain("ssl=true");
     }
 
     [Fact]

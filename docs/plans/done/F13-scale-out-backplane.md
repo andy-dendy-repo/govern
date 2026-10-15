@@ -52,7 +52,7 @@ Live game updates reach players through an in-process hub: `InMemoryGameChangeSe
   - `GameChangeBackplaneTests`: a start on A reaches streams on A and B; an end turn on B reaches the opponent on A; a change missed during a disconnect arrives after the reconnect (A without Redis stands for the lost message; fails without `SignalAll`); a reconnect without a change pushes only heartbeats.
   - `SharedRateLimitTests`: a fixed window shared across A and B rejects the request past the limit; open streams are capped across instances and a closed one frees a permit on the other.
   - `SharedSignInThrottlingTests`: failed attempts on A and B add up; 20 parallel attempts across both check only 5 passwords; a success on one instance resets the other.
-  - `RedisOutageTests`: with Redis unreachable the instance starts, `/health/ready` is 200 `Degraded`, streams and commands work, and the throttle falls back to the instance; with Redis reachable readiness is `Healthy`.
+  - `RedisOutageTests`: with Redis unreachable the instance starts, `/health/ready` is 200 `Degraded`, streams and commands work, and the throttle falls back to the instance; with Redis reachable readiness is `Healthy`. A rate-limit fallback keeps its window after the limiter has been idle for over 10 s (found by the security audit), and a Redis connection string without `ssl=true` stops startup outside Development.
   - Existing tests run without Redis on the in-memory implementations, unchanged.
 - Architecture: none; existing folder and naming rules cover the new folders.
 

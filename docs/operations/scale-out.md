@@ -15,7 +15,7 @@ The Api keeps three kinds of state in process: the game change hub that wakes li
 |---|---|---|---|
 | Live game updates | `InMemoryGameChangeService` wakes streams on the same instance | `RedisGameChangeService` wakes local streams at once and publishes `<instance>:<gameId>` on the channel `<prefix>:game-changed`; every other instance wakes its own streams of that game | `Infrastructure/Realtime/Services` |
 | Rate limits (all `RateLimitingPolicies`) | BCL limiters per instance (`MemoryRateLimiterService`) | Fixed windows: a counter `<prefix>:rl:<policy>:<partition>` incremented by a Lua script, expiring with the window. Open streams: a sorted set of lease ids scored by expiry | `Infrastructure/RateLimiting` behind `IRateLimiterService` |
-| Sign-in throttle | `MemorySignInThrottlingService` per instance | A counter `<prefix>:sign-in:<sha256 of the normalised email>`; no email is stored in Redis | `Infrastructure/Caching/Services/RedisSignInThrottlingService.cs` |
+| Sign-in throttle | `MemorySignInThrottlingService` per instance | A counter `<prefix>:sign-in:<first 16 bytes of the SHA-256 of the normalised email>`; no email is stored in Redis | `Infrastructure/Caching/Services/RedisSignInThrottlingService.cs` |
 
 No game data passes through Redis: a game change message is only an id, and each stream re-reads the game with its own fog of war, as described in [ADR 0005](../decisions/0005-live-updates.md).
 
@@ -32,6 +32,12 @@ The policies in `Api/DependencyInjection.cs` (`auth`, `health`, `games`, `game-c
 - **Fixed windows** start at a partition's first request and end when the Redis key expires (the BCL limiter uses a timer instead; the limits are the same).
 - **Open streams** (`game-streams` concurrency): each open stream holds a lease in Redis until it closes. A lease expires after one access token lifetime plus a minute (`Jwt:AccessTokenLifetime`), because a stream ends at the token's expiry anyway. If an instance dies with streams open, their leases free themselves at that expiry.
 - The Redis limiters only answer asynchronously; the ASP.NET Core rate-limiting middleware asks again asynchronously when the synchronous attempt fails, so this costs nothing extra.
+
+## Accepted limitations
+
+- A stream lease released while Redis is briefly unreachable, or held by an instance that crashed, stays counted until it expires (at most one token lifetime plus a minute). Only that user's open-stream cap is affected.
+- A stream opened while Redis was unreachable holds no Redis lease, so right after Redis recovers that user may have a few more open streams than the cap, until those streams end.
+- While Redis is unreachable, every sign-in attempt and every failed publish logs a Warning, and anonymous `/health/ready` answers `Degraded`.
 
 ## When Redis is unreachable
 
@@ -50,14 +56,16 @@ Publishing and subscribing failures are logged as Warnings (EventIds 2300 and 23
 
 | Key | Secret | Default | Purpose |
 |---|---|---|---|
-| `ConnectionStrings:Redis` | **yes** | empty (Redis off) | StackExchange.Redis connection string, e.g. `host:port,password=…,ssl=true` |
+| `ConnectionStrings:Redis` | **yes** | empty (Redis off) | StackExchange.Redis connection string, e.g. `host:port,password=…,ssl=true`. Outside Development it must include `ssl=true`, or startup fails |
 | `Redis:KeyPrefix` | no | `govern` | Prefix of every key and the channel (lowercase letters, digits and `-`, up to 32), so several environments can share one database |
 
-In Azure, Bicep stores the connection string in Key Vault as `ConnectionStrings--Redis` and adds the `ConnectionStrings__Redis` app setting only when the release has the `REDIS_CONNECTION_STRING` environment secret (`infra/main.bicepparam`). The App Service plan still runs one instance; scaling it out is a separate decision.
+Configure the Redis database with `maxmemory-policy noeviction`. Every key here has an expiry, so an evicting policy (`volatile-lru`, common on free tiers) would let a flood of sign-in attempts for random emails push out real counters, including a victim account's throttle. With `noeviction`, a full database makes the scripts fail, and the Api falls back to per-instance counting instead of forgetting counts.
+
+In Azure, Bicep stores the connection string in Key Vault as `ConnectionStrings--Redis` and adds the `ConnectionStrings__Redis` app setting only when the release has the `REDIS_CONNECTION_STRING` environment secret (`infra/main.bicepparam`). The App Service plan still runs one instance; scaling it out is a separate decision. Removing the secret later removes the app setting but leaves the Key Vault secret: delete it, or rotate the Redis password, when turning Redis off.
 
 ## Choosing a Redis provider
 
-Production will use a free external Redis tier (owner, 2026-10-15). Redis needs almost no memory here (counters, leases, one channel), but every rate-limited request costs one command, plus one per saved change and the client's keep-alive pings. A tier metered by commands (Upstash free: 500 K commands a month) would run out in real play; a memory-capped tier without a command quota (Redis Cloud free, 30 MB) fits better. Check the provider's current limits and that it supports pub/sub and Lua scripts (`EVAL`) before switching it on.
+Production will use a free external Redis tier (owner, 2026-10-15). Redis needs almost no memory here (counters, leases, one channel), but every rate-limited request costs one command, plus one per saved change and the client's keep-alive pings. A tier metered by commands (Upstash free: 500 K commands a month) would run out in real play; a memory-capped tier without a command quota (Redis Cloud free, 30 MB) fits better. Check the provider's current limits, that it supports pub/sub, Lua scripts (`EVAL`), TLS and the `noeviction` policy, before switching it on.
 
 ## Trying two instances locally
 

@@ -7,3 +7,4 @@
 - [App Service hosting checks](project_app_service_hosting.md) — Health check pings default domain, release deploys before API_ORIGIN is validated
 - [Game core checks](project_game_core_checks.md) — fog oracles, RNG leaks, Plans 2-5a, G5-G10c, F11a, F19, G17, F20, G17b, G8c, F10, F9 (command answer overwrites newer SSE view)
 - [OpenAPI checks](project_openapi_checks.md) — transformer order vs RegisterComponents, unresolved security refs silently dropped, Swagger UI placement
+- [Redis shared-state checks](project_redis_checks.md) — F13: publisher-side pub/sub loss, phantom leases on timeout, fallback IdleDuration, black-hole timeouts

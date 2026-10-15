@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
 
 namespace Govern.Infrastructure;
@@ -76,13 +77,18 @@ public static class DependencyInjection
                 return;
             }
 
-            services.AddOptions<RedisOptions>().Bind(configuration.GetSection(RedisOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
-
             // AbortOnConnectFail=false: the Api starts and serves while Redis is down, and reconnects in the background.
             // FailFast: while disconnected, commands fail at once (callers fall back to in-process state) instead of queueing.
             var redisConfiguration = ConfigurationOptions.Parse(redisConnectionString);
             redisConfiguration.AbortOnConnectFail = false;
             redisConfiguration.BacklogPolicy = BacklogPolicy.FailFast;
+
+            // Production Redis is an external service: its password and the throttle counters must not cross the internet in clear.
+            services.AddOptions<RedisOptions>()
+                .Bind(configuration.GetSection(RedisOptions.SectionName))
+                .ValidateDataAnnotations()
+                .Validate<IHostEnvironment>((_, environment) => environment.IsDevelopment() || redisConfiguration.Ssl, "ConnectionStrings:Redis must use TLS (ssl=true) outside Development.")
+                .ValidateOnStart();
             services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConfiguration));
 
             services.AddSingleton<ISignInThrottlingService, RedisSignInThrottlingService>();

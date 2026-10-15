@@ -39,8 +39,12 @@ internal sealed class RedisFixedWindowRateLimiter : RedisRateLimiter
         _windowMilliseconds = (long)Math.Ceiling(window.TotalMilliseconds);
     }
 
-    /// <summary>The time since the last request; the counter itself lives in Redis, so the partition can be dropped any time.</summary>
-    public override TimeSpan? IdleDuration => SinceLastActivity;
+    /// <summary>
+    /// The time since the last request: the counter lives in Redis, so the partition can be dropped. While the in-process
+    /// fallback has used permits (Redis was unreachable) it is <see langword="null"/>, so dropping the partition can't reset
+    /// the fallback's window.
+    /// </summary>
+    public override TimeSpan? IdleDuration => FallbackIdleDuration() is null ? null : SinceLastActivity;
 
     /// <inheritdoc />
     protected override async Task<RateLimitLease> AcquireInRedisAsync(int permitCount)
