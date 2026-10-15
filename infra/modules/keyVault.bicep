@@ -16,6 +16,13 @@ param connectionString string
 @description('JWT HMAC signing key (at least 32 characters).')
 param jwtSigningKey string
 
+@secure()
+@description('Redis connection string; used only when useRedis is true.')
+param redisConnectionString string = ''
+
+@description('Whether to store the Redis connection string (the Api runs on more than one instance).')
+param useRedis bool = false
+
 @description('Resource tags.')
 param tags object
 
@@ -55,6 +62,14 @@ resource jwtSigningKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   }
 }
 
+resource redisConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (useRedis) {
+  parent: vault
+  name: 'ConnectionStrings--Redis'
+  properties: {
+    value: redisConnectionString
+  }
+}
+
 @description('Vault name.')
 output name string = vault.name
 
@@ -63,3 +78,6 @@ output connectionStringSecretUri string = connectionStringSecret.properties.secr
 
 @description('Versionless URI of the JWT signing key secret.')
 output jwtSigningKeySecretUri string = jwtSigningKeySecret.properties.secretUri
+
+@description('Versionless URI of the Redis connection string secret; empty when Redis is not configured.')
+output redisConnectionStringSecretUri string = useRedis ? redisConnectionStringSecret!.properties.secretUri : ''

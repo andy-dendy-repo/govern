@@ -9,6 +9,9 @@ param postgresAdministratorPassword = readEnvironmentVariable('POSTGRES_ADMIN_PA
 param jwtSigningKey = readEnvironmentVariable('JWT_SIGNING_KEY')
 param registryUsername = readEnvironmentVariable('REGISTRY_USERNAME', '')
 param registryPassword = readEnvironmentVariable('REGISTRY_PASSWORD', '')
+
+// Optional: set the REDIS_CONNECTION_STRING environment secret only when the Api runs on more than one instance.
+param redisConnectionString = readEnvironmentVariable('REDIS_CONNECTION_STRING', '')
 param extraCorsOrigins = []
 
 // Operational alerts go to the ALERT_EMAIL repository variable; empty deploys the alerts without notifications.

@@ -7,7 +7,8 @@ namespace Govern.Infrastructure.Realtime.Services;
 /// <summary>
 /// In-process <see cref="IGameChangeService"/>: each subscription is a one-slot channel, so a burst of changes wakes a watcher
 /// once and a slow watcher never holds up the publisher. Only watchers on the same Api instance are signalled, which is enough
-/// for a single Web App instance; several instances need a shared backplane (e.g. Postgres <c>LISTEN/NOTIFY</c>).
+/// for a single Web App instance; with Redis configured, <see cref="RedisGameChangeService"/> uses this hub as its local fan-out
+/// and carries changes between instances.
 /// </summary>
 internal sealed class InMemoryGameChangeService : IGameChangeService
 {
@@ -18,6 +19,21 @@ internal sealed class InMemoryGameChangeService : IGameChangeService
     public void Publish(Guid gameId)
     {
         if (_games.TryGetValue(gameId, out var subscriptions))
+        {
+            foreach (var subscription in subscriptions.Keys)
+            {
+                subscription.Signal();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Signals every current subscription of every game, so each watcher re-reads its game once. Used after the backplane
+    /// reconnects, when changes published by other instances may have been missed.
+    /// </summary>
+    public void SignalAll()
+    {
+        foreach (var subscriptions in _games.Values)
         {
             foreach (var subscription in subscriptions.Keys)
             {
