@@ -43,8 +43,7 @@ Agreed 2026-09-30, done 2026-09-30 (PR #30). The ruleset stays as it is today: o
 | # | Id | Item | Area | Size | Notes |
 |---|---|---|---|---|---|
 | 1 | G11b | Culture tree: like the science tree (points per turn from culture, items that take them every turn, newest switched off when short), unlocking culture content (governors, policies, territory) | game | L | Owner, 2026-10-04: culture goes next. Needs plan. Open: culture also pays for territory today ([G11](../game/design-roadmap.md#g11-science-and-culture-trees)) |
-| 2 | F13 | Scale-out beyond one Api instance (Postgres `LISTEN/NOTIFY` as the SSE backplane) | server | M | Only needed with more than one Api instance. Planned: [plan](active/F13-scale-out-backplane.md) |
-| 3 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
+| 2 | F14 | Production database on Neon Postgres (free plan) instead of Azure Flexible Server, about $16/month less; no app code change | infra | S | Planned: [plan](active/F14-neon-postgres.md). Timing is the owner's call (now or with F1) |
 
 ## Deferred
 
@@ -74,6 +73,7 @@ None yet. New ideas are added here as one line and promoted to Next or Now by th
 
 | Id | Item | Done | Plan |
 |---|---|---|---|
+| F13 | Several Api instances: with `ConnectionStrings:Redis` set, live game updates go through a Redis pub/sub backplane (with a resync after a reconnect), and every rate limit and the sign-in throttle count in Redis; Redis down falls back to per-instance state. Without Redis nothing changes ([scale-out](../operations/scale-out.md)) | 2026-10-15, PR #79 | [F13](done/F13-scale-out-backplane.md) |
 | F9 | Simultaneous turns: a lobby picks one at a time (default) or everyone at once. In a simultaneous game every player acts in the same round, ends their turn (Undo end turn takes it back while others play), and the round resolves for everyone in seat order when the last one ends; commands are first come, first served. The client shows who has ended ([rules](../game/rules.md#turns-and-rounds)) | 2026-10-15 | [F9](done/F9-simultaneous-turns.md) |
 | F10 | More than two players: a lobby is for 2, 3 or 4 players (ruleset v15 `setup.minPlayers`/`maxPlayers`), starts when every seat is taken, and plays as a free-for-all in seat order. Generated maps grow with the player count (`map.sizes`) and give each player a zone with a start worth about the same as the others'; pool maps list one spawn group per player (The Basin stays a 2-player map). A player who resigns or is eliminated is out: their turn is skipped, their cities stay capturable, the deals they hosted end, and the game goes on. The client has a player picker, "n/seats" lists, a players strip and seat names ([rules](../game/rules.md#goal-and-victory)) | 2026-10-15, PR #77 | [F10](done/F10-more-players.md) |
 | F21 | Terrain regions on the 3D board: mountains form continuous ranges (ridged crests in the ground, snow by altitude, foothills on the hills beside them, gorges along rivers), hills roll as downs, the desert runs in dune crests across one wind, forests are one wood planted over the map with a ragged edge, lakes get beaches and lighter shallows; tiles meet at the mean of their plateaus ([game UI](../features/game-ui.md#terrain-regions-on-the-board)) | 2026-10-11, PR #72 | [F21](done/F21-terrain-regions.md) |

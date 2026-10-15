@@ -39,6 +39,10 @@ param postgresAdministratorPassword string
 @description('JWT signing key (at least 32 characters).')
 param jwtSigningKey string
 
+@secure()
+@description('Redis connection string (StackExchange.Redis format) for running several Api instances; empty runs one instance without Redis.')
+param redisConnectionString string = ''
+
 @description('Extra browser origins for the Api CORS policy (custom client domains). The Static Web App default host is always added.')
 param extraCorsOrigins array = []
 
@@ -84,6 +88,8 @@ module keyVault 'modules/keyVault.bicep' = {
     vaultName: take('${appName}-${environmentName}-${suffix}', 24)
     connectionString: 'Host=${postgres.outputs.fullyQualifiedDomainName};Database=${databaseName};Username=${postgresAdministratorLogin};Password=${postgresAdministratorPassword};Ssl Mode=VerifyFull'
     jwtSigningKey: jwtSigningKey
+    redisConnectionString: redisConnectionString
+    useRedis: !empty(redisConnectionString)
     tags: tags
   }
 }
@@ -108,6 +114,7 @@ module appService 'modules/appService.bicep' = {
     registryPassword: registryPassword
     connectionStringSecretUri: keyVault.outputs.connectionStringSecretUri
     jwtSigningKeySecretUri: keyVault.outputs.jwtSigningKeySecretUri
+    redisConnectionStringSecretUri: keyVault.outputs.redisConnectionStringSecretUri
     corsAllowedOrigins: concat(['https://${staticWebApp.outputs.defaultHostname}'], extraCorsOrigins)
     customHostnames: apiCustomHostnames
     tags: tags

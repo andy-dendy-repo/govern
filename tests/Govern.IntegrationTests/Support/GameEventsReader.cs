@@ -38,9 +38,12 @@ public sealed class GameEventsReader : IAsyncDisposable
     }
 
     /// <summary>Opens a stream that must succeed.</summary>
-    public static async Task<GameEventsReader> OpenAsync(HttpClient client, string accessToken, Guid gameId, CancellationToken ct)
+    public static async Task<GameEventsReader> OpenAsync(HttpClient client, string accessToken, Guid gameId, CancellationToken ct) =>
+        await ReadAsync(await RequestAsync(client, accessToken, gameId, ct), ct);
+
+    /// <summary>Reads a stream response from <see cref="RequestAsync"/> that must have succeeded; takes ownership of it.</summary>
+    public static async Task<GameEventsReader> ReadAsync(HttpResponseMessage response, CancellationToken ct)
     {
-        var response = await RequestAsync(client, accessToken, gameId, ct);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         response.Content.Headers.ContentType?.MediaType.ShouldBe("text/event-stream");
         return new GameEventsReader(response, await response.Content.ReadAsStreamAsync(ct), ct);
