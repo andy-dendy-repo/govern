@@ -138,14 +138,18 @@ public partial class GamePage : IAsyncDisposable
 
     private void OnStarted(GetGameResponse game) => OnGameChanged(game);
 
-    // An answer for a game the page has since left (the route changed while a command was in flight) is dropped.
+    // An answer for a game the page has since left (the route changed while a command was in flight) is dropped, and so is
+    // one older than the view already shown: in a simultaneous game a pushed update can land before a command's answer.
     private void OnGameChanged(GetGameResponse game)
     {
-        if (game.Id == _loadedId)
+        if (game.Id == _loadedId && NewestLog(game) >= NewestLog(_game))
         {
             _game = game;
         }
     }
+
+    private static int NewestLog(GetGameResponse? game) =>
+        game?.Log is { Count: > 0 } log ? log.Max(static item => item.Sequence) : 0;
 
     private void OnClosed() => Navigation.NavigateTo("games");
 }

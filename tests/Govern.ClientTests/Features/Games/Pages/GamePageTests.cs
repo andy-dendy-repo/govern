@@ -117,6 +117,26 @@ public class GamePageTests : ClientTestContext
     }
 
     [Fact]
+    public async Task Command_AnsweredAfterANewerPush_KeepsThePushedView()
+    {
+        var response = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stream = await ServeAsync(TestGames.Started() with { Log = [Entry(1)] });
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), _ => response.Task);
+        var cut = RenderGame();
+        cut.WaitForAssertion(() => cut.Find("button.end-turn"));
+        cut.Find("button.end-turn").Click();
+        await Eventually.HoldsAsync(() => Api.RequestsTo(TestGames.CommandsPath()).Count == 1, "the command is sent");
+
+        var pushed = TestGames.Started(view: TestViews.Start() with { Units = [], Version = TestViews.Version + 2 });
+        await stream.WriteGameAsync(pushed with { Log = [Entry(1), Entry(2)] });
+        await Eventually.HoldsAsync(() => Units() == 0, "the board draws the pushed view");
+        var answered = TestGames.Started(view: TestViews.Start() with { Version = TestViews.Version + 1 });
+        response.SetResult(FakeApiHandler.Json(answered with { Log = [Entry(1)] }));
+
+        await Eventually.NeverAsync(() => Units() > 0, "an answer older than the pushed view must not replace it");
+    }
+
+    [Fact]
     public async Task Render_Finished_ShowsGameOver()
     {
         await ServeAsync(TestGames.Started(GamePhase.Finished));
@@ -239,6 +259,8 @@ public class GamePageTests : ClientTestContext
         await stream.WriteGameAsync(game);
         return stream;
     }
+
+    private static GameLogItem Entry(int sequence) => new(sequence, 1, []);
 
     private IRenderedComponent<GamePage> RenderGame() =>
         Render<GamePage>(parameters => parameters.Add(static page => page.GameId, TestGames.Id));

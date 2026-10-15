@@ -78,12 +78,40 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     {
         var (game, creator, joiner) = await GamesApi.CreateStartedSimultaneousGameAsync(Client, Ct);
 
-        var responses = await Task.WhenAll(
+        // Both load the same row, so one loses the concurrency token and is retried against the new state.
+        var responses = await GameRowLock.RaceAsync(Fixture.ConnectionString, game.Id, 2, () => Task.WhenAll(
             GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, 0, new EndTurnCommand(), Ct),
-            GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, 0, new EndTurnCommand(), Ct));
+            GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, 0, new EndTurnCommand(), Ct)), Ct);
 
         responses.ShouldAllBe(response => response.StatusCode == HttpStatusCode.OK);
         (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Turn.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Post_SimultaneousResumeTurn_UndoesEndTurnOrAnswersTurnNotEnded()
+    {
+        var (game, _, joiner) = await GamesApi.CreateStartedSimultaneousGameAsync(Client, Ct);
+
+        var early = await GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, 0, new ResumeTurnCommand(), Ct);
+        await early.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.turn_not_ended", Ct);
+
+        (await GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, 0, new EndTurnCommand(), Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var resumed = await GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, 0, new ResumeTurnCommand(), Ct);
+
+        resumed.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var view = (await GamesApi.ReadGameAsync(resumed, Ct)).View!;
+        (view.MayAct, view.EndedTurn, view.Turn).ShouldBe((true, false, 1));
+    }
+
+    [Fact]
+    public async Task Post_ResumeTurnInSequentialGame_ReturnsNotSimultaneous()
+    {
+        var (game, creator, _) = await GamesApi.CreateStartedGameAsync(Client, Ct);
+        var version = (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Version;
+
+        var response = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, version, new ResumeTurnCommand(), Ct);
+
+        await response.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.not_simultaneous", Ct);
     }
 
     [Fact]

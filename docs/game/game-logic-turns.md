@@ -58,3 +58,10 @@ The order is total, so a game replays to the same state. A unit can attack at th
 ## Hosting
 
 The server skips the view-version check for simultaneous games and retries a command that loses the save race on the newer game ([games feature](../features/games.md#simultaneous-turns-turnmode)).
+
+What a player learns about the others in a simultaneous game, beyond their own view:
+
+| Signal | Accepted because |
+|---|---|
+| Who has ended their turn (the player strip, `player_ended_turn` events) | Shown openly on purpose: it tells you whom the round waits for |
+| A command answered slowly or rejected as stale after its retries | Only says that some other player acted at that moment, never what they did; every command is still checked against the fogged state the sender may see |
