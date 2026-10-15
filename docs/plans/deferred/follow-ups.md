@@ -92,4 +92,4 @@ When an item is picked up, it runs through `/develop-feature`: its own plan in `
 
 ## F10. More than two players
 
-Done 2026-10-15 (PR #PRNUM): lobbies of 2 to 4 players, free-for-all in seat order, the lobby starts when full, and a resigned player's cities stay capturable. The plan with what was built and why is [F10](../done/F10-more-players.md). Turn timers ([F8](#f8-turn-timers-and-absent-players)) stay deferred: one absent player still stalls a game of three or four.
+Done 2026-10-15 (PR #77): lobbies of 2 to 4 players, free-for-all in seat order, the lobby starts when full, and a resigned player's cities stay capturable. The plan with what was built and why is [F10](../done/F10-more-players.md). Turn timers ([F8](#f8-turn-timers-and-absent-players)) stay deferred: one absent player still stalls a game of three or four.
