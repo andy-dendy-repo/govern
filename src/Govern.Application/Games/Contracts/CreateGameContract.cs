@@ -3,6 +3,7 @@ using Govern.Application.Common.Abstractions;
 using Govern.Application.Games.Models;
 using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
+using Govern.Core.State;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
 using Govern.Domain.ValueObjects;
@@ -21,7 +22,12 @@ namespace Govern.Application.Games.Contracts;
 /// <see langword="null"/> for <c>random</c>.
 /// </param>
 /// <param name="Seats">How many players the game is for, within the ruleset's range (2 to 4); 2 when left out.</param>
-public sealed record CreateGameRequest(string? Map = null, int Seats = Game.MinSeats) : IRequest<CreateGameRequest, CreateGameResponse>;
+/// <param name="TurnMode">
+/// How the players take their turns: <c>sequential</c> (one at a time in seat order, the default) or <c>simultaneous</c> (everyone
+/// acts at once and the round ends when all have ended their turn).
+/// </param>
+public sealed record CreateGameRequest(string? Map = null, int Seats = Game.MinSeats, TurnMode TurnMode = TurnMode.Sequential)
+    : IRequest<CreateGameRequest, CreateGameResponse>;
 
 /// <summary>
 /// The new lobby.
@@ -31,8 +37,8 @@ public sealed record CreateGameRequest(string? Map = null, int Seats = Game.MinS
 public sealed record CreateGameResponse(Guid Id, string InviteCode) : IResponse;
 
 /// <summary>
-/// Validates <see cref="CreateGameRequest"/>: the seats are within the ruleset's range and the map is a choice the pool offers
-/// for them.
+/// Validates <see cref="CreateGameRequest"/>: the seats are within the ruleset's range, the map is a choice the pool offers
+/// for them, and the turn mode is a known one.
 /// </summary>
 public sealed class CreateGameValidator : AbstractValidator<CreateGameRequest>
 {
@@ -45,6 +51,7 @@ public sealed class CreateGameValidator : AbstractValidator<CreateGameRequest>
         var setup = rulesets.Ruleset.Setup;
         RuleFor(request => request.Seats)
             .InclusiveBetween(setup.MinPlayers, setup.MaxPlayers);
+        RuleFor(request => request.TurnMode).IsInEnum();
         RuleFor(request => request.Map)
             .Must((request, map) => map is null || maps.IsChoice(map, request.Seats))
             .When(request => setup.Allows(request.Seats))
@@ -83,7 +90,7 @@ internal sealed class CreateGameHandler(
             return limit;
         }
 
-        var game = Game.Create(userId, now, request.Map is { } map ? MapChoice.Create(map) : MapChoice.Random, request.Seats);
+        var game = Game.Create(userId, now, request.Map is { } map ? MapChoice.Create(map) : MapChoice.Random, request.Seats, request.TurnMode);
         db.Games.Add(game);
         await db.SaveChangesAsync(cancellationToken);
 

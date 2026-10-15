@@ -22,4 +22,11 @@ namespace Govern.Core.State;
 /// A predefined map from the map pool, validated against the same ruleset, to play on instead of a generated one; its size wins
 /// over <paramref name="Width"/> and <paramref name="Height"/>. <see langword="null"/> generates a map.
 /// </param>
-public sealed record GameSetup(ImmutableArray<PlayerId> Players, ulong Seed, int? Width = null, int? Height = null, PredefinedMap? Map = null);
+/// <param name="TurnMode">How the players take their turns (F9); sequential unless the lobby chose simultaneous.</param>
+public sealed record GameSetup(
+    ImmutableArray<PlayerId> Players,
+    ulong Seed,
+    int? Width = null,
+    int? Height = null,
+    PredefinedMap? Map = null,
+    TurnMode TurnMode = TurnMode.Sequential);

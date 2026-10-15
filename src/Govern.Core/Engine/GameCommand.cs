@@ -27,5 +27,6 @@ namespace Govern.Core.Engine;
 [JsonDerivedType(typeof(UpgradeUnitCommand), "upgrade_unit")]
 [JsonDerivedType(typeof(UpgradeBuildingCommand), "upgrade_building")]
 [JsonDerivedType(typeof(EndTurnCommand), "end_turn")]
+[JsonDerivedType(typeof(ResumeTurnCommand), "resume_turn")]
 [JsonDerivedType(typeof(ResignCommand), "resign")]
 public abstract record GameCommand;

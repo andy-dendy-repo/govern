@@ -132,7 +132,7 @@
 
     [Parameter] public EventCallback<GameCommand> Command { get; set; }
 
-    private bool MyTurn => View.CurrentPlayer == View.Viewer;
+    private bool MyTurn => View.MayAct;
 
     private UnitView? Unit => View.Status == GameStatus.InProgress && Ui.Selection.Unit is { } id ? View.FindOwnUnit(id) : null;
 

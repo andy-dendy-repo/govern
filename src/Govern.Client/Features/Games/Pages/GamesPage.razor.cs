@@ -3,6 +3,7 @@ using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Features.Games.Services;
 using Govern.Client.Models;
+using Govern.Core.State;
 using Microsoft.AspNetCore.Components;
 using Radzen;
 
@@ -22,6 +23,7 @@ public partial class GamesPage
     private bool _creating;
     private string _map = MapPoolService.Random;
     private int _seats = 2;
+    private TurnMode _turnMode = TurnMode.Sequential;
     private ApiError? _error;
 
     [Inject]
@@ -70,7 +72,7 @@ public partial class GamesPage
     {
         _creating = true;
         _error = null;
-        var result = await Games.CreateAsync(_map, _seats, CancellationToken.None);
+        var result = await Games.CreateAsync(_map, _seats, _turnMode, CancellationToken.None);
         _creating = false;
         if (!result.IsSuccess)
         {

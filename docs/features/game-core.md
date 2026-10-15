@@ -2,7 +2,7 @@
 title: Game Core engine
 tags: [game, core, engine, trading, trade-route, trader, market, deal, demand, upkeep, resource-cost, supply, building-health, upkeep-priority, hex, rivers, edges, bridges, builders, jobs, improvements, buildings, territory, tile-yields, city-stock, economy, rules, ruleset, abilities, fog-of-war, view-version, previews, ids, commands, events, game-log, events-for, serialization, schema-version, determinism]
 code: [src/Govern.Core, tests/Govern.UnitTests/Core]
-updated: 2026-10-05
+updated: 2026-10-15
 ---
 
 # Game Core engine
@@ -182,7 +182,7 @@ Andrii's model: science is a budget per turn, never stored; owned items take the
 | `EndTurnCommand` (`end_turn`) | Jobs advance, yields are collected, upkeep is paid (units heal or starve), territory grows, then the actor's cities pay resource costs and produce. A finished unit spawns on the city or its first free neighbour with 0 movement; if the city is surrounded, it waits. The next active player gets full movement; the round (`Turn`) increases on wrap (`TurnEndedEvent`); then their units with a destination walk on |
 | `ResignCommand` (`resign`) | Any active player, any time (`PlayerResignedEvent`) |
 
-**Turn guard:** every command except Resign requires a running game and `actor == CurrentPlayer`. The unit or city must exist and belong to the actor.
+**Turn guard:** every command except Resign requires a running game and an actor who may act (`GameState.MayAct`): `actor == CurrentPlayer` in a sequential game, an active player who hasn't ended the round in a simultaneous one ([simultaneous turns](../game/game-logic-turns.md)). The unit or city must exist and belong to the actor.
 
 **Elimination and victory:**
 - A player with no cities and no settlers is eliminated (`PlayerEliminatedEvent`).
@@ -198,6 +198,9 @@ Rule violations are returned as `RuleViolation(Code, Message)` (listed in `RuleV
 | `game.finished` | The game is over |
 | `game.not_a_player` | The actor is not an active participant |
 | `game.not_your_turn` | Another player's turn |
+| `game.turn_ended` | Simultaneous game: the actor has ended this round |
+| `game.turn_not_ended` | Resume turn without having ended it |
+| `game.not_simultaneous` | Resume turn in a sequential game |
 | `unit.not_found` | The actor has no such unit (missing and "someone else's" are deliberately the same) |
 | `unit.no_movement` | No movement left this turn |
 | `unit.busy` / `unit.no_job` | The unit is building (cancel its job to move it) / has no job to cancel |

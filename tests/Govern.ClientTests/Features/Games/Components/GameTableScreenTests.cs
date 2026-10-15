@@ -169,6 +169,40 @@ public class GameTableScreenTests : ClientTestContext
         cut.Find(".game-over .result").TextContent.ShouldBe("You resigned. The game goes on for the others.");
     }
 
+    [Fact]
+    public void Render_SimultaneousRound_EveryoneMayActAndTheStripSaysWhoEnded()
+    {
+        var view = ThreePlayers(PlayerStatus.Active, PlayerStatus.Active) with
+        {
+            TurnMode = TurnMode.Simultaneous,
+            Players = [new PlayerSummary(You, PlayerStatus.Active), new PlayerSummary(Opponent, PlayerStatus.Active, EndedTurn: true), new PlayerSummary(Third, PlayerStatus.Active)],
+        };
+
+        var cut = RenderTable(view);
+
+        cut.FindAll(".player-strip-item").Select(static item => item.TextContent.Trim()).ShouldBe(["You", "Seat 2 (ended)", "Seat 3"]);
+        cut.Find(".turn").TextContent.ShouldContain("1 of 2 others have ended");
+        cut.Find("button.end-turn").HasAttribute("disabled").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Click_UndoEndTurnAfterEndingASimultaneousTurn_SendsResumeTurn()
+    {
+        var view = Start() with
+        {
+            TurnMode = TurnMode.Simultaneous,
+            Players = [new PlayerSummary(You, PlayerStatus.Active, EndedTurn: true), new PlayerSummary(Opponent, PlayerStatus.Active)],
+        };
+        Api.On(HttpMethod.Post, TestGames.CommandsPath(), () => FakeApiHandler.Json(TestGames.Started(view: view)));
+        var cut = RenderTable(view);
+        cut.Find(".turn").TextContent.ShouldContain("waiting for your opponent");
+        cut.FindAll("button.end-turn").ShouldBeEmpty();
+
+        cut.Find("button.resume-turn").Click();
+
+        cut.WaitForAssertion(() => Api.RequestsTo(TestGames.CommandsPath()).Single().Body!.ShouldContain("\"type\":\"resume_turn\""));
+    }
+
     private static PlayerView ThreePlayers(PlayerStatus you, PlayerStatus third) => Start() with
     {
         Players = [new PlayerSummary(You, you), new PlayerSummary(Opponent, PlayerStatus.Active), new PlayerSummary(Third, third)],

@@ -496,6 +496,37 @@ public class GameTests
         game.LogEntries.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void Execute_SimultaneousEndTurn_MarksTheSeatAndMovesTheActivity()
+    {
+        var game = Game.Create(Creator, Now, turnMode: TurnMode.Simultaneous);
+        game.Join(Joiner, Now);
+        game.Start(Creator, TestRulesets.Default, Now);
+
+        game.Execute(Joiner, TestRulesets.Default, new EndTurnCommand(), Now.AddMinutes(1)).IsSuccess.ShouldBeTrue();
+
+        game.TurnMode.ShouldBe(TurnMode.Simultaneous);
+        game.State!.TurnMode.ShouldBe(TurnMode.Simultaneous);
+        game.CurrentPlayerId.ShouldBeNull();
+        game.FindPlayer(Joiner)!.EndedTurn.ShouldBeTrue();
+        game.FindPlayer(Creator)!.EndedTurn.ShouldBeFalse();
+        game.ActivityAt.ShouldBe(Now.AddMinutes(1));
+    }
+
+    [Fact]
+    public void Execute_SimultaneousRoundEnds_ClearsTheSeats()
+    {
+        var game = Game.Create(Creator, Now, turnMode: TurnMode.Simultaneous);
+        game.Join(Joiner, Now);
+        game.Start(Creator, TestRulesets.Default, Now);
+        game.Execute(Joiner, TestRulesets.Default, new EndTurnCommand(), Now);
+
+        game.Execute(Creator, TestRulesets.Default, new EndTurnCommand(), Now.AddMinutes(1)).IsSuccess.ShouldBeTrue();
+
+        game.State!.Turn.ShouldBe(2);
+        game.Players.ShouldAllBe(seat => !seat.EndedTurn);
+    }
+
     private static Game StartedGame()
     {
         var game = Game.Create(Creator, Now);

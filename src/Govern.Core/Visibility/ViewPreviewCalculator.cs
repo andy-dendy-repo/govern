@@ -275,5 +275,6 @@ internal static class ViewPreviewCalculator
     internal static RuleViolation? CheckTurn(PlayerView view) => CommandGuardRule.CheckTurn(
         view.Status,
         view.Players.FirstOrDefault(player => player.Id == view.Viewer)?.Status,
-        view.CurrentPlayer == view.Viewer);
+        view.MayAct,
+        view.TurnMode);
 }

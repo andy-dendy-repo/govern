@@ -73,6 +73,23 @@ public class GameLogFormatterTests
         GameLogFormatter.Describe(Ruleset, View, new UpkeepPrioritySetEvent(new CityId(7), UpkeepPriority.UnitsFirst))!.Text
             .ShouldBe("Rome now pays for units first");
 
+    [Theory]
+    [InlineData(true, true, "You ended your turn")]
+    [InlineData(true, false, "You took back your turn")]
+    [InlineData(false, true, "Seat 2 ended their turn")]
+    public void Describe_SimultaneousTurnEndedOrTakenBack_SaysWho(bool you, bool ended, string text)
+    {
+        var line = GameLogFormatter.Describe(Ruleset, View, new PlayerEndedTurnEvent(you ? You : Opponent, ended))!;
+
+        line.Text.ShouldBe(text);
+    }
+
+    [Fact]
+    public void Describe_RoundEnded_SaysEveryonePlaysTheNewTurn()
+    {
+        GameLogFormatter.Describe(Ruleset, View, new RoundEndedEvent(4))!.Text.ShouldBe("Turn 4: everyone plays");
+    }
+
     [Fact]
     public void Describe_TurnPassedToYou_SaysItIsYourTurnWithoutATile()
     {

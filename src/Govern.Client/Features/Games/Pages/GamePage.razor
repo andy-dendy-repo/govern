@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @using Govern.Client.Features.Games.Components
 @using Govern.Client.Features.Games.Enums
+@using Govern.Client.Features.Games.Helpers
 
 <PageTitle>@Title - Govern</PageTitle>
 
@@ -38,6 +39,7 @@ else
         {
             <RadzenStack Gap="1rem" class="rz-mt-4">
                 <RadzenText TextStyle="TextStyle.Body1" class="lobby-map">Map: @Maps.NameOf(lobby.Map)</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body1" class="lobby-turns">Turns: @TurnModes.Describe(lobby.TurnMode)</RadzenText>
                 <PlayerList Players="@lobby.Players" Seats="@lobby.Seats"/>
                 @if (lobby.InviteCode is { } inviteCode)
                 {

@@ -35,7 +35,7 @@ internal static class EventVisibilityCalculator
 
     private static GameEvent? Filter(GameEvent gameEvent, PlayerId viewer, HashSet<HexCoord> seen, Owners owners) => gameEvent switch
     {
-        TurnEndedEvent or PlayerResignedEvent or PlayerEliminatedEvent or GameWonEvent => gameEvent,
+        TurnEndedEvent or PlayerEndedTurnEvent or RoundEndedEvent or PlayerResignedEvent or PlayerEliminatedEvent or GameWonEvent => gameEvent,
         UnitMovedEvent moved => Moved(moved, viewer, seen),
         UnitOrderEndedEvent ended => ended.Owner == viewer ? ended : null,
         // A trade deal concerns its two sides only; neither learns anything about the other's other deals.

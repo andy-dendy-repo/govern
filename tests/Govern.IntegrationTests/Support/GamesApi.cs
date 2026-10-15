@@ -31,6 +31,9 @@ public static class GamesApi
     public static Task<HttpResponseMessage> CreateWithSeatsAsync(HttpClient client, string? accessToken, string? map, int seats, CancellationToken ct) =>
         SendAsync(client, HttpMethod.Post, "/api/games", accessToken, JsonContent.Create(new { map, seats }), ct);
 
+    public static Task<HttpResponseMessage> CreateWithTurnModeAsync(HttpClient client, string? accessToken, string turnMode, CancellationToken ct) =>
+        SendAsync(client, HttpMethod.Post, "/api/games", accessToken, JsonContent.Create(new { map = "generated", turnMode }), ct);
+
     public static Task<HttpResponseMessage> JoinAsync(HttpClient client, string? accessToken, string? inviteCode, CancellationToken ct) =>
         SendAsync(client, HttpMethod.Post, "/api/games/join", accessToken, JsonContent.Create(new { inviteCode }), ct);
 
@@ -123,6 +126,19 @@ public static class GamesApi
         var lobby = await CreateFullLobbyAsync(client, ct);
         (await StartAsync(client, lobby.Creator.AccessToken, lobby.Game.Id, ct)).EnsureSuccessStatusCode();
         return lobby;
+    }
+
+    /// <summary>Creates, fills and starts a two-player game with simultaneous turns on a generated map.</summary>
+    public static async Task<(CreateGameResponse Game, Player Creator, Player Joiner)> CreateStartedSimultaneousGameAsync(HttpClient client, CancellationToken ct)
+    {
+        var creator = await NewPlayerAsync(client, ct);
+        var joiner = await NewPlayerAsync(client, ct);
+        var created = await CreateWithTurnModeAsync(client, creator.AccessToken, "simultaneous", ct);
+        created.EnsureSuccessStatusCode();
+        var game = (await created.Content.ReadFromJsonAsync<CreateGameResponse>(Json, ct))!;
+        (await JoinAsync(client, joiner.AccessToken, game.InviteCode, ct)).EnsureSuccessStatusCode();
+        (await StartAsync(client, creator.AccessToken, game.Id, ct)).EnsureSuccessStatusCode();
+        return (game, creator, joiner);
     }
 
     /// <summary>

@@ -9,6 +9,7 @@ using Govern.Client.Features.Games.Enums;
 using Govern.Client.Features.Games.Models;
 using Govern.Client.Models;
 using Govern.Core.Engine;
+using Govern.Core.State;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace Govern.Client.Features.Games.Clients;
@@ -29,17 +30,18 @@ public sealed class GamesClient(HttpClient http)
     /// <summary>Creates a lobby with the caller in seat 0, for the chosen number of players and played on the chosen map.</summary>
     /// <param name="map">The map choice (<see cref="MapOption.Value"/>).</param>
     /// <param name="seats">How many players the game is for.</param>
+    /// <param name="turnMode">How the players take their turns.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>
     /// The game and its invite code, or the error (400 for seats or a map the Api doesn't offer; 409 for a cap, e.g.
     /// <c>game.too_many_open_lobbies</c>; 429).
     /// </returns>
-    public Task<ApiResult<CreateGameResponse>> CreateAsync(string map, int seats, CancellationToken cancellationToken)
+    public Task<ApiResult<CreateGameResponse>> CreateAsync(string map, int seats, TurnMode turnMode, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(map);
         var request = new HttpRequestMessage(HttpMethod.Post, "api/games")
         {
-            Content = JsonContent.Create(new CreateGameRequest(map, seats), options: ApiJson.Options),
+            Content = JsonContent.Create(new CreateGameRequest(map, seats, turnMode), options: ApiJson.Options),
         };
         return http.SendForResultAsync<CreateGameResponse>(request, cancellationToken);
     }

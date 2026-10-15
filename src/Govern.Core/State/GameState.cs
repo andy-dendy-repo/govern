@@ -33,8 +33,18 @@ public sealed record GameState
     /// <summary>Round number, starting at 1; increases when the turn passes back to the first player.</summary>
     public required int Turn { get; init; }
 
-    /// <summary>Player who may act now.</summary>
+    /// <summary>
+    /// In a <see cref="TurnMode.Sequential"/> game, the player who may act now. In a <see cref="TurnMode.Simultaneous"/> game,
+    /// the first active player in seat order; it decides nothing there (see <see cref="MayAct"/>).
+    /// </summary>
     public required PlayerId CurrentPlayer { get; init; }
+
+    /// <summary>
+    /// How the players take their turns (F9). Games saved before simultaneous turns read as <see cref="TurnMode.Sequential"/>,
+    /// and a sequential game leaves it out of the JSON, so no schema change.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public TurnMode TurnMode { get; init; }
 
     /// <summary>Whether the game is still running.</summary>
     public required GameStatus Status { get; init; }
@@ -104,6 +114,16 @@ public sealed record GameState
     /// <param name="coord">The tile.</param>
     /// <returns>The city, or <see langword="null"/> when the tile has none.</returns>
     public City? CityAt(HexCoord coord) => Cities.FirstOrDefault(city => city.Position == coord);
+
+    /// <summary>
+    /// Whether a player may act now (besides resigning, which is always allowed): in a sequential game the
+    /// <see cref="CurrentPlayer"/>, in a simultaneous game every active player who has not ended this turn.
+    /// </summary>
+    /// <param name="id">Player id.</param>
+    /// <returns><see langword="true"/> when the player may act.</returns>
+    public bool MayAct(PlayerId id) => TurnMode == TurnMode.Simultaneous
+        ? FindPlayer(id) is { Status: PlayerStatus.Active, EndedTurn: false }
+        : CurrentPlayer == id;
 
     /// <summary>Returns a participant.</summary>
     /// <param name="id">Player id.</param>

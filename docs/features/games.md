@@ -29,7 +29,7 @@ All endpoints require a bearer token (`.RequireAuthorization()`). Create, join, 
 
 | Method and route | Use case | Success | Errors |
 |---|---|---|---|
-| `POST /api/games` optional body `{ map, seats }` | `CreateGameContract` | 201 `{ id, inviteCode }`, `Location: /api/games/{id}` | 400 seats outside the ruleset's `setup.minPlayers`–`maxPlayers` (default 2), a map that is not `random`, `generated` or a pool key made for that many players; 401; 409 `game.too_many_open_lobbies`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
+| `POST /api/games` optional body `{ map, seats, turnMode }` | `CreateGameContract` | 201 `{ id, inviteCode }`, `Location: /api/games/{id}` | 400 seats outside the ruleset's `setup.minPlayers`–`maxPlayers` (default 2), a map that is not `random`, `generated` or a pool key made for that many players, a `turnMode` other than `sequential` (default) or `simultaneous`; 401; 409 `game.too_many_open_lobbies`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
 | `POST /api/games/join` body `{ inviteCode }` | `JoinGameContract` | 200 `{ gameId }` | 400 malformed code; 401; 404 `game.invite_not_found`; 409 `game.already_started`, `game.full`, `game.too_many_unfinished_games`; 429 (rate limit, or `game.daily_quota_reached`) |
 | `POST /api/games/{id}/leave` | `LeaveGameContract` | 204 | 400 empty id; 401; 404 `game.not_found`; 409 `game.creator_cannot_leave`, `game.already_started`, `game.stale_version`; 429 |
 | `DELETE /api/games/{id}` | `CancelGameContract` | 204 (the lobby is deleted) | 400 empty id; 401; 403 `game.not_creator`; 404 `game.not_found`; 409 `game.already_started`, `game.stale_version`; 429 |
@@ -39,9 +39,9 @@ All endpoints require a bearer token (`.RequireAuthorization()`). Create, join, 
 | `GET /api/games/{id}/stream` | `WatchGameContract` | 200 `text/event-stream` of `game` (a `GetGameResponse`) and `heartbeat` events (see [Live game updates](#live-game-updates-sse)) | 400 empty id; 401; 404 `game.not_found`; 429 |
 | `GET /api/games?page=1&pageSize=20` | `ListMyGamesContract` | 200 `{ items: [{ id, phase, playerCount, seats, isCreator, isYourTurn, isOut, activityAt }], total }` | 400 page outside 1–10,000 or page size outside 1–50; 401 |
 
-The list is ordered by `activityAt`, newest first: the last change every player sees (created, a seat taken or left, the start, a turn change, the finish). A move or production change leaves it alone, so the list reveals nothing about the other players' hidden activity. It is stored in `games.activity_at` and set by `Game`; `updated_at` is only the audit column and is never returned.
+The list is ordered by `activityAt`, newest first: the last change every player sees (created, a seat taken or left, the start, a turn change, a player ending or taking back a simultaneous turn, the finish). `isYourTurn` is the caller's turn in a sequential game, and in a simultaneous game a round they still play and haven't ended. A move or production change leaves it alone, so the list reveals nothing about the other players' hidden activity. It is stored in `games.activity_at` and set by `Game`; `updated_at` is only the audit column and is never returned.
 
-`GetGameResponse` is `{ id, phase, isCreator, inviteCode, seats, players: [{ playerId, seat, isYou, isCreator }], view, createdAt, map, log }` (`seats` is how many players the game is for):
+`GetGameResponse` is `{ id, phase, isCreator, inviteCode, seats, players: [{ playerId, seat, isYou, isCreator }], view, createdAt, map, log, turnMode }` (`seats` is how many players the game is for, `turnMode` how they take turns, see [Simultaneous turns](#simultaneous-turns-turnmode)):
 - `inviteCode` is set only for the creator, and only while in the lobby.
 - `map` is the lobby's map choice (`random`, `generated` or a pool map's key); once started, the map played on (`random` becomes the key drawn). The client names it from its own copy of the pool.
 - `view` is the caller's `PlayerView` once started, and null in the lobby.
@@ -87,13 +87,26 @@ The Core rule-violation codes (`move.unreachable`, `game.not_your_turn`, `game.f
 - Only the creator can read the code again through `GET /api/games/{id}`, and only while in the lobby. The joined player never gets it back, and nobody sees it once the game starts.
 - **Invite link:** the client shares `https://<client>/join#<code>`. The code sits in the URL **fragment**, which browsers never send to a server (not to the Static Web App, not in `Referer`). The join page removes the fragment from the address bar and the Back history at once, fills in its form, and posts the code in the body only when the player clicks Join (a link alone never joins). The browser's global history still records the visited link. See [client game lobby](client.md#invite-link-policy-code-only-in-the-fragment-or-the-body).
 
+## Simultaneous turns (TurnMode)
+
+F9. The creator picks the turn mode when creating the lobby (`turnMode`, stored as text in `games.turn_mode`, default `sequential`):
+
+| Mode | Who may act | When the round ends |
+|---|---|---|
+| `sequential` | The player whose turn it is (`view.currentPlayer`), in seat order | When the last seat ends its turn |
+| `simultaneous` | Every player still in the game who hasn't ended this round (`view.mayAct`) | When every active player has ended (`end_turn`); `resume_turn` takes an ended turn back while others still play |
+
+- The engine's rules are in [game logic: simultaneous turns](../game/game-logic-turns.md). Who has ended is public: `view.players[].endedTurn`, and `player_ended_turn` / `round_ended` events in everyone's log.
+- `games.current_player_id` is null in a simultaneous game; `game_players.ended_turn` copies each seat's flag so the list can say whose action a game waits for without reading the state.
+- **Commands:** the `expectedVersion` check is skipped in a simultaneous game, since every enemy move a player sees changes their view; the engine checks each command against the state it lands on, so the first command to reach the server wins (a second unit sent to a now-taken tile gets `move.occupied`). A command that loses the `revision` race is run again on the newer game, up to 3 tries, before `game.stale_version`.
+
 ## Sending commands
 
 - **Body:** `{ "expectedVersion": 3, "command": { "type": "move_unit", "unitId": { "value": 2 }, "target": { "q": 4, "r": 1 } } }`. Command shapes and `type` names are the Core `GameCommand` types (`move_unit`, `attack`, `found_city`, `set_production`, `end_turn`, `resign`).
 - **Read with `GameSerializer`:** the body is bound by `Api/Models/GameCommandBody.BindAsync`, not by the HTTP JSON defaults. `type` may appear in any position, and a missing `type` or value is a 400 instead of a server error. The body is capped at 4 KiB (413), and a non-JSON content type is 415.
 - **`expectedVersion`:** send the `view.version` you last saw. It is an opaque, per-player fingerprint of your own view (see [game-core](game-core.md#view-version)): compare it for equality only, never order it. If your view has changed since, the command is not applied (`game.stale_version`); changes hidden from you never make it stale. Races are settled by `games.revision`: two commands based on the same view race, and the loser gets `game.stale_version`.
-- **Checks in order:** membership (404) → lobby (`game.not_started`) → version (`game.stale_version`) → the engine (`GameEngine.Execute` through `Game.Execute`), whose violations become 409 with their own code.
-- **Result:** an accepted command replaces `games.state`, copies the player to move into `games.current_player_id`, bumps `revision`, and sets `phase` to `finished` once the engine reports a winner. The response is the caller's new `GetGameResponse`, whose `log` carries the command's events as the caller may see them ([game log](#game-log)).
+- **Checks in order:** membership (404) → lobby (`game.not_started`) → version (`game.stale_version`; sequential games only) → the engine (`GameEngine.Execute` through `Game.Execute`), whose violations become 409 with their own code.
+- **Result:** an accepted command replaces `games.state`, copies the player to move into `games.current_player_id` (and each seat's ended flag into `game_players.ended_turn`), bumps `revision`, and sets `phase` to `finished` once the engine reports a winner. The response is the caller's new `GetGameResponse`, whose `log` carries the command's events as the caller may see them ([game log](#game-log)).
 - Resigning is allowed out of turn. A command for a finished game returns `game.finished`.
 - **The web client** sends one command at a time with `expectedVersion` = the `view.version` on screen, offers only moves and attacks the Core previews accept, and on `game.stale_version` reads the game again and tells the player nothing was applied ([client game board](client.md#sending-commands-one-at-a-time-stale-handling)).
 
@@ -164,14 +177,14 @@ Each player has their own log of what they saw happen (F11a, [plan](../plans/don
 
 | Table | Columns | Constraints |
 |---|---|---|
-| `games` | `id`, `creator_id`, `invite_code` (varchar 22), `phase` (varchar 16), `map` (varchar 32: `MapChoice`, default `generated`), `seats` (int, default 2), `revision` (concurrency token), `state` (`jsonb`, null in the lobby), `current_player_id` (the `game_players.id` to move; null in the lobby and once finished; no FK), `activity_at` (last change every player sees), `created_at`, `updated_at` | Unique `invite_code`; index `(phase, activity_at)` for the lobby sweep; index and restrict FK on `creator_id` → `users` |
-| `game_players` | `id` (= `PlayerId`), `game_id`, `user_id`, `seat` (0 to seats − 1), `joined_at`, `log_length` (the seat's last log sequence), `is_out` (resigned or eliminated while the game goes on) | Unique `(game_id, seat)` and `(game_id, user_id)`; index `(user_id, joined_at)` (the FK, member filters and the quota) and restrict FK on `user_id` → `users`; cascade delete from `games` |
+| `games` | `id`, `creator_id`, `invite_code` (varchar 22), `phase` (varchar 16), `map` (varchar 32: `MapChoice`, default `generated`), `seats` (int, default 2), `turn_mode` (varchar 16, default `Sequential`), `revision` (concurrency token), `state` (`jsonb`, null in the lobby), `current_player_id` (the `game_players.id` to move; null in the lobby, once finished and in a simultaneous game; no FK), `activity_at` (last change every player sees), `created_at`, `updated_at` | Unique `invite_code`; index `(phase, activity_at)` for the lobby sweep; index and restrict FK on `creator_id` → `users` |
+| `game_players` | `id` (= `PlayerId`), `game_id`, `user_id`, `seat` (0 to seats − 1), `joined_at`, `log_length` (the seat's last log sequence), `is_out` (resigned or eliminated while the game goes on), `ended_turn` (ended this round of a simultaneous game) | Unique `(game_id, seat)` and `(game_id, user_id)`; index `(user_id, joined_at)` (the FK, member filters and the quota) and restrict FK on `user_id` → `users`; cascade delete from `games` |
 | `game_log_entries` | `id`, `game_id`, `player_id` (the seat), `sequence`, `turn`, `events` (`jsonb`, `GameSerializer` format); no timestamps | Index `(player_id, sequence)` for the window read (not unique: the game's `revision` already lets one command commit per revision, and a unique index made concurrent commands deadlock); index on `game_id`; cascade delete from `games` and `game_players` |
 
 - **The `jsonb` state snapshot:** `games.state` holds the whole `GameState`, written and read through `GameSerializer`. That is the same format the Api and client use, and it carries `schemaVersion`.
   - EF compares the state by reference. The state is immutable and replaced on every change, so there is no deep comparison.
-  - Queries never look inside the JSON: anything a list needs has its own column. `ListMyGames` never reads `state`; `isYourTurn` compares `current_player_id` with the caller's seat.
-- **Migrations:** `AddGames`, `AddGameCurrentPlayer`, `AddGameLog` (games already running start with an empty log), `AddGameLobbyLifecycle` (existing rows got `activity_at` = 0001-01-01, so lobbies created before it are swept at once and older games sort last; `gamecore` was never deployed, so only local data is affected), `AddGameMap` (G18; existing rows got `generated`, the map they were created with), `AddGameSeats` (F10; existing rows got 2 seats and nobody out).
+  - Queries never look inside the JSON: anything a list needs has its own column. `ListMyGames` never reads `state`; `isYourTurn` compares `current_player_id` with the caller's seat (in a simultaneous game: the seat is in and hasn't ended).
+- **Migrations:** `AddGames`, `AddGameCurrentPlayer`, `AddGameLog` (games already running start with an empty log), `AddGameLobbyLifecycle` (existing rows got `activity_at` = 0001-01-01, so lobbies created before it are swept at once and older games sort last; `gamecore` was never deployed, so only local data is affected), `AddGameMap` (G18; existing rows got `generated`, the map they were created with), `AddGameSeats` (F10; existing rows got 2 seats and nobody out), `AddGameTurnMode` (F9; existing rows are sequential and no seat has ended).
 
 ## Games JSON format
 

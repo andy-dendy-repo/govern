@@ -51,6 +51,9 @@ public sealed class Game : BaseAuditableEntity
     /// <summary>The map the game is played on; <see cref="MapChoice.Random"/> only until the game starts.</summary>
     public MapChoice Map { get; private set; } = MapChoice.Generated;
 
+    /// <summary>How the players take their turns (F9), chosen when the lobby is created.</summary>
+    public TurnMode TurnMode { get; private set; }
+
     /// <summary>Where the game is in its lifecycle.</summary>
     public GamePhase Phase { get; private set; }
 
@@ -64,13 +67,13 @@ public sealed class Game : BaseAuditableEntity
 
     /// <summary>
     /// The seat id (<see cref="GamePlayer.PlayerId"/>) of the player whose turn it is, copied from <see cref="State"/> so lists can show
-    /// "your turn" without reading the snapshot; <see langword="null"/> in the lobby and once the game has finished.
+    /// "your turn" without reading the snapshot; <see langword="null"/> in the lobby, once finished, and in a simultaneous game.
     /// </summary>
     public Guid? CurrentPlayerId { get; private set; }
 
     /// <summary>
     /// When the game last changed in a way every player sees: created, a seat taken or left, started, the turn passed, a player
-    /// left or the game finished. Unlike <see cref="BaseAuditableEntity.UpdatedAt"/>, a command whose effect may be hidden from
+    /// ended (or took back) a simultaneous turn, a player left or the game finished. Unlike <see cref="BaseAuditableEntity.UpdatedAt"/>, a command whose effect may be hidden from
     /// others (a move, a production change) leaves it alone, so it reveals nothing about hidden activity.
     /// </summary>
     public DateTimeOffset ActivityAt { get; private set; }
@@ -98,15 +101,17 @@ public sealed class Game : BaseAuditableEntity
     /// How many players the game is for, at least <see cref="MinSeats"/> (the handler checks the ruleset's maximum, and that a
     /// named pool map is made for this many).
     /// </param>
+    /// <param name="turnMode">How the players will take their turns (the handler checks it is a known mode).</param>
     /// <returns>The new game.</returns>
     /// <exception cref="ArgumentException"><paramref name="creatorId"/> is empty.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="seats"/> is below <see cref="MinSeats"/>.</exception>
-    public static Game Create(Guid creatorId, DateTimeOffset now, MapChoice? map = null, int seats = MinSeats)
+    public static Game Create(Guid creatorId, DateTimeOffset now, MapChoice? map = null, int seats = MinSeats, TurnMode turnMode = TurnMode.Sequential)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(seats, MinSeats);
         var game = new Game
         {
             Seats = seats,
+            TurnMode = turnMode,
             CreatorId = creatorId,
             InviteCode = InviteCode.New(),
             Phase = GamePhase.Lobby,
@@ -213,18 +218,19 @@ public sealed class Game : BaseAuditableEntity
         }
 
         var players = _players.OrderBy(static player => player.Seat).Select(static player => player.PlayerId);
-        State = GameFactory.Create(ruleset, new GameSetup([.. players], NewSeed(), Map: map));
+        State = GameFactory.Create(ruleset, new GameSetup([.. players], NewSeed(), Map: map, TurnMode: TurnMode));
         Map = MapChoice.Of(map);
         Phase = GamePhase.InProgress;
-        CurrentPlayerId = State.CurrentPlayer.Value;
+        CurrentPlayerId = TurnHolder(State);
         MarkChanged(now);
     }
 
     /// <summary>
     /// Runs one player's command through the engine. An accepted command replaces <see cref="State"/>, moves
-    /// <see cref="CurrentPlayerId"/>, marks the seats of players who left (<see cref="GamePlayer.IsOut"/>) and finishes the game
+    /// <see cref="CurrentPlayerId"/>, syncs the seats (<see cref="GamePlayer.EndedTurn"/>, <see cref="GamePlayer.IsOut"/>) and finishes the game
     /// when the engine does, and adds a <see cref="GameLogEntry"/> for each
-    /// seat that saw any of its events; a rejected one changes nothing. <see cref="ActivityAt"/> moves only when the turn passes or the game finishes.
+    /// seat that saw any of its events; a rejected one changes nothing. <see cref="ActivityAt"/> moves only when the turn passes,
+    /// a seat ends or takes back a simultaneous turn, a player leaves or the game finishes.
     /// </summary>
     /// <param name="userId">The seated user sending the command.</param>
     /// <param name="ruleset">The ruleset the game was started with.</param>
@@ -251,9 +257,9 @@ public sealed class Game : BaseAuditableEntity
             var finished = State.Status == GameStatus.Finished;
             var (phase, currentPlayerId) = (Phase, CurrentPlayerId);
             Phase = finished ? GamePhase.Finished : GamePhase.InProgress;
-            CurrentPlayerId = finished ? null : State.CurrentPlayer.Value;
-            var markedOut = _players.Aggregate(false, (changed, seat) => seat.MarkOut(State) || changed);
-            if (Phase != phase || CurrentPlayerId != currentPlayerId || markedOut)
+            CurrentPlayerId = finished ? null : TurnHolder(State);
+            var seatsChanged = _players.Aggregate(false, (changed, seat) => seat.Sync(State) || changed);
+            if (Phase != phase || CurrentPlayerId != currentPlayerId || seatsChanged || State.Turn != before.Turn)
             {
                 ActivityAt = now;
             }
@@ -264,6 +270,8 @@ public sealed class Game : BaseAuditableEntity
 
         return result;
     }
+
+    private static Guid? TurnHolder(GameState state) => state.TurnMode == TurnMode.Simultaneous ? null : state.CurrentPlayer.Value;
 
     // Gives every seat the events it may see of an accepted command, as one log entry (none when it saw nothing).
     private void Record(Ruleset ruleset, GameState before, GameUpdate update)

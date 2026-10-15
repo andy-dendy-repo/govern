@@ -44,7 +44,7 @@ public partial class CityPanel
     [Parameter]
     public EventCallback<GameCommand> Command { get; set; }
 
-    private bool CanAct => View.Status == GameStatus.InProgress && View.CurrentPlayer == View.Viewer;
+    private bool CanAct => View.Status == GameStatus.InProgress && View.MayAct;
 
     // While the city lends its production to a job on its ground, its own production gets nothing.
     private bool FeedsAJob => JobFundingResolver.FeedingCities(Ruleset, View).Values.Any(city => city.Id == City.Id);

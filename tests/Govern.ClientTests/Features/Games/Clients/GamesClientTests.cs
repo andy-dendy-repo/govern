@@ -9,6 +9,7 @@ using Govern.Core.Cities;
 using Govern.Core.Engine;
 using Govern.Core.Map;
 using Govern.Core.Serialization;
+using Govern.Core.State;
 using Govern.Core.Units;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,11 +26,11 @@ public class GamesClientTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, "/api/games", () => FakeApiHandler.Json(new { id = TestGames.Id, inviteCode = TestGames.InviteCode }, HttpStatusCode.Created));
 
-        var result = await Games.CreateAsync("random", 3, Ct);
+        var result = await Games.CreateAsync("random", 3, TurnMode.Simultaneous, Ct);
 
         result.Value.ShouldBe(new CreateGameResponse(TestGames.Id, TestGames.InviteCode));
         Api.Requests.Single().Authorization.ShouldStartWith("Bearer ");
-        Api.Requests.Single().Body.ShouldBe("""{"map":"random","seats":3}""");
+        Api.Requests.Single().Body.ShouldBe("""{"map":"random","seats":3,"turnMode":"simultaneous"}""");
     }
 
     [Fact]
@@ -217,7 +218,7 @@ public class GamesClientTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, "/api/games", () => FakeApiHandler.Empty(HttpStatusCode.TooManyRequests));
 
-        var result = await Games.CreateAsync("random", 2, Ct);
+        var result = await Games.CreateAsync("random", 2, TurnMode.Sequential, Ct);
 
         result.Error.ShouldNotBeNull().Status.ShouldBe(429);
         result.Error.Message.ShouldContain("Too many requests");
@@ -233,7 +234,7 @@ public class GamesClientTests : ClientTestContext
             throw new HttpRequestException("aborted");
         });
 
-        await Should.ThrowAsync<Exception>(() => Games.CreateAsync("random", 2, cancellation.Token));
+        await Should.ThrowAsync<Exception>(() => Games.CreateAsync("random", 2, TurnMode.Sequential, cancellation.Token));
     }
 
     [Fact]
@@ -241,7 +242,7 @@ public class GamesClientTests : ClientTestContext
     {
         Api.On(HttpMethod.Post, "/api/games", () => throw new HttpRequestException("offline"));
 
-        var result = await Games.CreateAsync("random", 2, Ct);
+        var result = await Games.CreateAsync("random", 2, TurnMode.Sequential, Ct);
 
         result.Error.ShouldNotBeNull().IsNetwork.ShouldBeTrue();
     }

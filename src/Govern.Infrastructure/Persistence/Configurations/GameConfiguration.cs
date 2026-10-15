@@ -10,12 +10,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Govern.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// Maps <see cref="Game"/>: unique invite code, phase and map choice as text, <see cref="Game.Revision"/> as the concurrency
+/// Maps <see cref="Game"/>: unique invite code, phase, map choice and turn mode as text, <see cref="Game.Revision"/> as the concurrency
 /// token and the whole <see cref="GameState"/> as one <c>jsonb</c> snapshot written through <see cref="GameSerializer"/>.
 /// </summary>
 internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
 {
     private const int PhaseMaxLength = 16;
+    private const int TurnModeMaxLength = 16;
 
     // The state is immutable and replaced on every change, so reference equality detects changes without comparing or
     // copying a ~20 KB object graph on every DetectChanges.
@@ -59,7 +60,7 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
         builder.Navigation(game => game.Players).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 
-    // The invite code, the phase and the map choice, each stored as text.
+    // The invite code, the phase, the map choice and the turn mode, each stored as text.
     private static void ConfigureTextColumns(EntityTypeBuilder<Game> builder)
     {
         builder.Property(game => game.InviteCode)
@@ -69,6 +70,12 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
         builder.HasIndex(game => game.InviteCode).IsUnique();
 
         builder.Property(game => game.Phase).HasConversion<string>().HasMaxLength(PhaseMaxLength);
+
+        // Games created before simultaneous turns were all sequential.
+        builder.Property(game => game.TurnMode)
+            .HasConversion<string>()
+            .HasMaxLength(TurnModeMaxLength)
+            .HasDefaultValue(TurnMode.Sequential);
 
         // Games created before the map pool were all played on generated maps.
         builder.Property(game => game.Map)

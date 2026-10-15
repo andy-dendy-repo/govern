@@ -2,7 +2,7 @@
 title: Game rules reference (for players)
 tags: [game, rules, reference, players, how-to-play, map, terrain, forest, hills, mountains, lake, rivers, deep-river, crossing, map-generation, units, scout, recon, builders, improvements, farm, mine, lumber-camp, bridges, buildings, campus, harbour, ships, naval, galley, bireme, resources, water, desert, tile-yields, territory, borders, culture, city-stock, resource-cost, upkeep, supply, starvation, building-health, trading, traders, science, science-tree, unlocks, unit-upgrade, building-upgrade, swordsman, pikeman, crossbowman, knight, workshop, barracks, university, market, port, deals, counter-offers, markets, demand, movement, attack, combat, health, damage, counters, ranged, healing, defence, cities, production, fog-of-war, victory, resign]
 code: [rulesets/default/v15.json, src/Govern.Core, tests/Govern.ArchitectureTests/RulesReferenceTests.cs]
-updated: 2026-10-05
+updated: 2026-10-15
 ---
 
 # Game rules reference
@@ -71,10 +71,21 @@ Rivers run along the edges between tiles, not across tiles. Each one starts next
 
 ## Turns and rounds
 
+The game's creator picks how players take turns when creating the game: **one at a time** (the default) or **everyone at once**.
+
+**One at a time:**
 - Players take turns in seat order: the game's creator first, then the others in the order they joined. Only the player whose turn it is can act, except for resigning. A player who is out is skipped.
 - A turn ends when the player ends it. There is no time limit.
 - When play wraps around to the first player, the round number goes up by 1. The game starts in round 1.
 - At the start of your turn, all your units get their full movement back.
+
+**Everyone at once:**
+- Every player still in the game acts during the same round. When you are done, end your turn: you can't act again this round, but **Undo end turn** gives it back while others are still playing. Everyone sees who has ended.
+- The round ends the moment the last player still playing ends their turn (or leaves the game). There is no time limit, so the round waits for everyone.
+- Then everything that happens "at the end of your turn" (jobs, income, upkeep, healing, trade, territory, production) happens for every player, in seat order, and the stock caps apply once at the very end. Units that neither moved, attacked nor worked during the round heal.
+- The next round starts for everyone at once: all units get their full movement back, then the units with an order walk on, player by player in seat order.
+- **First come, first served:** commands are applied in the order they reach the game. If two units head for the same tile, the first one gets there and the second is told the tile is taken; an attack on a unit that is already gone finds nothing to attack.
+- A unit can attack at the end of one round and again at the start of the next, before the other side has had a chance to react.
 
 ## Unit types
 

@@ -82,7 +82,23 @@ public class GamesPageTests : ClientTestContext
 
         cut.Find("button.new-game").Click();
 
-        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"random","seats":2}"""));
+        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"random","seats":2,"turnMode":"sequential"}"""));
+    }
+
+    [Fact]
+    public void NewGame_EveryoneAtOnce_AsksForSimultaneousTurns()
+    {
+        Api.On(HttpMethod.Get, FirstPage, () => FakeApiHandler.Json(new ListMyGamesResponse([], 0)));
+        Api.On(HttpMethod.Post, "/api/games", () => FakeApiHandler.Json(new CreateGameResponse(TestGames.Id, TestGames.InviteCode), HttpStatusCode.Created));
+        var cut = Render<GamesPage>();
+        cut.FindAll(".turn-choice .rz-dropdown-item").Select(static item => item.TextContent.Trim())
+            .ShouldBe(["One at a time", "Everyone at once"]);
+
+        cut.FindAll(".turn-choice .rz-dropdown-item")[1].Click();
+        cut.Find("button.new-game").Click();
+
+        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body
+            .ShouldBe("""{"map":"random","seats":2,"turnMode":"simultaneous"}"""));
     }
 
     [Fact]
@@ -97,7 +113,7 @@ public class GamesPageTests : ClientTestContext
         cut.FindAll(".map-choice .rz-dropdown-item")[1].Click();
         cut.Find("button.new-game").Click();
 
-        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"basin","seats":2}"""));
+        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"basin","seats":2,"turnMode":"sequential"}"""));
     }
 
     [Fact]
@@ -127,7 +143,7 @@ public class GamesPageTests : ClientTestContext
         cut.Find("button.new-game").Click();
 
         cut.FindAll(".map-choice .rz-dropdown-item").Select(static item => item.TextContent.Trim()).ShouldBe(["Random map from the pool", "Generated map"]);
-        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"random","seats":3}"""));
+        cut.WaitForAssertion(() => Api.RequestsTo("/api/games").Single(request => request.Method == HttpMethod.Post).Body.ShouldBe("""{"map":"random","seats":3,"turnMode":"sequential"}"""));
     }
 
     [Fact]

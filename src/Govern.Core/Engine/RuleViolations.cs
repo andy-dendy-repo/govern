@@ -14,6 +14,15 @@ public static class RuleViolations
     /// <summary>It is another player's turn.</summary>
     public static readonly RuleViolation NotYourTurn = new("game.not_your_turn", "It is not your turn.");
 
+    /// <summary>In a simultaneous game, the actor has already ended this turn (they may take it back with Undo end turn).</summary>
+    public static readonly RuleViolation TurnEnded = new("game.turn_ended", "You have ended your turn. Wait for the others, or take it back.");
+
+    /// <summary>In a simultaneous game, the actor asked to take back a turn they have not ended.</summary>
+    public static readonly RuleViolation TurnNotEnded = new("game.turn_not_ended", "You have not ended your turn.");
+
+    /// <summary>The command exists only in simultaneous games (taking back an ended turn).</summary>
+    public static readonly RuleViolation NotSimultaneous = new("game.not_simultaneous", "Turns are not simultaneous in this game.");
+
     /// <summary>The actor has no unit with that id (it does not exist or belongs to someone else; the two are not distinguished).</summary>
     public static readonly RuleViolation UnitNotFound = new("unit.not_found", "You have no such unit.");
 

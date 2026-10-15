@@ -18,7 +18,10 @@ namespace Govern.Core.Visibility;
 /// nothing the viewer cannot already see.
 /// </param>
 /// <param name="Turn">Round number.</param>
-/// <param name="CurrentPlayer">Player who may act now.</param>
+/// <param name="CurrentPlayer">
+/// In a sequential game, the player who may act now; in a simultaneous game the first active player, which decides nothing
+/// (use <see cref="MayAct"/>).
+/// </param>
 /// <param name="Status">Whether the game is still running.</param>
 /// <param name="Winner">The winner once finished; otherwise <see langword="null"/>.</param>
 /// <param name="Width">Map columns.</param>
@@ -42,6 +45,7 @@ namespace Govern.Core.Visibility;
 /// Other players' cities the viewer trades with (<see cref="TradePartnerView"/>): those whose trade post they have seen, and the
 /// other side of their deals; ordered by id, <see langword="null"/> when none.
 /// </param>
+/// <param name="TurnMode">How the players take their turns; left out of the JSON for a sequential game.</param>
 public sealed record PlayerView(
     PlayerId Viewer,
     long Version,
@@ -57,8 +61,25 @@ public sealed record PlayerView(
     ImmutableArray<PlayerSummary> Players,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradeDealView>? TradeDeals = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ScienceView? Science = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradePartnerView>? TradePartners = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<TradePartnerView>? TradePartners = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] TurnMode TurnMode = TurnMode.Sequential)
 {
+    /// <summary>
+    /// Whether the viewer may act now (besides resigning), as <see cref="GameState.MayAct"/> decides: in a sequential game when it
+    /// is their turn, in a simultaneous game while they play and have not ended this turn. It does not look at
+    /// <see cref="Status"/>; a finished game rejects every command anyway.
+    /// </summary>
+    [JsonIgnore]
+    public bool MayAct => TurnMode == TurnMode.Simultaneous
+        ? Players.FirstOrDefault(player => player.Id == Viewer) is { Status: PlayerStatus.Active, EndedTurn: false }
+        : CurrentPlayer == Viewer;
+
+    /// <summary>
+    /// Whether the viewer has ended this turn of a simultaneous game and waits for the others (they may take it back).
+    /// </summary>
+    [JsonIgnore]
+    public bool EndedTurn => Players.FirstOrDefault(player => player.Id == Viewer) is { EndedTurn: true };
+
     /// <summary>The trade deals the viewer is a side of (empty when none).</summary>
     [JsonIgnore]
     public ImmutableArray<TradeDealView> TradeDealList => TradeDeals ?? [];

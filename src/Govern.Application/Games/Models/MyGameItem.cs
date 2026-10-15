@@ -10,7 +10,10 @@ namespace Govern.Application.Games.Models;
 /// <param name="PlayerCount">Seats taken.</param>
 /// <param name="Seats">Seats in the game (2 to 4).</param>
 /// <param name="IsCreator">Whether the caller created the game.</param>
-/// <param name="IsYourTurn">Whether the game is running and waiting for the caller's move.</param>
+/// <param name="IsYourTurn">
+/// Whether the game is running and waiting for the caller's move: their turn in a sequential game, or in a simultaneous game a
+/// round they still play and haven't ended.
+/// </param>
 /// <param name="IsOut">Whether the caller resigned or was eliminated while the game goes on for the others.</param>
 /// <param name="ActivityAt">
 /// When the game last changed in a way every player sees (a seat taken or left, the start, a turn change, the finish); the

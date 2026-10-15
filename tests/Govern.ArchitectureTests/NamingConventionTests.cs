@@ -266,8 +266,11 @@ public class NamingConventionTests
 
     private static bool IsCoreType(Type type) => type.Namespace?.StartsWith("Govern.Core", StringComparison.Ordinal) == true;
 
+    // A Core enum (e.g. TurnMode) is a plain camelCase string in both JSON formats, so it may be bound with the HTTP defaults.
+    private static bool NeedsGameSerializer(Type type) => IsCoreType(type) && !type.IsEnum;
+
     private static bool CarriesCoreTypes(Type type) =>
-        IsCoreType(type) || type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Any(static property => IsCoreType(property.PropertyType));
+        NeedsGameSerializer(type) || type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Any(static property => NeedsGameSerializer(property.PropertyType));
 
     private static bool HasBindAsync(Type type) =>
         type.GetMethod("BindAsync", BindingFlags.Public | BindingFlags.Static, [typeof(Microsoft.AspNetCore.Http.HttpContext)]) is { } method
