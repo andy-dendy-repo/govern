@@ -147,7 +147,7 @@ public static class BoardClickResolver
             selection = selection with { Bridge = false };
         }
 
-        if (selection.Destination && (view.CurrentPlayer != view.Viewer || view.Status != GameStatus.InProgress))
+        if (selection.Destination && (!view.MayAct || view.Status != GameStatus.InProgress))
         {
             selection = selection with { Destination = false };
         }

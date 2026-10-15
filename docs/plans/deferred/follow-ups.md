@@ -22,7 +22,7 @@ When an item is picked up, it runs through `/develop-feature`: its own plan in `
 | F5 | [Email verification](#f5-email-verification) | users, client | M |
 | F7 | [Invite code rotation (kick)](#f7-invite-code-rotation-kick) | game | S |
 | F8 | [Turn timers and absent players](#f8-turn-timers-and-absent-players) | game | M |
-| F9 | [Simultaneous turns (Civ 6 style)](#f9-simultaneous-turns-civ-6-style) | game | M–L |
+| F9 | [Simultaneous turns (Civ 6 style)](#f9-simultaneous-turns-civ-6-style) (done 2026-10-15) | game | M–L |
 | F10 | [More than two players](#f10-more-than-two-players) (done 2026-10-15) | game | M |
 
 ## F1. Ship the game
@@ -71,6 +71,8 @@ When an item is picked up, it runs through `/develop-feature`: its own plan in `
 - **Prerequisite for** [simultaneous turns](#f9-simultaneous-turns-civ-6-style) and [more than two players](#f10-more-than-two-players).
 
 ## F9. Simultaneous turns (Civ 6 style)
+
+> **Done 2026-10-15:** see the [F9 plan](../done/F9-simultaneous-turns.md). The notes below are the original proposal; as built, the version check is skipped in simultaneous games, Undo end turn is in, and double moves are accepted.
 
 - **Why:** in Civ 6 all players act at once during a turn, and the round ends when everyone has ended their turn. Waiting for the opponent to finish every turn is slow. Today turns alternate: `GameState.CurrentPlayer` may act, and `CommandGuardRule` answers everyone else with `game.not_your_turn`.
 - **Approach:** a turn mode chosen in the lobby (`Alternating`, the default, or `Simultaneous`) and stored in the game state.

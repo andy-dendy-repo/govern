@@ -2,7 +2,7 @@
 title: Game logic (Core algorithms)
 tags: [game, core, rules, algorithms, ships, naval, domain, science, unit-upgrade, building-upgrade, trading, upkeep, resource-cost, supply, shortage, building-health, engine, turns, movement, pathfinding, rivers, bridges, builders, jobs, improvements, buildings, territory, yields, city-stock, river-generation, combat, health, damage, counters, ranged, healing, cities, production, victory, fog-of-war, visibility, game-log, events, determinism]
 code: [src/Govern.Core]
-updated: 2026-10-05
+updated: 2026-10-15
 ---
 
 # Game logic: Core algorithms
@@ -17,7 +17,7 @@ updated: 2026-10-05
 | Neighbours, distance | Each hex has 6 neighbours; distance is the number of hex steps |
 | Edge, corner | The side two neighbouring hexes share, and the point three hexes share. A river runs along edges; each tile stores its east, north-east and north-west edges |
 | Player | A seat in the game: active, eliminated or resigned |
-| Current player | The one player who may act now (turns alternate) |
+| Current player | The one player who may act now (turns alternate); in a [simultaneous game](game-logic-turns.md) every player still playing the round may act |
 | Round (turn number) | Increases by 1 each time play wraps around to the first player |
 | Unit | Belongs to a player, stands on one tile, has a type, movement left this turn and damage taken (health = [`combat.maxHealth`] − damage) |
 | Unit job | What a unit is building (an improvement on its tile, or a bridge towards a neighbour), with its progress and the round it started |
@@ -77,7 +77,7 @@ Every player action is a command sent by one player (the actor). The engine runs
 1. **Guard:**
    1. The game is finished → `game.finished`.
    2. The actor isn't an active player → `game.not_a_player`.
-   3. The actor isn't the current player (and the command isn't Resign) → `game.not_your_turn`.
+   3. The actor isn't the current player (and the command isn't Resign) → `game.not_your_turn`. In a simultaneous game: the actor has ended the round → `game.turn_ended` ([simultaneous turns](game-logic-turns.md#the-guard-in-a-simultaneous-game)).
 2. **Apply** the command's own rule (below).
 3. **Victory:** run [Elimination and victory](#elimination-and-victory), then end deals that lost a side or their trader and give homeless traders a home ([trading](game-logic-trade.md)), then balance every player's science budget ([science](game-logic-science.md#balancing-the-budget-after-every-command)).
 4. **Explore:** update every active player's explored tiles.
@@ -226,6 +226,8 @@ Run at the end of the owner's turn (see [End turn](#end-turn)), for the owner's 
 4. When the progress reaches the cost ([`improvements.*.cost`] or [`bridges.cost`]), the improvement is put on the unit's tile, or the bridge on the edge, and the job ends (`improvement_built`, `bridge_built`). A building upgrade is the third kind of job ([science](game-logic-science.md#upgrade-a-building-a-builders-job)).
 
 ### End turn
+
+This is a sequential game's End turn. In a simultaneous game End turn only marks the actor as done, and steps 1 to 8 run for every player once all have ended ([resolving the round](game-logic-turns.md#resolving-the-round-roundrule)).
 
 1. **Resting units:** note the actor's hurt units whose movement left is still full and that have no job (they neither moved, attacked nor worked this turn). They heal in step 4.
 2. **Jobs:** advance the actor's unit jobs (see [Building with units](#building-with-units-jobs)).

@@ -40,6 +40,13 @@ public sealed class GamePlayer : BaseEntity
     public bool IsOut { get; private set; }
 
     /// <summary>
+    /// In a simultaneous game (<see cref="TurnMode.Simultaneous"/>), whether the player has ended this round's turn, which every
+    /// player sees; copied from the state so the game list can show whose action a game waits for. Always
+    /// <see langword="false"/> in a sequential game.
+    /// </summary>
+    public bool EndedTurn { get; private set; }
+
+    /// <summary>
     /// The engine's identifier for this player: the per-game <see cref="BaseEntity.Id"/>, not the user id.
     /// </summary>
     public PlayerId PlayerId => new(Id);
@@ -49,9 +56,13 @@ public sealed class GamePlayer : BaseEntity
     /// </summary>
     public int LogLength { get; private set; }
 
+    // Copies what every player sees of the seat from the state: whether it is out and whether it ended a simultaneous turn.
+    // Returns whether anything changed.
+    internal bool Sync(GameState state) => MarkOut(state) | SyncEndedTurn(state);
+
     // Marks the seat out once its player resigned or was eliminated (which every player sees) while the game goes on for the
     // others; a finished game ends every seat alike. Returns whether it changed.
-    internal bool MarkOut(GameState state)
+    private bool MarkOut(GameState state)
     {
         if (IsOut || state.Status != GameStatus.InProgress || state.FindPlayer(PlayerId) is { Status: PlayerStatus.Active })
         {
@@ -59,6 +70,19 @@ public sealed class GamePlayer : BaseEntity
         }
 
         IsOut = true;
+        return true;
+    }
+
+    // Copies the player's ended-turn flag from the state. Returns whether it changed.
+    private bool SyncEndedTurn(GameState state)
+    {
+        var ended = state.FindPlayer(PlayerId) is { EndedTurn: true };
+        if (ended == EndedTurn)
+        {
+            return false;
+        }
+
+        EndedTurn = ended;
         return true;
     }
 

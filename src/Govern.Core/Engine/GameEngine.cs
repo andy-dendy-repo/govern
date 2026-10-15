@@ -290,7 +290,7 @@ public static class GameEngine
 
     private static GameUpdate Complete(Ruleset ruleset, GameUpdate update)
     {
-        var decided = ScienceRule.Balance(ruleset, TradeRule.Reconcile(ruleset, VictoryRule.Apply(ruleset, update)));
+        var decided = ScienceRule.Balance(ruleset, TradeRule.Reconcile(ruleset, RoundRule.Apply(ruleset, VictoryRule.Apply(ruleset, update))));
         var explored = VisibilityCalculator.UpdateExplored(ruleset, decided.State);
         return decided with { State = explored with { Version = explored.Version + 1 } };
     }

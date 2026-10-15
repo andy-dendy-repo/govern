@@ -47,6 +47,46 @@ public class SendGameCommandEndpointTests(GovernApiFixture fixture) : ApiTestBas
     }
 
     [Fact]
+    public async Task Post_SimultaneousGame_BothPlayersEndTheRoundWithoutAFreshVersion()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateStartedSimultaneousGameAsync(Client, Ct);
+
+        var first = await GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, expectedVersion: 0, new EndTurnCommand(), Ct);
+        first.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var waiting = (await GamesApi.ReadGameAsync(first, Ct)).View!;
+        (waiting.MayAct, waiting.EndedTurn, waiting.Turn).ShouldBe((false, true, 1));
+        var again = await GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, waiting.Version, new EndTurnCommand(), Ct);
+        await again.ShouldBeProblemAsync(HttpStatusCode.Conflict, "game.turn_ended", Ct);
+
+        var last = await GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, expectedVersion: 0, new EndTurnCommand(), Ct);
+
+        last.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var view = (await GamesApi.ReadGameAsync(last, Ct)).View!;
+        (view.Turn, view.MayAct).ShouldBe((2, true));
+        var (scope, db) = await Fixture.OpenDbAsync();
+        await using (scope)
+        await using (db)
+        {
+            var stored = await db.Games.AsNoTracking().Include(g => g.Players).SingleAsync(g => g.Id == game.Id, Ct);
+            stored.CurrentPlayerId.ShouldBeNull();
+            stored.Players.ShouldAllBe(seat => !seat.EndedTurn);
+        }
+    }
+
+    [Fact]
+    public async Task Post_SimultaneousGameConcurrentEndTurns_BothCountAndTheRoundEnds()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateStartedSimultaneousGameAsync(Client, Ct);
+
+        var responses = await Task.WhenAll(
+            GamesApi.SendCommandAsync(Client, creator.AccessToken, game.Id, 0, new EndTurnCommand(), Ct),
+            GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, 0, new EndTurnCommand(), Ct));
+
+        responses.ShouldAllBe(response => response.StatusCode == HttpStatusCode.OK);
+        (await GamesApi.GetGameAsync(Client, creator, game.Id, Ct)).View!.Turn.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task Post_EndTurn_PutsTheTurnInBothPlayersLogsAndStoresOneEntryPerSeat()
     {
         var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);

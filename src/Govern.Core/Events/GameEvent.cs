@@ -16,6 +16,8 @@ namespace Govern.Core.Events;
 [JsonDerivedType(typeof(CityCapturedEvent), "city_captured")]
 [JsonDerivedType(typeof(ProductionChangedEvent), "production_changed")]
 [JsonDerivedType(typeof(TurnEndedEvent), "turn_ended")]
+[JsonDerivedType(typeof(PlayerEndedTurnEvent), "player_ended_turn")]
+[JsonDerivedType(typeof(RoundEndedEvent), "round_ended")]
 [JsonDerivedType(typeof(BuildStartedEvent), "build_started")]
 [JsonDerivedType(typeof(ImprovementBuiltEvent), "improvement_built")]
 [JsonDerivedType(typeof(BridgeBuiltEvent), "bridge_built")]

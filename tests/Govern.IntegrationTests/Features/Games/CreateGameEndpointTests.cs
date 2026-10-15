@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Govern.Application.Games.Contracts;
 using Govern.Application.Games.Models;
 using Govern.Core.Actions;
+using Govern.Core.State;
 using Govern.Domain.Enums;
 using Govern.IntegrationTests.Fixtures;
 using Govern.IntegrationTests.Support;
@@ -244,6 +245,38 @@ public class CreateGameEndpointTests(GovernApiFixture fixture) : ApiTestBase(fix
         var response = await GamesApi.CreateWithSeatsAsync(Client, creator.AccessToken, "random", seats, Ct);
 
         await response.ShouldBeValidationProblemAsync(Ct, "Seats");
+    }
+
+    [Fact]
+    public async Task Post_WithSimultaneousTurns_Returns201AndStoresTheTurnMode()
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        var response = await GamesApi.CreateWithTurnModeAsync(Client, creator.AccessToken, "simultaneous", Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var body = (await response.Content.ReadFromJsonAsync<CreateGameResponse>(GamesApi.Json, Ct))!;
+        (await GamesApi.GetGameAsync(Client, creator, body.Id, Ct)).TurnMode.ShouldBe(TurnMode.Simultaneous);
+    }
+
+    [Fact]
+    public async Task Post_WithoutATurnMode_IsSequential()
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        var body = await GamesApi.CreateGameAsync(Client, creator, Ct);
+
+        (await GamesApi.GetGameAsync(Client, creator, body.Id, Ct)).TurnMode.ShouldBe(TurnMode.Sequential);
+    }
+
+    [Fact]
+    public async Task Post_WithAnUnknownTurnMode_Returns400()
+    {
+        var creator = await GamesApi.NewPlayerAsync(Client, Ct);
+
+        var response = await GamesApi.CreateWithTurnModeAsync(Client, creator.AccessToken, "dynamic", Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
     [Fact]

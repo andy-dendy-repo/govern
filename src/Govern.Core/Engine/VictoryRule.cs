@@ -10,7 +10,8 @@ namespace Govern.Core.Engine;
 /// <summary>
 /// Runs after every accepted command: eliminates active players without cities and settlers, removes the units of players who
 /// left, and finishes the game when at most one active player remains (with two players, anyone leaving ends the game). When the
-/// game goes on but the player whose turn it is has left (resigned on their own turn), the turn passes to the next active player.
+/// game goes on but the player whose turn it is has left (resigned on their own turn), the turn passes to the next active player
+/// (in a simultaneous game, where nobody holds the turn, <see cref="GameState.CurrentPlayer"/> just moves to the first active one).
 /// A departed player's cities stay where they are, undefended, for the others to capture, and the deals they hosted end (the
 /// deals of their own traders break with the traders, in <see cref="TradeRule.Reconcile"/>).
 /// </summary>
@@ -37,7 +38,10 @@ internal static class VictoryRule
             state = EndHostedDeals(ruleset, state, events);
             if (state.FindPlayer(state.CurrentPlayer) is not { Status: PlayerStatus.Active })
             {
-                state = EndTurnRule.PassTurn(ruleset, state, events);
+                // Nobody holds the turn in a simultaneous game: the round goes on (RoundRule ends it once everyone left has ended).
+                state = state.TurnMode == TurnMode.Simultaneous
+                    ? state with { CurrentPlayer = active[0].Id }
+                    : EndTurnRule.PassTurn(ruleset, state, events);
             }
         }
 

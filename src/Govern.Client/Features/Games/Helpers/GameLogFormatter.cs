@@ -78,6 +78,11 @@ public static class GameLogFormatter
             names.IsYou(ended.NextPlayer) ? $"Turn {ended.Turn}: your turn" : $"Turn {ended.Turn}: {names.Player(ended.NextPlayer)}'s turn",
             null,
             names.IsYou(ended.PreviousPlayer)),
+        PlayerEndedTurnEvent turn => new(
+            $"{names.Player(turn.PlayerId)} {(turn.Ended ? "ended" : "took back")} {(names.IsYou(turn.PlayerId) ? "your" : "their")} turn",
+            null,
+            names.IsYou(turn.PlayerId)),
+        RoundEndedEvent round => new($"Turn {round.Turn}: everyone plays", null, false),
         PlayerResignedEvent resigned => new($"{names.Player(resigned.PlayerId)} resigned", null, names.IsYou(resigned.PlayerId)),
         PlayerEliminatedEvent eliminated => new($"{names.Player(eliminated.PlayerId)} {(names.IsYou(eliminated.PlayerId) ? "were" : "was")} eliminated", null, names.IsYou(eliminated.PlayerId)),
         GameWonEvent won => new($"{names.Player(won.Winner)} won the game", null, names.IsYou(won.Winner)),

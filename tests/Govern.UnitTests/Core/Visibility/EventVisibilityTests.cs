@@ -209,7 +209,7 @@ public class EventVisibilityTests
     {
         var (state, samples) = Samples();
         // The capture took P2's city, so P2 learns of it wherever it is.
-        var everyone = new[] { typeof(TurnEndedEvent), typeof(PlayerResignedEvent), typeof(PlayerEliminatedEvent), typeof(GameWonEvent), typeof(CityCapturedEvent) };
+        var everyone = new[] { typeof(TurnEndedEvent), typeof(PlayerEndedTurnEvent), typeof(RoundEndedEvent), typeof(PlayerResignedEvent), typeof(PlayerEliminatedEvent), typeof(GameWonEvent), typeof(CityCapturedEvent) };
 
         // The samples sit on P1's own tiles, out of P2's sight: only the game-wide events (and the lost city) reach P2.
         var seenByP2 = VisibilityCalculator.EventsFor(TestRulesets.Default, state, new GameUpdate(state, [.. samples]), P2);
@@ -260,6 +260,8 @@ public class EventVisibilityTests
             new CityCapturedEvent(city, "City 1", At(1, 1), P2, P1, unit),
             new ProductionChangedEvent(city, TestRulesets.Settler),
             new TurnEndedEvent(P1, P2, 1),
+            new PlayerEndedTurnEvent(P1, Ended: true),
+            new RoundEndedEvent(2),
             new BuildStartedEvent(unit, job),
             new ImprovementBuiltEvent(unit, P1, At(2, 1), TestRulesets.Farm),
             new BridgeBuiltEvent(unit, P1, At(2, 1), At(3, 1)),

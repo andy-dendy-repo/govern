@@ -1,7 +1,9 @@
 @page "/games"
 @attribute [Authorize]
 @using Govern.Client.Features.Games.Enums
+@using Govern.Client.Features.Games.Helpers
 @using Govern.Client.Features.Games.Models
+@using Govern.Core.State
 
 <PageTitle>My games - Govern</PageTitle>
 
@@ -17,6 +19,11 @@
     </RadzenDropDown>
     <RadzenDropDown TValue="string" Data="@Maps.OptionsFor(_seats)" TextProperty="@nameof(MapOption.Name)" ValueProperty="@nameof(MapOption.Value)"
                     @bind-Value="@_map" Disabled="@_creating" aria-label="Map" class="map-choice"/>
+    <RadzenDropDown TValue="TurnMode" Data="@TurnModes.All" @bind-Value="@_turnMode" Disabled="@_creating"
+                    aria-label="Turns" class="turn-choice">
+        <Template Context="mode">@TurnModes.Describe(mode)</Template>
+        <ValueTemplate Context="mode">@TurnModes.Describe(mode)</ValueTemplate>
+    </RadzenDropDown>
     <RadzenButton Text="New game" Icon="add" IsBusy="@_creating" Click="@CreateAsync" class="new-game"/>
     <RadzenLink Path="join" Text="Join with a code" class="join-link"/>
 </RadzenStack>

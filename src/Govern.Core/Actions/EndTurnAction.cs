@@ -14,33 +14,66 @@ namespace Govern.Core.Actions;
 /// <summary>
 /// Ends the actor's turn: their resting units heal, their units' building jobs advance, their cities yield resources and
 /// produce, every city's stock is cut to its storage caps, and the next active player moves (their units with a destination walk
-/// on first).
+/// on first). In a simultaneous game it marks the actor's turn as ended, and the round resolves for everyone once the last active
+/// player has ended.
 /// </summary>
 public sealed record EndTurnCommand : GameCommand;
 
 /// <summary>
-/// Ends the actor's turn: their units' jobs advance (see <see cref="ConstructionRule"/>), their cities add their income to their
+/// In a sequential game, ends the actor's turn: their units' jobs advance (see <see cref="ConstructionRule"/>), their cities add their income to their
 /// stock, pay upkeep (see <see cref="UpkeepRule"/>: unsupplied units and buildings lose health, supplied units that rested heal),
 /// swap the goods of the accepted deals they host and move their demand levels (see <see cref="TradeRule"/>), grow their territory (see <see cref="TerritoryRule"/>) and produce (except a city whose production a job used; an item begins
 /// once its resource cost is paid); then every city's stock is cut to its storage caps (see <see cref="CityStorage"/>), and the next active player moves with full movement, and their units with a destination walk
-/// on (see <see cref="AutoMoveRule"/>).
+/// on (see <see cref="AutoMoveRule"/>). In a simultaneous game it only marks the actor's turn as ended; once every active
+/// player has ended, <see cref="RoundRule"/> runs the same steps for all of them (<see cref="ResolveRound"/>).
 /// </summary>
 internal static class EndTurnRule
 {
     public static CommandResult Apply(Ruleset ruleset, GameState state, PlayerId actor)
     {
+        if (state.TurnMode == TurnMode.Simultaneous)
+        {
+            var player = state.FindPlayer(actor)!;
+            return new GameUpdate(state.WithPlayer(player with { EndedTurn = true }), [new PlayerEndedTurnEvent(actor, Ended: true)]);
+        }
+
         var events = ImmutableArray.CreateBuilder<GameEvent>();
+        return new GameUpdate(PassTurn(ruleset, Store(ruleset, Finish(ruleset, state, actor, events)), events), events.ToImmutable());
+    }
+
+    // A simultaneous round, once every active player has ended their turn: each of them finishes their turn in seat order (as
+    // in a sequential game, but nobody gets their movement back yet, so a unit rests by what it did this round), the stock caps
+    // apply once, and the next round begins: everyone gets full movement, then their units with a destination walk on, in seat
+    // order.
+    internal static GameState ResolveRound(Ruleset ruleset, GameState state, ImmutableArray<GameEvent>.Builder events)
+    {
+        var active = state.Players.Where(static player => player.Status == PlayerStatus.Active).Select(static player => player.Id).ToList();
+        var finished = Store(ruleset, active.Aggregate(state, (current, player) => Finish(ruleset, current, player, events)));
+
+        var turn = state.Turn + 1;
+        events.Add(new RoundEndedEvent(turn));
+        var started = finished with
+        {
+            Turn = turn,
+            CurrentPlayer = active[0],
+            Players = [.. finished.Players.Select(static player => player.EndedTurn ? player with { EndedTurn = false } : player)],
+        };
+        started = active.Aggregate(started, (current, player) => ResetMovement(ruleset, current, player));
+        return active.Aggregate(started, (current, player) => AutoMoveRule.WalkAll(ruleset, current, player, events));
+    }
+
+    // One player's end of turn, up to production: jobs, income, upkeep, trade, territory, then their cities produce.
+    private static GameState Finish(Ruleset ruleset, GameState state, PlayerId actor, ImmutableArray<GameEvent>.Builder events)
+    {
         var resting = UpkeepRule.RestingUnits(ruleset, state, actor);
         var (built, usedCities) = ConstructionRule.AdvanceJobs(ruleset, state, actor, events);
         var (kept, shortages) = UpkeepRule.Apply(ruleset, ConstructionRule.CollectYields(ruleset, built, actor), actor, resting, events);
         var traded = TradeRule.UpdateDemand(ruleset, TradeRule.Exchange(ruleset, kept, actor, events), actor, shortages);
         var grown = TerritoryRule.Grow(ruleset, traded, actor, events);
-        var produced = grown.Cities
+        return grown.Cities
             .Where(city => city.Owner == actor && !usedCities.Contains(city.Id))
             .Select(static city => city.Id)
             .Aggregate(grown, (current, cityId) => Produce(ruleset, current, current.FindCity(cityId)!, events));
-
-        return new GameUpdate(PassTurn(ruleset, Store(ruleset, produced), events), events.ToImmutable());
     }
 
     // Cuts every city's stock to its storage caps, once this turn's income has paid its upkeep and costs. Every city, not only

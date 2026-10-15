@@ -5,6 +5,7 @@ using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
 using Govern.Core.Engine;
 using Govern.Core.Rulesets;
+using Govern.Core.State;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
 using Govern.Utils.Mediator.Abstractions;
@@ -20,7 +21,8 @@ namespace Govern.Application.Games.Contracts;
 /// <param name="ExpectedVersion">
 /// The <c>view.version</c> the command is based on. When the caller's view has changed since, the command is rejected with
 /// <see cref="GameErrors.StaleVersion"/> instead of being applied to a board the player has not seen. The version is a
-/// fingerprint of the caller's own view, so changes hidden from them never make their command stale.
+/// fingerprint of the caller's own view, so changes hidden from them never make their command stale. Not enforced in a
+/// simultaneous game, where the others' moves change the view all the time.
 /// </param>
 /// <param name="Command">The command.</param>
 public sealed record SendGameCommandRequest(Guid GameId, long ExpectedVersion, GameCommand Command)
@@ -41,8 +43,11 @@ public sealed class SendGameCommandValidator : AbstractValidator<SendGameCommand
 }
 
 /// <summary>
-/// Handles <see cref="SendGameCommandRequest"/>. Two concurrent commands race on the game's revision; the loser gets
-/// <see cref="GameErrors.StaleVersion"/>. A rule violation becomes a conflict with the violation's code.
+/// Handles <see cref="SendGameCommandRequest"/>. Two concurrent commands race on the game's revision. In a sequential game the
+/// loser gets <see cref="GameErrors.StaleVersion"/>; in a simultaneous game, where every player acts at once, the loser's command
+/// is run again on the game as the winner left it (up to <see cref="MaxAttempts"/> times), and the caller's
+/// <see cref="SendGameCommandRequest.ExpectedVersion"/> is not enforced: every enemy move they see would make it stale, and the
+/// engine checks the command against the current state anyway. A rule violation becomes a conflict with the violation's code.
 /// </summary>
 internal sealed class SendGameCommandHandler(
     IApplicationDbContextFactory dbContextFactory,
@@ -50,6 +55,9 @@ internal sealed class SendGameCommandHandler(
     TimeProvider timeProvider,
     DefaultRulesetService rulesets) : IRequestHandler<SendGameCommandRequest, GetGameResponse>
 {
+    // How often a simultaneous game's command is tried when other players' commands keep winning the race.
+    private const int MaxAttempts = 3;
+
     /// <inheritdoc />
     public async ValueTask<Result<GetGameResponse>> HandleAsync(SendGameCommandRequest request, CancellationToken cancellationToken)
     {
@@ -58,13 +66,20 @@ internal sealed class SendGameCommandHandler(
             return UserErrors.NotAuthenticated;
         }
 
-        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        // Membership is checked in SQL, so an outsider never makes the server load a game's state.
-        var game = await db.Games
-            .Include(candidate => candidate.Players)
-            .Where(candidate => candidate.Id == request.GameId && candidate.Players.Any(player => player.UserId == userId))
-            .FirstOrDefaultAsync(cancellationToken);
+        for (var attempt = 1; ; attempt++)
+        {
+            if (await TrySendAsync(userId, request, attempt < MaxAttempts, cancellationToken) is { } result)
+            {
+                return result;
+            }
+        }
+    }
 
+    // One attempt; null when a simultaneous game's save lost the race and the command should be tried again.
+    private async Task<Result<GetGameResponse>?> TrySendAsync(Guid userId, SendGameCommandRequest request, bool mayRetry, CancellationToken cancellationToken)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var game = await LoadAsync(db, request.GameId, userId, cancellationToken);
         if (game?.FindPlayer(userId) is not { } caller)
         {
             return GameErrors.NotFound;
@@ -81,29 +96,36 @@ internal sealed class SendGameCommandHandler(
             return GameErrors.FromViolation(result.Violation);
         }
 
-        return await SaveAsync(db, game, caller, cancellationToken);
-    }
-
-    // Saves the accepted command and answers with the game as the caller now sees it, log included.
-    private async Task<Result<GetGameResponse>> SaveAsync(IApplicationDbContext db, Game game, GamePlayer caller, CancellationToken cancellationToken)
-    {
         try
         {
             await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException) when (mayRetry && game.TurnMode == TurnMode.Simultaneous)
+        {
+            return null;
         }
         catch (DbUpdateConcurrencyException)
         {
             return GameErrors.StaleVersion;
         }
 
+        // Answers with the game as the caller now sees it, log included.
         var log = await GameLogService.RecentAsync(db, game, caller, cancellationToken);
         return GetGameResponse.From(game, caller, rulesets.Ruleset, log);
     }
 
-    // Why the command cannot reach the engine, or null when it can (a finished game is left to the engine: game.finished).
+    // Membership is checked in SQL, so an outsider never makes the server load a game's state.
+    private static Task<Game?> LoadAsync(IApplicationDbContext db, Guid gameId, Guid userId, CancellationToken cancellationToken) => db.Games
+        .Include(candidate => candidate.Players)
+        .Where(candidate => candidate.Id == gameId && candidate.Players.Any(player => player.UserId == userId))
+        .FirstOrDefaultAsync(cancellationToken);
+
+    // Why the command cannot reach the engine, or null when it can (a finished game is left to the engine: game.finished). The
+    // view version is checked in a sequential game only.
     private static Error? Check(Ruleset ruleset, Game game, GamePlayer caller, long expectedVersion) => game switch
     {
         { Phase: GamePhase.Lobby } or { State: null } => GameErrors.NotStarted,
+        { TurnMode: TurnMode.Simultaneous } => null,
         { State: var state } when GameEngine.ViewFor(ruleset, state, caller.PlayerId).Version != expectedVersion => GameErrors.StaleVersion,
         _ => null,
     };

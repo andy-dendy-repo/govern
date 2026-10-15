@@ -40,8 +40,9 @@ public static class SendGameCommandEndpoint
     /// <response code="401">Missing or invalid access token.</response>
     /// <response code="404">No such game, or the caller does not play in it.</response>
     /// <response code="409">
-    /// <c>game.not_started</c>; <c>game.stale_version</c> (another command came first: reload the game); or an engine rule
-    /// violation with its own code (<c>game.not_your_turn</c>, <c>move.unreachable</c>, <c>game.finished</c>, …).
+    /// <c>game.not_started</c>; <c>game.stale_version</c> (another command came first: reload the game; in a simultaneous game
+    /// only when other commands keep winning the race); or an engine rule violation with its own code (<c>game.not_your_turn</c>,
+    /// <c>game.turn_ended</c>, <c>move.unreachable</c>, <c>game.finished</c>, …).
     /// </response>
     /// <response code="413">The body is larger than 4 KiB.</response>
     /// <response code="415">The body is not JSON.</response>

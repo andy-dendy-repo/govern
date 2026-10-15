@@ -20,12 +20,17 @@ namespace Govern.Core.State;
 /// Other players' cities whose trade post the player has seen together with the city (G17b), in the order they were seen: the
 /// cities they can send deals to without seeing them now. <see langword="null"/> while there are none.
 /// </param>
+/// <param name="EndedTurn">
+/// In a simultaneous game (<see cref="TurnMode.Simultaneous"/>), whether the player has ended this round's turn; every player
+/// sees it. Always <see langword="false"/> in a sequential game, and left out of the JSON while false.
+/// </param>
 public sealed record Player(
     PlayerId Id,
     PlayerStatus Status,
     ImmutableArray<HexCoord> Explored,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<OwnedNode>? Nodes = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<CityId>? KnownPosts = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImmutableArray<CityId>? KnownPosts = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool EndedTurn = false)
 {
     /// <summary>Other players' cities whose trade post the player knows of (empty when none).</summary>
     [JsonIgnore]

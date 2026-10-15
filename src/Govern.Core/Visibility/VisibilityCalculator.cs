@@ -113,10 +113,11 @@ public static class VisibilityCalculator
                 .Where(city => city.Owner == viewer || visible.Contains(city.Position))
                 .OrderBy(static city => city.Id.Value)
                 .Select(city => CityView.From(city, viewer, SeenTradePost(ruleset, state, city, viewer, visible)))],
-            [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status))],
+            [.. state.Players.Select(static p => new PlayerSummary(p.Id, p.Status, p.EndedTurn))],
             TradeDeals(state, viewer),
             new ScienceView(ScienceRule.Income(ruleset, state, viewer), player.Nodes),
-            TradePartners(ruleset, state, player));
+            TradePartners(ruleset, state, player),
+            state.TurnMode);
 
         return view with { Version = Fingerprint(view) };
     }

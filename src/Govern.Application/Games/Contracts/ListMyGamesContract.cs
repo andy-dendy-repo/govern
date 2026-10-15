@@ -2,6 +2,8 @@ using FluentValidation;
 using Govern.Application.Common.Abstractions;
 using Govern.Application.Games.Models;
 using Govern.Application.Users.Models;
+using Govern.Core.State;
+using Govern.Domain.Enums;
 using Govern.Utils.Mediator.Abstractions;
 using Govern.Utils.Results;
 using Microsoft.EntityFrameworkCore;
@@ -75,7 +77,10 @@ internal sealed class ListMyGamesHandler(IApplicationDbContextFactory dbContextF
                 game.Players.Count,
                 game.Seats,
                 game.CreatorId == userId,
-                game.Players.Any(player => player.UserId == userId && player.Id == game.CurrentPlayerId),
+                // In a simultaneous game, every seat that still plays and hasn't ended the round is waited for.
+                game.Players.Any(player => player.UserId == userId
+                    && (player.Id == game.CurrentPlayerId
+                        || (game.TurnMode == TurnMode.Simultaneous && game.Phase == GamePhase.InProgress && !player.IsOut && !player.EndedTurn))),
                 game.Players.Any(player => player.UserId == userId && player.IsOut),
                 game.ActivityAt))
             .ToListAsync(cancellationToken);

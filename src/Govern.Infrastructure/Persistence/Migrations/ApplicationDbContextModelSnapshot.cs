@@ -79,6 +79,14 @@ namespace Govern.Infrastructure.Persistence.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("state");
 
+                    b.Property<string>("TurnMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Sequential")
+                        .HasColumnName("turn_mode");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -143,6 +151,10 @@ namespace Govern.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<bool>("EndedTurn")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ended_turn");
 
                     b.Property<Guid>("GameId")
                         .HasColumnType("uuid")

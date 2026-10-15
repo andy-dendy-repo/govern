@@ -5,6 +5,7 @@ using Govern.Application.Games.Services;
 using Govern.Application.Users.Models;
 using Govern.Core.Engine;
 using Govern.Core.Rulesets;
+using Govern.Core.State;
 using Govern.Core.Visibility;
 using Govern.Domain.Entities;
 using Govern.Domain.Enums;
@@ -40,6 +41,7 @@ public sealed record GetGameRequest(Guid GameId) : IRequest<GetGameRequest, GetG
 /// <param name="Log">
 /// The caller's recent game log (<see cref="GameLogService"/>), oldest first: only the events they may see. Empty in the lobby.
 /// </param>
+/// <param name="TurnMode">How the players take their turns (sequential or simultaneous), chosen with the lobby.</param>
 public sealed record GetGameResponse(
     Guid Id,
     GamePhase Phase,
@@ -50,7 +52,8 @@ public sealed record GetGameResponse(
     PlayerView? View,
     DateTimeOffset CreatedAt,
     string Map,
-    IReadOnlyList<GameLogItem> Log) : IResponse
+    IReadOnlyList<GameLogItem> Log,
+    TurnMode TurnMode = TurnMode.Sequential) : IResponse
 {
     /// <summary>Maps a loaded game (with its players) for one of its players.</summary>
     /// <param name="game">The game.</param>
@@ -81,7 +84,8 @@ public sealed record GetGameResponse(
             game.State is { } state ? GameEngine.ViewFor(ruleset, state, caller.PlayerId) : null,
             game.CreatedAt,
             game.Map.Value,
-            log);
+            log,
+            game.TurnMode);
     }
 }
 

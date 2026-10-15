@@ -98,6 +98,20 @@ public class ListMyGamesEndpointTests(GovernApiFixture fixture) : ApiTestBase(fi
     }
 
     [Fact]
+    public async Task Get_SimultaneousGame_FlagsYourTurnUntilYouEndTheRound()
+    {
+        var (game, creator, joiner) = await GamesApi.CreateStartedSimultaneousGameAsync(Client, Ct);
+
+        (await ListAsync(creator, "")).Items.ShouldHaveSingleItem().IsYourTurn.ShouldBeTrue();
+        (await ListAsync(joiner, "")).Items.ShouldHaveSingleItem().IsYourTurn.ShouldBeTrue();
+
+        (await GamesApi.SendCommandAsync(Client, joiner.AccessToken, game.Id, 0, new EndTurnCommand(), Ct)).EnsureSuccessStatusCode();
+
+        (await ListAsync(creator, "")).Items.ShouldHaveSingleItem().IsYourTurn.ShouldBeTrue();
+        (await ListAsync(joiner, "")).Items.ShouldHaveSingleItem().IsYourTurn.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task Get_RunningGame_FlagsYourTurnForThePlayerToMoveOnly()
     {
         var (game, creator, joiner) = await GamesApi.CreateStartedGameAsync(Client, Ct);

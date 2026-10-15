@@ -11,11 +11,16 @@ namespace Govern.Core.Engine;
 /// </summary>
 internal static class CommandGuardRule
 {
-    public static RuleViolation? CheckTurn(GameState state, PlayerId actor, GameCommand command) =>
-        CheckTurn(state.Status, state.FindPlayer(actor)?.Status, command is ResignCommand || state.CurrentPlayer == actor);
+    // Resigning is always allowed; taking back an ended turn passes the guard in a simultaneous game (ResumeTurnRule checks it).
+    public static RuleViolation? CheckTurn(GameState state, PlayerId actor, GameCommand command) => CheckTurn(
+        state.Status,
+        state.FindPlayer(actor)?.Status,
+        command is ResignCommand || (command is ResumeTurnCommand && state.TurnMode == TurnMode.Simultaneous) || state.MayAct(actor),
+        state.TurnMode);
 
-    // Shared with the view-based previews (ViewPreviewCalculator), so both check the turn the same way.
-    public static RuleViolation? CheckTurn(GameStatus status, PlayerStatus? actorStatus, bool mayActNow)
+    // Shared with the view-based previews (ViewPreviewCalculator), so both check the turn the same way. A simultaneous player
+    // who may not act has ended their turn.
+    public static RuleViolation? CheckTurn(GameStatus status, PlayerStatus? actorStatus, bool mayActNow, TurnMode turnMode = TurnMode.Sequential)
     {
         if (status == GameStatus.Finished)
         {
@@ -27,7 +32,12 @@ internal static class CommandGuardRule
             return RuleViolations.NotAPlayer;
         }
 
-        return mayActNow ? null : RuleViolations.NotYourTurn;
+        if (mayActNow)
+        {
+            return null;
+        }
+
+        return turnMode == TurnMode.Simultaneous ? RuleViolations.TurnEnded : RuleViolations.NotYourTurn;
     }
 
     public static bool TryGetOwnedUnit(

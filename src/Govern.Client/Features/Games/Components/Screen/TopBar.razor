@@ -32,12 +32,20 @@
                       aria-label="@(_more ? "Hide more" : "More")" aria-expanded="@(_more ? "true" : "false")" Click="@(() => _more = !_more)"/>
         @if (View.Status == GameStatus.InProgress && IsActive)
         {
-            <RadzenButton Text="End turn" Icon="skip_next" Disabled="@(Busy || !IsYourTurn)"
-                          Click="@(() => Command.InvokeAsync(new EndTurnCommand()))" class="end-turn"/>
+            @if (View.TurnMode == TurnMode.Simultaneous && View.EndedTurn)
+            {
+                <RadzenButton Text="Undo end turn" Icon="undo" ButtonStyle="ButtonStyle.Light" Disabled="@Busy"
+                              Click="@(() => Command.InvokeAsync(new ResumeTurnCommand()))" class="resume-turn"/>
+            }
+            else
+            {
+                <RadzenButton Text="End turn" Icon="skip_next" Disabled="@(Busy || !IsYourTurn)"
+                              Click="@(() => Command.InvokeAsync(new EndTurnCommand()))" class="end-turn"/>
+            }
         }
     </div>
     <div class="@(_more ? "top-more open" : "top-more")">
-        @if (View.Players.Length > 2)
+        @if (View.Players.Length > 2 || View.TurnMode == TurnMode.Simultaneous)
         {
             <PlayerStrip View="@View"/>
         }
@@ -122,5 +130,5 @@
 
     private int ScienceUsed => ScienceCalculator.Used(Ruleset, View.Science?.NodeList ?? []);
 
-    private bool IsYourTurn => View.CurrentPlayer == View.Viewer;
+    private bool IsYourTurn => View.MayAct;
 }

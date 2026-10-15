@@ -22,6 +22,7 @@ internal static class CommandDispatcher
         ProduceBuildingCommand building => ProduceBuildingRule.Apply(ruleset, state, actor, building),
         SetUpkeepPriorityCommand priority => SetUpkeepPriorityRule.Apply(state, actor, priority),
         EndTurnCommand => EndTurnRule.Apply(ruleset, state, actor),
+        ResumeTurnCommand => ResumeTurnRule.Apply(state, actor),
         ResignCommand => ResignRule.Apply(state, actor),
         _ => TradeRule.Dispatch(ruleset, state, actor, command)
             ?? ScienceRule.Dispatch(ruleset, state, actor, command)

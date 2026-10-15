@@ -25,7 +25,7 @@ public static class GameFactory
     /// <returns>Turn 1, first player to move, version 0.</returns>
     /// <exception cref="ArgumentException">
     /// The setup does not have distinct, non-empty players, as many as <see cref="SetupRules"/> allows, or a predefined map is not
-    /// made for that many players.
+    /// made for that many players, or the turn mode is unknown.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">The map size is outside the ruleset's limits.</exception>
     /// <exception cref="ArgumentException">The predefined map uses a terrain the ruleset doesn't have.</exception>
@@ -33,7 +33,7 @@ public static class GameFactory
     {
         ArgumentNullException.ThrowIfNull(ruleset);
         ArgumentNullException.ThrowIfNull(setup);
-        ValidatePlayers(ruleset.Setup, setup);
+        ValidateSetup(ruleset.Setup, setup);
 
         var count = setup.Players.Length;
         var map = setup.Map is { } predefined ? CheckMap(ruleset, predefined.Map) : CreateMap(ruleset.Map, setup);
@@ -57,6 +57,7 @@ public static class GameFactory
             Version = 0,
             Turn = 1,
             CurrentPlayer = setup.Players[0],
+            TurnMode = setup.TurnMode,
             Status = GameStatus.InProgress,
             Map = map,
             Players = [.. setup.Players.Select(static id => new Player(id, PlayerStatus.Active, []))],
@@ -117,8 +118,13 @@ public static class GameFactory
         return map;
     }
 
-    private static void ValidatePlayers(SetupRules rules, GameSetup setup)
+    private static void ValidateSetup(SetupRules rules, GameSetup setup)
     {
+        if (!Enum.IsDefined(setup.TurnMode))
+        {
+            throw new ArgumentException("Unknown turn mode.", nameof(setup));
+        }
+
         var players = setup.Players;
         if (players.IsDefault || !rules.Allows(players.Length))
         {
