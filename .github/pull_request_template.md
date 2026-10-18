@@ -16,4 +16,4 @@
 - [ ] Tested at the right level (unit, integration, client, architecture)
 - [ ] XML docs on every new public member in `src/`
 - [ ] `docs/` updated (feature doc and index; `docs/game/rules.md` for a game rules change)
-- [ ] Green locally: `dotnet build`, `dotnet format --verify-no-changes`, `dotnet test`
+- [ ] Green locally: `dotnet build Govern.slnx`, `dotnet format Govern.slnx --verify-no-changes`, `dotnet test Govern.slnx`
