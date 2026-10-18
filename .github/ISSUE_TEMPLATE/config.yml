@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/andy-dendy-repo/govern/security/advisories/new
+    about: Please report vulnerabilities privately, not in a public issue. See SECURITY.md.
+  - name: Architecture and decision records
+    url: https://github.com/andy-dendy-repo/govern/tree/stage/docs
+    about: Read why things are the way they are before proposing a design change.

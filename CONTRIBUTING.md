@@ -1,10 +1,10 @@
 # Contributing to Govern
 
-Thanks for your interest in Govern! Issues, ideas and pull requests are welcome. This page covers how to propose a change and what a change needs before it can be merged.
+Thanks for your interest in Govern! Issues, ideas and pull requests are welcome. This page covers how to propose a change and what a change needs before it can be merged. Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Ways to contribute
 
-- **Report a bug** or **suggest a feature:** [open an issue](https://github.com/andy-dendy-repo/govern/issues/new). For a bug, include the steps to reproduce, what you expected and what happened.
+- **Report a bug** or **suggest a feature:** [open an issue](https://github.com/andy-dendy-repo/govern/issues/new/choose) and pick the bug report or feature request form. For a bug, include the steps to reproduce, what you expected and what happened.
 - **Ask a question or discuss the design:** open an issue. The [architecture](docs/architecture.md) and the [decision records](docs/decisions) explain why things are the way they are.
 - **Send a pull request:** for anything bigger than a small fix, open an issue first so we can agree on the approach.
 - **Report a security vulnerability:** **don't open a public issue**; follow [SECURITY.md](SECURITY.md).
@@ -26,7 +26,7 @@ To run the API and the client locally (database and user-secrets), follow [local
 - `stage` is the integration branch and the base for all work. `main` is production, and every merge to it is a release.
 - Branch from `stage` with a descriptive name (`feature/<name>`, `fix/<name>`, `docs/<name>`, `chore/<name>`), and open the PR **to `stage`**.
 - Use [conventional commits](https://www.conventionalcommits.org/): `feat(games): …`, `fix(api): …`, `docs: …`, `test: …`, `chore: …`.
-- Keep a PR to one change, and explain the *why* in its description.
+- Keep a PR to one change, and explain the *why* in its description. The [pull request template](.github/pull_request_template.md) prefills the Definition of Done checklist.
 - CI must pass. It runs the build, the format check, all tests, a vulnerable-package scan and a Bicep compile.
 
 The full flow, including releases, is in [branching](docs/operations/branching.md).

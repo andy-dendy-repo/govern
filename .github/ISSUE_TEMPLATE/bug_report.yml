@@ -1,0 +1,58 @@
+name: Bug report
+description: Something doesn't work as expected (API, Blazor client, game rules or infrastructure).
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+        **Security vulnerabilities don't belong here:** report them privately as described in [SECURITY.md](https://github.com/andy-dendy-repo/govern/blob/stage/SECURITY.md).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where does the bug show up?
+      options:
+        - API
+        - Blazor client / 3D board
+        - Game engine / rules
+        - Infrastructure / CI
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps that shows the bug. For a game bug, include the ruleset and map if you know them.
+      placeholder: |
+        1. Create a game on map ...
+        2. Move the settler to ...
+        3. End the turn
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead. Paste error messages, logs or screenshots.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser and OS for client bugs; commit or branch for local runs.
+      placeholder: Chrome 140 on Windows 11, stage @ a0a0cd9
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
