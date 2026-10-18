@@ -1,0 +1,47 @@
+name: Feature request
+description: Suggest a new feature, game mechanic or improvement.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Check the [backlog](https://github.com/andy-dendy-repo/govern/blob/stage/docs/plans/backlog.md) and the [design roadmap](https://github.com/andy-dendy-repo/govern/blob/stage/docs/game/design-roadmap.md) first: it may already be planned.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - API
+        - Blazor client / 3D board
+        - Game engine / rules
+        - Infrastructure / CI
+        - Docs
+        - Developer experience / Claude Code setup
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem would this solve, or what can't you do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How you imagine it working. For a game mechanic, describe the rule and the numbers it needs.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd like to implement this myself (see [CONTRIBUTING.md](https://github.com/andy-dendy-repo/govern/blob/stage/CONTRIBUTING.md)).

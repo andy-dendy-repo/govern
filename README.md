@@ -355,7 +355,7 @@ On top of the hooks:
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch flow, the Definition of Done and the conventions. To report a vulnerability, follow [SECURITY.md](SECURITY.md) and don't open a public issue.
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch flow, the Definition of Done and the conventions, and the [Code of Conduct](CODE_OF_CONDUCT.md) for how we treat each other. To report a vulnerability, follow [SECURITY.md](SECURITY.md) and don't open a public issue.
 
 ## 📄 License
 
