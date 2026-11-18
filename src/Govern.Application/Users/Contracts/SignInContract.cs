@@ -78,7 +78,7 @@ internal sealed class SignInHandler(
             return UserErrors.InvalidCredentials;
         }
 
-        if (!signInThrottling.TryBeginAttempt(email))
+        if (!await signInThrottling.TryBeginAttemptAsync(email, cancellationToken))
         {
             return UserErrors.TooManySignInAttempts;
         }
@@ -88,7 +88,7 @@ internal sealed class SignInHandler(
             return UserErrors.InvalidCredentials;
         }
 
-        signInThrottling.Reset(email);
+        await signInThrottling.ResetAsync(email, CancellationToken.None);
 
         for (var attempt = 1; ; attempt++)
         {

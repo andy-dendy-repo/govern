@@ -6,7 +6,7 @@ paths:
 
 # Caching and in-process state
 
-The Api runs as **one** Web App instance (B1). In-process state is correct only while that holds; scaling out means moving it to a shared store (Azure Managed Redis) first.
+The Api runs as **one** Web App instance (B1) by default. In-process state is correct only while that holds. Every piece of per-instance state therefore has a Redis implementation selected when `ConnectionStrings:Redis` is set (`Infrastructure/DependencyInjection.AddSharedState`, see `docs/operations/scale-out.md`); new per-instance state needs one too, plus a ScaleOut integration test.
 
 ## In-process counters and short-lived state
 
@@ -21,6 +21,17 @@ Example: sign-in throttling (`ISignInThrottlingService` → `Infrastructure/Cach
 - **Atomicity:** serialise read-modify-write with a `Lock`, including removals. When a check guards slow work (password hashing, I/O), **reserve atomically before the work** (`TryBeginAttempt`). Never do check → slow work → record: parallel requests would all pass the check.
 - Never log keys that are personal data (emails).
 - State is lost on restart or redeploy. Only use this for data where that is acceptable, and say so in the feature doc.
+
+## Redis implementations (several instances)
+
+Example: `Infrastructure/Caching/Services/RedisSignInThrottlingService.cs`, `Infrastructure/RateLimiting`, `Infrastructure/Realtime/Services/RedisGameChangeService.cs`.
+
+- Only Infrastructure references `StackExchange.Redis` (`LayerDependencyTests.OnlyInfrastructure_UsesRedis`).
+- Keys and channels go through `RedisOptions.Key(...)` (the `Redis:KeyPrefix`). Hash personal data in keys (emails, client IP addresses: a 16-byte SHA-256 prefix), never store it raw.
+- Check-and-update runs in one Lua script (`ScriptEvaluateAsync`), never a read then a write.
+- Every key expires (the window or a lease lifetime), so a crashed instance can't leave state behind for good.
+- A `RedisTimeoutException` doesn't mean the command didn't run: undo what it may have written (e.g. a lease) before falling back.
+- Redis being down is expected: catch `RedisException`/`RedisTimeoutException`, fall back to the in-process implementation (or a safe no-op) and log it; never fail the request. The connection uses `BacklogPolicy.FailFast`, so a fallback is immediate.
 
 ## Cached queries
 

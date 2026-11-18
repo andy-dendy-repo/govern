@@ -65,9 +65,13 @@ Migrations run when the new container starts (`DatabaseMigrationService`).
 | Route | Checks | Used by | Limits |
 |---|---|---|---|
 | `/health/live` | none (the process answers) | App Service Health check (`healthCheckPath`), every minute, on the default host | not rate limited; exempt from host filtering as a safeguard in case a platform probe uses another `Host` |
-| `/health/ready` | checks tagged `ready` (PostgreSQL) | the release workflow, diagnostics | `health` rate-limiting policy per client IP (`RateLimiting:Health*`); host filtering applies |
+| `/health/ready` | checks tagged `ready` (PostgreSQL, and Redis when configured: `Degraded` while unreachable, so still 200) | the release workflow, diagnostics | `health` rate-limiting policy per client IP (`RateLimiting:Health*`); host filtering applies |
 
 `HostAllowListMiddleware` answers 400 to any other `Host` header. The App Service front end already routes only hosts bound to the site, so this is defence in depth; it also rejects custom domains that are bound but not listed. Startup fails outside Development if the list is empty. The allowed hosts are the default `<web-app>.azurewebsites.net` host and the `API_ORIGIN` host (Bicep `apiCustomHostnames`). The built-in `AllowedHosts` setting stays `*` because it can't exempt the liveness probe.
+
+## Running more than one instance
+
+The Api runs on one instance. To run several, first give the release a `REDIS_CONNECTION_STRING` environment secret (Bicep stores it in Key Vault and sets `ConnectionStrings__Redis`), then scale the App Service plan out. See [scale-out](scale-out.md).
 
 ## Known gaps (follow-ups)
 

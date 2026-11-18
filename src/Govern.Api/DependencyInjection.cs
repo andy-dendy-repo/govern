@@ -90,13 +90,13 @@ public static class DependencyInjection
             {
                 limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 limiter.AddPolicy(RateLimitingPolicies.Auth, static context => PerClientIp(
-                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.AuthPermitLimit, Window = settings.AuthWindow }));
+                    context, RateLimitingPolicies.Auth, static settings => (settings.AuthPermitLimit, settings.AuthWindow)));
                 limiter.AddPolicy(RateLimitingPolicies.Health, static context => PerClientIp(
-                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.HealthPermitLimit, Window = settings.HealthWindow }));
+                    context, RateLimitingPolicies.Health, static settings => (settings.HealthPermitLimit, settings.HealthWindow)));
                 limiter.AddPolicy(RateLimitingPolicies.Games, static context => PerUser(
-                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.GamesPermitLimit, Window = settings.GamesWindow }));
+                    context, RateLimitingPolicies.Games, static settings => (settings.GamesPermitLimit, settings.GamesWindow)));
                 limiter.AddPolicy(RateLimitingPolicies.GameCommands, static context => PerUser(
-                    context, static settings => new FixedWindowRateLimiterOptions { PermitLimit = settings.GameCommandsPermitLimit, Window = settings.GameCommandsWindow }));
+                    context, RateLimitingPolicies.GameCommands, static settings => (settings.GameCommandsPermitLimit, settings.GameCommandsWindow)));
                 limiter.AddPolicy(RateLimitingPolicies.GameStreams, static context => GameStreamsPerUser(context));
             });
         }
@@ -126,28 +126,37 @@ public static class DependencyInjection
         }
     }
 
-    // Fixed window per client IP (IPv6 per /64); options are read per request so tests can override them.
-    private static RateLimitPartition<string> PerClientIp(HttpContext context, Func<RateLimitingOptions, FixedWindowRateLimiterOptions> limits)
-    {
-        var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
-        return RateLimitPartition.GetFixedWindowLimiter(IpPartitionKey.From(context.Connection.RemoteIpAddress), _ => limits(settings));
-    }
+    // Fixed window per client IP (IPv6 per /64); options are read per request so tests can override them. The limiters come
+    // from IRateLimiterService, which counts in Redis when it is configured, so the limits hold across Api instances.
+    private static RateLimitPartition<string> PerClientIp(
+        HttpContext context, string policy, Func<RateLimitingOptions, (int PermitLimit, TimeSpan Window)> limits) =>
+        FixedWindow(context, policy, IpPartitionKey.From(context.Connection.RemoteIpAddress), limits);
 
     // Per user: at most N open streams (the lease is held while the stream is open), then a fixed window on opening them.
-    // Concurrency comes first, so a stream the window rejects gives its concurrency permit back at once.
+    // Concurrency comes first, so a stream the window rejects gives its concurrency permit back at once. A stream ends at the
+    // access token's expiry, so a shared open-stream lease never needs to outlive one token lifetime (plus clock skew).
     private static RateLimitPartition<string> GameStreamsPerUser(HttpContext context)
     {
         var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
-        return RateLimitPartition.Get(UserPartitionKey(context), _ => new OwningChainedRateLimiter(
-            new ConcurrencyLimiter(new ConcurrencyLimiterOptions { PermitLimit = settings.GameStreamsConcurrentLimit, QueueLimit = 0 }),
-            new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions { PermitLimit = settings.GameStreamsPermitLimit, Window = settings.GameStreamsWindow })));
+        var leaseLifetime = context.RequestServices.GetRequiredService<IOptions<JwtOptions>>().Value.AccessTokenLifetime + TimeSpan.FromMinutes(1);
+        var limiters = context.RequestServices.GetRequiredService<IRateLimiterService>();
+        var partition = UserPartitionKey(context);
+        return RateLimitPartition.Get(partition, _ => new OwningChainedRateLimiter(
+            limiters.CreateConcurrency($"{RateLimitingPolicies.GameStreams}:open:{partition}", settings.GameStreamsConcurrentLimit, leaseLifetime),
+            limiters.CreateFixedWindow($"{RateLimitingPolicies.GameStreams}:window:{partition}", settings.GameStreamsPermitLimit, settings.GameStreamsWindow)));
     }
 
     // Fixed window per signed-in user (the JWT subject).
-    private static RateLimitPartition<string> PerUser(HttpContext context, Func<RateLimitingOptions, FixedWindowRateLimiterOptions> limits)
+    private static RateLimitPartition<string> PerUser(
+        HttpContext context, string policy, Func<RateLimitingOptions, (int PermitLimit, TimeSpan Window)> limits) =>
+        FixedWindow(context, policy, UserPartitionKey(context), limits);
+
+    private static RateLimitPartition<string> FixedWindow(
+        HttpContext context, string policy, string partition, Func<RateLimitingOptions, (int PermitLimit, TimeSpan Window)> limits)
     {
-        var settings = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
-        return RateLimitPartition.GetFixedWindowLimiter(UserPartitionKey(context), _ => limits(settings));
+        var (permitLimit, window) = limits(context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value);
+        var limiters = context.RequestServices.GetRequiredService<IRateLimiterService>();
+        return RateLimitPartition.Get(partition, _ => limiters.CreateFixedWindow($"{policy}:{partition}", permitLimit, window));
     }
 
     // The signed-in user (JWT subject) for per-user policies. The limiter runs after authorization, so a protected endpoint

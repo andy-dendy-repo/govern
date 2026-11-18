@@ -59,5 +59,5 @@ No Domain, Application, Api or Client changes. No migration.
 - **Public endpoint:** Neon accepts connections from any IP (IP allow-lists are paid). This is similar to today's "allow all Azure services" rule. Protection is the password plus `VerifyFull` TLS.
 - **Free-hours budget:** the hourly lobby sweep wakes the database 24 times a day (~2 h of 0.25 CU compute a day, ~15 of 100 CU-hours a month). Fine as is. Optionally set `LobbyCleanup__Interval=06:00:00` in App Service settings.
 - **Cold query:** the first query after 5 idle minutes waits about 0.5 s for Neon to wake. Npgsql's default 15 s timeout covers it.
-- **Later scale-out (F13):** doesn't block this move (one Api instance). A scale-out backplane on Neon would need a paid plan and the direct host. Details in the [F13 plan](F13-scale-out-backplane.md).
+- **Scale-out (F13, done):** doesn't affect this move. The backplane uses Redis, not Postgres `LISTEN/NOTIFY`, so it keeps no idle connection open on Neon and scale to zero still works. Details in the [F13 plan](../done/F13-scale-out-backplane.md).
 - **Timing (question for Andrii):** release work (F1 and friends) is deferred, and nothing is deployed yet. Do this now, or keep the plan until F1?

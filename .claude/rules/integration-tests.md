@@ -13,6 +13,7 @@ paths:
 
 - xUnit v3 + Shouldly, with `TestContext.Current.CancellationToken` passed everywhere.
 - **Testcontainers.PostgreSql:** one container per test assembly, shared through an assembly fixture (`[assembly: AssemblyFixture(typeof(PostgresFixture))]`) or a collection fixture. Pin the image tag to the Postgres major version used in Azure.
+- **Testcontainers.Redis (several instances):** one Redis container per assembly (`RedisFixture`, an assembly fixture). Tests of state shared between Api instances live in `ScaleOut/`, derive from `ScaleOutTestBase` (empties the database and Redis per test) and start hosts with `StartInstance(...)`: two hosts on the same database and Redis act as two Api instances. Every other test runs without Redis, on the in-process implementations.
 - `GovernApiFactory : WebApplicationFactory<Program>`:
   - Overrides the connection string with the container's.
   - Replaces external integrations (email, Telegram, …) with test fakes.

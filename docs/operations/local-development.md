@@ -53,6 +53,10 @@ dotnet run --project src/Govern.Client
 - The Api's Development settings already allow both client origins in `Cors:AllowedOrigins`.
 - The CSP from `staticwebapp.config.json` is not applied by the dev server; see [client](../features/client.md).
 
+## Optional Redis
+
+The Api runs without Redis by default. To try two instances sharing live updates and limits, see [scale-out](scale-out.md#trying-two-instances-locally).
+
 ## Tests
 
 ```bash

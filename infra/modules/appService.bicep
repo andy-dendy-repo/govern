@@ -29,6 +29,9 @@ param connectionStringSecretUri string
 @description('Key Vault secret URI of the JWT signing key.')
 param jwtSigningKeySecretUri string
 
+@description('Key Vault secret URI of the Redis connection string; empty runs the Api without Redis (one instance).')
+param redisConnectionStringSecretUri string = ''
+
 @description('Browser origins allowed by the Api CORS policy.')
 param corsAllowedOrigins array
 
@@ -37,6 +40,10 @@ param customHostnames array = []
 
 @description('Resource tags.')
 param tags object
+
+var redisSettings = empty(redisConnectionStringSecretUri) ? [] : [
+  { name: 'ConnectionStrings__Redis', value: '@Microsoft.KeyVault(SecretUri=${redisConnectionStringSecretUri})' }
+]
 
 var registrySettings = empty(registryUsername) ? [] : [
   { name: 'DOCKER_REGISTRY_SERVER_USERNAME', value: registryUsername }
@@ -93,7 +100,7 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'ASPNETCORE_FORWARDEDHEADERS_ENABLED', value: 'true' }
         { name: 'ConnectionStrings__Govern', value: '@Microsoft.KeyVault(SecretUri=${connectionStringSecretUri})' }
         { name: 'Jwt__SigningKey', value: '@Microsoft.KeyVault(SecretUri=${jwtSigningKeySecretUri})' }
-      ], corsSettings, hostSettings, registrySettings)
+      ], corsSettings, hostSettings, registrySettings, redisSettings)
     }
   }
 }

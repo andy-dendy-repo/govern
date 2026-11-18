@@ -8,8 +8,9 @@ namespace Govern.Infrastructure.Caching.Services;
 
 /// <summary>
 /// In-process <see cref="ISignInThrottlingService"/>: a size-limited cache of attempt windows keyed by normalised email.
-/// Counters are per instance and reset on restart, which is enough for a single Web App instance. The window is judged
-/// with <see cref="TimeProvider"/>; cache expiry only frees memory.
+/// Counters are per instance and reset on restart, which is enough for a single Web App instance (with Redis configured,
+/// <see cref="RedisSignInThrottlingService"/> shares them and falls back to this one while Redis is unreachable). The window
+/// is judged with <see cref="TimeProvider"/>; cache expiry only frees memory.
 /// </summary>
 internal sealed class MemorySignInThrottlingService : ISignInThrottlingService, IDisposable
 {
@@ -31,6 +32,19 @@ internal sealed class MemorySignInThrottlingService : ISignInThrottlingService, 
     }
 
     /// <inheritdoc />
+    public ValueTask<bool> TryBeginAttemptAsync(Email email, CancellationToken cancellationToken) =>
+        ValueTask.FromResult(TryBeginAttempt(email));
+
+    /// <inheritdoc />
+    public ValueTask ResetAsync(Email email, CancellationToken cancellationToken)
+    {
+        Reset(email);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>Reserves an attempt synchronously; see <see cref="TryBeginAttemptAsync"/>.</summary>
+    /// <param name="email">The normalised email being signed in.</param>
+    /// <returns><see langword="false"/> when the limit is reached.</returns>
     public bool TryBeginAttempt(Email email)
     {
         ArgumentNullException.ThrowIfNull(email);
@@ -61,7 +75,8 @@ internal sealed class MemorySignInThrottlingService : ISignInThrottlingService, 
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>Forgets the attempts of <paramref name="email"/>; see <see cref="ResetAsync"/>.</summary>
+    /// <param name="email">The normalised email that signed in.</param>
     public void Reset(Email email)
     {
         ArgumentNullException.ThrowIfNull(email);
